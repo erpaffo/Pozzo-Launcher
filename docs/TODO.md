@@ -83,9 +83,9 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
     - Audit di motion.css/js: niente animazioni di layout, niente filtri blur costosi nelle liste lunghe
 [ ] **[M]** Transizioni condivise tra lista e dettaglio gioco — v0.13.0
     - La copertina «vola» nel dettaglio; solo CSS, nessuna libreria
-[ ] **[M]** Animazione di caricamento a scheletro (skeleton) — v0.13.0
+[x] **[M]** Animazione di caricamento a scheletro (skeleton) — v0.13.0
     - Sostituisce gli spinner nelle griglie, leggera e coerente con il tema
-[ ] **[M]** Interruttore «Animazioni: complete / ridotte / nessuna» — v0.13.0
+[x] **[M]** Interruttore «Animazioni: complete / ridotte / nessuna» — v0.13.0
     - Oltre al rispetto del movimento ridotto del sistema, scelta manuale e salvata
 [ ] **[L]** Misura automatica degli FPS in Big Picture — v0.16.0
     - Se scende sotto soglia riduce da sola gli effetti
@@ -159,7 +159,7 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
 
 ## Ottimizzazione del codice e delle funzioni
 
-[ ] **[H]** Profilazione e budget di memoria nei test automatici — v0.12.0
+[x] **[H]** Profilazione e budget di memoria nei test automatici — v0.12.0
     - Test che falliscono se avvio o libreria superano soglie di RAM e tempo (oggi misurati a mano)
 [ ] **[H]** Caricamento a pagine della libreria (virtualizzazione liste) — v0.12.0
     - Disegnare solo le righe visibili in tutte le viste, non solo nelle copertine; con 160.000 voci
@@ -169,7 +169,7 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
     - Avviare le estensioni solo quando servono, con misura del tempo di avvio per ognuna
 [ ] **[M]** Cache disco per le risposte delle fonti dati — v0.13.0
     - Evitare richieste ripetute a LaunchBox, RAWG, HLTB; scadenza e invalidazione chiare
-[ ] **[M]** Test end-to-end dell'interfaccia (browser headless) — v0.13.0
+[x] **[M]** Test end-to-end dell'interfaccia (browser headless) — v0.13.0
     - Provare avvio, ricerca, apertura dettaglio e Big Picture; coprire anche la mancanza del test reale su exe
 [ ] **[M]** Test con gioco ed emulatore reali in CI — v0.13.0
     - Smoke test con un emulatore e una ROM di prova libera
@@ -181,5 +181,5 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
     - Registro degli errori leggibile e inviabile a mano; nessun invio automatico
 [ ] **[L]** Aggiornamenti differenziali dell'app — v0.16.0
     - Scaricare solo i file cambiati invece dell'intero pacchetto
-[ ] **[L]** Documentazione dello sviluppo aggiornata — v0.16.0
+[x] **[L]** Documentazione dello sviluppo aggiornata — v0.16.0
     - docs/sviluppo.md con architettura attuale, esperienze, motion, icone e come aggiungere un tema

@@ -43,6 +43,7 @@ pozzo/
     static/         interfaccia desktop, Big Picture e app del telefono (vedi sotto)
 tests/test_pipeline.py   test end-to-end con API simulate (python tests/test_pipeline.py)
 tests/perf/              budget di tempo e RAM di avvio e libreria (test_perf_budget.py)
+tests/e2e/               smoke test del browser con Playwright: avvio, ricerca, scheda, Big Picture (saltati senza Playwright)
 ```
 
 ### Server: `server.py` e `routes/`
