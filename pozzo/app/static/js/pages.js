@@ -30,7 +30,9 @@ async function renderWishlist(pv) {
     ${d.checking ? `<p class="muted small">Controllo dei prezzi in corso…</p>` : ""}
     ${!s.has_gg ? `<p class="muted small">🔑 Per i prezzi delle key aggiungi la chiave GG.deals in ⚙.</p>`
       : d.log.length ? `<p class="muted small">Ultimo avviso: ${esc(d.log[d.log.length - 1])}</p>` : ""}
-    <div class="wl-list">${d.items.map((w) => `<div class="wl-row${w.alert ? " has-alert" : ""}${w.alert && !w.seen ? " new" : ""}" data-wid="${esc(w.id)}" title="Clicca per tutte le offerte">
+    <div class="wl-list" id="wl-rows">${d.items.length ? "" : `<p class="muted">La lista è vuota: cerca un gioco qui sopra o importa la tua lista desideri di Steam.</p>`}</div></div>`;
+  // una riga per volta, solo quelle visibili: la lista puo' avere migliaia di giochi
+  if (d.items.length) vlist(pv, $("#wl-rows", pv), d.items, (w) => `<div class="wl-row${w.alert ? " has-alert" : ""}${w.alert && !w.seen ? " new" : ""}" data-wid="${esc(w.id)}" title="Clicca per tutte le offerte">
       <div class="wl-img">${imgTag(w)}</div>
       <div class="wl-t"><b>${esc(w.title)}</b>${w.owned ? ` <span class="tag">già in libreria</span>` : ""}
         <span class="muted small">${w.checked ? `${esc(w.shop || "")} · controllato ${new Date(w.checked * 1000).toLocaleDateString("it")}` : "prezzo non ancora controllato"}
@@ -41,8 +43,7 @@ async function renderWishlist(pv) {
       <label class="wl-target" title="Avvisami quando costa meno di…">≤ <input class="field" type="number" step="0.5" min="0" data-target="${esc(w.id)}" value="${w.target ?? ""}" placeholder="€"></label>
       ${w.url ? `<button class="btn" data-open="${esc(w.url)}">Apri ↗</button>` : ""}
       ${w.key_url ? `<button class="btn" data-open="${esc(w.key_url)}" title="Confronto dei negozi di key su GG.deals">🔑 ↗</button>` : ""}
-      <button class="icon-btn" data-del="${esc(w.id)}" title="Togli dalla lista">✕</button></div>`).join("")
-      || `<p class="muted">La lista è vuota: cerca un gioco qui sopra o importa la tua lista desideri di Steam.</p>`}</div></div>`;
+      <button class="icon-btn" data-del="${esc(w.id)}" title="Togli dalla lista">✕</button></div>`, { gap: 6 });
   if (d.unseen) { api("/api/wishlist/seen", { body: {} }).then(() => pollWishBadge()); }
   let tmr = 0;
   $("#wl-q").oninput = (e) => {
@@ -261,8 +262,9 @@ async function renderTop(pv) {
       <button class="btn" id="top-stop"${run ? "" : " hidden"}>■ Ferma</button>
     </div>
     <div id="top-job"></div>
-    ${items.length ? `<div class="top-list">${items.map(row).join("")}</div>`
+    ${items.length ? `<div class="top-list" id="top-rows"></div>`
       : `<p class="muted">Nessun gioco con voti affidabili${TOP_F.own || TOP_F.plat ? " con questi filtri" : ""}. Premi «↻ Aggiorna voti online» per cercarli su IGDB e RAWG.</p>`}</div>`;
+  if (items.length) vlist(pv, $("#top-rows", pv), items, (t) => row(t, items.indexOf(t)), { gap: 4 });
   renderJobInto($("#top-job"), js);
   const re = () => renderTop(pv);
   $("#top-own").onchange = (e) => { TOP_F.own = e.target.value; re(); };
@@ -353,10 +355,12 @@ async function renderShots(pv) {
       <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> Select + R1 sul controller</label>
       <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> Importa le schermate dell'emulatore a fine partita</label>
       <button class="btn primary" id="sh-save">Salva</button></div>
-    ${d.shots.length ? [...groups.values()].map((g) => `<section class="sh-group"><h3>${g.s.game ? `<a href="#" data-game="${g.s.game}">${esc(g.s.title)}</a>` : esc(g.s.title)}
-        <span class="muted small">${esc(STORE_SHORT[g.s.platform] || platName(g.s.platform) || "")} · ${g.items.length}</span></h3>
-        <div class="sh-grid">${g.items.map((i) => `<img loading="lazy" src="${d.shots[i].url}?w=480" data-i="${i}" alt="" title="${esc(fmtDate(d.shots[i].taken))} · ${esc(d.shots[i].source)}">`).join("")}</div></section>`).join("")
+    ${d.shots.length ? `<div id="sh-rows"></div>`
       : `<p class="muted">Ancora nessuna schermata. Avvia un gioco dall'app e premi <kbd>${esc(SHOTS.hotkey)}</kbd>.</p>`}</div>`;
+  // un gioco per riga (gruppo): si disegnano solo i gruppi visibili
+  if (d.shots.length) vlist(pv, $("#sh-rows", pv), [...groups.values()], (g) => `<section class="sh-group"><h3>${g.s.game ? `<a href="#" data-game="${g.s.game}">${esc(g.s.title)}</a>` : esc(g.s.title)}
+        <span class="muted small">${esc(STORE_SHORT[g.s.platform] || platName(g.s.platform) || "")} · ${g.items.length}</span></h3>
+        <div class="sh-grid">${g.items.map((i) => `<img loading="lazy" src="${d.shots[i].url}?w=480" data-i="${i}" alt="" title="${esc(fmtDate(d.shots[i].taken))} · ${esc(d.shots[i].source)}">`).join("")}</div></section>`, { gap: 22 });
   pv.onclick = async (e) => {
     const t = e.target;
     if (t.matches(".sh-grid img")) return openLightbox(SHOTS.page, +t.dataset.i);

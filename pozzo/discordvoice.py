@@ -11,6 +11,7 @@ import urllib.request
 import uuid
 
 from . import discordrpc
+from . import profilecfg as PC
 
 SCOPES = ["rpc", "rpc.voice.read", "rpc.voice.write"]
 TOKEN_URL = "https://discord.com/api/oauth2/token"
@@ -68,7 +69,7 @@ class DiscordVoice:
 
     @property
     def settings(self):
-        return self.cfg.app.get("discord_voice", {})
+        return PC.get(self.cfg, "discord_voice", {})
 
     def configure(self, client_id: str, client_secret: str = "") -> dict:
         client_id, client_secret = str(client_id or "").strip(), str(client_secret or "").strip()
@@ -88,7 +89,7 @@ class DiscordVoice:
     def _store(self, values: dict):
         merged = {**self.settings, **values}
         self.save(merged)
-        self.cfg.app["discord_voice"] = merged
+        self.cfg.app["discord_voice"] = merged  # specchio in memoria, come per Spotify
 
     def public_status(self) -> dict:
         return {"client_id": self.settings.get("client_id", ""),

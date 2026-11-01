@@ -26,7 +26,7 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 #bp-exit .bp-tab { display: inline-block; }
 .bp-clock { flex: none; }
 @media (max-width: 1100px) { #bp-top { padding-inline: 1.4rem; gap: .8rem; } .bp-clock { display: none; } }
-.bp-tab { padding: .55rem 1.2rem; border-radius: 999px; font-weight: 650; color: var(--muted); transition: all .12s; white-space: nowrap; }
+.bp-tab { padding: .55rem 1.2rem; border-radius: 999px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .bp-tab.active { color: var(--text); background: rgba(255,255,255,.08); }
 .bp-clock { font-size: 1.15rem; font-variant-numeric: tabular-nums; color: var(--muted); }
 

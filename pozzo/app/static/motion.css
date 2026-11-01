@@ -58,7 +58,11 @@ html[data-experience-id="catalog"], html[data-experience-id="original"] { --mo-e
 @keyframes mo-rise { from { opacity: 0; transform: translateY(var(--mo-dist)) scale(var(--mo-from-s)); } to { opacity: 1; transform: none; } }
 @keyframes mo-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mo-pop { from { opacity: 0; transform: translateY(calc(var(--mo-dist) * .6)) scale(var(--mo-from-s)); } to { opacity: 1; transform: none; } }
-@keyframes mo-toast { from { opacity: 0; transform: translate(-50%, calc(var(--mo-dist) * 1.4)); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes mo-bump { 0% { transform: scale(.85); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+@keyframes mo-launch { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.35, 1.7); } }
+@keyframes mo-drift { from { transform: scale(1.04); } to { transform: none; } }
+@keyframes mo-bar { from { transform: scaleY(0); } }
+@keyframes mo-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes mo-drawer { from { opacity: .6; transform: translateX(calc(var(--mo-dist) * -1.5)); } to { opacity: 1; transform: none; } }
 @keyframes mo-ring { from { opacity: .75; transform: scale(1); } to { opacity: 0; transform: scale(1.16); } }
 @keyframes mo-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .72; } }
@@ -77,11 +81,48 @@ html .cnx-card, html .vetrina-game, html .gs-dashboard__tile { transition-timing
 /* ---------- Pannelli, finestre, toast ---------- */
 html #detail { transition: transform var(--mo-base) var(--mo-ease-out); }
 #detail.open .detail-body { animation: mo-rise var(--mo-slow) var(--mo-ease-out) backwards; animation-delay: calc(var(--mo-base) * .4); }
-dialog[open] { animation: mo-pop var(--mo-base) var(--mo-ease-out); }
-dialog[open]::backdrop { animation: mo-fade var(--mo-base) ease-out; }
-#settings-page:not([hidden]) { animation: mo-rise var(--mo-base) var(--mo-ease-out); }
+/* entrata con @starting-style, uscita con la transizione verso [hidden] / dialog chiuso (display allow-discrete) */
+dialog, dialog::backdrop, #toast, #settings-page {
+  transition: opacity var(--mo-base) var(--mo-ease-out), transform var(--mo-base) var(--mo-ease-out),
+    overlay var(--mo-base) allow-discrete, display var(--mo-base) allow-discrete;
+}
+dialog:not([open]) { opacity: 0; transform: translateY(calc(var(--mo-dist) * .6)) scale(var(--mo-from-s)); }
+dialog:not([open])::backdrop { opacity: 0; }
+#toast[hidden] { opacity: 0; transform: translate(-50%, var(--mo-dist)); }
+#settings-page[hidden] { opacity: 0; transform: translateY(var(--mo-dist)); }
+@starting-style {
+  dialog[open] { opacity: 0; transform: translateY(calc(var(--mo-dist) * .6)) scale(var(--mo-from-s)); }
+  dialog[open]::backdrop { opacity: 0; }
+  #toast:not([hidden]) { opacity: 0; transform: translate(-50%, calc(var(--mo-dist) * 1.4)); }
+  #settings-page:not([hidden]) { opacity: 0; transform: translateY(var(--mo-dist)); }
+}
 #settings-body .settings-pane:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
-#toast:not([hidden]) { animation: mo-toast var(--mo-base) var(--mo-ease-out); }
+/* menu e popover: solo entrata (si svuotano alla chiusura) */
+#mb-drop { animation: mo-pop var(--mo-fast) var(--mo-ease-out); transform-origin: top left; }
+#popover:not([hidden]) { animation: mo-pop var(--mo-fast) var(--mo-ease-out); transform-origin: top left; }
+#detail.open .hero-bg { animation: mo-drift calc(var(--mo-slow) * 2.5) var(--mo-ease-out) backwards; }
+
+/* ---------- Controlli: pressione, preferito/stelle, Gioca, voce attiva ---------- */
+.btn:active:not(:disabled), .icon-btn:active:not(:disabled), .nav-item:active { transform: scale(.97); }
+#d-fav.on, #detail .d-stars .star.on { animation: mo-bump var(--mo-slow) var(--mo-ease-out); }
+.nav-item { position: relative; }
+.nav-item.active::before {
+  content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px; border-radius: 2px;
+  background: var(--accent); animation: mo-bar var(--mo-base) var(--mo-ease-out);
+}
+#d-play { position: relative; }
+#d-play.mo-launch::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; border: 2px solid var(--accent);
+  pointer-events: none; animation: mo-launch calc(var(--mo-slow) * 1.6) var(--mo-ease-out) forwards;
+}
+
+/* ---------- Copertina in caricamento: riflesso in transform (niente repaint a ogni frame) ---------- */
+.tile .cover:has(img:not(.ok)) .ph { overflow: hidden; }
+.tile .cover:has(img:not(.ok)) .ph::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.09) 50%, transparent 70%);
+  animation: mo-shimmer 1.6s ease-in-out infinite;
+}
 html[data-experience-nav] #sidebar.drawer-open { animation: mo-drawer var(--mo-base) var(--mo-ease-out); }
 #drawer-scrim:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
 #lightbox:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
@@ -101,17 +142,21 @@ html[data-theme="retro"] body::before {
   background: linear-gradient(180deg, transparent, rgba(0,229,255,.06) 50%, transparent);
   animation: mo-scan 9s steps(48, end) infinite;
 }
-html[data-theme="retro"] #toast:not([hidden]) { animation-timing-function: steps(4, end); }
 
 /* ---------- Pausa a scheda nascosta ---------- */
 html.mo-paused *, html.mo-paused *::before, html.mo-paused *::after { animation-play-state: paused !important; }
 
 /* ---------- Ridotta / disattivata ---------- */
 html[data-motion="reduced"] { --mo-i: .5; --mo-exp-stagger: 0ms; --mo-lift: -2px; --mo-hover-s: 1; }
-html[data-motion="reduced"] .brand, html[data-motion="reduced"] body::before { animation: none; }
+html[data-motion="reduced"] .brand, html[data-motion="reduced"] body::before,
+html[data-motion="reduced"] .tile .cover .ph::after { animation: none; }
 html[data-motion="off"] { --mo-fast: .01ms; --mo-base: .01ms; --mo-slow: .01ms; --mo-i: 0; --mo-lift: 0px; --mo-hover-s: 1; }
 html[data-motion="off"] .brand, html[data-motion="off"] body::before, html[data-motion="off"] .mo-in,
-html[data-motion="off"] .card.focus::after { animation: none; }
+html[data-motion="off"] .card.focus::after, html[data-motion="off"] #mb-drop, html[data-motion="off"] #popover,
+html[data-motion="off"] .tile .cover .ph::after, html[data-motion="off"] #d-play::after,
+html[data-motion="off"] .nav-item::before, html[data-motion="off"] #detail .hero-bg,
+html[data-motion="off"] #d-fav, html[data-motion="off"] #detail .star { animation: none; }
+html[data-motion="off"] :is(dialog, #toast, #settings-page), html[data-motion="off"] dialog::backdrop { transition: none; }
 @media (prefers-reduced-motion: reduce) {
   html:not([data-motion="normal"]) { --mo-fast: .01ms; --mo-base: .01ms; --mo-slow: .01ms; --mo-i: 0; --mo-lift: 0px; --mo-hover-s: 1; }
   html:not([data-motion="normal"]) .brand, html:not([data-motion="normal"]) body::before, html:not([data-motion="normal"]) .mo-in,
@@ -119,5 +164,10 @@ html[data-motion="off"] .card.focus::after { animation: none; }
   html:not([data-motion="normal"]) dialog[open], html:not([data-motion="normal"]) dialog[open]::backdrop,
   html:not([data-motion="normal"]) #toast, html:not([data-motion="normal"]) #detail .detail-body,
   html:not([data-motion="normal"]) #settings-page, html:not([data-motion="normal"]) #settings-body .settings-pane,
-  html:not([data-motion="normal"]) #sidebar, html:not([data-motion="normal"]) #drawer-scrim { animation: none; }
+  html:not([data-motion="normal"]) #sidebar, html:not([data-motion="normal"]) #drawer-scrim,
+  html:not([data-motion="normal"]) #mb-drop, html:not([data-motion="normal"]) #popover,
+  html:not([data-motion="normal"]) .tile .cover .ph::after, html:not([data-motion="normal"]) #d-play::after,
+  html:not([data-motion="normal"]) .nav-item::before, html:not([data-motion="normal"]) #detail .hero-bg,
+  html:not([data-motion="normal"]) #d-fav, html:not([data-motion="normal"]) #detail .star { animation: none; }
+  html:not([data-motion="normal"]) :is(dialog, #toast, #settings-page), html:not([data-motion="normal"]) dialog::backdrop { transition: none; }
 }

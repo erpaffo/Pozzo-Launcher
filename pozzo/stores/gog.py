@@ -7,9 +7,11 @@ si installano con gli installer offline); con Galaxy apre direttamente il gioco 
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from urllib.parse import parse_qs, quote, urlparse
 
+from .. import profilecfg as PC
 from ..net import request
 from .base import StoreGame, StoreProvider, reg_get, reg_subkeys
 
@@ -51,9 +53,9 @@ class Gog(StoreProvider):
         if r is None or r.status_code != 200:
             raise RuntimeError(f"GOG: accesso non riuscito ({r.text[:150] if r is not None else 'nessuna risposta'})")
         d = r.json()
-        prev = self.cache.kv_get("auth:gog") or {}
-        self.cache.kv_set("auth:gog", {"refresh_token": d["refresh_token"], "user_id": d.get("user_id"),
-                                       "user": prev.get("user", ""), "time": time.time()})
+        prev = PC.get(self.cfg, "gog", {})
+        PC.set(self.cfg, "gog", {"refresh_token": d["refresh_token"], "user_id": d.get("user_id"),
+                                 "user": prev.get("user", ""), "time": time.time()})
         return d
 
     async def finish_login(self, code_or_url: str):
@@ -64,9 +66,9 @@ class Gog(StoreProvider):
         r = await request(self.client, "GET", "https://embed.gog.com/userData.json",
                           headers={"Authorization": f"Bearer {d['access_token']}"})
         name = r.json().get("username", "") if r is not None and r.status_code == 200 else ""
-        a = self.cache.kv_get("auth:gog") or {}
+        a = PC.get(self.cfg, "gog", {})
         a["user"] = name
-        self.cache.kv_set("auth:gog", a)
+        PC.set(self.cfg, "gog", a)
         return name
 
     def installed(self) -> dict[str, StoreGame]:
@@ -90,7 +92,7 @@ class Gog(StoreProvider):
 
     async def fetch(self) -> list[StoreGame]:
         games = self.installed()
-        a = self.cache.kv_get("auth:gog") or {}
+        a = PC.get(self.cfg, "gog", {})
         if not a.get("refresh_token"):
             self.log(f"GOG: {len(games)} giochi installati (collega l'account per vedere anche quelli non installati)")
             return list(games.values())

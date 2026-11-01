@@ -66,6 +66,8 @@ async function play(id, body = {}) {
   let r;
   try { r = await api(`/api/game/${id}/play`, { body }); } catch (e) { return toast(e.message, true); }
   if (r.ask) { const w = await askWindow(); return w && play(id, w); }
+  const btn = S.detail?.id === id && $("#d-play");
+  if (btn) { btn.classList.add("mo-launch"); btn.addEventListener("animationend", () => btn.classList.remove("mo-launch"), { once: true }); }
   pollRunning();
 }
 

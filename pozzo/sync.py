@@ -24,6 +24,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 import socket
 import ssl
 import time
@@ -60,14 +61,25 @@ def save_conf(cfg, c: dict):
     C.save_settings(cfg, app={"sync": c})
 
 
+def _entries(cfg) -> dict[str, dict]:
+    """Voci salvate dei profili (con pin_hash: non escono da questo modulo, vedi profiles())."""
+    return {p["id"]: dict(p) for p in cfg.app.get("profiles") or [] if p.get("id")}
+
+
+def _public(pid: str, p: dict | None, name: str) -> dict:
+    p = p or {}
+    return {"id": pid, "name": p.get("name") or name, "avatar": p.get("avatar") or "", "color": p.get("color") or "",
+            "locked": bool(p.get("pin_hash"))}
+
+
 def profiles(cfg) -> list[dict]:
-    """Profili utente; "default" (Principale, rinominabile) usa sempre cache/userdata.db."""
-    names = {p["id"]: p.get("name") or p["id"] for p in cfg.app.get("profiles") or [] if p.get("id")}
-    return ([{"id": "default", "name": names.get("default", "Principale")}]
-            + [{"id": i, "name": n} for i, n in names.items() if i != "default"])
+    """Profili utente; "default" (Principale, rinominabile) usa sempre cache/userdata.db. Mai il PIN, solo se c'e'."""
+    raw = _entries(cfg)
+    return [_public("default", raw.get("default"), "Principale")] + [_public(i, p, i) for i, p in raw.items() if i != "default"]
 
 
-def _save_profiles(cfg, lst: list[dict]):
+def _save_profiles(cfg, raw: dict[str, dict]):
+    lst = list(raw.values())
     cfg.app["profiles"] = lst
     C.save_settings(cfg, app={"profiles": lst})
 
@@ -79,7 +91,6 @@ def profile_path(cfg, pid: str) -> Path:
 
 def profile_id(name: str) -> str:
     """Id dal nome: lo stesso nome su due PC e' lo stesso profilo (cosi' si sincronizzano)."""
-    import re
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "profilo"
 
 
@@ -97,11 +108,10 @@ def add_profile(cfg, name: str) -> dict:
     pid = profile_id(name)
     if pid == "default":
         pid = "default-2"
-    known = profiles(cfg)
-    hit = next((p for p in known if p["id"] == pid), None)
+    hit = next((p for p in profiles(cfg) if p["id"] == pid), None)
     if hit:
         return hit
-    _save_profiles(cfg, [*known, {"id": pid, "name": name}])
+    _save_profiles(cfg, {**_entries(cfg), pid: {"id": pid, "name": name}})
     return {"id": pid, "name": name}
 
 
@@ -110,18 +120,50 @@ def rename_profile(cfg, pid: str, name: str):
     name = name.strip()[:40]
     if not name:
         raise ValueError("Serve un nome")
-    _save_profiles(cfg, [{**p, "name": name} if p["id"] == pid else p for p in profiles(cfg)])
+    raw = _entries(cfg)
+    raw.setdefault(pid, {"id": pid})["name"] = name
+    _save_profiles(cfg, raw)
+
+
+def update_profile(cfg, pid: str, avatar: str | None = None, color: str | None = None, pin: str | None = None):
+    """Icona, colore e PIN (pin "" = nessun PIN). None = invariato. Il PIN e' salvato solo come hash."""
+    from . import profilecfg as PC
+    if avatar is not None and len(avatar) > 16:
+        raise ValueError("Icona troppo lunga")
+    if color is not None and color and not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        raise ValueError("Colore non valido: usa #rrggbb")
+    if pin is not None and pin and not re.fullmatch(r"\d{4,8}", pin):
+        raise ValueError("Il PIN e' di 4-8 cifre")
+    raw = _entries(cfg)
+    e = raw.setdefault(pid, {"id": pid})
+    for k, v in (("avatar", avatar), ("color", color)):
+        if v is not None:
+            e[k] = v
+    if pin is not None:
+        if pin:
+            e["pin_hash"] = PC.hash_pin(pin)
+        else:
+            e.pop("pin_hash", None)
+    _save_profiles(cfg, raw)
 
 
 def delete_profile(cfg, pid: str) -> Path | None:
-    """Toglie il profilo; il suo database va in profiles/eliminati/ (non si cancella nulla)."""
+    """Toglie il profilo; il suo database e i suoi account vanno in profiles/eliminati/ (non si cancella nulla)."""
     if pid == "default":
         raise ValueError("Il profilo principale non si elimina")
-    _save_profiles(cfg, [p for p in profiles(cfg) if p["id"] != pid])
+    raw = _entries(cfg)
+    raw.pop(pid, None)
+    _save_profiles(cfg, raw)
+    from . import profilecfg as PC
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    pj = PC.path(cfg, pid)
+    if pj and pj.exists():
+        (pj.parent / "eliminati").mkdir(parents=True, exist_ok=True)
+        pj.replace(pj.parent / "eliminati" / f"{pid}-{stamp}.json")
     src = profile_path(cfg, pid)
     if not src.exists():
         return None
-    dst = src.parent / "eliminati" / f"{pid}-{time.strftime('%Y%m%d-%H%M%S')}.db"
+    dst = src.parent / "eliminati" / f"{pid}-{stamp}.db"
     dst.parent.mkdir(parents=True, exist_ok=True)
     os.replace(src, dst)
     for ext in ("-wal", "-shm"):  # il database e' chiuso dal server prima di chiamare questa funzione
@@ -151,7 +193,7 @@ def export(ud: UserData, profile: dict, pc: dict, settings: dict | None = None) 
         if f == DELETED:
             deleted.setdefault(tbl, {})[i] = t
     out = {"format": FORMAT, "pc": pc["pc_id"], "pc_name": pc.get("pc_name", ""), "time": time.time(),
-           "profile": profile, "games": games, "sessions": [list(s) for s in ud.sessions()],
+           "profile": {"id": profile["id"], "name": profile["name"]}, "games": games, "sessions": [list(s) for s in ud.sessions()],
            "colls": colls, "edits": edits, "wish": wish, "deleted": deleted}
     if settings is not None:
         out["settings"] = settings

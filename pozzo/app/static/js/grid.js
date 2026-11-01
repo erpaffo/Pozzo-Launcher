@@ -186,6 +186,61 @@ async function applyPatches() {
   if (d.games.length) render();
 }
 
+/* ------------------------------------------------------------------ liste virtuali delle viste a pagina
+   Stesso criterio della griglia, per liste e griglie di schede che stanno in una pagina (Top, desideri, giochi gratis,
+   port): nel DOM restano solo le righe della finestra piu' una schermata sopra e sotto, le altre sono spaziatori. */
+/**
+ * items: i dati; cell(item): HTML di un elemento; opt.cols(): elementi per riga (griglia di schede), opt.gap: px tra
+ * le righe, opt.rowClass: classe di ogni riga (es. "free-grid" per le schede). box e' il contenitore che scorre.
+ * Ogni chiamata sostituisce la lista precedente di quel box.
+ */
+function vlist(box, host, items, cell, { cols = () => 1, gap = 0, rowClass = "" } = {}) {
+  let c = 0, rows = [], hs = [], a = -1, b = -1;
+  const split = () => {
+    c = Math.max(1, cols());
+    rows = [];
+    for (let i = 0; i < items.length; i += c) rows.push(items.slice(i, i + c));
+    hs = new Array(rows.length).fill(0);
+    a = b = -1;
+  };
+  // inizio di ogni riga: altezza misurata, o la media di quelle gia' disegnate (le altre righe non sono ancora state viste)
+  const starts = () => {
+    const known = hs.filter(Boolean), avg = known.length ? known.reduce((s, x) => s + x, 0) / known.length : 120;
+    const y = [0];
+    for (let r = 0; r < rows.length; r++) y.push(y[r] + (hs[r] || avg) + gap);
+    return y;
+  };
+  const place = (y, from, to) => {
+    host.firstElementChild.style.height = y[from] + "px";
+    host.lastElementChild.style.height = (y[rows.length] - y[to]) + "px";
+  };
+  const draw = () => {
+    if (!host.isConnected) return;
+    if (!rows.length) { host.innerHTML = ""; return; }
+    const y = starts(), off = host.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    const top = box.scrollTop - off, buf = box.clientHeight * 0.5;
+    let from = 0, hi = rows.length;
+    while (from < hi) { const m = (from + hi) >> 1; if (y[m + 1] > top - buf) hi = m; else from = m + 1; }
+    let to = from;
+    while (to < rows.length && y[to] < top + box.clientHeight + buf) to++;
+    if (from === a && to === b) return;
+    a = from; b = to;
+    host.innerHTML = `<div></div>` + rows.slice(a, b).map((r) => `<div class="${rowClass}" style="margin-bottom:${gap}px">${r.map(cell).join("")}</div>`).join("") + `<div></div>`;
+    place(y, a, b);
+    // le altezze vere sostituiscono le stime, e gli spaziatori si rifanno con quelle
+    [...host.children].slice(1, -1).forEach((el, k) => { hs[a + k] = el.offsetHeight; });
+    place(starts(), a, b);
+  };
+  host.style.display = "block"; // le righe si impilano come blocchi, anche se il contenitore e' una griglia o un flex
+  split();
+  box.onscroll = draw;
+  box.__vlObserver?.disconnect();
+  // ridimensionando la finestra cambia il numero di schede per riga: si rifanno le righe
+  box.__vlObserver = new ResizeObserver(() => { if (Math.max(1, cols()) !== c) split(); draw(); });
+  box.__vlObserver.observe(box);
+  draw();
+}
+
 function refreshGrid(keepScroll = false) {
   const st = scroller.scrollTop;
   computeItems();

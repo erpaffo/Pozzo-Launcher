@@ -1,5 +1,6 @@
 """Sincronizzazione tra due PC (cartella condivisa) e profili utente. Nessuna rete: due cartelle dati temporanee."""
 
+import json
 import sys
 import tempfile
 import time
@@ -239,8 +240,73 @@ def test_lan_end_to_end():
     print("ok  rete locale, due app vere: abbinamento, scambio nei due sensi, certificato verificato")
 
 
+def test_profile_lifecycle():
+    """Dall'app: rinomina, icona e colore, PIN, cambio profilo, 409 in partita, eliminazione del profilo attivo."""
+    from fastapi.testclient import TestClient
+
+    from pozzo.app.server import create_app
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        tmp = Path(t)
+        cfg = config.Config(cache=tmp, output=tmp / "out")
+        cfg.config_path = tmp / "config.toml"
+        app = create_app(cfg)
+        c = TestClient(app)
+        c.post("/api/profiles", json={"name": "Luca"})
+        assert c.patch("/api/profiles/luca", json={"name": "Luchino"}).status_code == 200
+        st = c.get("/api/profiles").json()
+        assert [p["name"] for p in st["profiles"]] == ["Principale", "Luchino"], st
+        assert c.patch("/api/profiles/luca", json={"avatar": "🎮", "color": "#ff8800"}).status_code == 200
+        luca = next(p for p in c.get("/api/profiles").json()["profiles"] if p["id"] == "luca")
+        assert luca["avatar"] == "🎮" and luca["color"] == "#ff8800" and luca["locked"] is False, luca
+        assert c.patch("/api/profiles/luca", json={"color": "rosso"}).status_code == 400, "colore non valido"
+
+        # PIN: nel profilo salvato c'e' solo l'hash, mai il numero
+        assert c.patch("/api/profiles/luca", json={"pin": "12"}).status_code == 400, "PIN troppo corto"
+        assert c.patch("/api/profiles/luca", json={"pin": "4321"}).status_code == 200
+        assert '"4321"' not in (tmp / "settings.json").read_text(encoding="utf-8")
+        assert next(p for p in c.get("/api/profiles").json()["profiles"] if p["id"] == "luca")["locked"] is True
+        assert c.post("/api/profiles/active", json={"id": "luca"}).status_code == 403, "profilo protetto: serve lo sblocco"
+        assert c.post("/api/profiles/luca/unlock", json={"pin": "0000"}).status_code == 403
+        assert c.post("/api/profiles/luca/unlock", json={"pin": "4321"}).status_code == 200
+        assert c.post("/api/profiles/active", json={"id": "luca"}).json()["active"] == "luca"
+
+        # partita in corso: niente cambio profilo
+        prev = app.state.launcher.state
+        app.state.launcher.state = {"status": "running", "title": "Gioco"}
+        assert c.post("/api/profiles/active", json={"id": "default"}).status_code == 409
+        app.state.launcher.state = prev
+
+        # profilo attivo eliminato: si torna al principale; database e account finiscono in eliminati
+        from pozzo import profilecfg as PC
+        PC.set(cfg, "spotify", {"client_id": "di-luca"})  # attivo luca: il suo file di account
+        assert c.delete("/api/profiles/luca").json()["moved_to"]
+        st = c.get("/api/profiles").json()
+        assert st["active"] == "default" and [p["id"] for p in st["profiles"]] == ["default"], st
+        assert cfg.app.get("profile") == "default"
+        gone = [p.name for p in (tmp / "profiles" / "eliminati").iterdir()]
+        assert any(n.startswith("luca-") and n.endswith(".db") for n in gone) and any(n.endswith(".json") for n in gone), gone
+        print("ok  profili dall'app: rinomina, icona e colore, PIN (solo hash), sblocco, 409 in partita, eliminazione attivo")
+
+
+def test_profile_metadata_not_synced():
+    """Il pacchetto di sincronizzazione porta id e nome del profilo, mai il PIN ne' icona e colore."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        cfg, user_of, s = pc(Path(t), "A", Path(t) / "shared")
+        sync.add_profile(cfg, "Luca")
+        sync.update_profile(cfg, "luca", avatar="🎮", color="#00ff00", pin="4321")
+        bundles = s.bundles()
+        assert bundles["luca"]["profile"] == {"id": "luca", "name": "Luca"}, bundles["luca"]["profile"]
+        assert "pin_hash" not in json.dumps(bundles) and '"4321"' not in json.dumps(bundles)
+        assert sync.profiles(cfg)[1]["locked"] is True and "pin_hash" not in sync.profiles(cfg)[1]
+        for p in sync.profiles(cfg):
+            user_of(p["id"]).db.close()
+        print("ok  metadati del profilo: il PIN non esce dal PC, il pacchetto ha solo id e nome")
+
+
 if __name__ == "__main__":
     test_folder_sync_and_profiles()
     test_server_profiles_and_lan_gate()
+    test_profile_lifecycle()
+    test_profile_metadata_not_synced()
     test_lan_end_to_end()
     print("TUTTI I TEST OK")

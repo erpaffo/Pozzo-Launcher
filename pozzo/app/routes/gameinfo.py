@@ -9,7 +9,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, platforms as P
+from ... import platforms as P
+from ... import profilecfg as PC
 
 
 def build_router(ctx) -> APIRouter:
@@ -20,7 +21,7 @@ def build_router(ctx) -> APIRouter:
     from ... import retroachievements as RA
 
     def _ra_conf() -> dict:
-        return dict(cfg.app.get("retroachievements") or {})
+        return dict(PC.get(cfg, "retroachievements", {}))
 
     @router.get("/api/ra")
     def api_ra_state():
@@ -41,8 +42,7 @@ def build_router(ctx) -> APIRouter:
                     RA.user_progress(rc, count=1)
             except RA.RAError as e:
                 raise HTTPException(400, str(e))
-        C.save_settings(cfg, app={"retroachievements": c})
-        cfg.app["retroachievements"] = c
+        PC.set(cfg, "retroachievements", c)
         return api_ra_state()
 
     @router.get("/api/game/{gid}/hltb")

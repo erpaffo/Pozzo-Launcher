@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # directory con dipendenze extra (playwright...): saltate se mancano, senza far fallire la CI
-OPTIONAL = {"e2e": "playwright", "perf": "playwright"}
+OPTIONAL = {"e2e": "playwright"}
 NEEDS_PYTEST = re.compile(r"^\s*(import pytest|from pytest)|@pytest\.|^(async )?def test_\w+\(\s*\w", re.M)
 
 

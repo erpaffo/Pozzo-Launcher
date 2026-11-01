@@ -35,10 +35,12 @@ desktop.ini
 
 # note private (il manuale in docs/*.md invece e' nel repository)
 docs/obsidian/
-
+docs/TODO.md
 # manuale generato (sito MkDocs e PDF)
 site/
 docs/PozzoLauncher-manuale.pdf
 release.*
 
 .agent/
+docs/PARALLEL.md
+docs/changelog.d/

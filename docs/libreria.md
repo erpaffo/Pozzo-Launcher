@@ -52,9 +52,16 @@ eliminarlo.
 | Tempo di gioco, partite, *Giocati di recente* | Emulatori, profili di avvio, giochi aggiunti a mano |
 | Collezioni personali e modifiche alle collezioni | Impostazioni, temi, plugin, collezioni intelligenti |
 | Lista desideri | Schermate |
+| Account Spotify, Discord (presenza e voce), RetroAchievements, Epic e GOG | Tema e esperienza (per ora) |
+
+Ogni profilo ha un'icona (emoji o parola) e un colore, mostrati nel pulsante 👤: si cambiano dal menu, alla voce
+**🎨 Icona, colore e PIN…**. Il **PIN** (4-8 cifre) blocca il profilo nel menu: per passarci, o per cambiarne l'aspetto
+e il PIN, bisogna prima inserirlo. Il PIN serve a non cambiare profilo per sbaglio, non protegge i file: chi ha
+accesso alla cartella dati vede gli account. Dopo cinque PIN sbagliati si aspetta 30 secondi.
 
 Il profilo **Principale** c'è sempre e non si elimina. Eliminare un altro profilo non cancella niente: il suo
-database viene spostato in `cache/profiles/eliminati/`. Non si può cambiare profilo durante una partita. Con la
+database e il file con gli account vanno in `cache/profiles/eliminati/` (il file degli account sta nella cartella
+delle impostazioni, in `profiles/`). Non si può cambiare profilo durante una partita. Con la
 [sincronizzazione tra PC](manutenzione.md#sincronizzazione-tra-pc) ogni profilo si sincronizza con quello che ha lo
 **stesso nome** sull'altro PC.
 

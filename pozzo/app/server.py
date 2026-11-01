@@ -35,6 +35,7 @@ from .. import platforms as P
 from .. import storelinks as SL
 from ..library import launcher as L
 from . import extensions as X
+from ..boot import BOOT
 from . import jobs as J
 from .. import stores as STORES
 
@@ -290,6 +291,8 @@ ERROR_CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "
 
 
 def create_app(cfg) -> FastAPI:
+    BOOT.reset()  # fasi dell'avvio (schermata di caricamento, GET /api/boot): ripartono da capo ad ogni app
+    BOOT.start("server")
     app = FastAPI(
         title="Pozzo Launcher", version="1",
         description="API locale dell'app. Gli endpoint **/api/v1** sono stabili e vogliono il token "
@@ -303,6 +306,7 @@ def create_app(cfg) -> FastAPI:
                       {"name": "dati", "description": "Copie di sicurezza dei dati personali"},
                       {"name": "lista desideri", "description": "Prezzi dei giochi che vuoi comprare"}])
     app.add_middleware(GZipMiddleware, minimum_size=2048, compresslevel=1)  # in locale conta la velocita', non il peso
+    BOOT.done("server")
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(request, exc):
@@ -318,11 +322,15 @@ def create_app(cfg) -> FastAPI:
                              "code": "invalid_request", "errors": errs}, status_code=422)
 
     app.state.cfg = cfg  # LocalGuard lo legge per il token dell'API
+    BOOT.done("config")
     lib = Library(cfg)
-    lib.load(online=False)
+    with BOOT.phase("library", "Libreria"):
+        lib.load(online=False)
     threading.Thread(target=lib.load, daemon=True).start()
     Path(cfg.cache).mkdir(parents=True, exist_ok=True)  # prima installazione: la cache non esiste ancora
     from .. import sync as SY
+    from .. import profilecfg as PC
+    PC.migrate(cfg)  # primo avvio dopo l'introduzione dei profili: il principale copia gli account globali
     users: dict[str, UserData] = {}  # profili aperti: restano aperti (chi ne ha un metodo continua a funzionare)
 
     def user_of(pid: str) -> UserData:
@@ -337,11 +345,11 @@ def create_app(cfg) -> FastAPI:
     # presenza su Discord («sto giocando a …»): si aggiorna sugli eventi del launcher
     from ..discordrpc import PresenceService
 
-    discord = PresenceService(cfg, save=lambda values: C.save_settings(cfg, app=values))
+    discord = PresenceService(cfg, save=lambda values: PC.set(cfg, "discord", values["discord"]))
     from ..spotify import SpotifyClient, SpotifyError
     from ..discordvoice import DiscordVoice, DiscordVoiceError
-    spotify = SpotifyClient(cfg, save=lambda values: C.save_settings(cfg, app={"spotify": values}))
-    discord_voice = DiscordVoice(cfg, save=lambda values: C.save_settings(cfg, app={"discord_voice": values}))
+    spotify = SpotifyClient(cfg, save=lambda values: PC.set(cfg, "spotify", values))
+    discord_voice = DiscordVoice(cfg, save=lambda values: PC.set(cfg, "discord_voice", values))
     app.state.spotify, app.state.discord_voice = spotify, discord_voice
     events.on("game_started", discord.game_started)
     events.on("game_stopped", discord.game_stopped)
@@ -439,7 +447,9 @@ def create_app(cfg) -> FastAPI:
     events.on("game_stopped", _ds_restore)
     if cfg.app.get("dualscreen"):
         _ds_restore()
-    plugin_errors = X.load_backends(app, cfg, events)
+    with BOOT.phase("extensions", "Estensioni"):
+        plugin_errors = X.load_backends(app, cfg, events)
+    BOOT.done("stores")  # gli store si leggono dalle istantanee in cache; il loro aggiornamento parte dopo, in background
     thumbs_dir = Path(cfg.cache) / "thumbs"
     state = {"building": False, "build_log": [], "build_stats": None, "thumbs_total": 0, "thumbs_done": 0, "thumbs_started": 0, "build_started": 0}
     job: dict = {"current": J.ScrapeJob(), "stores": J.StoreJob(), "storemeta": J.StoreMetaJob(),

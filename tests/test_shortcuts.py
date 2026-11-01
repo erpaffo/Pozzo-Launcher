@@ -6,6 +6,7 @@ Esegui: PYTHONUTF8=1 python tests/test_shortcuts.py   (serve node per i controll
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -134,8 +135,14 @@ def main():
     ids = [e["id"] for e in registry]
     assert len(ids) == len(set(ids)), "id duplicati nel registro"
     for must in ("search", "settings", "viewAll", "viewFav", "viewShop", "bigPicture", "nextExperience", "nextTheme", "sidebar",
-                 "back", "favorite", "help", "playPause", "next", "prev", "muteMic", "deafen"):
+                 "back", "favorite", "hide", "random", "viewWishlist", "viewStats", "help", "playPause", "next", "prev", "muteMic", "deafen"):
         assert must in ids, f"manca l'azione {must}"
+    # ogni azione desktop con tasti ha un gestore in bind("desktop", {...}) (le media sono legate da bind per tutti)
+    js = (STATIC / "shortcuts.js").read_text(encoding="utf-8")
+    block = js[js.index('bind("desktop", {'):js.index('document.addEventListener("keydown", (e) => { dispatch(e, "desktop")')]
+    for entry in registry:
+        if entry["scope"] in ("desktop", "both") and entry["keys"] and entry["id"] not in ("playPause", "next", "prev", "muteMic", "deafen"):
+            assert re.search(rf"^\s{{4}}{entry['id']}:", block, re.M), f"nessun gestore desktop per {entry['id']}"
     # non rubano il copia/incolla/ricarica del browser
     reserved = {"Mod+C", "Mod+V", "Mod+X", "Mod+A", "Mod+Z", "Mod+R", "Mod+W", "Mod+Q", "Mod+L", "Mod+S"}
     assert not reserved & {k for e in registry for k in e["keys"]}, "combinazione riservata al browser"

@@ -511,9 +511,25 @@ async function loadBackups() {
 }
 
 /* ---- profili utente: dati personali separati (preferiti, tempo di gioco, collezioni...), libreria comune */
+function paintProfile() {
+  const cur = S.profiles?.profiles?.find((x) => x.id === S.profiles.active) || { name: "Principale" };
+  $("#profile-name").textContent = cur.name;
+  const ico = $("#profile-ico");
+  ico.textContent = cur.avatar || "👤";
+  ico.style.background = cur.color || "";
+}
+
 async function loadProfile() {
   try { S.profiles = await api("/api/profiles"); } catch { return; }
-  $("#profile-name").textContent = S.profiles.profiles.find((x) => x.id === S.profiles.active)?.name || "Principale";
+  paintProfile();
+}
+
+// profilo protetto da PIN: il PIN si chiede solo quando lo sblocchi (o lo modifichi) dal menu
+async function unlockProfile(anchor, p) {
+  const pin = await askText(anchor, `PIN di «${p.name}»`);
+  if (!pin) return false;
+  S.profiles = await api(`/api/profiles/${encodeURIComponent(p.id)}/unlock`, { body: { pin } });
+  return true;
 }
 
 async function switchProfile(id) {
@@ -528,9 +544,11 @@ function profileMenu(anchor) {
   const cur = st.profiles.find((x) => x.id === st.active) || { name: "" };
   const p = $("#popover");
   p.innerHTML = `<div class="opts">${st.profiles.map((x) => `<div class="opt${x.id === st.active ? " hl" : ""}" data-pid="${esc(x.id)}">`
-      + `<span>${x.id === st.active ? "✓ " : ""}${esc(x.name)}</span></div>`).join("")}
+      + `<span>${x.id === st.active ? "✓ " : ""}${x.color ? `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(x.color)}"></i> ` : ""}`
+      + `${esc(x.avatar ? `${x.avatar} ` : "")}${esc(x.name)}${x.locked ? " 🔒" : ""}</span></div>`).join("")}
     <div class="opt" data-act="new">＋ Nuovo profilo…</div>
     <div class="opt" data-act="rename">✎ Rinomina «${esc(cur.name)}»…</div>
+    <div class="opt" data-act="edit">🎨 Icona, colore e PIN…</div>
     ${st.active !== "default" ? `<div class="opt" data-act="delete">🗑 Elimina «${esc(cur.name)}»…</div>` : ""}</div>`;
   placePopover(anchor);
   p.onclick = async (e) => {
@@ -538,8 +556,21 @@ function profileMenu(anchor) {
     if (!o) return;
     closePopover();
     try {
-      if (o.dataset.pid) { if (o.dataset.pid !== st.active) await switchProfile(o.dataset.pid); }
-      else if (o.dataset.act === "new") {
+      if (o.dataset.pid) {
+        const t = st.profiles.find((x) => x.id === o.dataset.pid);
+        if (t.id !== st.active && (!t.locked || await unlockProfile(anchor, t))) await switchProfile(t.id);
+      } else if (o.dataset.act === "edit") {
+        if (cur.locked && !(await unlockProfile(anchor, cur))) return;
+        // invio vuoto = non cambiare; «-» = togli
+        const body = {};
+        const avatar = await askText(anchor, "Icona (emoji o parola), «-» per togliere", cur.avatar);
+        if (avatar !== null) body.avatar = avatar === "-" ? "" : avatar;
+        const color = await askText(anchor, "Colore #rrggbb, «-» per togliere", cur.color);
+        if (color !== null) body.color = color === "-" ? "" : color;
+        const pin = await askText(anchor, "Nuovo PIN, 4-8 cifre; «-» per togliere", "");
+        if (pin !== null) body.pin = pin === "-" ? "" : pin;
+        if (Object.keys(body).length) { S.profiles = await api(`/api/profiles/${encodeURIComponent(st.active)}`, { method: "PATCH", body }); paintProfile(); toast("Profilo aggiornato"); }
+      } else if (o.dataset.act === "new") {
         const name = await askText(anchor, "Nome del profilo, es. Luca");
         if (name) await switchProfile((await api("/api/profiles", { body: { name } })).created.id);
       } else if (o.dataset.act === "rename") {

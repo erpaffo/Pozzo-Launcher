@@ -12,6 +12,8 @@ import urllib.parse
 import urllib.request
 from typing import Callable
 
+from . import profilecfg as PC
+
 AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 API_URL = "https://api.spotify.com/v1"
@@ -75,7 +77,7 @@ class SpotifyClient:
 
     @property
     def settings(self) -> dict:
-        return self.cfg.app.get("spotify", {})
+        return PC.get(self.cfg, "spotify", {})
 
     @property
     def redirect_uri(self) -> str:
@@ -85,7 +87,7 @@ class SpotifyClient:
     def _store(self, values: dict):
         merged = {**self.settings, **values}
         self.save(merged)
-        self.cfg.app["spotify"] = merged
+        self.cfg.app["spotify"] = merged  # specchio in memoria (senza cartella dati le letture passano da qui)
 
     def configure(self, client_id: str) -> dict:
         client_id = str(client_id or "").strip()

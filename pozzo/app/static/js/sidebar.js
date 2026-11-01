@@ -299,7 +299,7 @@ function updateHeader() {
 
 function setView(v) {
   if (v.type === "home" && typeof GS.experience?.home !== "function") v = { type: "all" };
-  const wasHome = S.view.type === "home";
+  const wasHome = S.view.type === "home", same = JSON.stringify(S.view) === JSON.stringify(v);
   S.view = v;
   setDrawer(false, false);
   store.set("view", v);
@@ -310,6 +310,7 @@ function setView(v) {
   else if (wasHome) pv.className = "";
   document.body.classList.toggle("foryou-mode", ["foryou", "free", "ports", "wishlist", "stats", "shots", "top"].includes(v.type));
   if (v.type !== "collection") $("#coll-banner").hidden = true;
+  if (!same) queueMicrotask(() => window.GSMotion?.enter(pv.hidden ? $("#grid-scroll") : pv));
   if (v.type === "home") {
     $("#grid-scroll").hidden = true;
     pv.hidden = false;

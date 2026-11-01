@@ -16,11 +16,15 @@ Copia, incolla, ricarica e le altre combinazioni del browser restano intatte.
 | Libreria | `Ctrl+1` | `⌘1` |
 | Preferiti | `Ctrl+2` | `⌘2` |
 | Store | `Ctrl+3` | `⌘3` |
+| Lista desideri | `Ctrl+4` | `⌘4` |
+| Statistiche | `Ctrl+5` | `⌘5` |
 | Barra laterale Esplora (apri/chiudi) | `Ctrl+B` | `⌘B` |
 | Indietro / chiudi | `Alt+←`, `Ctrl+[` o `Esc` | `⌥←`, `⌘[` o `Esc` |
 | Cerca nuovi giochi | `Ctrl+Shift+S` | `⌘⇧S` |
 | Avvia il gioco aperto | `Enter` | `Enter` |
 | Preferito (gioco aperto) | `F` | `F` |
+| Nascondi/mostra (gioco aperto) | `H` | `H` |
+| Gioco a caso | `R` | `R` |
 | Big Picture (entra / esci) | `Ctrl+Shift+B` o `F11` | `⌘⇧B` o `F11` |
 | Grafica successiva | `Ctrl+Shift+E` | `⌘⇧E` |
 | Tema successivo | `Ctrl+Shift+T` | `⌘⇧T` |

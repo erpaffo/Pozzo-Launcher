@@ -30,7 +30,9 @@ async function renderFree(pv, force = false) {
         <button class="btn" id="free-refresh">↻ Aggiorna</button></div>
       <div class="pchips">${chip("console", "", "Tutte")}${cons.map((c) => chip("console", c, ({ pc: "🖥 PC", playstation: "PlayStation", xbox: "Xbox", switch: "Switch" })[c] || c)).join("")}
         <span class="sep"></span>${chip("kind", "", "Ogni offerta")}${kinds.map((k) => chip("kind", k, FREE_KIND[k] || k)).join("")}</div>
-      <div class="free-grid">${items.map((i, n) => `<div class="free-card${i.owned || i.claimed ? " owned" : ""}" data-n="${d.items.indexOf(i)}">
+      <div class="free-grid" id="free-rows"></div></div>`;
+    // schede come in .free-grid (minmax 170px, gap 16px): si disegnano solo quelle visibili
+    vlist(pv, $("#free-rows", pv), items, (i) => `<div class="free-card${i.owned || i.claimed ? " owned" : ""}" data-n="${d.items.indexOf(i)}">
         <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(i.cover)}" alt="" onerror="this.remove()">` : ""}
           <span class="fc-kind k-${fold(i.kind).replace(/[^a-z]+/g, "")}">${esc(FREE_KIND[i.kind] || i.kind)}</span>
           ${i.drm && i.drm !== "none" ? `<img class="fc-drm" src="/icons/store/${esc(({ amazon: "amazon", epic: "epic", steam: "steam", gog: "gog", battlenet: "battlenet" })[i.drm] || "manual")}" alt="" onerror="this.remove()">` : ""}
@@ -40,8 +42,8 @@ async function renderFree(pv, force = false) {
           <span class="muted small">${esc([({ pc: "PC", playstation: "PlayStation", xbox: "Xbox" })[i.console] || i.console,
             i.end ? "fino al " + new Date(i.end.replace(" ", "T")).toLocaleDateString("it") : "", i.worth ? "valore " + i.worth : ""].filter(Boolean).join(" · "))}</span>
           <span class="fc-btns"><button class="btn primary fc-open" data-n="${d.items.indexOf(i)}">Apri ↗</button>
-          ${i.owned ? "" : `<button class="btn fc-claim" data-n="${d.items.indexOf(i)}" title="Segna come preso (o togli il segno)">${i.claimed ? "↺" : "✓ Preso"}</button>`}</span></div></div>`).join("")
-        || `<p class="muted">Nessun gioco gratis con questi filtri.</p>`}</div></div>`;
+          ${i.owned ? "" : `<button class="btn fc-claim" data-n="${d.items.indexOf(i)}" title="Segna come preso (o togli il segno)">${i.claimed ? "↺" : "✓ Preso"}</button>`}</span></div></div>`, { cols: () => Math.max(1, Math.floor(($("#free-rows", pv).clientWidth + 16) / (170 + 16))), gap: 16, rowClass: "free-grid" });
+    if (!items.length) $("#free-rows", pv).innerHTML = `<p class="muted">Nessun gioco gratis con questi filtri.</p>`;
   };
   draw();
   pv.onclick = (e) => {
@@ -122,7 +124,7 @@ async function renderPorts(pv, force = false) {
       && (!PORTS_F.type || (i.type || "port") === PORTS_F.type)
       && (!PORTS_F.mine || (PORTS_F.mine === "rom" ? i.roms.length : PORTS_F.mine === "inst" ? i.installed : i.installed?.update))
       && (!q || fold(`${i.name} ${i.project} ${i.developer} ${i.tags.join(" ")}`).includes(q)));
-    $("#pt-grid", pv).innerHTML = items.map((i) => `<div class="free-card" data-slug="${esc(i.slug)}">
+    vlist(pv, $("#pt-grid", pv), items, (i) => `<div class="free-card" data-slug="${esc(i.slug)}">
       <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(gridThumb(i.cover))}" data-full="${esc(remoteImg(i.cover))}" alt=""
           onerror="if (this.dataset.full && this.src.indexOf('thumb') > 0) { this.src = this.dataset.full; this.dataset.full = '' } else this.remove()">` : ""}
         <span class="fc-kind">${esc((i.type && i.type !== "port" ? [PORT_KIND[i.type] || i.type] : []).concat(i.consoles.map((c) => d.consoles[c] || c)).join(" · ") || PORT_KIND.port)}</span>
@@ -130,8 +132,8 @@ async function renderPorts(pv, force = false) {
         ${i.roms.length ? `<span class="fc-wish pt-rom" title="Hai la ROM: ${esc(i.roms.map((r) => r.title).join(", "))}">🎮 ROM</span>`
           : i.in_store?.length ? `<span class="fc-wish pt-rom" title="ROM non posseduta, scaricabile dagli store">🛒 ROM negli store</span>` : ""}</div>
       <div class="fc-info"><b title="${esc(i.name)}">${esc(i.name)}</b>
-        <span class="muted small">${esc([i.project !== i.name ? i.project : "", i.developer, i.installed?.version || i.version].filter(Boolean).join(" · "))}</span></div></div>`).join("")
-      || `<p class="muted">Nessun port con questi filtri.</p>`;
+        <span class="muted small">${esc([i.project !== i.name ? i.project : "", i.developer, i.installed?.version || i.version].filter(Boolean).join(" · "))}</span></div></div>`, { cols: () => Math.max(1, Math.floor(($("#pt-grid", pv).clientWidth + 16) / (170 + 16))), gap: 16, rowClass: "free-grid" });
+    if (!items.length) $("#pt-grid", pv).innerHTML = `<p class="muted">Nessun port con questi filtri.</p>`;
   };
   draw();
   $("#pt-q", pv).oninput = (e) => { PORTS_F.q = e.target.value; draw(); };

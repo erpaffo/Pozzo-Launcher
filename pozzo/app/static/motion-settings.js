@@ -18,7 +18,8 @@
       return VALUES.includes(v) ? v : null;
     } catch { return null; } // storage non disponibile o valore illeggibile
   };
-  const current = () => stored() || (system.matches ? "reduced" : "normal");
+  const current = () => stored()
+    || (system.matches || (window.GSMotionBudget && window.GSMotionBudget.state.reduced) ? "reduced" : "normal");
 
   function set(v) {
     if (!VALUES.includes(v)) return;
@@ -64,6 +65,7 @@
       new MutationObserver(mount).observe(body, { childList: true, subtree: true });
     }
     if (system.addEventListener) system.addEventListener("change", sync); // segue il sistema finché non scegli
+    if (typeof window.addEventListener === "function") window.addEventListener("gs-motion-budget-change", sync);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });

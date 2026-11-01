@@ -505,7 +505,7 @@ body.experience-home-mode #toolbar { padding-top: 9px; padding-bottom: 9px; }
 #quiz h2 { margin: 10px 0 4px; }
 .qz-opts { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 20px; }
 .qz-opt { padding: 12px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
-  color: inherit; font-size: 15px; cursor: pointer; transition: all .12s; }
+  color: inherit; font-size: 15px; cursor: pointer; transition: border-color .12s, background-color .12s, color .12s; }
 .qz-opt:hover { border-color: var(--accent, #5b8cff); }
 .qz-opt.on { background: var(--accent, #5b8cff); border-color: var(--accent, #5b8cff); color: #fff; }
 .qz-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; margin: 12px 0 18px;
@@ -1103,7 +1103,7 @@ html[data-mode="desktop"][data-experience-nav="top"] .profile-btn .ico { width: 
 .btn.primary { font-weight: 700; }
 .btn, .icon-btn, .nav-item, .profile-btn, .experience-drawer-toggle, #experience-nav button {
   transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease,
-    border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, transform var(--motion-fast) ease;
 }
 .experience-choice {
   transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
@@ -1115,17 +1115,6 @@ html[data-mode="desktop"][data-experience-nav="top"] .profile-btn .ico { width: 
   scrollbar-width: thin;
 }
 
-.tile .cover:has(img:not(.ok)) .ph {
-  background-image:
-    linear-gradient(110deg, transparent 34%, rgba(255,255,255,.09) 48%, transparent 62%),
-    linear-gradient(160deg, hsl(var(--h) 45% 32%), hsl(var(--h) 45% 14%));
-  background-size: 220% 100%, 100% 100%;
-  animation: cover-skeleton 1.6s ease-in-out infinite;
-}
-@keyframes cover-skeleton {
-  from { background-position: 170% 0, 0 0; }
-  to { background-position: -80% 0, 0 0; }
-}
 #empty { box-shadow: var(--elevation-1); }
 .shelves-empty {
   border-color: color-mix(in srgb, var(--line) 72%, var(--muted));

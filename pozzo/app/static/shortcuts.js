@@ -16,11 +16,15 @@
     { id: "viewAll", label: "Libreria", group: "Navigazione", keys: ["Mod+1"], scope: "desktop" },
     { id: "viewFav", label: "Preferiti", group: "Navigazione", keys: ["Mod+2"], scope: "desktop" },
     { id: "viewShop", label: "Store", group: "Navigazione", keys: ["Mod+3"], scope: "desktop" },
+    { id: "viewWishlist", label: "Lista desideri", group: "Navigazione", keys: ["Mod+4"], scope: "desktop" },
+    { id: "viewStats", label: "Statistiche", group: "Navigazione", keys: ["Mod+5"], scope: "desktop" },
     { id: "sidebar", label: "Apri/chiudi la barra laterale Esplora", group: "Navigazione", keys: ["Mod+B"], scope: "desktop" },
     { id: "back", label: "Indietro / chiudi", group: "Navigazione", keys: ["Alt+ArrowLeft", "Mod+["], fixed: ["Escape"], scope: "desktop" },
     { id: "scanNew", label: "Cerca nuovi giochi", group: "Libreria", keys: ["Mod+Shift+S"], scope: "desktop" },
     { id: "play", label: "Avvia il gioco aperto", group: "Libreria", keys: [], fixed: ["Enter"], scope: "desktop" },
     { id: "favorite", label: "Preferito (gioco aperto)", group: "Libreria", keys: ["F"], scope: "desktop" },
+    { id: "hide", label: "Nascondi/mostra (gioco aperto)", group: "Libreria", keys: ["H"], scope: "desktop" },
+    { id: "random", label: "Gioco a caso", group: "Libreria", keys: ["R"], scope: "desktop" },
     { id: "bigPicture", label: "Big Picture (entra / esci)", group: "Aspetto", keys: ["Mod+Shift+B", "F11"], scope: "both" },
     { id: "nextExperience", label: "Grafica successiva", group: "Aspetto", keys: ["Mod+Shift+E"], scope: "desktop" },
     { id: "nextTheme", label: "Tema successivo", group: "Aspetto", keys: ["Mod+Shift+T"], scope: "desktop" },
@@ -246,6 +250,8 @@
     viewAll: () => { leaveLayers(); setView({ type: "all" }); },
     viewFav: () => { leaveLayers(); setView({ type: "favorites" }); },
     viewShop: () => { leaveLayers(); setView({ type: "shop" }); },
+    viewWishlist: () => { leaveLayers(); setView({ type: "wishlist" }); },
+    viewStats: () => { leaveLayers(); setView({ type: "stats" }); },
     sidebar: () => {
       if (!usesDrawer()) { toast("In questa grafica la barra laterale è sempre visibile"); return true; }
       setDrawer(!$("#sidebar").classList.contains("drawer-open"));
@@ -257,6 +263,8 @@
     },
     scanNew: () => window.GSMenu.scan("new"),
     favorite: () => { if (!S.detail || !$("#d-fav")) return false; $("#d-fav").click(); },
+    hide: () => { if (!S.detail || !$("#d-hide")) return false; $("#d-hide").click(); },
+    random: () => { const b = $("#random-btn"); if (!b) return false; leaveLayers(); b.click(); },
     bigPicture: () => enterBigPicture(),
     help: () => openPanel(),
     nextTheme: async () => {

@@ -20,6 +20,8 @@ import time
 import uuid
 from pathlib import Path
 
+from . import profilecfg as PC
+
 OP_HANDSHAKE = 0
 OP_FRAME = 1
 OP_CLOSE = 2
@@ -267,7 +269,7 @@ class PresenceService:
 
     # ---------------------------------------------------------------- impostazioni
     def conf(self) -> dict:
-        raw = (getattr(self.cfg, "app", None) or {}).get("discord") or {}
+        raw = PC.get(self.cfg, "discord", {})
         conf = {"enabled": bool(raw.get("enabled")), "client_id": str(raw.get("client_id") or ""),
                 "show_time": bool(raw.get("show_time", True))}
         self._ensure(conf)

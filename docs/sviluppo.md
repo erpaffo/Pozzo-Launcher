@@ -109,8 +109,24 @@ serve davvero a più file — altrimenti resta in `js/` locale.
   Aspetto › Animazioni** (`motion-settings.js`, salvata in `localStorage` come `gs.motion`); senza una
   scelta vale `prefers-reduced-motion` del sistema. Un tema o un'esperienza possono cambiare il
   carattere del movimento solo coi token (`--mo-k`, `--mo-t`), non con animazioni proprie.
+- Toast, dialog e pagina impostazioni entrano con `@starting-style` ed escono con la transizione verso
+  `[hidden]` / dialog chiuso (`display`/`overlay allow-discrete`): basta mettere `hidden`, niente JS.
+  Menu e popover hanno solo l'entrata.
+- `GSMotion.enter(el)` (in `motion.js`) fa entrare un contenitore con WAAPI; `setView` la usa al
+  cambio di vista. Nessun effetto con animazioni ridotte o disattivate.
+- Le animazioni infinite (scheletri) usano solo `transform`/`opacity`, mai `background-position`.
 - `GSSkeleton.show(container, n)` / `.hide(container)` (in `motion-settings.js`) mettono i segnaposto
   di `skeleton.css` durante il caricamento di una griglia.
+
+### Liste virtuali
+
+La griglia della libreria (`grid.js`) disegna solo le righe visibili. Le viste a pagina con liste lunghe (Top,
+lista desideri, giochi gratis, port, schermate) usano lo stesso criterio con `vlist(box, host, items, cell, opt)`
+in `grid.js`: `cell(item)` restituisce l'HTML di un elemento, `opt.cols()` quanti elementi per riga (griglie di
+schede), `opt.gap` lo spazio tra le righe. Nel DOM restano le righe della finestra più una schermata sopra e sotto;
+le altre sono spaziatori. L'altezza di ogni riga si misura dopo averla disegnata. Chi aggiunge una lista lunga la
+passa a `vlist` e non costruisce più tutto il `map().join()` nel template della pagina. Le liste corte (impostazioni,
+store, collezioni) restano normali.
 
 ### Icone
 

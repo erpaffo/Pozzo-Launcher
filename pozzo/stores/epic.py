@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
+from .. import profilecfg as PC
 from ..net import request
 from .base import StoreGame, StoreProvider
 
@@ -40,7 +41,7 @@ class Epic(StoreProvider):
         return MANIFESTS.exists() or bool(self.cache.kv_get("auth:epic"))
 
     def account(self) -> dict:
-        a = self.cache.kv_get("auth:epic") or {}
+        a = PC.get(self.cfg, "epic", {})
         return {"connected": bool(a.get("refresh_token")), "user": a.get("displayName", "")}
 
     @staticmethod
@@ -62,9 +63,9 @@ class Epic(StoreProvider):
             msg = r.json().get("errorMessage", r.text[:200]) if r is not None else "nessuna risposta"
             raise RuntimeError(f"Epic: accesso non riuscito: {msg}")
         d = r.json()
-        self.cache.kv_set("auth:epic", {"refresh_token": d["refresh_token"], "account_id": d.get("account_id"),
-                                        "displayName": d.get("displayName", ""),
-                                        "refresh_expires": time.time() + d.get("refresh_expires", 0)})
+        PC.set(self.cfg, "epic", {"refresh_token": d["refresh_token"], "account_id": d.get("account_id"),
+                                  "displayName": d.get("displayName", ""),
+                                  "refresh_expires": time.time() + d.get("refresh_expires", 0)})
         return d
 
     async def finish_login(self, code_or_page: str):
@@ -75,7 +76,7 @@ class Epic(StoreProvider):
         return d.get("displayName", "")
 
     async def _access_token(self) -> str | None:
-        a = self.cache.kv_get("auth:epic") or {}
+        a = PC.get(self.cfg, "epic", {})
         if not a.get("refresh_token"):
             return None
         try:
