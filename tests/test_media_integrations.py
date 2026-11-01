@@ -156,7 +156,8 @@ def test_ui_hooks_and_configuration():
     widget = (root / "bigpicture.html").read_text(encoding="utf-8")
     settings = (root / "settings/integrazioni.html").read_text(encoding="utf-8")
     module = (root / "media.js").read_text(encoding="utf-8")
-    server = (root.parent / "server.py").read_text(encoding="utf-8")
+    server = "".join(p.read_text(encoding="utf-8")
+                     for p in [root.parent / "server.py", *sorted((root.parent / "routes").glob("*.py"))])
     assert 'id="bp-media-widget"' in widget and 'data-media-action="leave"' in widget
     assert "Musica e chiamate" in settings and "developer.spotify.com/dashboard" in settings
     for action in ("toggle", "next", "prev", "playPause", "muteMic", "deafen"):

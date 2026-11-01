@@ -19,6 +19,11 @@ from types import SimpleNamespace
 
 import pytest
 
+
+def app_js(static):
+    """Frontend desktop: app.js (avvio) + i file per area in static/js/."""
+    return "\n".join(f.read_text(encoding="utf-8") for f in [*sorted((static / "js").glob("*.js")), static / "app.js"])
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -54,7 +59,7 @@ def test_experience_ui():
     root = Path(__file__).resolve().parent.parent / "pozzo/app/static"
     page = (root / "index.html").read_text(encoding="utf-8")
     appearance = (root / "settings/aspetto.html").read_text(encoding="utf-8")
-    app = (root / "app.js").read_text(encoding="utf-8")
+    app = app_js(root)
     core = (root / "core.js").read_text(encoding="utf-8")
     catalog = (root / "experiences/catalog/experience.js").read_text(encoding="utf-8")
     shelves = (root / "experiences/shelves/experience.js").read_text(encoding="utf-8")
@@ -104,7 +109,7 @@ def test_experience_ui():
 
 def test_experience_hooks_and_detail_modes():
     root = Path(__file__).resolve().parent.parent / "pozzo/app/static"
-    app = (root / "app.js").read_text(encoding="utf-8")
+    app = app_js(root)
     core = (root / "core.js").read_text(encoding="utf-8")
     assert "GS.experience.home(element, { renderShelvesHome, state: S, setView })" in app
     assert "GS.experience.card(g, el.innerHTML, { experience: GS.experience, state: S })" in app
@@ -1056,7 +1061,7 @@ def test_library_parts():
 def test_single_store_refresh_button():
     """Impostazioni › Store: accanto a «Aggiorna store» (tutti) c'è un ⟳ per riga che manda only=[id]."""
     root = Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static"
-    js = (root / "app.js").read_text(encoding="utf-8")
+    js = app_js(root)
     assert 'data-acc-refresh="${x.id}"' in js and "only: [t.dataset.accRefresh]" in js
     assert 'id="acc-refresh"' in (root / "settings" / "store.html").read_text(encoding="utf-8")
     print("ok  pulsante per aggiornare un solo store, oltre a quello per tutti")
@@ -1065,7 +1070,7 @@ def test_single_store_refresh_button():
 def test_feedback_button():
     root = Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static"
     html = (root / "index.html").read_text(encoding="utf-8")
-    js = (root / "app.js").read_text(encoding="utf-8")
+    js = app_js(root)
     css = (root / "app.css").read_text(encoding="utf-8")
     assert 'id="feedback-btn"' in html and "Idee / bug" in html
     assert 'https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose' in js
@@ -1106,7 +1111,7 @@ def test_hltb_on_demand(client, monkeypatch):
     smeraldo = next(r for r in client.get("/api/library?part=owned").json()["games"]["rows"] if r[1] == "Pokemon - Versione Smeraldo")
     assert client.get(f"/api/game/{smeraldo[0]}/hltb").json() == {"error": "HowLongToBeat: troppe richieste (429), attesa 15 s"}
     assert client.get(f"/api/game/{smeraldo[0]}/hltb").json()["main"] == 12.0  # seconda chiamata: ricerca riprovata
-    js = (Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    js = app_js(Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static")
     assert 'GS.experience.detail === "modal" && !online && !d.hltb' in js and "/hltb`" in js
     print("ok  durata HowLongToBeat al volo: cache, errore non salvato, solo nel modale")
 

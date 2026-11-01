@@ -13,7 +13,7 @@ PLUGIN - cartella <config>/plugins/<id>/:
     backend.py      (facoltativo) def register(gs): ...   con gs = PluginAPI (vedi sotto)
 
 Un plugin backend puo': aggiungere endpoint (gs.route), fornitori di libreria/store (gs.add_store),
-fonti di metadati per lo scraping (gs.add_source), reagire agli eventi (gs.on) e salvare
+fonti di metadati per lo scraping (gs.add_source), reagire agli eventi (gs.on), lavori periodici (gs.job) e salvare
 impostazioni proprie (gs.settings / gs.save_settings). Guida completa: docs/ESTENSIONI.md
 """
 
@@ -278,7 +278,9 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
                     "style": f"/plugins/{d.name}/style.css" if (d / "style.css").exists() else None,
                     "backend": str(d / "backend.py") if (d / "backend.py").exists() else None,
                     "settings": settings.get(d.name, {}), "error": (errors or {}).get(d.name),
-                    "dir": str(d),
+                    "dir": str(d), "load_ms": LOAD_MS.get(d.name),
+                    "jobs": [{"name": j.name, "every": j.every, "runs": j.runs, "error": j.last_error}
+                             for j in JOBS if j.pid == d.name],
                 })
             except OSError as e:
                 # es. WinError 448: collegamento (junction) non attendibile. Una cartella illeggibile non deve
@@ -302,6 +304,45 @@ def plugin_file(cfg, pid: str, rel: str) -> Path | None:
         except OSError:  # percorso non attraversabile: come se non ci fosse
             continue
     return None
+
+
+JOBS: list["Job"] = []           # lavori periodici dei plugin (gs.job), fermati con stop_jobs()
+LOAD_MS: dict[str, float] = {}   # {id plugin: millisecondi spesi in register()}
+_HOOKED_APPS: set[int] = set()
+
+
+class Job:
+    """Lavoro periodico di un plugin: un thread daemon che chiama fn ogni `every` secondi."""
+
+    def __init__(self, pid: str, name: str, fn, every: float, log):
+        self.pid, self.name, self.fn, self.every, self.log = pid, name, fn, every, log
+        self.stopped = threading.Event()
+        self.runs, self.last_error = 0, None
+
+    def tick(self):
+        """Un giro: gli errori si registrano e il lavoro continua."""
+        try:
+            self.fn()
+            self.last_error = None
+        except Exception as e:
+            self.last_error = f"{type(e).__name__}: {e}"
+            self.log(f"Plugin {self.pid}, lavoro {self.name}: {self.last_error}")
+        self.runs += 1
+
+    def _loop(self, run_at_start: bool):
+        if run_at_start and not self.stopped.is_set():
+            self.tick()
+        while not self.stopped.wait(self.every):
+            self.tick()
+
+    def stop(self):
+        self.stopped.set()
+
+
+def stop_jobs():
+    for j in JOBS:
+        j.stop()
+    JOBS.clear()
 
 
 class PluginAPI:
@@ -334,6 +375,18 @@ class PluginAPI:
     def on(self, event: str, fn):
         self.events.on(event, fn)
 
+    def job(self, name: str, fn, every: float, run_at_start: bool = False) -> Job:
+        """Esegue fn() ogni `every` secondi su un thread daemon; si ferma alla chiusura dell'app."""
+        if not every or every <= 0:
+            raise ValueError("every deve essere > 0 secondi")
+        j = Job(self.id, name, fn, float(every), self.log)
+        JOBS.append(j)
+        if id(self.app) not in _HOOKED_APPS and hasattr(self.app, "add_event_handler"):
+            _HOOKED_APPS.add(id(self.app))
+            self.app.add_event_handler("shutdown", stop_jobs)
+        threading.Thread(target=j._loop, args=(run_at_start,), daemon=True, name=f"plugin-{self.id}-{name}").start()
+        return j
+
     def save_settings(self, values: dict):
         self.settings.update(values)
         C.save_settings(self.cfg, plugins={self.id: dict(self.settings)})
@@ -350,7 +403,11 @@ def load_backends(app, cfg, events: Events, log=print) -> dict[str, str]:
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             if hasattr(mod, "register"):
-                mod.register(PluginAPI(app, cfg, p["id"], events, log))
+                t0 = time.perf_counter()
+                try:
+                    mod.register(PluginAPI(app, cfg, p["id"], events, log))
+                finally:
+                    LOAD_MS[p["id"]] = round((time.perf_counter() - t0) * 1000, 1)
         except Exception as e:
             errors[p["id"]] = f"{type(e).__name__}: {e}"
             log(f"Plugin {p['id']}: errore nel backend: {errors[p['id']]}")

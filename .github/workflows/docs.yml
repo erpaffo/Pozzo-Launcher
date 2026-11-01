@@ -28,12 +28,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Cache pacchetti TeX e apt
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-texlive-v1
+          restore-keys: ${{ runner.os }}-apt-texlive-
+
       - name: Strumenti (MkDocs, Pandoc, XeLaTeX)
         run: |
           pip install mkdocs-material
           sudo apt-get update
-          sudo apt-get install -y pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra \
-            texlive-fonts-recommended texlive-lang-italian fonts-dejavu-core
+          sudo apt-get install --no-install-recommends -y \
+            pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra fonts-dejavu-core
 
       # il PDF va in docs/ prima del sito: cosi' MkDocs lo pubblica e il link nell'introduzione funziona
       - name: PDF

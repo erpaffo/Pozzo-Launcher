@@ -1,4 +1,4 @@
-"""Esegue gli script di test uno per uno, con un limite di tempo per ognuno.
+"""Esegue i test (tests/test_*.py e tests/catalog) uno per uno, con un limite di tempo per ognuno.
 
 Serve alla CI: un test bloccato (per esempio una chiamata di rete che non risponde) faceva restare il
 job appeso per sempre, senza dire dove. Qui ogni script e' un processo a se': se supera il limite gli si
@@ -8,7 +8,9 @@ fermato. Uso: python packaging/run_tests.py [nome_test.py ...]
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -17,32 +19,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# stessi script (e stesso ordine) del passo «Test» della release
-TESTS = [
-    "test_policy.py",
-    "test_discover.py",
-    "test_frontend.py",
-    "test_apiv1.py",
-    "test_pipeline.py",
-    "test_stores.py",
-    "test_launcher.py",
-    "test_fixes_backend.py",
-    "test_switchmeta.py",
-    "test_wishlist.py",
-    "test_frontends.py",
-    "test_retroachievements.py",
-    "test_controllers.py",
-    "test_media_integrations.py",
-    "test_ports.py",
-    "test_version.py",
-    "test_sync.py",
-    "test_dualscreen.py",
-    "test_guests.py",
-    "test_phone_extras.py",
-    "test_guests.py",
-    "test_extstore.py",
-    "test_extensions_nuove.py",
-]
+# directory con dipendenze extra (playwright...): saltate se mancano, senza far fallire la CI
+OPTIONAL = {"e2e": "playwright", "perf": "playwright"}
+NEEDS_PYTEST = re.compile(r"^\s*(import pytest|from pytest)|@pytest\.|^(async )?def test_\w+\(\s*\w", re.M)
+
+
+def discover() -> list[str]:
+    tests = sorted(p.relative_to(ROOT / "tests").as_posix() for p in (ROOT / "tests").glob("test_*.py"))
+    tests += sorted(p.relative_to(ROOT / "tests").as_posix() for p in (ROOT / "tests" / "catalog").glob("test_*.py"))
+    for sub, mod in OPTIONAL.items():
+        found = sorted(p.relative_to(ROOT / "tests").as_posix() for p in (ROOT / "tests" / sub).glob("test_*.py"))
+        if found and importlib.util.find_spec(mod):
+            tests += found
+        elif found:
+            print(f"-- tests/{sub}: saltati ({mod} non installato)", flush=True)
+    return tests
 
 
 def limit() -> float:
@@ -60,7 +51,10 @@ def run(name: str, timeout: float) -> bool:
     print(f"\n=== {name}", flush=True)
     env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"}
     start = time.time()
-    proc = subprocess.Popen([sys.executable, "-X", "faulthandler", str(path)], cwd=ROOT, env=env)
+    text = path.read_text(encoding="utf-8", errors="replace")
+    cmd = [sys.executable, "-X", "faulthandler"]
+    cmd += ["-m", "pytest", "-q", str(path)] if NEEDS_PYTEST.search(text) else [str(path)]
+    proc = subprocess.Popen(cmd, cwd=ROOT, env=env)
     try:
         code = proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -81,7 +75,7 @@ def run(name: str, timeout: float) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    wanted = argv or TESTS
+    wanted = argv or discover()
     timeout = limit()
     failed = [name for name in wanted if not run(name, timeout)]
     print(flush=True)

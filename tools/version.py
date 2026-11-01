@@ -7,6 +7,7 @@ Il numero si calcola da solo dalla versione precedente: c'e' «### Aggiunto» ->
   python tools/version.py add aggiunto|cambiato|migliorato|corretto|rimosso "testo"
   python tools/version.py wip "attivita'" [file ...]     # inizio di un lavoro lungo (i file restano fuori dai commit)
   python tools/version.py done "attivita'"               # lavoro finito: i suoi file rientrano nei commit
+  python tools/version.py fragments                      # docs/changelog.d/*.md (tranne README.md) -> «in preparazione», poi li cancella
   python tools/version.py status
   python tools/version.py commit [--patch|--minor|--major] [--force]   # changelog + __init__ + git commit "Version x.y.z"
 """
@@ -26,6 +27,7 @@ INIT = ROOT / "pozzo" / "__init__.py"
 LOCK = ROOT / ".git" / "version.lock"
 KINDS = {"aggiunto": "Aggiunto", "cambiato": "Cambiato", "migliorato": "Migliorato", "corretto": "Corretto", "rimosso": "Rimosso"}
 WIP = "In corso"
+FRAG = ROOT / "docs" / "changelog.d"  # un file per task; nel frammento «### Aggiunto» (ecc.) sceglie la sottosezione, default Cambiato
 HEAD_RE = re.compile(r"^## (\d+)\.(\d+)\.(\d+)\b.*$|^## Non rilasciato\s*$", re.M)
 
 
@@ -235,6 +237,30 @@ def plan(text: str, pushed, level: str | None = None):
     return bump(base, lvl), base, lvl, wip_items(secs[i][1])
 
 
+def cmd_fragments():
+    files = sorted(f for f in FRAG.glob("*.md") if f.name != "README.md") if FRAG.is_dir() else []
+    if not files:
+        return print("Nessun frammento in docs/changelog.d")
+    with Lock():
+        pre, secs, i = ensure_pending(read(), pushed_version())
+        h, body = secs[i]
+        for f in files:
+            kind = "Cambiato"
+            for line in f.read_text(encoding="utf-8").splitlines():
+                s = line.strip()
+                if s.startswith("### "):
+                    kind = s[4:].strip()
+                    if kind not in KINDS.values():
+                        raise SystemExit(f"{f.name}: sottosezione sconosciuta «{kind}»")
+                elif s:
+                    body = add_line(body, kind, "- " + s.removeprefix("- "))
+        secs[i] = (h, body)
+        write(join(pre, secs))
+    for f in files:
+        f.unlink()
+    print(f"{len(files)} frammenti nel changelog (in preparazione)")
+
+
 def cmd_status():
     p = plan(read(), pushed_version())
     print(f"Su GitHub: {vs(pushed_version()) if pushed_version() else '?'}  ·  nel codice: {current_init()}")
@@ -291,6 +317,8 @@ def main(argv):
         cmd_wip(a[0], a[1:])
     elif c == "done" and len(a) == 1:
         cmd_done(a[0])
+    elif c == "fragments" and not a:
+        cmd_fragments()
     elif c == "status":
         cmd_status()
     elif c == "commit":

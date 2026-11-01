@@ -1,0 +1,125 @@
+"use strict";
+/* Pozzo Launcher - frontend: emulatori. Script classico: ambito globale condiviso con gli altri file di js/ (ordine in index.html). */
+
+/* ---- emulatori */
+async function loadEmu() {
+  try { SET.emu = await api("/api/emulators"); } catch (e) { return toast(e.message, true); }
+  renderEmu(SET.emu);
+  renderEmuInstall();
+  api("/api/app/launch").then((l) => {
+    $("#ln-before").value = l.before || ""; $("#ln-after").value = l.after || ""; $("#ln-close").checked = !!l.close_launcher;
+  }).catch(() => {});
+}
+
+function collectEmu() {
+  const emulators = {};
+  document.querySelectorAll(".emu-path").forEach((i) => { emulators[i.dataset.emu] = i.value.trim(); });
+  const platforms = {};
+  document.querySelectorAll("#emu-table tr[data-p]").forEach((tr) => {
+    platforms[tr.dataset.p] = { emulator: $(".emu-sel", tr).value.replace("__new", ""), core: $(".emu-core", tr).value, args: $(".emu-args", tr).value };
+  });
+  return { emulators, platforms, retroarch_cores: $("#ra-cores") ? $("#ra-cores").value : undefined };
+}
+
+function renderEmu(d, draft) {
+  // draft = modifiche non ancora salvate da conservare quando si ridisegna
+  const paths = { ...d.emulators, ...(draft ? draft.emulators : {}) };
+  $("#emu-saved-to").textContent = "Le modifiche vanno in " + d.settings;
+  const used = new Set(SET.extraEmus);
+  d.platforms.forEach((p) => { p.candidates.forEach((c) => used.add(c.split(" ")[0])); if (p.emulator) used.add(p.emulator); });
+  Object.keys(paths).forEach((k) => used.add(k));
+  const names = [...used].sort();
+  $("#emu-paths").innerHTML = `<table class="emu"><tr><th style="width:130px">Emulatore</th><th>Percorso dell'eseguibile</th><th style="width:96px"></th></tr>`
+    + names.map((n) => `<tr><td>${esc(n)}</td><td><input class="field emu-path" data-emu="${esc(n)}" value="${esc(paths[n] || "")}" placeholder="non configurato"></td>`
+      + `<td><button class="btn emu-pick" data-emu="${esc(n)}">Sfoglia…</button></td></tr>`).join("")
+    + `<tr><td class="muted">core RetroArch</td><td><input class="field" id="ra-cores" value="${esc(draft && draft.retroarch_cores !== undefined ? draft.retroarch_cores : d.retroarch_cores || "")}" `
+    + `placeholder="facoltativo: di solito la cartella «cores» accanto a retroarch.exe"></td><td></td></tr></table>`;
+  const known = [...new Set([...d.known, ...names])].sort();
+  $("#emu-table").innerHTML = `<table class="emu"><tr><th>Console</th><th style="width:160px">Emulatore</th><th style="width:150px">Core RetroArch</th><th>Argomenti</th><th style="width:180px">Stato</th></tr>`
+    + d.platforms.map((p) => {
+      const dp = draft && draft.platforms[p.platform] ? draft.platforms[p.platform] : { emulator: p.emulator, core: p.core, args: p.args };
+      const rec = new Set(p.candidates.map((c) => c.split(" ")[0]));
+      const opts = [`<option value="">Automatico</option>`,
+        ...known.map((k) => `<option value="${esc(k)}" ${k === dp.emulator ? "selected" : ""}>${esc(k)}${rec.has(k) ? " ★" : ""}</option>`),
+        `<option value="__new">Altro…</option>`].join("");
+      const status = p.effective ? `<span class="status-ok">✓ ${esc(p.effective)}</span>` : `<span class="status-bad">${esc(p.problem || "non configurato")}</span>`;
+      return `<tr data-p="${esc(p.platform)}"><td>${esc(p.name)}<div class="muted small">consigliati: ${esc(p.candidates.join(", ") || "—")}</div></td>`
+        + `<td><select class="field emu-sel">${opts}</select></td>`
+        + `<td><input class="field emu-core" value="${esc(dp.core)}" placeholder="${esc(p.default_core)}"></td>`
+        + `<td><input class="field emu-args" value="${esc(dp.args)}" placeholder="${esc(p.default_args)}"></td><td>${status}</td></tr>`;
+    }).join("") + `</table>`;
+}
+
+async function renderEmuInstall() {
+  let d;
+  try { d = await api("/api/emulators/catalog"); } catch (e) { return toast(e.message, true); }
+  const cores = d.cores.length ? `<div class="row"><span class="muted small grow">Core RetroArch che mancano alle console della libreria: ${esc(d.cores.join(", "))}</span>`
+    + `<button class="btn" data-emu-cores ${d.retroarch ? "" : "disabled title=\"Installa prima RetroArch\""}>⬇ Scarica i core</button></div>` : "";
+  $("#emu-inst").innerHTML = `<table class="emu"><tr><th style="width:130px">Emulatore</th><th>Console</th><th style="width:120px">Installato</th><th style="width:120px"></th></tr>`
+    + d.items.map((x) => `<tr><td><a href="#" data-open="${esc(x.home)}">${esc(x.id)} ↗</a><div class="muted small">${esc(x.repo)}</div></td>`
+      + `<td class="small">${esc(x.consoles.join(", ") || "—")}</td><td class="small">${x.version ? esc(x.version) : x.configured ? "<span class=\"muted\">già impostato</span>" : "—"}</td>`
+      + `<td><button class="btn" data-emu-inst="${esc(x.id)}">${x.version ? "↻ Aggiorna" : "⬇ Installa"}</button></td></tr>`).join("")
+    + `</table>${cores}<p class="muted small">Cartella predefinita: ${esc(d.dir)}</p>`;
+}
+
+async function followEmuJob() {
+  let j;
+  do {
+    try { j = await api("/api/emulators/job"); } catch { return; }
+    const pct = j.total ? Math.round((j.done / j.total) * 100) : 0;
+    $("#emu-inst-job").innerHTML = `<p class="small">${j.status === "running" ? `⏳ ${j.total ? `${pct}% · ${fmtSize(j.done)} di ${fmtSize(j.total)}` : j.done ? fmtSize(j.done) : ""}` : ""}</p>
+      <pre class="log">${esc(j.log.slice(-6).join("\n"))}</pre>`;
+    if (j.status === "running") await new Promise((r) => setTimeout(r, 1000));
+  } while (j.status === "running");
+  if (j.status === "error") toast(j.log[j.log.length - 1] || "Installazione non riuscita", true);
+  else toast(j.log[j.log.length - 1] || "Fatto");
+  loadEmu();
+}
+
+async function saveEmu(body) {
+  try {
+    SET.emu = await api("/api/emulators", { body: body || collectEmu() });
+    SET.extraEmus = [];
+    renderEmu(SET.emu);
+    toast("Impostazioni degli emulatori salvate");
+    if (S.detail) openDetail(S.detail.id);
+  } catch (e) { toast(e.message, true); }
+}
+
+function showStatus(st) {
+  const n = S.games.length;
+  $("#lib-info").textContent = `${n.toLocaleString("it")} versioni, ${S.groups.length.toLocaleString("it")} giochi unici, ${S.colls.length} collezioni.`;
+  $("#build-log").textContent = (st.build_log || []).join("\n");
+  $("#rebuild-btn").disabled = st.building;
+  $("#rebuild-btn").textContent = st.building ? "Aggiornamento in corso…" : "↻ Aggiorna libreria";
+  $("#thumbs-info").textContent = st.thumbs_total ? `Miniature copertine: ${st.thumbs_done.toLocaleString("it")} / ${st.thumbs_total.toLocaleString("it")}` : "";
+}
+
+async function rebuild() {
+  await api("/api/rebuild", { body: {} });
+  const tick = async () => {
+    const st = await api("/api/status");
+    showStatus(st);
+    if (st.building) setTimeout(tick, 1000);
+    else { await reload(true); toast("Libreria aggiornata"); }
+  };
+  tick();
+}
+
+async function waitFirstBuild() {
+  $("#splash").hidden = false;
+  for (;;) {
+    const st = await api("/api/status");
+    $("#splash-log").textContent = (st.build_log || []).join("\n");
+    if (st.has_library && !st.building) break;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  $("#splash").hidden = true;
+}
+
+async function reload(keepScroll) {
+  await loadLibrary();
+  if (S.view.type === "collection" && !S.collBySlug.has(S.view.id)) S.view = { type: "all" };
+  renderSidebar();
+  refreshGrid(keepScroll);
+}

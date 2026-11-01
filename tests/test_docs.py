@@ -56,6 +56,9 @@ def main():
             if frag:
                 assert frag in pages[target], f"{page}: sezione mancante {target}#{frag}"
 
+    # il logo e il favicon sono usati da mkdocs.yml, non da una pagina
+    site = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    used |= {f"images/{p.name}" for p in (DOCS / "images").glob("*") if f"images/{p.name}" in site}
     unused = {f"images/{p.name}" for p in (DOCS / "images").glob("*")} - used
     assert not unused, f"immagini non citate: {sorted(unused)}"
 

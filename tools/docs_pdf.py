@@ -59,6 +59,8 @@ def build(out: Path, font: str, sans: str, mono: str) -> Path:
     with tempfile.TemporaryDirectory() as t:
         src, head = Path(t) / "manuale.md", Path(t) / "header.tex"
         shutil.copytree(DOCS / "images", Path(t) / "images")  # le immagini del manuale, accanto al markdown
+        if (DOCS / "img").exists():
+            shutil.copytree(DOCS / "img", Path(t) / "img")
         src.write_text(md, encoding="utf-8")
         head.write_text(HEADER, encoding="utf-8")
         subprocess.run([

@@ -44,7 +44,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install -r requirements.txt -r requirements-dev.txt pyinstaller
           # Linux: finestra con Qt (autonoma). Senza, l'app si apre comunque nel browser.
           if [ "$RUNNER_OS" = "Linux" ]; then pip install "pywebview[qt]"; fi
 
@@ -154,12 +154,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Cache pacchetti TeX e apt
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-texlive-v1
+          restore-keys: ${{ runner.os }}-apt-texlive-
+
       - name: Manuale PDF
         run: |
           pip install pyyaml
           sudo apt-get update
-          sudo apt-get install -y pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra \
-            texlive-fonts-recommended texlive-lang-italian fonts-dejavu-core
+          sudo apt-get install --no-install-recommends -y \
+            pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra fonts-dejavu-core
           python tools/docs_pdf.py "release/PozzoLauncher-${GITHUB_REF_NAME#v}-manuale.pdf"
 
       # testo della release: la sezione "## <versione>" di changelog.md (fino alla sezione seguente)

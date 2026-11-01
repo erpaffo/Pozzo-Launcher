@@ -45,7 +45,7 @@ CREATE TABLE games(id INTEGER PRIMARY KEY, key TEXT UNIQUE, platform TEXT, title
                    video_url TEXT, canonical TEXT, crc TEXT, origin TEXT, grp TEXT, is_primary INT,
                    store TEXT, installed INT, launch TEXT, install_uri TEXT, page TEXT, store_playtime REAL,
                    install_dir TEXT, rating_count INT, rating_critics REAL, ratings TEXT, size INT, hltb TEXT,
-                   store_pages TEXT, content TEXT);
+                   store_pages TEXT, content TEXT, md5 TEXT, sha1 TEXT);
 CREATE TABLE collections(slug TEXT PRIMARY KEY, name TEXT);
 CREATE INDEX games_grp ON games(grp);
 CREATE TABLE collection_games(slug TEXT, key TEXT, PRIMARY KEY(slug, key));
@@ -730,8 +730,8 @@ def _share_metadata(merged: dict, groups: dict, primary: set, res: dict) -> dict
 INSERT_GAME = ("INSERT INTO games(key, platform, title, sort_title, year, release_date, developer, publisher,"
                " genres, players, rating, description, region, found, files, media, video_url, canonical,"
                " crc, origin, grp, is_primary, store, installed, launch, install_uri, page, store_playtime,"
-               " install_dir, rating_count, rating_critics, ratings, size, store_pages, content) VALUES("
-               + ",".join("?" * 35) + ")")
+               " install_dir, rating_count, rating_critics, ratings, size, store_pages, content, md5, sha1) VALUES("
+               + ",".join("?" * 37) + ")")
 
 
 def _pc_row(e: dict) -> tuple:
@@ -742,7 +742,7 @@ def _pc_row(e: dict) -> tuple:
             json.dumps({"title": e["store"]}), e["grp"], e["primary"],
             e["store"], e["installed"], json.dumps(e["launch"]), e["install_uri"], e["page"],
             e["store_playtime"], e["install_dir"], rc.get("rating_count"), rc.get("rating_critics"),
-            json.dumps(rc.get("ratings", [])), e["size"], "[]", e["content"])
+            json.dumps(rc.get("ratings", [])), e["size"], "[]", e["content"], None, None)
 
 
 def update_manual(cfg) -> bool:
@@ -816,7 +816,7 @@ def build(cfg, log=print, progress=None) -> dict:
         db = sqlite3.connect(tmp)
         db.executescript(SCHEMA)
         rows = []
-        for key, g in merged.items():
+        for key, g in merged.items():  # crc/md5/sha1: hash del file (cache files, chiave path+size+mtime) o del DAT
             d = g.data
             title = d.get("title") or g.search_name
             rd = str(d.get("release_date") or "")
@@ -838,7 +838,7 @@ def build(cfg, log=print, progress=None) -> dict:
                          comb.get("rating_count"), comb.get("rating_critics"), json.dumps(comb.get("ratings", [])),
                          game_size(g.path, g.is_dir, cache) or None,
                          json.dumps(owned_pages.get(key, []), ensure_ascii=False) if owned_pages else "[]",
-                         "game"))
+                         "game", g.md5 or g.dat_md5 or None, g.sha1 or g.dat_sha1 or None))
         rows.extend(_pc_row(e) for e in pc)
         for e in net:  # disponibili online (non posseduti)
             rc = e["ratings"]
@@ -850,7 +850,7 @@ def build(cfg, log=print, progress=None) -> dict:
                                      "sources": e.get("sources") or []}),
                          e["url"], e["url"], 0, None, rc.get("rating_count"), rc.get("rating_critics"),
                          json.dumps(rc.get("ratings", [])), e["size"],
-                         json.dumps(e.get("sources") or [], ensure_ascii=False), e["content"]))
+                         json.dumps(e.get("sources") or [], ensure_ascii=False), e["content"], None, None))
         db.executemany(INSERT_GAME, rows)
         _attach_hltb(db, cache)
         db.executemany("INSERT INTO collections VALUES(?,?)", [(s, n) for s, (n, _) in colls.items()])

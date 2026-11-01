@@ -112,7 +112,7 @@ def main():
         print("skip  node non trovato: controlli JS saltati")
         return
 
-    for name in ("shortcuts.js", "pad.js", "bigpicture.js", "menubar.js", "app.js"):
+    for name in ("shortcuts.js", "pad.js", "bigpicture.js", "menubar.js", "app.js", *(f"js/{f.name}" for f in sorted((STATIC / "js").glob("*.js")))):
         r = run(NODE, "--check", str(STATIC / name))
         assert r.returncode == 0, f"{name}: {r.stderr}"
 

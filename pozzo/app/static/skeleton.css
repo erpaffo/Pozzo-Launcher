@@ -1,0 +1,38 @@
+/* Segnaposto di caricamento delle griglie (GSSkeleton in motion-settings.js).
+   Solo opacity: nessun ricalcolo di layout; spento con data-motion off/ridotte o col sistema. */
+.gs-skel-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 14px;
+  padding: 16px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gs-skel {
+  border-radius: var(--radius, 10px);
+  background: var(--bg-3, #1a1e28);
+  border: 1px solid var(--line, rgba(255, 255, 255, .06));
+  aspect-ratio: 3 / 4;
+  opacity: .35;
+  animation: gs-skel-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes gs-skel-pulse {
+  0%, 100% { opacity: .22; }
+  50% { opacity: .45; }
+}
+
+html[data-motion="off"] .gs-skel,
+html[data-motion="reduced"] .gs-skel { animation: none; opacity: .35; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-skel { animation: none; opacity: .35; }
+}
+
+@media (max-height: 640px) {
+  .gs-skel-layer { gap: 10px; padding: 12px; }
+}

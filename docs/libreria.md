@@ -8,6 +8,8 @@ La libreria arriva al programma in un'unica volta: ricerca, filtri e ordinamenti
 istantanei anche con decine di migliaia di giochi. Nella griglia esistono solo le copertine visibili, servite come
 miniature WebP leggere.
 
+![La vista principale della libreria: griglia con copertine in alta risoluzione, filtri e barra laterale](images/libreria-griglia.jpg)
+
 ## Le viste della barra laterale
 
 | Vista | Cosa mostra |
@@ -182,6 +184,8 @@ La vista **✨ Per te** è una pagina di scaffali:
 Il pulsante **🎲 A cosa vuoi giocare?** fa poche domande (quanto tempo hai, con quante persone giochi, che cosa
 cerchi, generi, epoca, dove vuoi giocare, se vuoi qualcosa di nuovo) e propone una dozzina di giochi adatti. Le
 risposte sui generi aiutano anche i consigli futuri.
+
+![Stasera a cosa giochiamo: selezione rapida guidata in base al tempo e alle preferenze](images/stasera.jpg)
 
 ![Per te: il gioco scelto in evidenza e gli scaffali Riprendi, Giocati di recente, consigli e saghe](images/libreria-per-te.jpg)
 

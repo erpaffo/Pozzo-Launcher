@@ -73,6 +73,30 @@ In **Impostazioni › Aspetto** si sceglie il tema e si vede l'anteprima del col
 
 ![Impostazioni › Aspetto: scelta del tema e plugin installati](images/impostazioni-aspetto.jpg)
 
+### Galleria dei 4 temi inclusi
+
+Ecco come appare Pozzo Launcher con i quattro temi forniti di serie:
+
+#### 1. Tema OLED (Nero assoluto)
+Sfondo nero puro (`#000000`), contrasto massimo, perfetto per schermi OLED e per non affaticare la vista nelle sessioni notturne.
+
+![Tema OLED: neri assoluti e accenti vivaci ad altissimo contrasto](images/tema-oled.jpg)
+
+#### 2. Tema Notte Blu
+Toni indaco e blu notte rilassanti con accenti azzurri, ideale per l'uso serale quotidiano su qualsiasi monitor.
+
+![Tema Notte Blu: palette fredda riposante per lunghe sessioni](images/tema-notte-blu.jpg)
+
+#### 3. Tema Retrò
+Caldo e nostalgico, con colori crema, marrone e arancio ispirati all'hardware e alle sale giochi arcade anni '80 e '90.
+
+![Tema Retrò: look vintage caldo e accogliente](images/tema-retro.jpg)
+
+#### 4. Tema Chiaro
+Look moderno e pulito, a sfondo chiaro con testi scuri ad altissima leggibilità in uffici o stanze molto illuminate.
+
+![Tema Chiaro: interfaccia luminosa moderna e pulita](images/tema-chiaro.jpg)
+
 ---
 
 ## Profili di esperienza
@@ -139,6 +163,40 @@ Le esperienze incluse sono:
 | **Dashboard** (`dashboard`) | Home dashboard con gioco in evidenza, sezioni recenti/preferiti/raccolta e guida rapida; navigazione superiore. | Pannello laterale. |
 | **Cinema** (`cinema`) | Home cinematografica con banner e righe orizzontali di giochi; navigazione superiore. | Sovrapposizione modale. |
 | **Vetrina** (`storefront`) | Home vetrina con gioco in evidenza, raccolta e filtri per piattaforma; navigazione superiore. | Schermo intero. |
+
+### Galleria visiva dei 6 profili di esperienza
+
+Ogni profilo di esperienza trasforma l'organizzazione dei contenuti del launcher:
+
+#### Scaffali (`shelves`)
+La Home moderna con scaffali tematici orizzontali in stile streaming per riprendere subito a giocare, scoprire saghe e continuare i titoli in corso.
+
+![Esperienza Scaffali: layout a righe orizzontali stile Netflix](images/esp-scaffali.jpg)
+
+#### Cinema (`cinema`)
+Esperienza ad alto impatto visivo con banner a tutto schermo, sfondi cinematografici e dettaglio aperto in sovrapposizione modale.
+
+![Esperienza Cinema: grafica immersiva con sfondi spettacolari](images/esp-cinema.jpg)
+
+#### Console (`console`)
+Interfaccia pulita e minimale a tutto schermo, perfetta per chi usa mouse o controller come se fosse su una console da gioco da salotto.
+
+![Esperienza Console: navigazione fluida e focus immediato sul gioco](images/esp-console.jpg)
+
+#### Dashboard (`dashboard`)
+Panoramica completa con gioco in evidenza, sezioni recenti, preferiti, statistiche e scorciatoie di avvio rapido in un unico colpo d'occhio.
+
+![Esperienza Dashboard: centro di comando ricco di widget e informazioni](images/esp-dashboard.jpg)
+
+#### Vetrina (`storefront`)
+Layout elegante che valorizza le copertine dei tuoi titoli di punta, con filtri rapidi per piattaforma e dettaglio a schermo intero.
+
+![Esperienza Vetrina: copertine grandi in primo piano e catalogazione elegante](images/esp-vetrina.jpg)
+
+#### Catalogo (`catalog`)
+La vista classica per veri collezionisti: griglia densa di copertine con barra laterale fissa per accedere a tutte le console e collezioni.
+
+![Esperienza Catalogo: griglia classica completa con barra laterale](images/esp-catalogo.jpg)
 
 Il selettore mostra anteprime schematiche, non screenshot generati dal profilo: sono previste varianti distinte per **Console**, **Dashboard**, **Cinema**, **Vetrina**, **Originale**, **Catalogo** e **Scaffali**. **Originale** è il preset legacy e conserva il selettore CSS storico della vista Catalogo; resta una scelta distinta nel selettore. Le anteprime illustrano la disposizione, non garantiscono l'aspetto finale del JavaScript o CSS. Anche i temi restano selezionabili indipendentemente nella propria sezione del selettore, con la loro anteprima colore.
 
@@ -249,9 +307,26 @@ def register(gs):
 | `gs.add_store(ClasseStore)` | Aggiunge un **fornitore di libreria**, cioè uno store nuovo: sottoclasse di `pozzo.stores.base.StoreProvider`, con un metodo `fetch()` che restituisce `StoreGame` (installati o da installare, con `launch` e `install_uri`) |
 | `gs.add_source(ClasseFonte)` | Aggiunge una **fonte di metadati** per lo scraping: sottoclasse di `pozzo.sources.base.Source`, con `lookup(game)` |
 | `gs.on(evento, funzione)` | Reagisce agli eventi del server |
+| `gs.job(nome, funzione, every=secondi, run_at_start=False)` | Lavoro periodico: chiama `funzione()` ogni `every` secondi su un thread a parte (vedi sotto) |
 | `gs.cfg` | Configurazione (sola lettura) |
 | `gs.settings`, `gs.save_settings(dict)` | Impostazioni del plugin |
 | `gs.log(msg)` | Scrive nel log |
+
+#### Lavori periodici (`gs.job`)
+
+```python
+def register(gs):
+    def controlla():
+        ...  # es. scarica un feed, aggiorna una cache
+
+    gs.job("controllo-feed", controlla, every=3600, run_at_start=True)
+```
+
+- `funzione` non riceve argomenti e gira su un thread daemon: non blocca l'avvio dell'app.
+- Con `run_at_start=True` il primo giro parte subito, altrimenti dopo `every` secondi (`every` deve essere > 0).
+- Un'eccezione dentro `funzione` viene scritta nel log (`Plugin <id>, lavoro <nome>: ...`) e il lavoro continua al giro dopo.
+- I lavori si fermano alla chiusura dell'app. `gs.job` restituisce l'oggetto del lavoro: `.stop()` lo ferma prima.
+- Nell'elenco dei plugin (`GET /api/extensions`, campo `plugins`) ogni plugin riporta `load_ms` (millisecondi spesi in `register()`) e `jobs` (nome, intervallo, giri fatti, ultimo errore).
 
 ### Esempio completo
 
