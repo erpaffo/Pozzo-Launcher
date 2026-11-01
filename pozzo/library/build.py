@@ -868,3 +868,6 @@ def build(cfg, log=print, progress=None) -> dict:
         return stats
     finally:
         cache.close()
+        # le cache dei titoli (fino a 800.000 voci) servono solo durante la costruzione: si liberano a fine lavoro
+        normalize.cache_clear()
+        _store_title.cache_clear()

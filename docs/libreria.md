@@ -95,7 +95,7 @@ disattiva.
 ## Il dettaglio di un gioco
 
 Il pannello di dettaglio mostra copertina, sfondo, descrizione, sviluppatore, editore, generi, anno, giocatori,
-valutazioni (pubblico e critica), durata HowLongToBeat, peso, fonti dei dati e, se servono, i dati mancanti.
+valutazioni (pubblico e critica), peso, fonti dei dati e, se servono, i dati mancanti. Nella grafica a modale (Cinema) c'è anche la durata HowLongToBeat.
 
 ![Il dettaglio di un gioco: copertina, valutazioni, stato, collezioni e dati scaricati](images/libreria-dettaglio.jpg)
 

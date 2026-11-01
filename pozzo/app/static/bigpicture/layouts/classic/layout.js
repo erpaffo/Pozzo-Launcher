@@ -24,7 +24,12 @@
 
   function classicNav() {
     const s = cur();
-    $("#bp-nav").innerHTML = TABS.map((t, i) => `<span data-tab="${i}" class="bp-tab${s.tab === t.id ? " active" : ""}${s.navFocus === i ? " focus" : ""}">${esc(t.label)}</span>`).join("");
+    const html = (t, i) => `<span data-tab="${i}" class="bp-tab${s.tab === t.id ? " active" : ""}${s.navFocus === i ? " focus" : ""}"${t.aria ? ` aria-label="${esc(t.aria)}"` : ""}>${t.icon ? `<span class="bp-tab-ico">${t.icon}</span>` : ""}${esc(t.label)}</span>`;
+    // «Esci» sta fuori dall'area scorrevole: resta sempre visibile e raggiungibile
+    $("#bp-nav").innerHTML = TABS.map((t, i) => (t.id === "exit" ? "" : html(t, i))).join("");
+    $("#bp-exit").innerHTML = TABS.map((t, i) => (t.id === "exit" ? html(t, i) : "")).join("");
+    (document.querySelector("#bp-nav .bp-tab.focus") || document.querySelector("#bp-nav .bp-tab.active"))?.scrollIntoView({ inline: "center", block: "nearest" });
+    if (typeof updateNavFade === "function") updateNavFade();
   }
 
   /* ---- home: scaffali orizzontali */
@@ -46,20 +51,14 @@
       if (d.items.length >= 5) shelves.push({ title: d.preset.label, items: d.items.slice().sort(d.cmp).slice(0, 30),
         more: () => { store.set("bpDisc", id); push(discoverScreen("Libreria", sortTitle(games), "all", id)); } });
     }
-    const shop = shopGames(BP.lib.games);
-    if (shop.length) shelves.push({ title: "Store · da installare", sub: `${shop.length} giochi`,
-      items: shopFilter(shop, { sort: "-rating" }).slice(0, 40), more: () => push(shopScreen()) });
     for (const c of topColls) {
       const items = games.filter((g) => g.grp.colls.includes(c.idx)).sort((a, b) => (a.year || 9999) - (b.year || 9999));
       shelves.push({ title: c.name, sub: `${items.length} giochi`, items: items.slice(0, 40), more: () => push(gridScreen(c.name, items, "coll")) });
     }
-    const plats = [...BP.lib.plats.values()].filter((p) => p.id !== "windows").sort((a, b) => collator.compare(a.name, b.name));
-    const stores = BP.lib.stores.filter((s) => games.some((g) => g.store === s.id));
-    if (stores.length) shelves.push({ title: "Store", text: true, items: stores.map((s) => ({ label: s.name, key: s.id,
-      sub: `${games.filter((g) => g.store === s.id && g.installed).length} installati / ${games.filter((g) => g.store === s.id).length}`,
-      img: `/icons/store/${s.id}`,
-      ok: () => push(gridScreen(s.name, sortTitle(games.filter((g) => g.store === s.id)), "pc")) })) });
-    shelves.push({ title: "Console", text: true, items: plats.map((p) => ({ label: p.name, sub: `${p.count} giochi`, key: p.id,
+    const n = new Map();
+    for (const g of games) n.set(g.platform, (n.get(g.platform) || 0) + 1);
+    const plats = [...BP.lib.plats.values()].filter((p) => p.id !== "windows" && n.get(p.id)).sort((a, b) => collator.compare(a.name, b.name));
+    shelves.push({ title: "Console", text: true, items: plats.map((p) => ({ label: p.name, sub: `${n.get(p.id)} giochi`, key: p.id,
       img: `/icons/platform/${encodeURIComponent(p.id)}`,
       ok: () => push(gridScreen(p.name, sortTitle(games.filter((g) => g.platform === p.id)), "plat")) })) });
     if (!shelves.length || shelves.every((s) => !s.items.length)) shelves.unshift({ title: "Libreria", items: sortTitle(games).slice(0, 40) });

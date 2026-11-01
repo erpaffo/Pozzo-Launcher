@@ -12,7 +12,6 @@ import sqlite3
 import zipfile
 import xml.etree.ElementTree as ET
 from collections import defaultdict
-from functools import lru_cache
 from pathlib import Path
 
 from ..matching import normalize
@@ -159,10 +158,19 @@ class LaunchBoxDB(BulkDB):
         return n
 
     # ------------------------------------------------------------ ricerca
-    @lru_cache(maxsize=64)
+    # cache per istanza (non lru_cache sul metodo: terrebbe vivo `self` con tutti gli indici per sempre)
     def _norms(self, pid: str) -> tuple[list[str], list[int]]:
-        rows = self.con().execute("SELECT norm, id FROM games WHERE pid=?", (pid,)).fetchall()
-        return [r[0] for r in rows], [r[1] for r in rows]
+        cache = self.__dict__.setdefault("_norm_cache", {})
+        if pid not in cache:
+            rows = self.con().execute("SELECT norm, id FROM games WHERE pid=?", (pid,)).fetchall()
+            cache[pid] = ([r[0] for r in rows], [r[1] for r in rows])
+        return cache[pid]
+
+    def close(self):
+        """Chiude il database e rilascia gli indici in memoria (decine o centinaia di MB per console)."""
+        self.__dict__.pop("_idx", None)
+        self.__dict__.pop("_norm_cache", None)
+        super().close()
 
     def _index(self, pid: str) -> dict:
         """Nomi file, titoli e titoli alternativi della console in memoria: una query per console invece di tre per gioco

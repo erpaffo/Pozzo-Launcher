@@ -110,12 +110,25 @@ class _Channel:
             return b""
 
     def close(self):
-        for obj in (self._f, self._sock):
+        """Chiusura che non blocca mai: su Windows chiudere l'handle di una pipe mentre un altro thread e' in read()
+        resta appeso per sempre (e con lui la richiesta o il lavoro che chiude). Prima si annulla la lettura
+        in corso (CancelIoEx), poi si chiude in un thread a parte."""
+        if sys.platform == "win32" and self._f is not None:
             try:
-                if obj is not None:
-                    obj.close()
-            except OSError:
+                import ctypes
+                import msvcrt
+                ctypes.windll.kernel32.CancelIoEx(msvcrt.get_osfhandle(self._f.fileno()), None)
+            except (OSError, ValueError, AttributeError):
                 pass
+
+        def shut():
+            for obj in (self._f, self._sock):
+                try:
+                    if obj is not None:
+                        obj.close()
+                except OSError:
+                    pass
+        threading.Thread(target=shut, daemon=True).start()
 
 
 class DiscordPresence:

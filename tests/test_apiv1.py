@@ -12,6 +12,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -54,6 +56,14 @@ def tmp_cfg(tmp: Path, rom: Path):
     cfg.emulators = {"melonds": sys.executable}
     cfg.launch = {"gba": {"emulator": "melonds", "args": ["-c", "import time; time.sleep(1.0)", "{rom}"]}}
     return cfg
+
+
+@pytest.fixture
+def cfg(tmp: Path):
+    rom = tmp / "game.gba"
+    rom.write_bytes(b"x" * 100)
+    make_library(tmp, rom)
+    return tmp_cfg(tmp, rom)
 
 
 def test_token(tmp: Path, cfg):

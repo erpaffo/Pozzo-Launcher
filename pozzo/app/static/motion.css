@@ -1,0 +1,123 @@
+/* Movimento: token comuni (--mo-*), carattere per tema ed esperienza.
+   Solo transform/opacity; nessuna animazione di layout. Intensità: html[data-motion="off|reduced|normal"]. */
+
+:root {
+  --mo-fast: 120ms; --mo-base: 200ms; --mo-slow: 360ms;
+  --mo-ease: cubic-bezier(.2,.7,.2,1);
+  --mo-ease-out: cubic-bezier(.16,1,.3,1);
+  --mo-exp-dist: 10px; --mo-exp-stagger: 28ms;   /* per esperienza */
+  --mo-k: 1; --mo-t: 1;                          /* per tema: distanza / ritmo stagger */
+  --mo-i: 1;                                     /* intensità: normale 1, ridotta .5 */
+  --mo-dist: calc(var(--mo-exp-dist) * var(--mo-k) * var(--mo-i));
+  --mo-stagger: calc(var(--mo-exp-stagger) * var(--mo-t));
+  --mo-from-s: .97;
+  --mo-lift: -4px; --mo-hover-s: 1.03;
+  --mo-hover-shadow: 0 10px 24px rgba(0,0,0,.45);
+  --mo-glow: 0 0 0 0 transparent;
+  /* i token esistenti dell'app seguono il carattere del tema */
+  --motion-fast: var(--mo-fast); --motion-standard: var(--mo-base); --motion-ease: var(--mo-ease);
+}
+
+/* ---------- Temi ---------- */
+/* Notte blu: lento, dissolvenze morbide, bagliori */
+html[data-theme="notte-blu"] {
+  --mo-fast: 180ms; --mo-base: 320ms; --mo-slow: 560ms; --mo-ease: cubic-bezier(.3,.1,.2,1);
+  --mo-k: 1.2; --mo-t: 1.5; --mo-from-s: .985; --mo-lift: -4px; --mo-hover-s: 1.025;
+  --mo-hover-shadow: 0 14px 34px rgba(0,0,0,.5);
+  --mo-glow: 0 0 28px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+/* OLED: netto, scale minime, accenti luminosi sul nero */
+html[data-theme="oled"] {
+  --mo-fast: 90ms; --mo-base: 150ms; --mo-slow: 240ms; --mo-ease: cubic-bezier(.3,0,0,1);
+  --mo-k: .5; --mo-t: .7; --mo-from-s: .98; --mo-lift: -2px; --mo-hover-s: 1.015;
+  --mo-hover-shadow: 0 0 0 1px var(--accent);
+  --mo-glow: 0 0 20px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* Chiaro: ombre che si sollevano, transizioni leggere */
+html[data-theme="chiaro"] {
+  --mo-fast: 140ms; --mo-base: 220ms; --mo-slow: 380ms; --mo-ease: cubic-bezier(.25,.8,.3,1);
+  --mo-k: .8; --mo-from-s: .985; --mo-lift: -5px; --mo-hover-s: 1.02;
+  --mo-hover-shadow: 0 16px 28px rgba(30,40,70,.2), 0 3px 8px rgba(30,40,70,.12);
+}
+/* Retrò: a scatti */
+html[data-theme="retro"] {
+  --mo-fast: 160ms; --mo-base: 240ms; --mo-slow: 400ms; --mo-ease: steps(4, end); --mo-ease-out: steps(5, end);
+  --mo-k: .8; --mo-t: 1.6; --mo-from-s: 1; --mo-lift: -4px; --mo-hover-s: 1;
+  --mo-hover-shadow: 0 0 0 2px var(--accent), 0 0 22px var(--accent);
+}
+
+/* ---------- Esperienze ---------- */
+html[data-experience-id="cinema"] { --mo-exp-dist: 16px; --mo-exp-stagger: 36px; }
+html[data-experience-id="console"] { --mo-exp-dist: 14px; --mo-exp-stagger: 40px; }
+html[data-experience-id="storefront"] { --mo-exp-dist: 12px; --mo-exp-stagger: 30px; }
+html[data-experience-id="dashboard"] { --mo-exp-dist: 8px; --mo-exp-stagger: 20px; }
+html[data-experience-id="shelves"] { --mo-exp-dist: 12px; --mo-exp-stagger: 24px; }
+html[data-experience-id="catalog"], html[data-experience-id="original"] { --mo-exp-dist: 10px; --mo-exp-stagger: 24px; }
+
+/* ---------- Keyframes ---------- */
+@keyframes mo-rise { from { opacity: 0; transform: translateY(var(--mo-dist)) scale(var(--mo-from-s)); } to { opacity: 1; transform: none; } }
+@keyframes mo-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mo-pop { from { opacity: 0; transform: translateY(calc(var(--mo-dist) * .6)) scale(var(--mo-from-s)); } to { opacity: 1; transform: none; } }
+@keyframes mo-toast { from { opacity: 0; transform: translate(-50%, calc(var(--mo-dist) * 1.4)); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes mo-drawer { from { opacity: .6; transform: translateX(calc(var(--mo-dist) * -1.5)); } to { opacity: 1; transform: none; } }
+@keyframes mo-ring { from { opacity: .75; transform: scale(1); } to { opacity: 0; transform: scale(1.16); } }
+@keyframes mo-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .72; } }
+@keyframes mo-scan { from { transform: translateY(-140px); } to { transform: translateY(100vh); } }
+
+/* ---------- Ingresso scaglionato (classe messa da motion.js, max ~24 elementi) ---------- */
+.mo-in { animation: mo-rise var(--mo-slow) var(--mo-ease) backwards; animation-delay: calc(var(--mo-i-idx, 0) * var(--mo-stagger)); }
+
+/* ---------- Hover delle card ---------- */
+html .tile .cover { transition: transform var(--mo-base) var(--mo-ease), box-shadow var(--mo-base) var(--mo-ease); }
+html .tile:hover .cover { transform: translateY(var(--mo-lift)) scale(var(--mo-hover-s)); box-shadow: var(--mo-hover-shadow), var(--mo-glow); }
+html .tile.selected .cover { box-shadow: 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring, var(--accent)), var(--mo-glow); }
+html[data-theme="chiaro"] .tile .cover { box-shadow: 0 2px 6px rgba(30,40,70,.14); }
+html .cnx-card, html .vetrina-game, html .gs-dashboard__tile { transition-timing-function: var(--mo-ease); }
+
+/* ---------- Pannelli, finestre, toast ---------- */
+html #detail { transition: transform var(--mo-base) var(--mo-ease-out); }
+#detail.open .detail-body { animation: mo-rise var(--mo-slow) var(--mo-ease-out) backwards; animation-delay: calc(var(--mo-base) * .4); }
+dialog[open] { animation: mo-pop var(--mo-base) var(--mo-ease-out); }
+dialog[open]::backdrop { animation: mo-fade var(--mo-base) ease-out; }
+#settings-page:not([hidden]) { animation: mo-rise var(--mo-base) var(--mo-ease-out); }
+#settings-body .settings-pane:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
+#toast:not([hidden]) { animation: mo-toast var(--mo-base) var(--mo-ease-out); }
+html[data-experience-nav] #sidebar.drawer-open { animation: mo-drawer var(--mo-base) var(--mo-ease-out); }
+#drawer-scrim:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
+#lightbox:not([hidden]) { animation: mo-fade var(--mo-base) ease-out; }
+
+/* ---------- Big Picture: focus da controller ---------- */
+html .card { transition: transform var(--mo-base) var(--mo-ease); }
+html .card.focus .cv, html .bp-btn, html .bp-tab { transition: box-shadow var(--mo-base) var(--mo-ease), transform var(--mo-base) var(--mo-ease), background var(--mo-base) ease, color var(--mo-base) ease; }
+.card.focus::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; aspect-ratio: 3 / 4; border-radius: 12px;
+  border: 3px solid var(--accent); pointer-events: none; animation: mo-ring calc(var(--mo-slow) * 1.6) var(--mo-ease-out) both;
+}
+
+/* ---------- Carattere decorativo per tema (singoli elementi, mai liste) ---------- */
+html[data-theme="notte-blu"] .brand { animation: mo-breathe 7s ease-in-out infinite; }
+html[data-theme="retro"] body::before {
+  content: ""; position: fixed; left: 0; right: 0; top: 0; height: 120px; z-index: 99; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(0,229,255,.06) 50%, transparent);
+  animation: mo-scan 9s steps(48, end) infinite;
+}
+html[data-theme="retro"] #toast:not([hidden]) { animation-timing-function: steps(4, end); }
+
+/* ---------- Pausa a scheda nascosta ---------- */
+html.mo-paused *, html.mo-paused *::before, html.mo-paused *::after { animation-play-state: paused !important; }
+
+/* ---------- Ridotta / disattivata ---------- */
+html[data-motion="reduced"] { --mo-i: .5; --mo-exp-stagger: 0ms; --mo-lift: -2px; --mo-hover-s: 1; }
+html[data-motion="reduced"] .brand, html[data-motion="reduced"] body::before { animation: none; }
+html[data-motion="off"] { --mo-fast: .01ms; --mo-base: .01ms; --mo-slow: .01ms; --mo-i: 0; --mo-lift: 0px; --mo-hover-s: 1; }
+html[data-motion="off"] .brand, html[data-motion="off"] body::before, html[data-motion="off"] .mo-in,
+html[data-motion="off"] .card.focus::after { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="normal"]) { --mo-fast: .01ms; --mo-base: .01ms; --mo-slow: .01ms; --mo-i: 0; --mo-lift: 0px; --mo-hover-s: 1; }
+  html:not([data-motion="normal"]) .brand, html:not([data-motion="normal"]) body::before, html:not([data-motion="normal"]) .mo-in,
+  html:not([data-motion="normal"]) .card.focus::after,
+  html:not([data-motion="normal"]) dialog[open], html:not([data-motion="normal"]) dialog[open]::backdrop,
+  html:not([data-motion="normal"]) #toast, html:not([data-motion="normal"]) #detail .detail-body,
+  html:not([data-motion="normal"]) #settings-page, html:not([data-motion="normal"]) #settings-body .settings-pane,
+  html:not([data-motion="normal"]) #sidebar, html:not([data-motion="normal"]) #drawer-scrim { animation: none; }
+}

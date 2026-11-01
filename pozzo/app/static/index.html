@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pozzo Launcher</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M8 0l8 8-8 8-8-8z%22 fill=%22%235b8cff%22/%3E%3C/svg%3E">
+<link rel="icon" href="/m/static/icon.png">
 <link rel="stylesheet" href="/static/app.css?v={{v}}">
+<link rel="stylesheet" href="/static/motion.css?v={{v}}">
 </head>
 <body>
 <div id="app">
@@ -73,10 +74,13 @@
 
       <div class="nav-section">Altro</div>
       <a class="nav-item" data-view="apps" hidden><span class="ico">🧩</span><span class="lbl">Applicazioni</span><span class="cnt" id="cnt-apps"></span></a>
-      <a class="nav-item" data-view="missing"><span class="ico">?</span><span class="lbl">Senza dati</span><span class="cnt" id="cnt-missing"></span></a>
+      <a class="nav-item" data-view="missing"><span class="ico" data-icon="help">?</span><span class="lbl">Senza dati</span><span class="cnt" id="cnt-missing"></span></a>
       <a class="nav-item" data-view="dups"><span class="ico">⧉</span><span class="lbl">Duplicati</span><span class="cnt" id="cnt-dups"></span></a>
       <a class="nav-item" data-view="hidden"><span class="ico">⊘</span><span class="lbl">Nascosti</span><span class="cnt" id="cnt-hidden"></span></a>
     </nav>
+    <div class="side-foot">
+      <button class="side-link" id="feedback-btn" title="Suggerisci un'idea o segnala un bug">💡 Idee / bug</button>
+    </div>
   </aside>
 
   <main id="main">
@@ -86,32 +90,45 @@
         <span id="view-count" class="muted"></span>
         <span id="view-actions"></span>
       </div>
+      <div class="tb-actions" role="group" aria-label="Azioni">
+        <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console">⟳ Nuovi giochi</button>
+        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso">🎲 A caso</button>
+        <button class="btn accent" id="bp-btn" title="Modalità a schermo intero per il controller">🎮 Big Picture</button>
+        <button class="btn" id="settings-btn" title="Impostazioni">⚙ Impostazioni</button>
+      </div>
       <div class="tools">
-        <input id="search" type="search" placeholder="Cerca titolo, sviluppatore…  ( / )" autocomplete="off">
-        <select id="disc-preset" title="Scopri: filtri su valutazioni e voti"></select>
-        <select id="disc-genre" title="Genere"></select>
-        <select id="disc-decade" title="Decennio"></select>
-        <select id="sort" title="Ordinamento">
-          <option value="title">Titolo A–Z</option>
-          <option value="year">Anno ↑</option>
-          <option value="-year">Anno ↓</option>
-          <option value="platform">Console</option>
-          <option value="-last">Ultimi giocati</option>
-          <option value="-playtime">Tempo di gioco</option>
-          <option value="-rating">Valutazione</option>
-          <option value="-size">Dimensione ↓</option>
-          <option value="size">Dimensione ↑</option>
-          <option value="hltb">Durata ↑ (HowLongToBeat)</option>
-          <option value="-hltb">Durata ↓</option>
-          <option value="store">Store</option>
-        </select>
-        <select id="group" title="Raggruppa">
-          <option value="">Nessun gruppo</option>
-          <option value="platform">Per console</option>
-          <option value="year">Per anno</option>
-          <option value="letter">Per lettera</option>
-        </select>
-        <span id="shop-tools" hidden>
+        <input id="search" type="search" placeholder="Cerca titolo, sviluppatore…  ( / )" autocomplete="off" aria-label="Cerca">
+        <div class="tb-group" role="group" aria-label="Filtri">
+          <span class="tb-lbl">Filtra</span>
+          <select id="disc-preset" title="Scopri: filtri su valutazioni e voti" aria-label="Scopri"></select>
+          <select id="disc-genre" title="Genere" aria-label="Genere"></select>
+          <select id="disc-decade" title="Decennio" aria-label="Decennio"></select>
+          <button type="button" class="tb-reset" id="disc-reset" title="Azzera i filtri Scopri" hidden>✕ Azzera</button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Ordinamento">
+          <span class="tb-lbl">Ordina</span>
+          <select id="sort" title="Ordinamento" aria-label="Ordina per">
+            <option value="title">Titolo A–Z</option>
+            <option value="year">Anno ↑</option>
+            <option value="-year">Anno ↓</option>
+            <option value="platform">Console</option>
+            <option value="-last">Ultimi giocati</option>
+            <option value="-playtime">Tempo di gioco</option>
+            <option value="-rating">Valutazione</option>
+            <option value="-size">Dimensione ↓</option>
+            <option value="size">Dimensione ↑</option>
+            <option value="hltb">Durata ↑ (HowLongToBeat)</option>
+            <option value="-hltb">Durata ↓</option>
+            <option value="store">Store</option>
+          </select>
+          <select id="group" title="Raggruppa" aria-label="Raggruppa">
+            <option value="">Nessun gruppo</option>
+            <option value="platform">Per console</option>
+            <option value="year">Per anno</option>
+            <option value="letter">Per lettera</option>
+          </select>
+        </div>
+        <span id="shop-tools" class="tb-group" hidden>
           <select id="shop-src" title="Store"></select>
           <select id="shop-plat" title="Piattaforma"></select>
           <select id="shop-size" title="Dimensione"></select>
@@ -122,12 +139,7 @@
           <option value="notinstalled">Solo da scaricare / installare</option>
         </select>
         <label class="chk" title="Mostra una sola versione (la tua lingua/regione) per ogni gioco"><input type="checkbox" id="one-version" checked> Nascondi duplicati</label>
-        <input id="zoom" type="range" min="120" max="280" step="10" value="170" title="Dimensione copertine">
-        <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console">⟳ Nuovi giochi</button>
-        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)">🎲</button>
-        <button class="btn" id="bp-btn" title="Modalità a schermo intero per il controller">🎮 Big Picture</button>
-        <button class="btn" id="feedback-btn" title="Suggerisci un'idea o segnala un bug">💡 Idee / bug</button>
-        <button class="icon-btn big" id="settings-btn" title="Impostazioni">⚙</button>
+        <input id="zoom" type="range" min="120" max="280" step="10" value="170" title="Dimensione copertine" aria-label="Dimensione copertine">
       </div>
     </header>
     <div id="coll-banner" hidden></div>
@@ -332,9 +344,13 @@
   </div>
 </div>
 <script src="/static/core.js?v={{v}}"></script>
+<script src="/static/icons.js?v={{v}}"></script>
 <script src="/static/reco.js"></script>
 <script src="/static/setup.js"></script>
 <script src="/static/app.js?v={{v}}"></script>
 <script src="/static/menubar.js?v={{v}}"></script>
+<script src="/static/shortcuts.js?v={{v}}"></script>
+<script src="/static/media.js?v={{v}}"></script>
+<script src="/static/motion.js?v={{v}}"></script>
 </body>
 </html>

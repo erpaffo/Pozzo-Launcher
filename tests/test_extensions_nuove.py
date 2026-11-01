@@ -271,6 +271,7 @@ def test_limite_tempo(t):
     assert s["attivo"] and s["giorno_ore"] == 0.0001
     sent = []
     import pozzo.notify as N
+    real_send = N.send
     N.send = lambda cfg_, title, body="": sent.append((title, body)) or True
     gs.events["game_started"][0]({"title": "Zelda"})
     time.sleep(0.6)
@@ -285,6 +286,7 @@ def test_limite_tempo(t):
     gs.events["game_started"][0]({"title": "Zelda"})
     time.sleep(0.3)
     assert not sent and gs.routes["stato"]()["in_corso"] is False
+    N.send = real_send  # non lasciare il finto invio agli altri test
     u.close()
     print("ok  limite-tempo: periodi, mezzanotte, partita in corso, avvisi, validazione")
 

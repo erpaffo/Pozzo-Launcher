@@ -17,3 +17,29 @@
   › <i>New Application</i> › nome «Pozzo Launcher» › <i>OAuth2</i> (o «General Information») e copia l'<i>Application ID</i>.
   Non serve caricare immagini né aggiungere bot.</p>
 <p class="small" id="dc-state"></p>
+
+
+<h3>Musica e chiamate</h3>
+<p class="muted small">Controlla Spotify o la voce di Discord anche da Big Picture. Le credenziali restano nelle impostazioni locali e i token non vengono mostrati alla pagina.</p>
+<div class="row wrap">
+  <label class="lbl-field grow">Client ID Spotify
+    <input class="field" id="media-spotify-id" autocomplete="off" placeholder="Client ID dell'app Spotify">
+  </label>
+  <button class="btn" id="media-spotify-save" type="button">Salva ID</button>
+  <button class="btn primary" id="media-spotify-login" type="button">Accedi a Spotify</button>
+  <button class="btn" id="media-spotify-logout" type="button">Disconnetti</button>
+</div>
+<p class="muted small">Crea un'app su <a href="#" data-open="https://developer.spotify.com/dashboard">developer.spotify.com/dashboard</a> e aggiungi come Redirect URI <code id="media-spotify-redirect">http://127.0.0.1:8765/api/spotify/callback</code> (usa la porta configurata in Pozzo). Il controllo della riproduzione richiede Spotify Premium.</p>
+<p class="small" id="media-spotify-state" role="status"></p>
+<div class="row wrap">
+  <label class="lbl-field">Client ID Discord
+    <input class="field" id="media-discord-id" autocomplete="off" placeholder="ID applicazione Discord">
+  </label>
+  <label class="lbl-field grow">Client Secret Discord
+    <input class="field" id="media-discord-secret" type="password" autocomplete="new-password" placeholder="Lascia vuoto per mantenere quello salvato">
+  </label>
+  <button class="btn" id="media-discord-save" type="button">Salva</button>
+  <button class="btn primary" id="media-discord-test" type="button">Testa connessione</button>
+</div>
+<p class="muted small">Il controllo vocale richiede Discord aperto e l'applicazione autorizzata. Gli scope RPC vocali sono privilegiati: Discord li consente solo all'owner o ai tester dell'app personale.</p>
+<p class="small" id="media-discord-state" role="status"></p>

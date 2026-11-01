@@ -15,6 +15,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -84,7 +87,7 @@ def test_experience_ui():
     assert 'aria-hidden="true"' in app
     assert "const usesDrawer" in app and "isShelves" not in app
     assert 'GS.experience.id === "original" ? "catalog" : GS.experience.id' in core
-    assert 'body.experience-home-mode #toolbar .tools > #search' in css
+    assert 'body.experience-home-mode #toolbar .tools > #search' not in css  # la ricerca resta visibile nella home
     for experience in ("console", "dashboard", "cinema", "storefront"):
         assert f'data-experience-preview="{experience}"' in css
     assert "console: []," in app and '.experience-preview[data-experience-preview="console"] .experience-preview__navigation { display: none; }' in css
@@ -121,6 +124,18 @@ def test_experience_hooks_and_detail_modes():
     assert '#detail[data-presentation="modal"].open' in (root / "app.css").read_text(encoding="utf-8")
     assert 'details = ["modal", "page", "panel"]' in core
     print("ok  home/card/onFocus hook callsites and panel/page/modal detail behavior")
+
+
+@pytest.fixture
+def client(tmp_path):
+    rom = tmp_path / "game.gba"
+    rom.write_bytes(b"x" * 100)
+    make_library(tmp_path, rom)
+    cfg = config.Config(cache=tmp_path, output=tmp_path / "out")
+    cfg.config_path = tmp_path / "config.toml"
+    cfg.app["experience"] = "catalog"
+    with TestClient(create_app(cfg)) as c:
+        yield c
 
 
 def test_experience_discovery(client):
@@ -241,7 +256,7 @@ def main():
                 def dead(*a, **k):
                     calls.append(a[0])
                     raise httpx.ConnectTimeout("x")
-                real_get, httpx.get = httpx.get, dead
+                real_get, httpx.HTTPTransport.handle_request = httpx.HTTPTransport.handle_request, dead
                 try:
                     u = "https://cdn.allkeyshop.com/images/a.webp"
                     assert c2.get("/remote-img", params={"u": u}).status_code == 404
@@ -249,7 +264,7 @@ def main():
                     assert c2.get("/remote-img", params={"u": u.replace("a.webp", "b.webp")}).status_code == 404
                     assert len(calls) == 1 and time.time() - t0 < 1, calls
                 finally:
-                    httpx.get = real_get
+                    httpx.HTTPTransport.handle_request = real_get
                 print("ok  host remoto irraggiungibile saltato senza attese")
 
                 # nota e voto personali: a livello di gioco, voto fuori scala rifiutato
@@ -1054,8 +1069,80 @@ def test_feedback_button():
     css = (root / "app.css").read_text(encoding="utf-8")
     assert 'id="feedback-btn"' in html and "Idee / bug" in html
     assert 'https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose' in js
-    assert "not(#feedback-btn)" in css
-    print("ok  pulsante idee/bug sempre visibile, anche nella vista Per te")
+    foot = html[html.index('class="side-foot"'):]
+    assert foot.index('id="feedback-btn"') < foot.index("</aside>"), "Idee / bug sta nel piede fisso della barra laterale"
+    tb = html[html.index('class="tb-actions"'):html.index("</header>", html.index('class="tb-actions"'))]
+    assert all(i in tb.split('class="tools"')[0] for i in ('id="settings-btn"', 'id="scan-btn"', 'id="random-btn"', 'id="bp-btn"')), "azioni nella prima riga"
+    assert "body.foryou-mode .tools { display: none" in css and "#toolbar .tools > #search" not in css
+    print("ok  azioni in alto a destra, Impostazioni fisse, Idee/bug nel piede della barra laterale")
+
+
+def test_hltb_on_demand(client, monkeypatch):
+    from pozzo import hltb
+
+    rubino = next(r for r in client.get("/api/library?part=owned").json()["games"]["rows"] if r[1] == "Pokemon - Versione Rubino")
+    calls = []
+
+    class FakeClient:
+        def search(self, title):
+            return []
+
+        def close(self):
+            pass
+
+    def fake_lookup(title, platform, search=None):
+        calls.append(title)
+        if len(calls) == 2:
+            raise hltb.RateLimited(15)
+        return {"main": 12.0, "extra": 20.0, "complete": 40.0, "url": "https://howlongtobeat.com/game/1", "id": 1, "name": title}
+
+    monkeypatch.setattr(hltb, "Client", FakeClient)
+    monkeypatch.setattr(hltb, "lookup", fake_lookup)
+    url = f"/api/game/{rubino[0]}/hltb"
+    first = client.get(url).json()
+    assert first["main"] == 12.0 and first["complete"] == 40.0, first
+    assert client.get(url).json()["main"] == 12.0 and len(calls) == 1  # seconda volta dalla cache, niente ricerca
+    # un errore non viene salvato: il gioco successivo (senza cache) riprova
+    smeraldo = next(r for r in client.get("/api/library?part=owned").json()["games"]["rows"] if r[1] == "Pokemon - Versione Smeraldo")
+    assert client.get(f"/api/game/{smeraldo[0]}/hltb").json() == {"error": "HowLongToBeat: troppe richieste (429), attesa 15 s"}
+    assert client.get(f"/api/game/{smeraldo[0]}/hltb").json()["main"] == 12.0  # seconda chiamata: ricerca riprovata
+    js = (Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'GS.experience.detail === "modal" && !online && !d.hltb' in js and "/hltb`" in js
+    print("ok  durata HowLongToBeat al volo: cache, errore non salvato, solo nel modale")
+
+
+def test_window_no_flash():
+    """Avvio: la finestra nativa si mostra solo con tema e disposizione gia' applicati, del colore del tema."""
+    root = Path(__file__).resolve().parent.parent / "pozzo" / "app"
+    server = (root / "server.py").read_text(encoding="utf-8")
+    core = (root / "static" / "core.js").read_text(encoding="utf-8")
+    assert "def window_ready(self, color):" in server and "shown.set()" in server
+    assert 'hidden=sys.platform == "win32"' in server and "background_color=bg" in server
+    assert "set_titlebar" not in server and "set_titlebar" not in core
+    assert 'l.addEventListener("load", done' in core and ")).then(showWindow)" in core
+    # il colore di sfondo si legge dal tema attivo prima di creare la finestra
+    from pozzo.app import server as SRV
+    if sys.platform == "win32":  # accetta '#rgb', '#rrggbb' e 'rgb(...)'; un colore ignoto resta non applicato
+        assert SRV.window_titlebar(0, "rgb(26, 27, 38)")["color"] is False
+        with pytest.raises(ValueError):
+            SRV.window_titlebar(0, "var(--bg)")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        tmp = Path(t)
+        (tmp / "themes" / "prova").mkdir(parents=True)
+        (tmp / "themes" / "prova" / "theme.json").write_text('{"desktop": "a.css"}', encoding="utf-8")
+        (tmp / "themes" / "prova" / "a.css").write_text(":root{--bg:#f4f6fa}", encoding="utf-8")
+        cfg = SimpleNamespace(app={"theme": "prova"}, config_path=tmp / "config.toml")
+        assert SRV._theme_bg(cfg) == "#f4f6fa", SRV._theme_bg(cfg)
+        # '#000' (tema OLED) e '#rrggbbaa': pywebview vuole sempre #rrggbb, altrimenti l'avvio si rompe
+        for css, want in ((":root{--bg:#000}", "#000000"), (":root{--bg:#1a1b26ff}", "#1a1b26"),
+                          (":root{--bg:#abc}", "#aabbcc")):
+            (tmp / "themes" / "prova" / "a.css").write_text(css, encoding="utf-8")
+            assert SRV._theme_bg(cfg) == want, (css, SRV._theme_bg(cfg))
+        (tmp / "themes" / "prova" / "a.css").write_text(":root{--bg:rgb(26, 27, 38)}", encoding="utf-8")
+        assert SRV._theme_bg(cfg) == "#111318"  # non esadecimale: si usa il colore predefinito
+        cfg.app["theme"] = "default"
+        assert SRV._theme_bg(cfg) == "#111318"
+    print("ok  finestra mostrata solo a tema applicato, con titolo, bordo e sfondo del tema")
 
 
 if __name__ == "__main__":
@@ -1076,3 +1163,4 @@ if __name__ == "__main__":
     test_ludusavi_manifest()
     test_mark_started()
     test_stream_optimize()
+    test_window_no_flash()

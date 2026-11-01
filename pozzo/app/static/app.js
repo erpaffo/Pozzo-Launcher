@@ -94,9 +94,31 @@ const platName = (id) => S.plats.get(id)?.name || id;
 const APP_GENRE = "Applicazione";
 const isApp = (g) => g.store === "manual" && String(g.genres || "").split(", ").includes(APP_GENRE);
 
+// Giochi degli store (non posseduti) che appartengono a una collezione, per TITOLO: stesso titolo di un membro
+// oppure titolo che inizia col nome della collezione (stessa euristica di build.compute_collections).
+// shortcut: solo prefisso/titolo esatto (niente dati franchise per le voci online), da affinare se servono piu' match.
+function collStoreIds(c) {
+  if (S.collStoreFor !== S.shop) { S.collStoreFor = S.shop; S.collStore = new Map(); } // cache invalidata a ogni libraryChanged
+  let ids = S.collStore.get(c.idx);
+  if (!ids) {
+    const name = fold(c.name), titles = new Set();
+    for (const g of S.games) if (g.grp.colls.includes(c.idx)) titles.add(fold(g.title));
+    ids = new Set();
+    const seen = new Set();
+    for (const g of S.shop) {
+      if (g.grp.colls.includes(c.idx) || g.content === "dlc" || g.content === "extra" || seen.has(g.gi)) continue;
+      const t = fold(g.title);
+      if (titles.has(t) || (name.length >= 4 && (t === name || t.startsWith(name + " ")))) { ids.add(g.id); seen.add(g.gi); }
+    }
+    S.collStore.set(c.idx, ids);
+  }
+  return ids;
+}
+
 function inView(g, v) {
   const grp = g.grp;
   if (v.type === "shop") return S.shopIds.has(g.id);
+  if (v.type === "collection" && g.store === "online") { const c = S.collBySlug.get(v.id); return !!c && collStoreIds(c).has(g.id); }
   if (g.store === "online" && v.type !== "platform") return false;
   if (v.type === "dups") return g.id !== grp.primary && !grp.hidden;
   if (S.oneVersion && g.id !== grp.primary && !(v.type === "store" && v.id !== "all")) return false;
@@ -110,7 +132,7 @@ function inView(g, v) {
     case "smart": { const sc = S.smart.find((x) => x.id === v.id); return !!sc && g.id === grp.primary && smartMatch(g, sc.rules); }
     case "platform": if (g.platform !== v.id) return false; break;
     case "store": if (g.platform !== "windows" || (v.id !== "all" && g.store !== v.id)) return false; break;
-    case "collection": { const c = S.collBySlug.get(v.id); return !!c && grp.colls.includes(c.idx); }
+    case "collection": { const c = S.collBySlug.get(v.id); return !!c && (grp.colls.includes(c.idx) || (S.shopIds.has(g.id) && collStoreIds(c).has(g.id))); }
     case "missing": return !g.found;
     case "hidden": return !!grp.hidden;
     case "all": if (S.allLocal && g.store && !g.installed) return false; break; // le ROM sono sempre sul disco
@@ -152,8 +174,9 @@ function computeItems() {
     it = it.filter((g) => toks.every((t) => g.q.includes(t)));
   }
   it.sort(d.cmp && S.view.type !== "shop" ? d.cmp : SORTS[S.sort] || SORTS.title);
-  $("#sort").disabled = !!d.cmp;
-  $("#sort").title = d.cmp ? "Ordine deciso dal filtro Scopri" : "Ordinamento";
+  const byDisc = !!d.cmp && S.view.type !== "shop";
+  $("#sort").disabled = byDisc;
+  $("#sort").title = byDisc ? "Ordine deciso dal filtro Scopri" : "Ordinamento";
   S.items = it;
 }
 
@@ -593,6 +616,7 @@ function renderDiscTools() {
   $("#disc-genre").innerHTML = opt("", "Tutti i generi", f.genre) + genreList(S.games).map((x) => opt(x.id, x.label, f.genre)).join("");
   $("#disc-decade").innerHTML = opt("", "Tutti gli anni", f.decade) + decadeList(S.games).map((d) => opt(d, `Anni ${String(d).slice(2)} (${d})`, f.decade)).join("");
   for (const k of ["preset", "genre", "decade"]) $(`#disc-${k}`).classList.toggle("on", !!f[k]);
+  $("#disc-reset").hidden = !(f.preset || f.genre || f.decade);
 }
 
 function renderShopTools() {
@@ -666,6 +690,7 @@ function setView(v) {
   if (v.type === "home" && typeof GS.experience?.home !== "function") v = { type: "all" };
   const wasHome = S.view.type === "home";
   S.view = v;
+  setDrawer(false, false);
   store.set("view", v);
   GS.emit("viewChanged", v);
   document.body.classList.toggle("experience-home-mode", v.type === "home");
@@ -716,7 +741,10 @@ function setView(v) {
   pv.hidden = true;
   const def = { recent: "-last", collection: "year", shop: "title" }[v.type];
   setTimeout(renderCollBanner, 0);
-  if (def) { S.sort = def; $("#sort").value = def; } else { S.sort = store.get("sort", "title"); $("#sort").value = S.sort; }
+  // l'ordine scelto dall'utente vale per tipo di vista; il default forzato (recenti, collezione, store) solo finché non sceglie
+  S.sort = store.get("sorts", {})[v.type] || def || store.get("sort", "title");
+  if (![...$("#sort").options].some((o) => o.value === S.sort)) S.sort = def || "title";
+  $("#sort").value = S.sort;
   markActive();
   refreshGrid();
 }
@@ -1054,10 +1082,7 @@ async function openDetail(id) {
     <div class="d-mine"><span class="muted small">Il mio voto</span><span class="d-stars">${[1, 2, 3, 4, 5].map((n) =>
       `<button class="star${n <= (u.my_rating || 0) ? " on" : ""}" data-myrate="${n}" title="${n}/5">★</button>`).join("")}</span></div>
     <textarea class="field d-note" id="d-note" rows="2" placeholder="Note personali (trucchi, a che punto sei, con chi giocarlo…)">${esc(u.note || "")}</textarea>
-    ${d.hltb ? `<div class="d-hltb" title="Tempi medi dei giocatori su HowLongToBeat">
-      ${[["Storia", d.hltb.main], ["Storia + extra", d.hltb.extra], ["Completista", d.hltb.complete]].filter(([, v]) => v)
-        .map(([k, v]) => `<div><span>${k}</span><b>${fmtHours(v)}</b></div>`).join("")}
-      ${d.hltb.url ? `<a href="#" data-open="${esc(d.hltb.url)}" class="muted small">HowLongToBeat ↗</a>` : ""}</div>` : ""}
+    ${GS.experience.detail === "modal" && !online ? `<div class="d-hltb" id="d-hltb" title="Tempi medi dei giocatori su HowLongToBeat">${hltbBlock(d.hltb)}</div>` : ""}
     <div class="d-h">Collezioni</div>
     <div class="chips">${d.collections.map((c) => `<span class="chip" data-slug="${esc(c.slug)}">${esc(c.name)}<button class="x" title="Togli da questa collezione">✕</button></span>`).join("")}
       <span class="chip add" id="d-add-coll">＋ Aggiungi</span></div>
@@ -1084,7 +1109,29 @@ async function openDetail(id) {
   if (online || storePages.length) loadGameLinks(d);
   if (d.platform === "switch") loadSwitchContents(d);
   if (!pc) loadRA(d);
+  if (GS.experience.detail === "modal" && !online && !d.hltb) loadHltb(d);
   GS.emit("gameOpened", d);
+}
+
+/* ---- HowLongToBeat: tessere con le ore; null = ancora in cerca, {} = nessun dato */
+function hltbBlock(h) {
+  if (!h) return `<span class="muted small d-hltb__state">Cerco la durata…</span>`;
+  const rows = [["Storia", h.main], ["Storia + extra", h.extra], ["Completista", h.complete]].filter(([, v]) => v);
+  if (!rows.length) return `<span class="muted small d-hltb__state">Durata non disponibile</span>`;
+  const max = Math.max(...rows.map(([, v]) => v));
+  return rows.map(([k, v]) => `<div class="d-hltb__tile"><span>${k}</span><b>${fmtHours(v)}</b>
+      <i style="width:${Math.round(v / max * 100)}%"></i></div>`).join("")
+    + (h.url ? `<a href="#" data-open="${esc(h.url)}" class="muted small">HowLongToBeat ↗</a>` : "");
+}
+
+async function loadHltb(d) {
+  let h;
+  try { h = await api(`/api/game/${d.id}/hltb`); } catch { h = { error: true }; }
+  if (S.detail !== d) return;
+  const box = $("#d-hltb");
+  if (!box) return;
+  if (h.error) return box.remove();
+  box.innerHTML = hltbBlock(h);
 }
 
 /* ---- RetroAchievements: obiettivi sbloccati (solo se l'account e' collegato e la console e' supportata) */
@@ -1738,7 +1785,7 @@ function freeBadge(d) {
   $("#cnt-free").textContent = d.new ? `🆕 ${d.new}` : todo || "";
 }
 const FREE_KIND = { "Free to keep": "Da tenere", "Free with Prime": "Con Prime", "Free with PS+": "Con PS Plus", Gamepass: "Game Pass",
-  "Free DLC": "DLC gratis", "Free weekend": "Weekend gratis", "Free to play": "Free to play", "In arrivo": "In arrivo" };
+  "Free DLC": "DLC gratis", "Free weekend": "Weekend gratis", "Free to play": "Free to play", "Play for free": "Gioca gratis", "In arrivo": "In arrivo" };
 
 /* ---- pagina: port e app PC (port, giochi ed emulatori dal catalogo di Quiver Launcher) */
 const PORTS_F = { console: store.get("portsConsole", ""), type: store.get("portsType", ""), mine: "", q: "", open: null };
@@ -3368,6 +3415,7 @@ function showTab(tab) {
   const page = $("#settings-page");
   page.hidden = false;
   document.body.classList.add("settings-open");
+  setDrawer(false, false);
   SET.tab = id;
   $("#settings-search").value = "";
   $("#settings-results").hidden = true;
@@ -3977,6 +4025,7 @@ async function startScan() {
 async function loadEmu() {
   try { SET.emu = await api("/api/emulators"); } catch (e) { return toast(e.message, true); }
   renderEmu(SET.emu);
+  renderEmuInstall();
   api("/api/app/launch").then((l) => {
     $("#ln-before").value = l.before || ""; $("#ln-after").value = l.after || ""; $("#ln-close").checked = !!l.close_launcher;
   }).catch(() => {});
@@ -4019,6 +4068,32 @@ function renderEmu(d, draft) {
         + `<td><input class="field emu-core" value="${esc(dp.core)}" placeholder="${esc(p.default_core)}"></td>`
         + `<td><input class="field emu-args" value="${esc(dp.args)}" placeholder="${esc(p.default_args)}"></td><td>${status}</td></tr>`;
     }).join("") + `</table>`;
+}
+
+async function renderEmuInstall() {
+  let d;
+  try { d = await api("/api/emulators/catalog"); } catch (e) { return toast(e.message, true); }
+  const cores = d.cores.length ? `<div class="row"><span class="muted small grow">Core RetroArch che mancano alle console della libreria: ${esc(d.cores.join(", "))}</span>`
+    + `<button class="btn" data-emu-cores ${d.retroarch ? "" : "disabled title=\"Installa prima RetroArch\""}>⬇ Scarica i core</button></div>` : "";
+  $("#emu-inst").innerHTML = `<table class="emu"><tr><th style="width:130px">Emulatore</th><th>Console</th><th style="width:120px">Installato</th><th style="width:120px"></th></tr>`
+    + d.items.map((x) => `<tr><td><a href="#" data-open="${esc(x.home)}">${esc(x.id)} ↗</a><div class="muted small">${esc(x.repo)}</div></td>`
+      + `<td class="small">${esc(x.consoles.join(", ") || "—")}</td><td class="small">${x.version ? esc(x.version) : x.configured ? "<span class=\"muted\">già impostato</span>" : "—"}</td>`
+      + `<td><button class="btn" data-emu-inst="${esc(x.id)}">${x.version ? "↻ Aggiorna" : "⬇ Installa"}</button></td></tr>`).join("")
+    + `</table>${cores}<p class="muted small">Cartella predefinita: ${esc(d.dir)}</p>`;
+}
+
+async function followEmuJob() {
+  let j;
+  do {
+    try { j = await api("/api/emulators/job"); } catch { return; }
+    const pct = j.total ? Math.round((j.done / j.total) * 100) : 0;
+    $("#emu-inst-job").innerHTML = `<p class="small">${j.status === "running" ? `⏳ ${j.total ? `${pct}% · ${fmtSize(j.done)} di ${fmtSize(j.total)}` : j.done ? fmtSize(j.done) : ""}` : ""}</p>
+      <pre class="log">${esc(j.log.slice(-6).join("\n"))}</pre>`;
+    if (j.status === "running") await new Promise((r) => setTimeout(r, 1000));
+  } while (j.status === "running");
+  if (j.status === "error") toast(j.log[j.log.length - 1] || "Installazione non riuscita", true);
+  else toast(j.log[j.log.length - 1] || "Fatto");
+  loadEmu();
 }
 
 async function saveEmu(body) {
@@ -4253,16 +4328,22 @@ function bind() {
   let st = 0;
   $("#search").addEventListener("input", (e) => {
     clearTimeout(st);
-    st = setTimeout(() => { S.search = e.target.value.trim(); refreshGrid(); }, 120);
+    st = setTimeout(() => {
+      S.search = e.target.value.trim();
+      // dalla home di un tema o da una vista senza griglia la ricerca porta ai risultati
+      if (S.search && (S.view.type === "home" || document.body.classList.contains("foryou-mode"))) return setView({ type: "all" });
+      refreshGrid();
+    }, 120);
   });
   $("#sort").value = S.sort;
   for (const k of ["preset", "genre", "decade"]) {
-    $(`#disc-${k}`).onchange = (e) => { S.disc[k] = e.target.value; store.set("disc", S.disc); e.target.classList.toggle("on", !!e.target.value); refreshGrid(); };
+    $(`#disc-${k}`).onchange = (e) => { S.disc[k] = e.target.value; store.set("disc", S.disc); e.target.classList.toggle("on", !!e.target.value); $("#disc-reset").hidden = !(S.disc.preset || S.disc.genre || S.disc.decade); refreshGrid(); };
   }
   for (const k of ["src", "plat", "size"]) {
     $(`#shop-${k}`).onchange = (e) => { S.shopF[k] = e.target.value; store.set("shopF", S.shopF); refreshGrid(); };
   }
-  $("#sort").onchange = (e) => { S.sort = e.target.value; store.set("sort", S.sort); refreshGrid(); };
+  $("#disc-reset").onclick = () => { S.disc.preset = S.disc.genre = S.disc.decade = ""; store.set("disc", S.disc); renderDiscTools(); refreshGrid(); };
+  $("#sort").onchange = (e) => { S.sort = e.target.value; store.set("sorts", { ...store.get("sorts", {}), [S.view.type]: S.sort }); refreshGrid(); };
   $("#group").value = S.group;
   $("#group").onchange = (e) => { S.group = e.target.value; store.set("group", S.group); refreshGrid(); };
   $("#one-version").checked = S.oneVersion;
@@ -4788,6 +4869,17 @@ function bind() {
       toast(n ? `Trovati e salvati: ${Object.keys(d.found).join(", ")}` : "Nessun emulatore conosciuto in questa cartella", !n);
     } catch (err) { toast(err.message, true); }
   };
+  $("#emu-inst").addEventListener("click", async (e) => {
+    const o = e.target.closest("[data-open]");
+    if (o) { e.preventDefault(); api("/api/open", { body: { url: o.dataset.open } }); return; }
+    const b = e.target.closest("[data-emu-inst], [data-emu-cores]");
+    if (!b) return;
+    try {
+      if (b.dataset.emuInst) await api("/api/emulators/install", { body: { emu: b.dataset.emuInst, folder: $("#emu-folder").value.trim() } });
+      else await api("/api/emulators/cores", { body: {} });
+    } catch (err) { return toast(err.message, true); }
+    followEmuJob();
+  });
   $("#emu-add").onclick = async (e) => {
     const name = await askText(e.currentTarget, "Nome dell'emulatore, es. mgba");
     if (!name) return;

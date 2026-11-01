@@ -49,8 +49,22 @@ const TEXTS = [
 ];
 
 
+/** Big Picture serve solo a giocare: restano ROM presenti e giochi PC installati (niente store, cataloghi o «da installare»). */
+const playable = (g) => (!g.store || g.installed) && g.store !== "online";
+
+/** Toglie dalla libreria tutto ciò che non si può avviare; se il gioco principale di un gruppo cade, ne sceglie uno avviabile. */
+function keepPlayable(lib) {
+  lib.games = lib.games.filter(playable);
+  const first = new Map();
+  for (const g of lib.games) if (!first.has(g.gi) || g.id === g.grp.primary) first.set(g.gi, g.id);
+  for (const [gi, id] of first) lib.groups[gi].primary = id;
+  lib.byId = new Map(lib.games.map((g) => [g.id, g]));
+  return lib;
+}
+const loadLibrary = async () => keepPlayable(decodeLibrary(await api("/api/library?part=owned")));
+
 function visibleGames() {
-  return BP.lib.games.filter((g) => g.id === g.grp.primary && !g.grp.hidden && g.store !== "online");
+  return BP.lib.games.filter((g) => g.id === g.grp.primary && !g.grp.hidden && playable(g));
 }
 
 
@@ -97,30 +111,30 @@ const TABS = [
   { id: "home", label: "Home", open: () => { BP.stack = [homeScreen()]; show(); } },
   { id: "foryou", label: "Per te", open: () => push(forYouScreen()) },
   { id: "all", label: "Libreria", open: () => push(discoverScreen("Libreria", sortTitle(visibleGames()), "all")) },
-  { id: "local", label: "Sul PC", open: () => push(localScreen()) },
-  { id: "pc", label: "PC", open: () => push(pcScreen()) },
-  { id: "shop", label: "Store", open: () => push(shopScreen()) },
   { id: "plat", label: "Console", open: () => push(platformsScreen()) },
   { id: "coll", label: "Collezioni", open: () => push(collectionsScreen()) },
-  { id: "free", label: "Gratis", open: () => push(freeScreen()) },
-  { id: "fav", label: "Preferiti", open: () => push(gridScreen("Preferiti", sortTitle(visibleGames().filter((g) => g.grp.favorite)))) },
+  { id: "fav", label: "Preferiti", open: () => push(gridScreen("Preferiti", sortTitle(visibleGames().filter((g) => g.grp.favorite)), "fav")) },
   { id: "search", label: "Cerca", open: () => push(searchScreen()) },
   { id: "look", label: "Aspetto", open: () => push(lookScreen()) },
+  { id: "media", label: "Musica", aria: "Musica e chiamate", icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>', open: () => window.PozzoMedia?.toggle() },
   { id: "exit", label: "Esci", open: () => exitBigPicture() },
 ];
+const MEDIA_TAB = TABS.findIndex((t) => t.id === "media");
+// alla chiusura del pannello il focus torna sulla voce «Musica» della barra
+window.addEventListener("pozzo-media-close", () => { const s = cur(); if (s && "navFocus" in s) { s.navFocus = MEDIA_TAB; renderNav(); } });
 
 /** Apre una scheda del menu' in alto (le schede non si accumulano: Home + scheda). */
 function openTab(i) {
   const t = TABS[i];
   if (!t) return;
-  if (t.id === "exit") { t.open(); return; }
+  if (t.id === "exit" || t.id === "media") { t.open(); return; }
   BP.stack = [homeScreen()];
   if (t.id === "home") show(); else t.open();
 }
 
 /** L1/R1 (LB/RB), Q/E, Tab: scheda precedente/successiva ("Esci" non si apre scorrendo). */
 function stepTab(d) {
-  const ids = TABS.map((_, i) => i).filter((i) => TABS[i].id !== "exit");
+  const ids = TABS.map((_, i) => i).filter((i) => TABS[i].id !== "exit" && TABS[i].id !== "media");
   let k = ids.findIndex((i) => TABS[i].id === cur().tab);
   if (k < 0) k = 0;
   k = (k + d + ids.length) % ids.length;
@@ -262,32 +276,6 @@ function lookScreen() {
 }
 
 
-/* ---- Store: giochi da installare da tutti gli store; X = store, Y = ordine, LT/RT (Q/E) = dimensione/piattaforma */
-function shopScreen(f = store.get("bpShopF", { src: "", plat: "", size: "", sort: "title", hideDlc: false }), i = 0) {
-  const all = shopGames(BP.lib.games);
-  const items = shopFilter(all, f);
-  const srcs = [{ id: "", label: "Tutti gli store" }].concat(shopSources(all, BP.lib.stores, platName));
-  const plats = [""].concat([...new Set(all.map((g) => g.platform))].sort((a, b) => collator.compare(platName(a), platName(b))));
-  const cycle = (list, v, key = (x) => x) => list[(list.findIndex((x) => key(x) === v) + 1) % list.length];
-  const redo = (nf) => { store.set("bpShopF", nf); BP.stack[BP.stack.length - 1] = shopScreen(nf, 0); show(); beep("move"); };
-  const chip = (k, l) => `<span class="chip"><b>${glyph(k)}</b> ${esc(l)}</span>`;
-  const head = `<div class="shop-chips">`
-    + chip("x", (srcs.find((s) => s.id === f.src) || srcs[0]).label)
-    + chip("y", (SHOP_SORTS.find((s) => s.id === f.sort) || SHOP_SORTS[0]).label)
-    + chip("lt", (SHOP_SIZES.find((s) => s.id === (f.size || "")) || SHOP_SIZES[0]).label)
-    + chip("rt", f.plat ? platName(f.plat) : "Tutte le piattaforme")
-    + chip("start", f.hideDlc ? "DLC escluse" : "DLC incluse") + `</div>`;
-  const scr = gridScreen("Store", items, "shop", { head });
-  scr.i = Math.min(i, Math.max(0, items.length - 1));
-  scr.fav = () => redo({ ...f, src: cycle(srcs, f.src, (s) => s.id).id });
-  scr.alt = () => redo({ ...f, sort: cycle(SHOP_SORTS, f.sort || "title", (s) => s.id).id });
-  scr.lt = () => redo({ ...f, size: cycle(SHOP_SIZES, f.size || "", (s) => s.id).id });
-  scr.rt = () => redo({ ...f, plat: cycle(plats, f.plat || "") });
-  scr.start = () => redo({ ...f, hideDlc: !f.hideDlc });
-  scr.hints = [["a", "Apri"], ["b", "Indietro"], ["x", "Store"], ["y", "Ordine"], ["lt", "Peso"], ["rt", "Piattaforma"], ["start", "DLC"]];
-  return scr;
-}
-
 /* ---- "Per te": righe di consigli + questionario */
 function forYouScreen() {
   RECO.setPlatName(platName);
@@ -330,32 +318,12 @@ function quizScreen(step, a) {
   return gridScreen(`${step + 1}/${Q.length} · ${q.title}`, items, "foryou", { text: true });
 }
 
-/* ---- giochi gratis: A apre la pagina dell'offerta nel browser */
-function freeScreen() {
-  const scr = gridScreen("Giochi gratis", [], "free", { text: true });
-  const base = scr.render.bind(scr);
-  scr.render = async (el) => {
-    el.innerHTML = `<div class="bp-grid-view"><div class="bp-grid-head"><h1>Giochi gratis</h1><span>Carico…</span></div></div>`;
-    let d;
-    try { d = await api("/api/free"); } catch (e) { toast(e.message, true); return; }
-    const KIND = { "Free to keep": "Da tenere", "Free with Prime": "Con Prime", "Free with PS+": "Con PS Plus", Gamepass: "Game Pass", "Free DLC": "DLC gratis" };
-    scr.items = d.items.filter((i) => !i.owned).map((i) => ({ label: i.title, key: i.title,
-      sub: [KIND[i.kind] || i.kind, ({ pc: "PC", playstation: "PlayStation", xbox: "Xbox" })[i.console] || i.console,
-        i.end ? "fino al " + new Date(i.end.replace(" ", "T")).toLocaleDateString("it") : ""].filter(Boolean).join(" · "),
-      img: i.cover ? `/remote-img?u=${encodeURIComponent(i.cover)}` : null,
-      ok: () => api("/api/open", { body: { url: i.url } }).then(() => toast(`Apro «${i.title}» nel browser`)) }));
-    const fresh = gridScreen("Giochi gratis", scr.items, "free", { text: true, head: `<span>A = apri l'offerta nel browser</span>` });
-    BP.stack[BP.stack.length - 1] = fresh;
-    show();
-  };
-  void base;
-  return scr;
-}
-
 function platformsScreen() {
   const games = visibleGames();
-  const plats = [...BP.lib.plats.values()].filter((p) => p.id !== "windows").sort((a, b) => collator.compare(a.name, b.name));
-  return gridScreen("Console", plats.map((p) => ({ label: p.name, sub: `${p.count} giochi`, key: p.id,
+  const n = new Map();
+  for (const g of games) n.set(g.platform, (n.get(g.platform) || 0) + 1);
+  const plats = [...BP.lib.plats.values()].filter((p) => p.id !== "windows" && n.get(p.id)).sort((a, b) => collator.compare(a.name, b.name));
+  return gridScreen("Console", plats.map((p) => ({ label: p.name, sub: `${n.get(p.id)} giochi`, key: p.id,
     img: `/icons/platform/${encodeURIComponent(p.id)}`,
     ok: () => push(discoverScreen(p.name, sortTitle(games.filter((g) => g.platform === p.id)), "plat")) })), "plat", { text: true, unit: "console" });
 }
@@ -373,26 +341,6 @@ function collectionsScreen() {
     ok: () => push(gridScreen(c.name, games.filter((g) => g.grp.colls.includes(c.idx)).sort((a, b) => (a.year || 9999) - (b.year || 9999)), "coll")) }))),
   "coll", { text: true, unit: "collezioni" });
 }
-
-/** Giochi scaricati sul PC (ROM e giochi PC installati): uno scaffale per console. */
-function localScreen() {
-  const by = new Map();
-  for (const g of sortTitle(visibleGames().filter((g) => !g.store || g.installed))) {
-    if (!by.has(g.platform)) by.set(g.platform, []);
-    by.get(g.platform).push(g);
-  }
-  const shelves = [...by.keys()].sort((a, b) => collator.compare(platName(a), platName(b)))
-    .map((p) => ({ title: platName(p), sub: `${by.get(p).length} giochi`, items: by.get(p) }));
-  if (!shelves.length) shelves.push({ title: "Nessun gioco scaricato sul PC", items: [] });
-  return shelvesScreen(shelves, "local");
-}
-
-function pcScreen() {
-  const games = visibleGames().filter((g) => g.platform === "windows");
-  const inst = sortTitle(games.filter((g) => g.installed)), other = sortTitle(games.filter((g) => !g.installed));
-  return gridScreen("Giochi PC", inst.concat(other), "pc", { head: `<span>${inst.length} installati · ${other.length} da installare</span>` });
-}
-
 
 /* ---- schermate del gioco: visualizzatore a tutto schermo, sinistra/destra per scorrere */
 function shotsScreen(d) {
@@ -424,11 +372,11 @@ function shotsScreen(d) {
 }
 
 function versionsScreen(d) {
-  return gridScreen(`${d.title} · versioni`, d.versions.map((v) => ({
-    label: v.store ? `${v.file}${v.installed ? "" : " (da installare)"}` : v.file, sub: v.primary ? "principale" : "", key: v.file,
+  return gridScreen(`${d.title} · versioni`, d.versions.filter((v) => !v.store || v.installed).map((v) => ({
+    label: v.file, sub: v.primary ? "principale" : "", key: v.file,
     ok: async () => {
       const vd = await detail(v.id);
-      if (vd) (vd.store && !vd.installed ? installGame(vd) : playGame(vd));
+      if (vd) playGame(vd);
     },
   })), null, { text: true });
 }
@@ -555,8 +503,8 @@ async function pollRunning() {
 }
 
 async function reloadLibrary() {
-  const lib = await api("/api/library");
-  BP.lib = decodeLibrary(lib);
+  const lib = await loadLibrary();
+  BP.lib = lib;
   BP.details.clear();
   const s = cur();
   if (s.tab === "home") { BP.stack = [homeScreen()]; show(); }
@@ -572,15 +520,54 @@ function renderHints() {
   const s = cur();
   const h = s.hints || [["a", "Seleziona"], ["b", "Indietro"]];
   $("#bp-hints").className = Pad.kind === "ps" ? "ps" : "";
+  $("#bp-hints").style.display = store.get("bpHints", true) ? "" : "none";
   const all = h.some(([k]) => k === "y") ? h : h.concat([["y", "Cerca"]]);
   $("#bp-hints").innerHTML = `<span class="hint" data-k="rb">${glyph("lb")}${glyph("rb")} Menù</span>`
     + all.map(([k, l]) => `<span class="hint" data-k="${k}">${glyph(k)} ${esc(l)}</span>`).join("");
 }
 
+/* ---- legenda nascondibile e pannello delle scorciatoie (controller e tastiera) */
+function toggleHints() {
+  const on = !store.get("bpHints", true);
+  store.set("bpHints", on);
+  renderHints();
+  toast(on ? "Legenda dei comandi attiva" : "Legenda nascosta · Select o Ctrl+Maiusc+H per rimostrarla");
+}
+const helpOpen = () => !!$("#bp-help");
+function closeHelp() { $("#bp-help")?.remove(); }
+function openHelp() {
+  if (helpOpen()) return closeHelp();
+  const SC = window.PozzoShortcuts;
+  const pad = SC.PAD_HELP.map(([ks, l]) => `<tr><td>${ks.map((k) => (PAD_GLYPHS[Pad.kind][k] ? glyph(k) : `<span class="btn-glyph rect">${k.toUpperCase()}</span>`)).join(" + ")}</td><td>${esc(l)}</td></tr>`).join("");
+  const kb = SC.REGISTRY.filter((en) => en.scope !== "desktop" && SC.keysOf(en).length)
+    .map((en) => `<tr><td>${SC.keysOf(en).map((k) => `<kbd>${esc(SC.formatCombo(k))}</kbd>`).join(" ")}</td><td>${esc(en.label)}</td></tr>`).join("");
+  const el = document.createElement("div");
+  el.id = "bp-help";
+  el.innerHTML = `<div class="bp-help-in"><h2>Comandi</h2><div class="cols"><table>${pad}</table>
+    <table>${kb}<tr><td><kbd>Frecce</kbd> <kbd>Invio</kbd> <kbd>Esc</kbd></td><td>Muoviti, conferma, indietro</td></tr>
+    <tr><td><kbd>F</kbd> <kbd>/</kbd> <kbd>Q</kbd> <kbd>E</kbd></td><td>Preferito, cerca, categoria</td></tr></table></div>
+    <p class="muted">${glyph("x")} legenda in basso: ${store.get("bpHints", true) ? "visibile" : "nascosta"} (premi X per cambiare) · ${glyph("b")} chiudi</p></div>`;
+  $("#bp").appendChild(el);
+}
+function mediaChord(name) {
+  if (name === "exitBigPicture") { if (!BP.running) exitBigPicture(); return; }
+  beep("ok");
+  if (!window.PozzoShortcuts.runMedia(name)) toast("Controllo musica/Discord non disponibile");
+}
+
 function input(action) {
+  if (window.PozzoMedia?.handlePad?.(action)) return;
   const s = cur();
+  if (helpOpen()) { // il pannello comandi cattura tutto: X cambia la legenda, il resto lo chiude
+    if (action === "up" || action === "down") $("#bp-help .bp-help-in")?.scrollBy({ top: (action === "up" ? -1 : 1) * 120, behavior: "smooth" });
+    else if (action === "x") { toggleHints(); closeHelp(); openHelp(); } else if (["a", "b", "select", "start", "y"].includes(action)) closeHelp();
+    return;
+  }
   if (!$("#bp-running").hidden) return; // durante il gioco l'interfaccia ignora i comandi
   switch (action) {
+    case "select": beep("ok"); openHelp(); break;
+    case "l3": if (BP.stack.length > 1 || s.tab !== "home") { beep("back"); openTab(0); } break;
+    case "r3": toggleHints(); break;
     case "left": if (s.move(-1, 0)) beep("move"); break;
     case "right": if (s.move(1, 0)) beep("move"); break;
     case "up": if (s.move(0, -1)) beep("move"); break;
@@ -599,13 +586,14 @@ function input(action) {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (PozzoShortcuts.dispatch(e, "bp")) return;
   const s = cur();
-  if (s.typed && (e.key.length === 1 && /[\p{L}\p{N} ]/u.test(e.key) || e.key === "Backspace")) { e.preventDefault(); s.typed(e.key); return; }
+  if (!helpOpen() && s.typed && (e.key.length === 1 && /[\p{L}\p{N} ]/u.test(e.key) || e.key === "Backspace")) { e.preventDefault(); s.typed(e.key); return; }
   const a = Pad.keyAction(e);
   if (a) { e.preventDefault(); input(a); }
 });
 /* ---- mouse: clic su schede, giochi, pulsanti, tasti e suggerimenti; rotella per scorrere */
-$("#bp-nav").addEventListener("click", (e) => {
+$("#bp-top").addEventListener("click", (e) => {
   const t = e.target.closest(".bp-tab");
   if (t) { beep("ok"); openTab(+t.dataset.tab); }
 });
@@ -630,6 +618,20 @@ main.addEventListener("click", (e) => {
   beep("ok");
   s.ok();
 });
+/** Dissolvenza ai bordi della barra solo dove c'è altro da scorrere. */
+function updateNavFade() {
+  const n = $("#bp-nav");
+  n.classList.toggle("more-l", n.scrollLeft > 4);
+  n.classList.toggle("more-r", n.scrollLeft + n.clientWidth < n.scrollWidth - 4);
+}
+$("#bp-nav").addEventListener("scroll", updateNavFade, { passive: true });
+window.addEventListener("resize", updateNavFade);
+$("#bp-nav").addEventListener("wheel", (e) => {
+  const n = $("#bp-nav");
+  if (n.scrollWidth <= n.clientWidth) return;
+  e.preventDefault();
+  n.scrollLeft += e.deltaX || e.deltaY;
+}, { passive: false });
 let wheelAt = 0;
 main.addEventListener("wheel", (e) => {
   e.preventDefault();
@@ -650,6 +652,7 @@ document.addEventListener("contextmenu", (e) => { e.preventDefault(); input("b")
 document.addEventListener("mousemove", () => { $("#bp").classList.add("mouse"); clearTimeout(document.mt); document.mt = setTimeout(() => $("#bp").classList.remove("mouse"), 2500); });
 
 window.addEventListener("gamepadconnected", (e) => toast(`Controller collegato: ${e.gamepad.id.split("(")[0].trim()}`));
+PozzoShortcuts.bind("bp", { help: openHelp, legend: toggleHints, bigPicture: () => { if (BP.running) return false; exitBigPicture(); } });
 
 /* ------------------------------------------------------------------ avvio */
 function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" }); }
@@ -657,10 +660,9 @@ function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("i
 (async function start() {
   clock(); setInterval(clock, 15000);
   applyLook(); // palette e dimensione dei testi scelte la volta prima
-  Pad.watchFocus({ focus: "#bp-main .card.focus, #bp-main .bp-btn.focus, #bp-nav .bp-tab.focus", roots: ["#bp-main", "#bp-nav"] }); // lettura vocale di ciò che si seleziona (se attiva)
+  Pad.watchFocus({ focus: "#bp-main .card.focus, #bp-main .bp-btn.focus, #bp-top .bp-tab.focus", roots: ["#bp-main", "#bp-top"] }); // lettura vocale di ciò che si seleziona (se attiva)
   try {
-    const lib = await api("/api/library");
-    BP.lib = decodeLibrary(lib);
+    BP.lib = await loadLibrary();
   } catch (e) {
     $("#bp-loading").innerHTML = `<p>Errore: ${esc(e.message)}</p>`;
     return;
@@ -671,7 +673,7 @@ function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("i
   $("#bp-loading").hidden = true;
   BP.stack = [homeScreen()];
   show();
-  Pad.start({ input, onKind: renderHints, combo: { when: () => !!BP.running,
+  Pad.start({ input, onKind: renderHints, onChord: mediaChord, combo: { when: () => !!BP.running,
     run: () => api("/api/running/stop", { body: {} }).then(() => toast("Chiusura del gioco…")) } });
   // se un gioco e' gia' in esecuzione (es. avviato prima di entrare)
   const r = await api("/api/running").catch(() => ({}));

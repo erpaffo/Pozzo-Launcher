@@ -70,33 +70,57 @@ Pad.keyAction = (e) => {
     PageUp: "lt", PageDown: "rt", "/": "y", q: "lb", Q: "lb", e: "rb", E: "rb", s: "start", S: "start", " ": "a" }[e.key] || "";
 };
 
-/** Gamepad: mappatura standard, ripetizione tenendo premuto; Select+Start tenuti premuti chiamano combo.run
- *  (solo se combo.when() e' vero). onKind(kind) avvisa quando cambia il tipo di pad (xbox/ps). */
-Pad.start = ({ input, onKind, combo }) => {
-  const st = { held: {}, next: {}, comboSince: 0 };
+/** Gamepad (mappa standard, tutti i pad collegati insieme, zona morta radiale, ripetizione tenendo premuto).
+ *  Il polling gira solo con un pad collegato (gamepadconnected lo riaccende) e rallenta dopo 5 s di inattivita'.
+ *  Azioni extra: "select" (tocco breve su Select/View), "l3", "r3", stick destro = lt/rt (pagina).
+ *  Select/Guide + A/B/X/Y/LB/RB chiamano onChord(playPause|exitBigPicture|muteMic|deafen|prev|next);
+ *  Select tenuto 1 s da solo = onChord("exitBigPicture"). Select+Start tenuti chiamano combo.run (se combo.when()). */
+Pad.start = ({ input, onKind, combo, onChord }) => {
+  const SC = window.PozzoShortcuts;
+  const chordKeys = Object.keys(SC.PAD_CHORDS);
+  const st = { held: {}, next: {}, comboSince: 0, selSince: 0, chorded: false, long: false, last: 0, on: false };
+  const list = () => (navigator.getGamepads ? [...navigator.getGamepads()].filter((p) => p && p.connected) : []);
   const poll = (ts) => {
-    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
-    if (pads.length) {
-      const p = pads[0];
-      const kind = /054c|sony|dualsense|dualshock|wireless controller/i.test(p.id) ? "ps" : "xbox";
-      if (kind !== Pad.kind) { Pad.kind = kind; onKind?.(kind); }
-      const b = (i) => !!p.buttons[i]?.pressed;
-      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
-      const dirs = { left: b(14) || ax < -0.55, right: b(15) || ax > 0.55, up: b(12) || ay < -0.55, down: b(13) || ay > 0.55,
-        a: b(0), b: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), lt: b(6), rt: b(7), start: b(9) };
-      for (const [k, on] of Object.entries(dirs)) {
-        const rep = ["left", "right", "up", "down", "lt", "rt"].includes(k);
-        if (on && !st.held[k]) { st.held[k] = true; st.next[k] = ts + 380; input(k); }
-        else if (on && rep && ts >= st.next[k]) { st.next[k] = ts + 85; input(k); }
-        else if (!on) st.held[k] = false;
+    const pads = list();
+    if (!pads.length) { st.on = false; st.held = {}; st.selSince = 0; return; }
+    const kind = SC.isPlayStation(pads[0].id) ? "ps" : "xbox";
+    if (kind !== Pad.kind) { Pad.kind = kind; onKind?.(kind); }
+    const s = SC.padStateAll(pads);
+    const mod = s.select || s.guide;
+    if (s.select && !st.selSince) { st.selSince = ts; st.chorded = false; st.long = false; for (const k of chordKeys) st.held["c" + k] = s[k]; }
+    const dirs = { left: s.left, right: s.right, up: s.up, down: s.down, a: s.a, b: s.b, x: s.x, y: s.y, lb: s.lb, rb: s.rb,
+      lt: s.lt || s.scrollUp, rt: s.rt || s.scrollDown, start: s.start, l3: s.l3, r3: s.r3 };
+    let active = false;
+    for (const [k, on] of Object.entries(dirs)) {
+      if (on) active = true;
+      if (mod && (k === "start" || chordKeys.includes(k))) { // con Select tenuto questi tasti sono scorciatoie, non comandi
+        const c = "c" + k;
+        if (k !== "start" && s[k] && !st.held[c]) { st.chorded = true; onChord?.(SC.PAD_CHORDS[k]); }
+        st.held[c] = s[k]; st.held[k] = s[k];
+        if (k === "start" && s.start) st.chorded = true;
+        continue;
       }
-      // Select/View (8) + Start/Menu (9) tenuti premuti
-      if (combo && b(8) && b(9) && combo.when()) {
-        if (!st.comboSince) st.comboSince = ts;
-        if (ts - st.comboSince > 1800) { st.comboSince = Infinity; combo.run(); }
-      } else st.comboSince = 0;
+      const rep = ["left", "right", "up", "down", "lt", "rt"].includes(k);
+      if (on && !st.held[k]) { st.held[k] = true; st.next[k] = ts + 380; input(k); }
+      else if (on && rep && ts >= st.next[k]) { st.next[k] = ts + 85; input(k); }
+      else if (!on) st.held[k] = false;
     }
-    requestAnimationFrame(poll);
+    if (s.select) {
+      if (!st.chorded && !st.long && ts - st.selSince > 1000) { st.long = true; onChord?.("exitBigPicture"); }
+    } else if (st.selSince) {
+      if (!st.chorded && !st.long) input("select");
+      st.selSince = 0;
+    }
+    // Select/View + Start/Menu tenuti premuti
+    if (combo && s.select && s.start && combo.when()) {
+      if (!st.comboSince) st.comboSince = ts;
+      if (ts - st.comboSince > 1800) { st.comboSince = Infinity; combo.run(); }
+    } else st.comboSince = 0;
+    if (active || mod) st.last = ts;
+    if (ts - st.last > 5000) setTimeout(() => poll(performance.now()), 90);
+    else requestAnimationFrame(poll);
   };
-  requestAnimationFrame(poll);
+  const wake = () => { if (st.on) return; st.on = true; st.last = performance.now(); requestAnimationFrame(poll); };
+  window.addEventListener("gamepadconnected", wake);
+  if (list().length) wake();
 };

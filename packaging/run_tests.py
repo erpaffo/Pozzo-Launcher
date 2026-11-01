@@ -32,6 +32,7 @@ TESTS = [
     "test_frontends.py",
     "test_retroachievements.py",
     "test_controllers.py",
+    "test_media_integrations.py",
     "test_ports.py",
     "test_version.py",
     "test_sync.py",

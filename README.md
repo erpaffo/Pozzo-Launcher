@@ -62,7 +62,7 @@ I temi sono indipendenti dalla grafica e si possono combinare.
 - **Store online**: elenchi di giochi di altri siti, aggiunti come «store» di ogni console.
 - **Grafiche e temi**: sette grafiche (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale) e temi chiaro, notte blu, OLED, retrò, combinabili a piacere.
 - **Estensioni**: le estensioni si installano da uno store dentro l'app (cosa gioco stasera, obiettivi, calendario uscite, diario di gioco…).
-- **Extra**: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord, esportazione per ES-DE e Pegasus.
+- **Extra**: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord (anche muto, sordo ed esci dalla chiamata), Spotify e tasti multimediali, scorciatoie da tastiera, esportazione per ES-DE e Pegasus.
 
 ## Download
 

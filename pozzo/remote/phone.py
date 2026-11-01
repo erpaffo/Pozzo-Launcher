@@ -581,7 +581,9 @@ def register(app, hub: PhoneHub, static_dir: Path):
     @app.get("/m/static/{name}")
     def m_static(name: str):
         p = (mdir / name).resolve()
-        if p.parent != mdir.resolve() or not p.is_file():
+        if name == "icons.js":  # set di icone condiviso col PC (una sola copia)
+            p = (static_dir / "icons.js").resolve()
+        elif p.parent != mdir.resolve() or not p.is_file():
             raise HTTPException(404)
         return FileResponse(p, headers={"Cache-Control": "no-cache"})
 

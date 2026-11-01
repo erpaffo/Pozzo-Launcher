@@ -11,6 +11,7 @@
     pollScan();
   };
   const theme = async (id) => { await api("/api/app/theme", { body: { theme: id } }); await loadExtensions(); };
+  window.GSMenu = { scan, theme }; // usati anche dalle scorciatoie (shortcuts.js)
   const sorts = [["title", "Titolo A–Z"], ["-year", "Anno ↓"], ["-last", "Ultimi giocati"], ["-playtime", "Tempo di gioco"], ["-rating", "Valutazione"]];
   const groups = [["", "Nessun gruppo"], ["platform", "Per console"], ["year", "Per anno"], ["letter", "Per lettera"]];
 
@@ -29,7 +30,7 @@
       { l: "Esci", f: async () => { if (confirm("Chiudere Pozzo Launcher?")) { try { await api("/api/app/quit", { body: {} }); } catch { /* il server si chiude */ } window.close(); } } },
     ],
     Strumenti: () => [
-      { l: "⟳ Cerca nuovi giochi", f: () => scan("new") },
+      { l: "⟳ Cerca nuovi giochi", a: "scanNew", f: () => scan("new") },
       { l: "Forza la ricerca dei metadati (tutti i giochi)", f: () => confirm("Cercare di nuovo i metadati di tutta la libreria? Può richiedere molto tempo.") && scan("all") },
       { l: "Cerca solo i dati mancanti", f: () => scan("missing") },
       "-",
@@ -49,10 +50,11 @@
       "-",
       { l: "Tema chiaro", chk: async () => (await api("/api/extensions")).active_theme === "chiaro",
         f: async () => theme((await api("/api/extensions")).active_theme === "chiaro" ? "default" : "chiaro") },
-      { l: "🎮 Big Picture", f: () => enterBigPicture() },
+      { l: "🎮 Big Picture", a: "bigPicture", f: () => enterBigPicture() },
     ],
     Impostazioni: () => [
-      { l: "⚙ Tutte le impostazioni…", f: () => openSettings() },
+      { l: "⚙ Tutte le impostazioni…", a: "settings", f: () => openSettings() },
+      { l: "⌨ Scorciatoie da tastiera…", a: "help", f: () => window.PozzoShortcuts?.openPanel() },
       "-",
       { l: "Cartelle da scansionare…", f: () => openSettings("scan") },
       { l: "Account e store…", f: () => openSettings("acc") },
@@ -108,7 +110,7 @@
     const d = document.createElement("div");
     d.id = "mb-drop";
     d.innerHTML = rows.map((r, i) => r === "-" ? "<hr>" : r.h ? `<div class="ch">${esc(r.h)}</div>`
-      : `<div class="ci" data-i="${i}"><span class="mk">${marks[i] ? "✓" : ""}</span>${esc(r.l)}</div>`).join("");
+      : `<div class="ci" data-i="${i}"><span class="mk">${marks[i] ? "✓" : ""}</span>${esc(r.l)}${r.a && window.PozzoShortcuts?.keyLabel(r.a) ? `<span class="ac">${esc(window.PozzoShortcuts.keyLabel(r.a))}</span>` : ""}</div>`).join("");
     document.body.appendChild(d);
     const b = btn.getBoundingClientRect();
     d.style.left = Math.max(4, Math.min(b.left, innerWidth - d.offsetWidth - 8)) + "px";

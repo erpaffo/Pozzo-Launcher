@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.11.1 (2026-11-01)
+
+### Aggiunto
+
+- Installazione degli emulatori dall'app (Impostazioni › Emulatori): ultima versione ufficiale dalle release GitHub (RetroArch, Dolphin, PPSSPP dal loro sito), impostata da sola, aggiornabile senza perdere la configurazione; download dei core RetroArch mancanti per le console della libreria
+- Spotify (accesso con PKCE) e tasti multimediali di sistema, più controllo vocale Discord (muto, sordo, esci): widget in Big Picture e sezione «Musica e chiamate» nelle Impostazioni
+- Scorciatoie da tastiera per Windows e macOS (Ctrl/Cmd), personalizzabili, con pannello elenco; comandi del controller in Big Picture con legenda e combinazioni Select + tasto per musica e Discord
+- Nelle collezioni più famose compaiono anche i giochi degli store con lo stesso titolo
+- Durata HowLongToBeat per ogni gioco nel dettaglio a modale (Cinema): se manca, viene cercata al momento e salvata
+- Animazioni curate per ogni tema e grafica (motion.css/motion.js), che rispettano il movimento ridotto
+
+### Cambiato
+
+- Barra superiore riordinata: titolo a sinistra e, sempre nello stesso punto a destra, Nuovi giochi, A caso, Big Picture e Impostazioni; sotto, ricerca, filtri e ordinamento. «Idee / bug» passa nel piede fisso della barra laterale
+- Barra di ricerca, ordinamento e filtri ridisegnata per il nuovo stile grafico (gruppi a pillola, pulsante di reset)
+- I filtri di ricerca ora funzionano in tutte le grafiche, compresi i temi nuovi; la ricerca dalla Home apre la vista Tutti
+- Nuova icona a tema pozzo (anello di mattoni, secchio e bagliore) per app, installer, macOS e telefono; script tools/make_icons.py
+- Rimossi i riferimenti a Skyscraper da README, manuale e codice
+- Icone SVG originali al posto delle emoji nell'interfaccia (icons.js)
+- Big Picture solo per giocare: mostra soli giochi installati, senza Store e Gratis; barra voci scorrevole con Esci sempre visibile; Musica nella barra
+
+### Migliorato
+
+- Memoria: l'avvio non satura più la RAM (nelle misure di prova la finestra è passata da circa 6 GB a meno di 0,5 GB) e scorrere molte copertine fa crescere la memoria molto meno
+- Vetrina: la griglia mostra al massimo 120 giochi con «Vedi tutti», e le copertine non disponibili non occupano spazio vuoto
+- Server: un solo client HTTP per le copertine remote, con connessioni riutilizzate e voci di copertina mancante scadute ripulite
+- Caricamento della libreria: risposta serializzata a blocchi e stringhe ripetute condivise, con picchi di memoria più bassi
+- Il polling del controller in Big Picture parte solo con un pad collegato e rallenta quando è inattivo
+- Dettaglio a modale ridisegnato: hero più alto, titolo più grande, dati con separatori, durate in tessere con barra
+
+### Corretto
+
+- Vetrina: il clic su Integrazioni non blocca più l'app (da circa 7 s a meno di 0,2 s)
+- Possibile blocco dell'app aprendo Integrazioni (letture Discord senza timeout, polling Spotify) e perdita di RAM a ogni scansione LaunchBox
+- la finestra si apre gia' con il tema scelto: barra del titolo, bordo e interfaccia sono pronti prima che si veda
+- temi con colori a tre cifre (OLED: --bg:#000) non bloccano piu' l'avvio della finestra
+
 ## 0.11.0 (2026-10-31)
 
 ### Aggiunto

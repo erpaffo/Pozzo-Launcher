@@ -202,6 +202,16 @@ function smartGames(games, rules) {
   return games.filter((g) => g.id === g.grp.primary && smartMatch(g, rules));
 }
 
+/** Ogni link web (data-open o <a href="http…">) si apre nel browser di sistema, in una nuova scheda: nell'app un link normale
+ *  porterebbe via la pagina o finirebbe sulla home. In cattura, cosi' vale anche dove manca un gestore proprio. */
+document.addEventListener("click", (e) => {
+  const el = e.target.closest?.("[data-open], a[href^='http']");
+  const url = el && (el.dataset.open || el.getAttribute("href"));
+  if (!url || !/^https?:\/\//i.test(url)) return;
+  e.preventDefault(); e.stopPropagation();
+  api("/api/open", { body: { url } }).catch((err) => typeof toast === "function" && toast(err.message, true));
+}, true);
+
 async function api(path, opts = {}) {
   const init = { method: opts.method || "GET", headers: { "Content-Type": "application/json" } };
   if (opts.body !== undefined) { init.body = JSON.stringify(opts.body); init.method = opts.method || "POST"; }
@@ -220,11 +230,15 @@ function decodeLibrary(lib) {
   const colls = lib.collections.map((c, i) => ({ ...c, idx: i }));
   const groups = lib.groups.rows.map((r) => ({ primary: r[0], favorite: r[1], hidden: r[2], last: r[3], playtime: r[4],
     plays: r[5], colls: r[6], versions: r[7], status: r[8] || "" }));
+  // JSON.parse crea una stringa per ogni valore: console, sviluppatori, generi... ripetuti in 150.000 giochi
+  // diventano una copia sola (~12 MB in meno)
+  const pool = new Map();
+  const one = (s) => { const v = pool.get(s); if (v !== undefined) return v; pool.set(s, s); return s; };
   const games = lib.games.rows.map((r) => {
-    const g = { id: r[0], title: r[1], sort: r[2], platform: r[3], year: r[4], cover: r[5], gi: r[6], rating: r[7],
-      dev: r[8], genres: r[9], found: r[10], region: r[11], store: r[12] || null, installed: r[13], size: r[14] || 0,
-      votes: r[15] || 0, critics: r[16] ?? null, players: r[17] || 0, splay: r[18] || 0, hltb: r[19] ?? null,
-      content: r[20] || "game" };
+    const g = { id: r[0], title: r[1], sort: r[2], platform: one(r[3]), year: r[4], cover: r[5], gi: r[6], rating: r[7],
+      dev: one(r[8]), genres: one(r[9]), found: r[10], region: one(r[11]), store: one(r[12]) || null, installed: r[13],
+      size: r[14] || 0, votes: r[15] || 0, critics: r[16] ?? null, players: r[17] || 0, splay: r[18] || 0,
+      hltb: r[19] ?? null, content: one(r[20]) || "game" };
     g.grp = groups[g.gi];
     g.q = fold(`${g.title} ${g.dev} ${plats.get(g.platform)?.name || ""} ${g.platform} ${g.store || ""}`);
     return g;
@@ -293,10 +307,22 @@ const GS = (() => {
 })();
 window.GS = GS;
 
+/** Mostra la finestra nativa (una volta sola: le chiamate successive non cambiano nulla) con la barra
+ *  del titolo e il bordo del colore di sfondo del tema. Nel browser non fa nulla. */
+function showWindow() {
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  const send = () => window.pywebview?.api?.window_ready?.(bg);
+  if (window.pywebview?.api) send(); else window.addEventListener("pywebviewready", send, { once: true });
+}
+
 /** Applica il tema attivo e carica i plugin abilitati. */
 async function loadExtensions() {
   let ext;
-  try { ext = await api("/api/extensions"); } catch (e) { console.warn("estensioni non disponibili", e); return; }
+  try { ext = await api("/api/extensions"); } catch (e) {
+    console.warn("estensioni non disponibili", e);
+    showWindow();  // senza estensioni si mostra lo stesso, col tema predefinito
+    return;
+  }
   const mode = GS.mode;
   document.querySelectorAll("link[data-ext]").forEach((l) => l.remove());
   if (mode === "desktop") {
@@ -342,26 +368,25 @@ async function loadExtensions() {
   }
   const theme = ext.themes.find((t) => t.id === ext.active_theme);
   const css = theme && (mode === "bigpicture" ? theme.bigpicture : theme.desktop);
-  // barra del titolo e bordo della finestra nativa dello stesso colore dello sfondo del tema
-  function titlebarColor() {
-    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
-    const send = () => window.pywebview?.api?.set_titlebar?.(bg);
-    if (window.pywebview?.api) send(); else window.addEventListener("pywebviewready", send, { once: true });
-  }
-  if (css) {
+  const styles = [];  // fogli di stile del tema e dell'esperienza: si aspetta che siano applicati
+  const addStyle = (href, kind) => {
     const l = document.createElement("link");
-    l.rel = "stylesheet"; l.href = css; l.dataset.ext = "theme";
-    l.onload = titlebarColor;
+    l.rel = "stylesheet"; l.href = href; l.dataset.ext = kind;
     document.head.appendChild(l);
-  } else titlebarColor();
+    styles.push(l);
+  };
+  if (css) addStyle(css, "theme");
   if (mode === "desktop") {
     const selected = (ext.experiences || []).find((item) => item.id === GS.experience.id);
-    if (selected && selected.style) {
-      const l = document.createElement("link");
-      l.rel = "stylesheet"; l.href = selected.style; l.dataset.ext = "experience";
-      document.head.appendChild(l);
-    }
+    if (selected && selected.style) addStyle(selected.style, "experience");
   }
+  // La finestra nativa si mostra solo qui, con barra del titolo e bordo del colore del tema: prima
+  // l'utente vedrebbe per un attimo il tema predefinito, i colori di sistema e la disposizione sbagliata.
+  Promise.all(styles.map((l) => new Promise((done) => {
+    if (l.sheet) return done();
+    l.addEventListener("load", done, { once: true });
+    l.addEventListener("error", done, { once: true });
+  }))).then(showWindow);
   document.documentElement.dataset.theme = ext.active_theme || "default";
   GS.plugins = ext.plugins;
   GS.extensions = ext;

@@ -142,6 +142,8 @@ def test_export_esde(tmp: Path) -> None:
 
 def test_export_pegasus(tmp: Path) -> None:
     cache_dir = tmp / "cache"
+    if not cache_dir.exists():  # isolato da pytest: la libreria non l'ha creata test_export_esde
+        _make_sample_library(cache_dir, tmp / "roms")
     out_peg = tmp / "out_pegasus"
     summary = frontends.export_pegasus(cache_dir, out_peg)
     assert summary == {"gba": 1, "snes": 1}, summary

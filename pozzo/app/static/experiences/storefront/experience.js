@@ -44,10 +44,23 @@
       </button>`).join("");
   }
 
+  // il catalogo online conta ~150.000 titoli: metterli tutti nel DOM blocca la finestra e usa GB di memoria
+  const MAX_GRID = 120;
+
+  function hideBrokenCovers(root) {
+    root.querySelectorAll("[data-vetrina-cover]").forEach((image) => {
+      image.addEventListener("error", () => {
+        image.hidden = true;
+        image.closest(".vetrina-feature__cover, .vetrina-game__cover")?.classList.add("is-missing");
+      }, { once: true });
+    });
+  }
+
   function renderHome(element, context) {
     const games = Array.isArray(context?.state?.games)
       ? context.state.games.filter((game) => game && game.id !== null && game.id !== undefined
-        && hasValue(game.title))
+        && hasValue(game.title) && game.store !== "online"
+        && (!game.grp || (game.id === game.grp.primary && !game.grp.hidden)))
       : [];
 
     if (!games.length) {
@@ -102,9 +115,8 @@
             <h2 id="vetrina-library-heading">Tutti i giochi</h2>
             <p data-vetrina-result-count role="status" aria-live="polite">${gameCount} ${gameLabel}</p>
           </div>
-          <div class="vetrina-games">
-            ${games.map(gameCard).join("")}
-          </div>
+          <div class="vetrina-games"></div>
+          <button class="vetrina-primary" type="button" data-vetrina-all hidden></button>
         </section>
 
         <aside class="vetrina-aside" aria-labelledby="vetrina-platform-heading">
@@ -118,37 +130,40 @@
       </div>
     </div>`;
 
-    element.querySelectorAll("[data-vetrina-cover]").forEach((image) => {
-      image.addEventListener("error", () => {
-        image.hidden = true;
-        image.closest(".vetrina-feature__cover, .vetrina-game__cover")?.classList.add("is-missing");
-      }, { once: true });
-    });
+    hideBrokenCovers(element.querySelector(".vetrina-feature"));
+
+    let selected = "";
+    const showGrid = () => {
+      const list = selected ? games.filter((game) => valueOf(game, "platform") === selected) : games;
+      const grid = element.querySelector(".vetrina-games");
+      grid.innerHTML = list.slice(0, MAX_GRID).map(gameCard).join("");
+      hideBrokenCovers(grid);
+      const all = element.querySelector("[data-vetrina-all]");
+      all.hidden = list.length <= MAX_GRID || typeof context?.setView !== "function";
+      all.textContent = `Vedi tutti i ${list.length} giochi`;
+      const resultCount = element.querySelector("[data-vetrina-result-count]");
+      if (resultCount) resultCount.textContent = `${list.length} ${list.length === 1 ? "gioco" : "giochi"}`;
+    };
+    showGrid();
 
     element.onclick = (event) => {
+      if (event.target.closest("[data-vetrina-all]")) {
+        context.setView(selected ? { type: "platform", id: selected } : { type: "all" });
+        return;
+      }
       const target = event.target.closest("[data-vetrina-filter], [data-vetrina-game]");
       if (!target) return;
 
       if (target.hasAttribute("data-vetrina-filter")) {
-        const selected = target.dataset.vetrinaFilter;
+        selected = target.dataset.vetrinaFilter;
         element.querySelectorAll("[data-vetrina-filter]").forEach((button) => {
           button.setAttribute("aria-pressed", String(button === target));
         });
-        const cards = element.querySelectorAll("[data-vetrina-card]");
-        let visible = 0;
-        cards.forEach((card) => {
-          const matches = !selected || card.dataset.vetrinaPlatform === selected;
-          card.hidden = !matches;
-          if (matches) visible++;
-        });
-        const label = visible === 1 ? "gioco" : "giochi";
-        const resultCount = element.querySelector("[data-vetrina-result-count]");
-        if (resultCount) resultCount.textContent = `${visible} ${label}`;
+        showGrid();
         return;
       }
 
-      const game = games.find((item) => String(item.id) === target.dataset.vetrinaGame);
-      if (game) GS.openGame(game.id);
+      GS.openGame(Number(target.dataset.vetrinaGame));
     };
   }
 

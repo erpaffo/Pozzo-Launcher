@@ -193,8 +193,8 @@ controllarli in blocco:
 
 ## Durate (HowLongToBeat)
 
-**Impostazioni › Fonti › Durate dei giochi** scarica da HowLongToBeat quanto dura ogni gioco. Le durate compaiono nel dettaglio, nell'ordinamento per durata, nei filtri Scopri *Brevi* e *Lunghi*
-e nelle collezioni intelligenti.
+**Impostazioni › Fonti › Durate dei giochi** scarica da HowLongToBeat quanto dura ogni gioco, per l'ordinamento per durata, i filtri Scopri *Brevi* e *Lunghi* e le collezioni intelligenti.
+Nel dettaglio la durata compare solo nella grafica a modale (Cinema): se manca, la cerca al momento che apri il gioco e la salva.
 
 ## Credenziali delle fonti
 

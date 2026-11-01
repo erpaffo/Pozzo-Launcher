@@ -16,7 +16,11 @@ Big Picture è l'interfaccia a **schermo intero per il controller**, pensata per
 
 - **Home a scaffali**: *Continua a giocare*, *Preferiti*, *Giochi PC installati*, le collezioni più grandi, le
   console, i consigli e le collezioni intelligenti. Sfondo e logo cambiano con il gioco selezionato.
-- **Libreria, PC, Console, Collezioni, Preferiti** come griglie navigabili.
+- **Libreria, Console, Collezioni, Preferiti** come griglie navigabili.
+- Big Picture è solo per giocare: mostra i giochi **avviabili** (ROM presenti e giochi PC installati) e non i
+  cataloghi o i giochi «da installare» degli store. Niente Store né Giochi gratis.
+- La barra delle voci scorre in orizzontale (rotella, frecce, LB/RB) se non entra nella finestra; **Esci** resta
+  sempre visibile a destra.
 - **Ricerca** con la tastiera a schermo.
 - **Pagina del gioco** con Gioca o Installa, Preferito, Stato, Versioni e **Togli da Giocati di recente**.
 - Il questionario **A cosa vuoi giocare?**, lo stesso della vista *Per te*.
@@ -53,3 +57,10 @@ Le scelte restano salvate sul PC.
 
 Big Picture usa il tema scelto in **Impostazioni › Aspetto**. Un tema può avere un foglio di stile apposito per
 Big Picture (vedi [Temi e plugin](ESTENSIONI.md#temi)).
+
+### Animazioni
+
+Le animazioni (ingresso scaglionato delle copertine, sollevamento al passaggio, finestre, notifiche, anello del focus
+del controller) hanno un carattere diverso per tema: lente e luminose in Notte blu, nette in OLED, con ombre che si
+sollevano in Chiaro, a scatti in Retrò. Si disattivano da sole se Windows ha «Mostra animazioni» spento
+(`prefers-reduced-motion`). In alternativa, dalla console del browser: `GSMotion.set("reduced")`, `"off"` o `"normal"`.

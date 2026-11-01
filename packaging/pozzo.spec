@@ -31,6 +31,7 @@ excludes = ["tkinter", "matplotlib", "numpy", "pytest", "playwright", "IPython"]
 
 icon_ico = str(ROOT / "packaging" / "icon.ico")
 icon_png = str(ROOT / "packaging" / "icon.png")
+icon_icns = str(ROOT / "packaging" / "icon.icns")
 icon = icon_ico if sys.platform == "win32" else icon_png
 
 
@@ -51,6 +52,6 @@ coll = COLLECT(exe_app, a_app.binaries, a_app.datas, exe_cli, a_cli.binaries, a_
                name="PozzoLauncher", upx=False)
 
 if sys.platform == "darwin":
-    app = BUNDLE(coll, name="PozzoLauncher.app", icon=icon_png, bundle_identifier="io.github.pozzo",  # noqa: F821
+    app = BUNDLE(coll, name="PozzoLauncher.app", icon=icon_icns, bundle_identifier="io.github.pozzo",  # noqa: F821
                  version=__version__, info_plist={"NSHighResolutionCapable": True, "LSMinimumSystemVersion": "11.0",
                                                    "CFBundleDisplayName": "Pozzo Launcher"})

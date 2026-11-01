@@ -4,6 +4,19 @@
 
 Gli emulatori si configurano in **Impostazioni › Emulatori**, in due tabelle.
 
+### Installare gli emulatori dall'app
+
+**Installa emulatori**, in cima alla pagina, scarica con un clic l'ultima versione ufficiale di RetroArch, Dolphin,
+PPSSPP, DuckStation, PCSX2, RPCS3, Vita3K, melonDS, Azahar, Cemu, Xenia Canary, xemu, Flycast e shadPS4 e la imposta da
+sola. La versione viene dalle release GitHub di ogni progetto; RetroArch, Dolphin e PPSSPP si scaricano dal loro sito
+ufficiale. Gli emulatori vanno nella cartella indicata sotto (altrimenti in `Emulatori`, accanto alle impostazioni).
+**↻ Aggiorna** installa la versione nuova sopra quella vecchia: configurazione e dati nella cartella dell'emulatore
+restano. **⬇ Scarica i core** prende dal buildbot di libretro i core di RetroArch che mancano alle console della
+libreria. Ryujinx ed Eden non pubblicano su GitHub: si installano a mano. Solo Windows.
+
+Gli emulatori sono dei loro sviluppatori: Pozzo scarica le build che pubblicano, senza modificarle, e ogni riga porta
+al progetto originale.
+
 **Programmi**: un percorso per emulatore, valido per tutte le console che lo usano. **🔍 Trova emulatori** cerca in
 una cartella gli eseguibili conosciuti: RetroArch, Ryujinx, Eden, melonDS, Dolphin, PCSX2, DuckStation, PPSSPP,
 RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu. **＋ Aggiungi un altro emulatore** aggiunge un programma

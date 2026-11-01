@@ -274,11 +274,15 @@ def test_copertine_progressive(tmp_path):
         png = b"\x89PNG\r\n\x1a\n" + b"\0" * 64
         slow = threading.Event()
 
-        def fake_get(u, **kw):
+        real_get = httpx.Client.get
+
+        def fake_get(self, u, **kw):  # il server usa un httpx.Client condiviso; il TestClient passa oltre
+            if "gametdb" not in str(u):
+                return real_get(self, u, **kw)
             slow.wait(5)  # host lento: prima la richiesta della griglia sarebbe rimasta appesa qui
             return httpx.Response(200, content=png)
 
-        real_get, httpx.get = httpx.get, fake_get
+        httpx.Client.get = fake_get
         try:
             t0 = _time.time()
             assert api.get(f"/img/{row[0]}/cover?q=1").status_code == 202
@@ -292,7 +296,7 @@ def test_copertine_progressive(tmp_path):
             assert [g[0] for g in api.get(f"/api/library/patches?since={before}").json()["games"]] == [row[0]]
             assert api.get(f"/img/{row[0]}/cover?q=1").status_code == 200
         finally:
-            httpx.get = real_get
+            httpx.Client.get = real_get
     finally:
         gate.set()
         wait_idle(api)

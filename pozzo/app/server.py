@@ -12,6 +12,7 @@ Velocita' all'avvio:
 from __future__ import annotations
 
 import hashlib
+import html
 import http
 import json
 import os
@@ -36,6 +37,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .. import config as C
 from .. import platforms as P
 from .. import backup as BK
+from .. import emuinstall as EI
 from .. import ports as PT
 from .. import relink as RL
 from .. import storerefresh as SR
@@ -115,7 +117,7 @@ class Library:
                   **{c: f"NULL AS {c}" for c in ("store_pages", "origin", "ratings", "launch", "install_uri", "page",
                                                   "install_dir", "canonical", "crc", "video_url")}}
     # valori ripetuti in migliaia di giochi: una sola copia di ogni stringa invece di una per gioco
-    SHARED = ("platform", "store", "region", "developer", "publisher", "release_date", "players")
+    SHARED = ("platform", "store", "region", "developer", "publisher", "release_date", "players", "content")
 
     def __init__(self, cfg):
         self.cfg = cfg
@@ -148,7 +150,7 @@ class Library:
         share = pool.setdefault
         for g in games:
             for k in self.SHARED:
-                if g[k].__class__ is str:
+                if g.get(k).__class__ is str:  # get: library.db vecchie senza "content"
                     g[k] = share(g[k], g[k])
             g["genres"] = [share(x, x) for x in json.loads(g["genres"] or "[]")]
             g["files"] = json.loads(g["files"] or "[]")
@@ -273,6 +275,16 @@ def _hltb_main(v) -> float | None:
     return h.get("main") or h.get("extra") or h.get("complete")
 
 
+def _json(o) -> bytes:
+    """Gli stessi byte di JSONResponse, ma le liste lunghe a blocchi: json.dumps tiene un pezzo di testo per ogni
+    valore fino alla fine (~200 MB in piu' per i 26 MB delle 150.000 righe di /api/library)."""
+    if isinstance(o, dict):
+        return b"{" + b",".join(_json(str(k)) + b":" + _json(v) for k, v in o.items()) + b"}"
+    if isinstance(o, list) and len(o) > 2000:
+        return b"[" + b",".join(_json(o[i:i + 2000])[1:-1] for i in range(0, len(o), 2000)) + b"]"
+    return json.dumps(o, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
+
+
 def _players_label(v, platform: str = "") -> str:
     m = _players(v, platform)
     return "" if not m else "1 (solo giocatore)" if m == 1 else f"1–{m} in locale"
@@ -333,6 +345,11 @@ def create_app(cfg) -> FastAPI:
     from ..discordrpc import PresenceService
 
     discord = PresenceService(cfg, save=lambda values: C.save_settings(cfg, app=values))
+    from ..spotify import SpotifyClient, SpotifyError
+    from ..discordvoice import DiscordVoice, DiscordVoiceError
+    spotify = SpotifyClient(cfg, save=lambda values: C.save_settings(cfg, app={"spotify": values}))
+    discord_voice = DiscordVoice(cfg, save=lambda values: C.save_settings(cfg, app={"discord_voice": values}))
+    app.state.spotify, app.state.discord_voice = spotify, discord_voice
     events.on("game_started", discord.game_started)
     events.on("game_stopped", discord.game_stopped)
     from ..library import screens as SC
@@ -526,6 +543,7 @@ def create_app(cfg) -> FastAPI:
                 d = v["groups"][grp]
                 groups.append([d["primary"], d["favorite"], d["hidden"], round(d["last_played"]), round(d["playtime"]),
                                d["play_count"], grp_colls.get(grp, []), len(lib.groups[grp]), d["status"]])
+            del v  # i dati di 150.000 gruppi (~40 MB): non servono piu' mentre si scrive il JSON
             rows = [[g["id"], g["title"], g["sort_title"], g["platform"], g["year"], int("cover" in g["media"]),
                      grp_idx[g["grp"]], g["rating"], g["developer"] or "", ", ".join(g["genres"]), g["found"],
                      g["region"] or "", g.get("store") or "", 1 if g.get("store") is None else g.get("installed") or 0,
@@ -539,8 +557,8 @@ def create_app(cfg) -> FastAPI:
             for p, urls in cfg.catalogs.items():
                 if urls:
                     plats[p] += 0  # console con uno store online ma senza giochi posseduti
-            # JSONResponse diretto: jsonable_encoder di FastAPI su ~150.000 righe costa secondi
-            r = JSONResponse({
+            # JSON scritto qui: jsonable_encoder di FastAPI su ~150.000 righe costa secondi, json.dumps in un colpo ~200 MB
+            body = _json({
                 "built_at": lib.built_at, "user_rev": user.rev, "meta_rev": lib.meta_rev,
                 "platforms": sorted(({"id": p, "name": P.PLATFORMS[p].name if p in P.PLATFORMS else p, "count": n}
                                      for p, n in plats.items()), key=lambda x: x["name"].lower()),
@@ -557,10 +575,11 @@ def create_app(cfg) -> FastAPI:
                                     "collections", "versions", "status"], "rows": groups},
                 "smart": cfg.app.get("smart_collections") or [],
             })
-            if len(lib_payloads) > 3:  # posseduti, catalogo e poco altro: le voci vecchie non servono piu'
-                lib_payloads.clear()
-            lib_payloads[ck] = r.body
-            return Response(content=r.body, media_type="application/json")
+            # si tengono solo le parti (posseduti, catalogo, tutto) della libreria attuale: le vecchie sono ~26 MB l'una
+            for k in [k for k in lib_payloads if k[:3] + k[4:] != ck[:3] + ck[4:]]:
+                del lib_payloads[k]
+            lib_payloads[ck] = body
+            return Response(content=body, media_type="application/json")
 
     @app.get("/api/library/patches")
     def api_library_patches(since: int = 0):
@@ -1217,6 +1236,55 @@ def create_app(cfg) -> FastAPI:
         if found:
             C.save_settings(cfg, emulators=found)
         return {"found": found, **api_emulators()}
+
+    # installazione dalle release ufficiali: un lavoro alla volta, la pagina segue /api/emulators/job
+    emu_job = {"status": "idle", "log": [], "emu": "", "done": 0, "total": 0}
+    emu_lock = threading.Lock()
+
+    def _start_emu_job(name: str, fn):
+        def run():
+            say = emu_job["log"].append
+            try:
+                fn(lambda done, total: emu_job.update(done=done, total=total), say)
+                emu_job["status"] = "done"
+            except Exception as e:
+                say(f"Errore: {type(e).__name__}: {e}")
+                emu_job["status"] = "error"
+        with emu_lock:
+            if emu_job["status"] == "running":
+                raise HTTPException(409, "C'e' gia' un'installazione in corso")
+            emu_job.update(status="running", log=[], emu=name, done=0, total=0)
+        threading.Thread(target=run, daemon=True).start()
+        return emu_job
+
+    def _lib_pids():
+        with lib.lock:
+            return sorted({g["platform"] for g in lib.games})
+
+    @app.get("/api/emulators/catalog")
+    def api_emulators_catalog():
+        return {"items": EI.catalog(cfg), "dir": str(EI.emus_dir(cfg)), "cores": EI.missing_cores(cfg, _lib_pids()),
+                "retroarch": bool(cfg.emulators.get(L.RA) and Path(cfg.emulators[L.RA]).exists())}
+
+    @app.get("/api/emulators/job")
+    def api_emulators_job():
+        return emu_job
+
+    @app.post("/api/emulators/install")
+    def api_emulators_install(body: dict = Body(...)):
+        emu, folder = str(body.get("emu") or ""), (body.get("folder") or "").strip().strip('"')
+        if emu not in EI.SOURCES:
+            raise HTTPException(400, "Emulatore sconosciuto")
+        if folder and not Path(folder).is_absolute():
+            raise HTTPException(400, "Indica un percorso completo (es. D:\\Emulatori)")
+        return _start_emu_job(emu, lambda progress, say: EI.install(cfg, emu, folder, progress, say))
+
+    @app.post("/api/emulators/cores")
+    def api_emulators_cores():
+        cores = EI.missing_cores(cfg, _lib_pids())
+        if not cores:
+            raise HTTPException(400, "Nessun core da scaricare: le console della libreria hanno gia' un emulatore")
+        return _start_emu_job("retroarch-cores", lambda progress, say: EI.install_cores(cfg, cores, progress, say))
 
     # ------------------------------------------------------------ account e store PC
     def _store_counts() -> dict:
@@ -2309,6 +2377,36 @@ def create_app(cfg) -> FastAPI:
         cfg.app["retroachievements"] = c
         return api_ra_state()
 
+    @app.get("/api/game/{gid}/hltb")
+    def api_game_hltb(gid: int):
+        """Durata di un gioco da HowLongToBeat, cercata al volo se non e' gia' in cache (stessa chiave del job)."""
+        from ..cache import Cache
+        from .. import hltb as H
+        g = lib.game(gid)
+        if g.get("store") == "online":
+            return {}
+        if g.get("hltb"):
+            return json.loads(g["hltb"])
+        key = H.cache_key(g["title"], g["platform"])
+        cache = Cache(cfg.cache)
+        try:
+            hit = cache.kv_get(key)
+            if hit is not None and time.time() - (hit.get("t") or 0) < (H.FOUND_TTL if hit.get("main") or hit.get("extra") or hit.get("complete") else H.MISS_TTL):
+                return {k: v for k, v in hit.items() if k != "t"}
+            client = H.Client()
+            try:
+                res = H.lookup(g["title"], g["platform"], search=client.search)
+            except H.RateLimited as e:
+                return {"error": str(e)}
+            finally:
+                client.close()
+            cache.kv_set(key, {**res, "t": time.time()})
+            return res
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"}
+        finally:
+            cache.close()
+
     @app.get("/api/game/{gid}/ra")
     def api_game_ra(gid: int, force: int = 0):
         """Obiettivi del gioco e progresso dell'utente. Cache: catalogo della console 7 giorni, abbinamento 30 giorni,
@@ -2975,8 +3073,12 @@ def create_app(cfg) -> FastAPI:
                 pass  # immagine non decodificabile: si serve l'originale
         return FileResponse(src, headers=headers)
 
-    from ..net import MAGIC
+    from ..net import MAGIC, UA
     remote_exts = list(dict.fromkeys([ext for _, ext in MAGIC] + ["mp4"]))
+    # un solo client per tutte le copertine: httpx.get() ne crea uno (con il suo contesto SSL) a ogni immagine e,
+    # scorrendo migliaia di giochi degli store, la memoria del server cresceva di decine di MB ogni mille copertine
+    remote_http = httpx.Client(timeout=httpx.Timeout(10, connect=4), follow_redirects=True, headers={"User-Agent": UA},
+                               limits=httpx.Limits(max_connections=8, max_keepalive_connections=4))
 
     def _remote_cached(url_: str) -> str | None:
         """Immagine remota gia' scaricata (percorso relativo alla cache) o None. Niente glob: la cartella ha
@@ -2987,9 +3089,7 @@ def create_app(cfg) -> FastAPI:
         return hit.relative_to(cfg.cache).as_posix() if hit else None
 
     def _fetch_remote(url_: str) -> str | None:
-        import httpx
-
-        from ..net import UA, sniff
+        from ..net import sniff
         from urllib.parse import urlparse
         h = hashlib.sha1(url_.encode()).hexdigest()
         folder = Path(cfg.cache) / "media" / "net"
@@ -3007,8 +3107,7 @@ def create_app(cfg) -> FastAPI:
                 if _REMOTE_DOWN.get(host, 0) > time.time():
                     continue
                 try:
-                    r = httpx.get(candidate, timeout=httpx.Timeout(10, connect=4), follow_redirects=True,
-                                  headers={"User-Agent": UA})
+                    r = remote_http.get(candidate)
                 except httpx.HTTPError as e:
                     if isinstance(e, (httpx.ConnectTimeout, httpx.ConnectError)):
                         _REMOTE_DOWN[host] = time.time() + 300
@@ -3049,7 +3148,11 @@ def create_app(cfg) -> FastAPI:
             if ok:
                 lib.touch([gid])
             else:
-                _REMOTE_MISS[url_] = time.time() + 3600  # non esiste (o host giu'): non si riprova per un'ora
+                now = time.time()
+                if len(_REMOTE_MISS) > 5000:  # scorrendo tutto il catalogo diventerebbero centinaia di migliaia
+                    for k in [k for k, until in _REMOTE_MISS.items() if until <= now]:
+                        _REMOTE_MISS.pop(k, None)
+                _REMOTE_MISS[url_] = now + 3600  # non esiste (o host giu'): non si riprova per un'ora
 
     for _ in range(3):  # 3 dei 4 posti di _REMOTE_SEM: uno resta libero per port, giochi gratis e schede
         threading.Thread(target=_cover_worker, daemon=True).start()
@@ -3113,6 +3216,95 @@ def create_app(cfg) -> FastAPI:
     def api_integrations_discord(body: dict = Body(default={})):
         """Salva {enabled, client_id, show_time} e riallinea subito la presenza."""
         return {"discord": discord.apply(body)}
+
+    def _media_http_error(error):
+        raise HTTPException(error.status, detail=str(error))
+
+    @app.get("/api/spotify/status")
+    def api_spotify_status():
+        return spotify.status()
+
+    @app.post("/api/spotify/settings")
+    def api_spotify_settings(body: dict = Body(default={})):
+        try: return spotify.configure(body.get("client_id", ""))
+        except SpotifyError as error: _media_http_error(error)
+
+    @app.get("/api/spotify/login")
+    def api_spotify_login():
+        try: return {"url": spotify.login_url(), "redirect_uri": spotify.redirect_uri}
+        except SpotifyError as error: _media_http_error(error)
+
+    @app.get("/api/spotify/callback", response_class=HTMLResponse)
+    def api_spotify_callback(code: str = "", state: str = "", error: str = ""):
+        try:
+            spotify.callback(code, state, error)
+            message = "Spotify collegato. Puoi chiudere questa finestra e tornare a Pozzo Launcher."
+        except SpotifyError as problem:
+            message = str(problem)
+        return HTMLResponse("<!doctype html><html lang='it'><meta charset='utf-8'><title>Spotify - Pozzo</title>"
+                            f"<body style='font:16px sans-serif;background:#151923;color:#eee;padding:3rem'><h1>{html.escape(message)}</h1></body></html>")
+
+    def _spotify_control(action, body):
+        try: return spotify.control(action, (body or {}).get("value"))
+        except SpotifyError as error: _media_http_error(error)
+
+    for _path, _action in (("play", "play"), ("pause", "pause"), ("play-pause", "play_pause"),
+                           ("next", "next"), ("prev", "previous"), ("volume", "volume")):
+        def _handler(body: dict = Body(default={}), action=_action):
+            return _spotify_control(action, body)
+        app.add_api_route(f"/api/spotify/{_path}", _handler, methods=["POST"], name=f"api_spotify_{_path}")
+
+    @app.post("/api/spotify/shuffle")
+    def api_spotify_shuffle(body: dict = Body(default={})):
+        try: return spotify.control("shuffle", body.get("state", False))
+        except SpotifyError as error: _media_http_error(error)
+
+    @app.post("/api/spotify/logout")
+    def api_spotify_logout():
+        spotify.logout()
+        return spotify.public_status()
+
+    @app.post("/api/media/keys")
+    def api_media_keys(body: dict = Body(default={})):
+        from ..mediakeys import send
+        return send(str(body.get("action", "")))
+
+    @app.get("/api/discord/config")
+    def api_discord_voice_config(): return discord_voice.public_status()
+
+    @app.get("/api/discord/status")
+    def api_discord_voice_status(): return discord_voice.status()
+
+    @app.post("/api/discord/settings")
+    def api_discord_voice_settings(body: dict = Body(default={})):
+        try:
+            return discord_voice.configure(body.get("client_id", ""), body.get("client_secret", ""))
+        except DiscordVoiceError as error: _media_http_error(error)
+
+    @app.post("/api/discord/test")
+    def api_discord_voice_test():
+        try: return discord_voice.test()
+        except DiscordVoiceError as error: _media_http_error(error)
+
+    @app.post("/api/discord/mute")
+    def api_discord_voice_mute(body: dict = Body(default={})):
+        try: return discord_voice.set_voice(mute=body.get("enabled", True))
+        except DiscordVoiceError as error: _media_http_error(error)
+
+    @app.post("/api/discord/deafen")
+    def api_discord_voice_deafen(body: dict = Body(default={})):
+        try: return discord_voice.set_voice(deaf=body.get("enabled", True))
+        except DiscordVoiceError as error: _media_http_error(error)
+
+    @app.post("/api/discord/volume")
+    def api_discord_voice_volume(body: dict = Body(default={})):
+        try: return discord_voice.set_voice(volume=body.get("value", 100))
+        except DiscordVoiceError as error: _media_http_error(error)
+
+    @app.post("/api/discord/leave")
+    def api_discord_voice_leave():
+        try: return discord_voice.leave()
+        except DiscordVoiceError as error: _media_http_error(error)
 
     # ------------------------------------------------------------ telefono: attività e comandi remoti
     def _job_rows() -> list[dict]:
@@ -4044,11 +4236,32 @@ class LocalGuard:
 WINDOW_FOCUS = {"fn": None}  # impostata quando l'app gira in una finestra nativa
 
 
+def _theme_bg(cfg, bigpicture: bool = False) -> str:
+    """Colore di sfondo (--bg) del tema attivo: la finestra nasce gia' di quel colore."""
+    tid = cfg.app.get("theme", "default")
+    if isinstance(tid, str) and tid != "default":
+        for base in X.theme_dirs(cfg):
+            try:
+                meta = json.loads((base / tid / "theme.json").read_text(encoding="utf-8"))
+                css = (base / tid / meta.get("bigpicture" if bigpicture else "desktop", "")).read_text(encoding="utf-8")
+            except (OSError, ValueError, TypeError, AttributeError):
+                continue
+            found = re.search(r"--bg:\s*#([0-9a-fA-F]{3,8})", css)
+            if found:
+                h = found.group(1)
+                h = "".join(c * 2 for c in h) if len(h) in (3, 4) else h
+                if len(h) >= 6:
+                    return "#" + h[:6]  # pywebview vuole #rrggbb: '#000' lo fa rompere all'avvio
+    return "#111318"
+
+
 def window_titlebar(hwnd: int, color: str) -> dict:
-    """Barra del titolo e bordo di una finestra Windows del colore dato ('#rgb' o '#rrggbb').
+    """Barra del titolo e bordo di una finestra Windows del colore dato ('#rgb', '#rrggbb' o 'rgb(r, g, b)').
     Windows 11: colore esatto. Windows 10 (2004+): solo barra scura o chiara, secondo la luminosita'."""
     import ctypes
-    h = str(color).strip().lstrip("#")
+    h = str(color).strip()
+    rgb = re.fullmatch(r"rgba?\(\s*(\d{1,3})[,\s]+(\d{1,3})[,\s]+(\d{1,3})[^)]*\)", h)
+    h = "%02x%02x%02x" % tuple(int(v) for v in rgb.groups()) if rgb else h.lstrip("#")
     if len(h) == 3:
         h = "".join(c * 2 for c in h)
     r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))  # ValueError se il colore non e' esadecimale
@@ -4175,14 +4388,20 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                 except Exception as e:
                     return {"ok": False, "error": str(getattr(e, "read", lambda: b"")().decode() or e)}
 
-            def set_titlebar(self, color):
-                """Barra del titolo della finestra del colore del tema (chiamata dal frontend)."""
-                if sys.platform != "win32":
-                    return None
+            def window_ready(self, color):
+                """Barra del titolo, bordo e comparsa della finestra con il colore del tema. La chiama il
+                frontend quando tema e interfaccia sono gia' applicati: prima non si vede nulla, cosi' non
+                si vede per un attimo il tema predefinito e i colori di sistema."""
+                win = webview.windows[0]
                 try:
-                    return window_titlebar(webview.windows[0].native.Handle.ToInt64(), color)
-                except Exception as e:  # colore non valido o finestra non pronta: resta quella di sistema
-                    return {"error": str(e)}
+                    if sys.platform == "win32" and color:
+                        window_titlebar(win.native.Handle.ToInt64(), color)
+                except Exception:  # colore non valido o finestra non pronta: si mostra lo stesso
+                    pass
+                if not shown.is_set():  # le chiamate successive (cambio tema) aggiornano solo titolo e bordo
+                    shown.set()
+                    win.show()
+                return True
 
             def focus_window(self):
                 """Riporta in primo piano la finestra dell'app quando il gioco si chiude."""
@@ -4259,6 +4478,8 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
         state_fs = {"on": bigpicture}
         activity_win: dict = {}
         api = Api()
+        # la finestra principale nasce nascosta e si mostra quando il frontend ha applicato tema e interfaccia
+        shown = threading.Event()
         WINDOW_FOCUS["fn"] = api.focus_window
         SL.set_resolver(api.resolve_link)  # link veri dietro gli accorciatori pubblicitari (ouo)
         from .. import notify
@@ -4272,8 +4493,22 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
 
         notify.start_tray(str(ico), api.focus_window, lambda: webview.windows[0].destroy(),  # icona vicino a volume e rete
                           on_notification_click)
+        bg = _theme_bg(cfg, bigpicture)
+        # hidden=True (solo Windows: altrove pywebview non ha un modo affidabile di mostrarla dopo): la
+        # finestra appare gia' con tema, colori e disposizione giusti, non con quelli predefiniti
         main_win = webview.create_window("Pozzo Launcher", start_url, width=1500, height=940, min_size=(960, 600),
-                                         background_color="#111318", js_api=api, fullscreen=bigpicture)
+                                         background_color=bg, js_api=api, fullscreen=bigpicture,
+                                         hidden=sys.platform == "win32")
+        if sys.platform == "win32":  # errore JS: la finestra si mostra lo stesso, senza aspettare all'infinito
+            def show_anyway():
+                if not shown.wait(15):
+                    try:
+                        window_titlebar(main_win.native.Handle.ToInt64(), bg)
+                    except Exception:
+                        pass
+                    main_win.show()
+            threading.Thread(target=show_anyway, daemon=True).start()
+
         # chiusa la finestra principale si chiude anche quella delle attivita' (altrimenti l'app resta aperta)
         main_win.events.closed += lambda: activity_win.get("w") and activity_win["w"].destroy()
         # private_mode=False + cartella fissa: senza, la finestra butta via il localStorage alla chiusura
