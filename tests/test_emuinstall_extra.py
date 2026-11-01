@@ -154,6 +154,9 @@ def test_errore_di_rete(tmp: Path):
 
 
 if __name__ == "__main__":
+    if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (vedi emuinstall.py)
+        print("-- saltato: installer degli emulatori solo Windows")
+        sys.exit(0)
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_consigliato_dedicato_e_retroarch(Path(t))
     for fn in (test_gia_installato, test_non_supportato, test_console_sconosciuta,

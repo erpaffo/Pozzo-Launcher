@@ -81,6 +81,9 @@ def test_install(tmp: Path):
 
 
 if __name__ == "__main__":
+    if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (vedi emuinstall.py)
+        print("-- saltato: installer degli emulatori solo Windows")
+        sys.exit(0)
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_install(Path(t))
     print("TUTTI I TEST OK")

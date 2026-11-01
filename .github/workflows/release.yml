@@ -166,7 +166,7 @@ jobs:
           pip install pyyaml
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
-            pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra fonts-dejavu-core
+            pandoc texlive-xetex texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-lang-italian fonts-dejavu-core
           python tools/docs_pdf.py "release/PozzoLauncher-${GITHUB_REF_NAME#v}-manuale.pdf"
 
       # testo della release: la sezione "## <versione>" di changelog.md (fino alla sezione seguente)

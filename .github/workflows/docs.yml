@@ -40,7 +40,7 @@ jobs:
           pip install mkdocs-material
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
-            pandoc texlive-xetex texlive-latex-recommended texlive-latex-extra fonts-dejavu-core
+            pandoc texlive-xetex texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-lang-italian fonts-dejavu-core
 
       # il PDF va in docs/ prima del sito: cosi' MkDocs lo pubblica e il link nell'introduzione funziona
       - name: PDF

@@ -1,4 +1,4 @@
-# Scorciatoie
+# Scorciatoie da tastiera
 
 Pozzo Launcher si usa anche senza mouse: tastiera sul PC e controller in Big Picture.
 Sul Mac al posto di **Ctrl** si usa **Cmd (⌘)**; l'app mostra da sola il simbolo giusto nei menu, nei suggerimenti
