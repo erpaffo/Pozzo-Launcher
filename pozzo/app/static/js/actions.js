@@ -64,7 +64,7 @@ function pickCollection(anchor, gameId, current) {
 /* ------------------------------------------------------------------ avvio giochi */
 async function play(id, body = {}) {
   let r;
-  try { r = await api(`/api/game/${id}/play`, { body }); } catch (e) { return toast(e.message, true); }
+  try { r = await api(`/api/game/${id}/play`, { body }); } catch (e) { return toastError(e); }
   if (r.ask) { const w = await askWindow(); return w && play(id, w); }
   const btn = S.detail?.id === id && $("#d-play");
   if (btn) { btn.classList.add("mo-launch"); btn.addEventListener("animationend", () => btn.classList.remove("mo-launch"), { once: true }); }
@@ -82,6 +82,25 @@ function askWindow() {
 
 /* ------------------------------------------------------------------ menu del tasto destro su un gioco */
 function closeCtx() { document.getElementById("ctxmenu")?.remove(); }
+
+/* Dove compare un gioco nelle varie viste e in quale attributo sta il suo id (selettore, chiave di dataset): il clic
+   destro vale ovunque, non solo nella griglia. Una nuova vista con le sue schede si aggiunge qui (c'e' un test). */
+const GAME_TARGETS = [
+  [".tile[data-id]", "id"], [".nf-card[data-id]", "id"], [".top-row[data-id]", "id"], ["li[data-id]", "id"],
+  ["[data-cnx-id]", "cnxId"], ["[data-console-game]", "consoleGame"], ["[data-console-open]", "consoleOpen"],
+  ["[data-dashboard-game]", "dashboardGame"], ["[data-vetrina-game]", "vetrinaGame"],
+    ["[data-shelf-game]", "shelfGame"],
+  ];
+
+/** Il gioco sotto il puntatore, in qualunque vista; null se non c'e' (id non numerici, schede non di un gioco). */
+function gameFromEvent(e) {
+  for (const [sel, key] of GAME_TARGETS) {
+    const el = e.target.closest(sel);
+    const g = el && S.byId.get(+el.dataset[key]);
+    if (g) return g;
+  }
+  return null;
+}
 
 async function setGrp(g, field, value) {
   await api(`/api/game/${g.id}/flag`, { body: { field, value } });
@@ -120,11 +139,27 @@ function openCtx(e, g) {
   if (!g.store) rows.push({ l: "📂 Mostra nella cartella", f: () => api(`/api/game/${g.id}/open-folder`, { body: {} }) });
   rows.push({ l: "🖼 Cerca immagini…", f: () => openMediaPick(g) });
   if (g.store !== "online") rows.push({ l: "🔗 Applicazioni abbinate…", f: () => openProfile(g) });
+  if (g.store && !["online", "manual"].includes(g.store)) {
+    if (!g.installed) rows.push({ l: "⬇ Installa", f: () => installGame(g.id) });
+    rows.push({ l: "🛒 Pagina dello store", f: () => api(`/api/game/${g.id}/store-page`, { body: {} }) });
+  }
+  if (g.store !== "online") rows.push({ l: "🖥 Collegamento sul desktop", f: async () => {
+    await api(`/api/game/${g.id}/shortcut`, { body: {} });
+    toast(`Collegamento «${g.title}» creato sul desktop`);
+  } });
+  rows.push({ l: "📋 Copia il titolo", f: () => navigator.clipboard.writeText(g.title).then(() => toast("Titolo copiato")) });
   if (here) rows.push("-", { l: `✖ Rimuovi da «${here.l}»`, f: here.f, hl: 1 });
-  rows.push("-", { l: grp.favorite ? "★ Togli dai preferiti" : "☆ Aggiungi ai preferiti", f: () => setGrp(g, "favorite", !grp.favorite) });
+  rows.push("-", { l: grp.favorite ? "★ Togli dai preferiti" : "☆ Aggiungi ai preferiti", f: async () => {
+    await setGrp(g, "favorite", !grp.favorite);
+    toast(grp.favorite ? `«${g.title}» nei preferiti` : `«${g.title}» tolto dai preferiti`); // nella Home non cambia nulla a vista
+  } });
   rows.push({ l: "＋ Aggiungi a una collezione…", f: () => pickCollection(pt, g.id, grp.colls.map((i) => S.colls[i]?.slug)) });
+  rows.push({ h: "Voto" }, { stars: true });
   rows.push({ h: "Stato" });
-  for (const [k, s] of Object.entries(STATUS)) if (grp.status !== k) rows.push({ l: `${s.icon} ${s.label}`, f: () => setGrp(g, "status", k) });
+  for (const [k, s] of Object.entries(STATUS)) if (grp.status !== k) rows.push({ l: `${s.icon} ${s.label}`, f: async () => {
+    await setGrp(g, "status", k);
+    toast(`«${g.title}»: ${s.label}`);
+  } });
   const others = rem.filter((r) => r !== here);
   if (others.length) rows.push({ h: "Rimuovi da" }, ...others.map((r) => ({ l: `✖ ${r.l}`, f: r.f })));
   rows.push("-", { l: grp.hidden ? "Mostra di nuovo" : "Nascondi dalla libreria", f: () => setGrp(g, "hidden", !grp.hidden) });
@@ -133,15 +168,26 @@ function openCtx(e, g) {
   const m = document.createElement("div");
   m.id = "ctxmenu";
   m.innerHTML = rows.map((r, i) => r === "-" ? "<hr>" : r.h ? `<div class="ch">${esc(r.h)}</div>`
+    : r.stars ? `<div class="stars">${[5, 4, 3, 2, 1].map((n) => `<span class="st" data-n="${n}" title="${n}/5">★</span>`).join("")}</div>`
     : `<div class="ci${r.hl ? " hl" : ""}" data-i="${i}">${esc(r.l)}</div>`).join("");
   document.body.appendChild(m);
   m.style.left = Math.max(6, Math.min(e.clientX, innerWidth - m.offsetWidth - 8)) + "px";
   m.style.top = Math.max(6, Math.min(e.clientY, innerHeight - m.offsetHeight - 8)) + "px";
   m.onclick = async (ev) => {
+    const star = ev.target.closest(".st");
+    if (star) {
+      closeCtx();
+      try {
+        await api(`/api/game/${g.id}/flag`, { body: { field: "my_rating", value: +star.dataset.n } });
+        toast(`Voto ${star.dataset.n}/5 a «${g.title}»`);
+        if (S.detail?.id === g.id) openDetail(g.id);
+      } catch (err) { toast(err.message, true); }
+      return;
+    }
     const it = ev.target.closest(".ci");
     if (!it) return;
     closeCtx();
-    try { await rows[+it.dataset.i].f(); } catch (err) { toast(err.message, true); }
+    try { await rows[+it.dataset.i].f(); } catch (err) { toastError(err); }
   };
 }
 

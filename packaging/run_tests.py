@@ -3,7 +3,8 @@
 Serve alla CI: un test bloccato (per esempio una chiamata di rete che non risponde) faceva restare il
 job appeso per sempre, senza dire dove. Qui ogni script e' un processo a se': se supera il limite gli si
 chiede un dump dei thread (SIGABRT + faulthandler) e poi viene terminato, cosi' il log dice dove si e'
-fermato. Uso: python packaging/run_tests.py [nome_test.py ...]
+fermato. Uso: python packaging/run_tests.py [--shard K/N] [nome_test.py ...]
+(--shard: solo la K-esima di N parti, per dividere la suite su piu' job della CI)
 """
 
 from __future__ import annotations
@@ -75,7 +76,13 @@ def run(name: str, timeout: float) -> bool:
 
 
 def main(argv: list[str]) -> int:
+    shard = None
+    if argv[:1] == ["--shard"]:
+        k, n = (int(x) for x in argv[1].split("/"))
+        shard, argv = (k, n), argv[2:]
     wanted = argv or discover()
+    if shard:  # a turno, cosi' i test pesanti (e2e) si distribuiscono
+        wanted = wanted[shard[0] - 1 :: shard[1]]
     timeout = limit()
     failed = [name for name in wanted if not run(name, timeout)]
     print(flush=True)

@@ -28,6 +28,7 @@ Copia, incolla, ricarica e le altre combinazioni del browser restano intatte.
 | Big Picture (entra / esci) | `Ctrl+Shift+B` o `F11` | `⌘⇧B` o `F11` |
 | Grafica successiva | `Ctrl+Shift+E` | `⌘⇧E` |
 | Tema successivo | `Ctrl+Shift+T` | `⌘⇧T` |
+| Cambia utente (schermata «Chi gioca?», anche in Big Picture) | `Ctrl+P` | `⌘P` |
 | Elenco delle scorciatoie | `Ctrl+/` o `?` | `⌘/` o `?` |
 | Mostra/nascondi la legenda (Big Picture) | `Ctrl+Shift+H` | `⌘⇧H` |
 

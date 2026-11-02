@@ -1,0 +1,27 @@
+/* Gusto, ordine di gioco, consigli e classifica ROM. Si animano solo transform e opacity. */
+.taste, .reco, .fr { margin: 1rem 0; }
+.taste-title, .reco-title { font-size: 1.1rem; margin: 0 0 .5rem; }
+.taste { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .5rem 1.5rem; }
+.taste-title, .taste-note { grid-column: 1 / -1; }
+.taste-note { opacity: .7; margin: 0; font-size: .85rem; }
+.taste-list, .reco-list, .reco-why, .fr-list, .fr-miss-list { list-style: none; margin: 0; padding: 0; }
+.taste-row { display: grid; grid-template-columns: 8rem 1fr; align-items: center; gap: .5rem; padding: .15rem 0; }
+.taste-bar { display: block; height: .5rem; border-radius: .25rem; background: rgba(128,128,128,.25); overflow: hidden; }
+.taste-fill { display: block; height: 100%; background: currentColor; transform-origin: left center; animation: reco-grow .5s ease-out; }
+.reco-item { padding: .4rem 0; border-bottom: 1px solid rgba(128,128,128,.2); }
+.reco-open, .rank-open, .fr-open { background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: .15rem .25rem; cursor: pointer; border-radius: .25rem; }
+.reco-open { font-weight: 600; }
+.reco-open:hover, .rank-open:hover, .fr-open:hover { text-decoration: underline; }
+.reco-open:focus-visible, .rank-open:focus-visible, .fr-open:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.reco-reason { font-size: .85rem; opacity: .75; }
+.rank-row { display: grid; grid-template-columns: 3rem 1fr auto; align-items: center; gap: .5rem; padding: .2rem 0; }
+.rank-pos, .rank-score { font-variant-numeric: tabular-nums; opacity: .8; }
+.fr-item { display: flex; gap: .5rem; align-items: baseline; padding: .2rem 0; }
+.fr-current .fr-name, .fr-current .fr-open { font-weight: 700; }
+.fr-tag { font-size: .75rem; padding: 0 .4rem; border-radius: .6rem; background: rgba(128,128,128,.25); }
+.fr-miss { opacity: .7; }
+.fr-sub { margin: .5rem 0 .2rem; font-size: .9rem; }
+.fr-miss-item { opacity: .8; font-size: .9rem; }
+@keyframes reco-grow { from { transform: scaleX(0); opacity: .3; } }
+html[data-motion="off"] .taste-fill, html[data-motion="reduced"] .taste-fill { animation: none; }
+@media (prefers-reduced-motion: reduce) { .taste-fill { animation: none; } }

@@ -12,7 +12,7 @@
       "files": {
         "backend.py": "4188b25566141a966561a36508cc852a0e3322ac8cb1f968d98921a5530b3229",
         "frontend.js": "8b9665770cf2eefe47c96a52a6800f3754852e3aa20e83f19a73e16aca36a86b",
-        "plugin.toml": "dc1d8952a95c274b96127b79b6b226bc52167f7720cfc5d86d53e129daed69bf",
+        "plugin.toml": "955508bd2d337d06dc4e9fd2b481aa272e3730ee822d743b8b9efa437d47b91f",
         "style.css": "57030827a56b1e35ac6c1d3b8317b60600cd85e20371b73da8e8bb096cb47b40"
       }
     },
@@ -27,7 +27,7 @@
       "files": {
         "backend.py": "17ab35703763ca2190ced3fd31af0174acadb167a78fb3e6a80e8db250717fd0",
         "frontend.js": "763cded618d1ea2585ae32eabbb6dab83f8399a87a42e8cc4b51531e3b38ecfd",
-        "plugin.toml": "e09d07041f906afa58673636818b8c6aef383bd1e7a4371023bd7730bce072cf",
+        "plugin.toml": "ece3a3887dd40e6c18a62567f69773f4277acca01e73f5645bb6c139bd1d39c3",
         "style.css": "d0dbe66bd6e494de9946a9740e869aacef24b0f71267af9a3f509092fab8ab01"
       }
     },
@@ -42,7 +42,7 @@
       "files": {
         "backend.py": "492150d7396718da88e1c06ba5538bb2caa13e40619240dede77fb303dcd5839",
         "frontend.js": "59932be8f5152cf7864a11595a2eecdfe87b738a3e4cc8df2c1cb356f31cd0e4",
-        "plugin.toml": "30c3530e63a06198ce67fe6bfc1e0036928914df31bd619d904e337fe5c0c78b",
+        "plugin.toml": "caebcd9cf20736213df29bb0bcfe38d65546813eabc75b59f67be4b58452fa68",
         "style.css": "f2424e5c7fcc2d654f59f9db0cc37f81546873a35eb65e58ed642b27ecba0940"
       }
     },
@@ -72,7 +72,7 @@
       "files": {
         "backend.py": "b21286df81e91faccb3866d1b3848a6d42b9d82c60313ba2decee2b654e072ba",
         "frontend.js": "b421a17688c16e1953405313ef373056f135ca4f66bc82646f5cd20ce24d3179",
-        "plugin.toml": "15fbd2d185423cbe7e203ec7ebce2d03c45bc3fadc66d1f43d9d89db231252e5",
+        "plugin.toml": "34ce3bcf881422a314f0f3f603b18aea0facbe6092b70ccf2968cd1f12ae7220",
         "style.css": "3f947fa5c51631cdf3b26718698a0f74975817c907435dee3d2758f1e7e930b9"
       }
     },
@@ -87,7 +87,7 @@
       "files": {
         "backend.py": "9d45cd88fefb55490cecad34468aa05eeb68867226a7510dfef4ae1cb49bf609",
         "frontend.js": "acf9f4107e3f5534bd730dc9053dece9f0a0f142cc2ae52f3d7b9f1f41ac7bbe",
-        "plugin.toml": "52e174db2694f2168ca3cb0ebcd9d5d27886e97d6d944591827d85559f8c52b1"
+        "plugin.toml": "cfa3b02350db6feebb92a48d9f49ccc111a50552dee2b838ea89f50a4e6e99b1"
       }
     },
     {
@@ -101,7 +101,7 @@
       "files": {
         "backend.py": "d8986d89d6f4c97b43ae5ab4259a639bfa4e1cc8bfacf25900d896374ca6ca7c",
         "frontend.js": "074e16f6d37fd56157890fd3f023518d7d215e7c7f0714bd8b5cafd9505395d4",
-        "plugin.toml": "421d69e6562aaa2ab77ad7b422ceff2ded32b4e689eb9101afc3fd88133e8ad1",
+        "plugin.toml": "703d41229d839d42196373c5a0d680a598f8c6f36b2739098585cb1087267b91",
         "style.css": "cc117b6eae389a23aa3fe7c69823a6c0e6b66769ba1a48766e417656e8536e6e"
       }
     },
@@ -131,7 +131,7 @@
       "files": {
         "backend.py": "30bcec14e781e0d590c23937bd89184e4fc164071de442179d437d6e264934f0",
         "frontend.js": "6ed432ec8318629b96e1c0193a92e84c9b23837b8240588271b820ced2a5f92f",
-        "plugin.toml": "471a5d3fcc3dda2ceed827f14b897f13f11a4989977bb5cfc6d89572b6591746",
+        "plugin.toml": "d81b3dd1b3daf82ce50232917ec354ab4bc52a8545664a5b3b93fea78660c3a8",
         "style.css": "54c3c8685c2819e9ba02a210f828278c29ce2592c1326aa8abe454de96689e4e"
       }
     },

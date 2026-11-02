@@ -26,6 +26,7 @@ import sys
 import tarfile
 import time
 import zipfile
+import zlib
 from pathlib import Path
 from urllib.parse import quote
 
@@ -107,7 +108,8 @@ def _link_port(cfg, slug: str, folder: Path):
 
 
 def _token(cfg) -> str:
-    return (cfg.app.get("github_token") or "").strip()
+    from . import profilecfg as PC
+    return (PC.get(cfg, "github_token", "") or "").strip()  # token del profilo attivo
 
 
 def _get(url: str, params: dict | None = None, token: str = ""):
@@ -836,59 +838,263 @@ def setup_rom(folder: Path, sf: dict, src: Path, member: str = "") -> Path:
 
 # ---------------------------------------------------------------- mod (8.9)
 
-def mod_list(cache, mods: dict) -> list[dict]:
-    """Mod da Thunderstore (elenco in cache 12 ore). GameBanana non ha un'API di download comoda: solo il link."""
+MOD_MAX_DOWNLOAD = 512 << 20  # 512 MB: una mod piu' grande e' quasi sempre un pacchetto sbagliato
+# host da cui si accettano download e pagine; Nexus non c'e': senza chiave API dell'utente niente scraping
+MOD_HOSTS = {"thunderstore": "thunderstore.io", "gamebanana": "gamebanana.com", "moddb": "moddb.com"}
+_LINK = re.compile(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S | re.I)
+
+
+def _host_ok(url: str, provider: str) -> bool:
+    m = re.match(r"https://([^/:]+)", url or "")
+    host = MOD_HOSTS.get(provider)
+    return bool(m and host) and (m.group(1) == host or m.group(1).endswith("." + host))
+
+
+def parse_thunderstore(raw: list) -> list[dict]:
+    return [{"provider": "thunderstore", "id": p["full_name"], "name": p["name"].replace("_", " "),
+             "owner": p.get("owner") or "", "description": v.get("description") or "", "icon": v.get("icon") or "",
+             "version": v.get("version_number") or "", "url": v.get("download_url") or "",
+             "sha256": (v.get("sha256") or "").lower(), "page": p.get("package_url") or "",
+             "downloads": sum(x.get("downloads") or 0 for x in p["versions"]), "nsfw": p.get("has_nsfw_content")}
+            for p in raw or [] if p.get("versions") and not p.get("is_deprecated") for v in [p["versions"][0]]]
+
+
+def parse_mod_page(url: str, provider: str, html: str) -> list[dict]:
+    """Mod elencate in una pagina pubblica di GameBanana o ModDB: solo link alla pagina (il download si fa da li')."""
+    out: dict[str, dict] = {}
+    for href, text in _LINK.findall(html or ""):
+        if not _host_ok(href, provider):
+            continue
+        name = re.sub(r"<[^>]+>|\s+", " ", text).strip()
+        if provider == "gamebanana":
+            m = re.search(r"/(?:mods|dl)/(\d+)", href)
+            mid = m and f"gamebanana-{m.group(1)}"
+        elif provider == "moddb":
+            m = re.search(r"/mods/([^/]+)/downloads", href)
+            mid = m and f"moddb-{m.group(1)}"
+        else:
+            mid = None
+        if mid and mid not in out:
+            out[mid] = {"provider": provider, "id": mid, "name": name or mid, "page": href, "url": "",
+                        "version": "", "description": "", "downloads": 0, "source": url}
+    return list(out.values())
+
+
+def mod_matches(item: dict, games: list[str], consoles: list[str]) -> bool:
+    """Prudente: la mod vale solo se il gioco coincide (titolo normalizzato) e la piattaforma, se dichiarata, e' tra quelle del port."""
+    plat = item.get("platform")
+    if plat and (platform_of(plat) or plat) not in {platform_of(c) or c for c in consoles or []}:
+        return False
+    return bool(item.get("game")) and normalize(item["game"]) in {normalize(g) for g in games or [] if g}
+
+
+def mod_list(cache, mods: dict, games: list[str] = (), consoles: list[str] = ()) -> list[dict]:
+    """Mod da Thunderstore (con download) e dalle pagine di GameBanana/ModDB (solo link); elenchi in cache 12 ore."""
     out = []
     for s in mods.get("sources") or []:
-        m = re.search(r"thunderstore\.io/c/([^/]+)", s.get("sourceUrl") or "")
-        if s.get("provider") != "thunderstore" or not m:
+        src, provider = s.get("sourceUrl") or "", s.get("provider")
+        m = re.search(r"thunderstore\.io/c/([^/]+)", src)
+        if provider == "thunderstore" and m:
+            key, url, parse = "ports:ts:" + m.group(1), f"https://thunderstore.io/c/{m.group(1)}/api/v1/package/", parse_thunderstore
+        elif provider in ("gamebanana", "moddb") and _host_ok(src, provider):
+            key, url, parse = f"ports:{provider}:{src}", src, None
+        else:
             continue
-        key = "ports:ts:" + m.group(1)
         pk = cache.kv_get(key, max_age=RELEASE_TTL)
         if pk is None:
             try:
-                raw = _get(f"https://thunderstore.io/c/{m.group(1)}/api/v1/package/")
-            except (httpx.HTTPError, ValueError):
-                raw = None
-            if raw is None:
-                pk = cache.kv_get(key) or []
-            else:
-                pk = [{"id": p["full_name"], "name": p["name"].replace("_", " "), "owner": p["owner"],
-                       "description": v.get("description") or "", "icon": v.get("icon") or "",
-                       "version": v.get("version_number") or "", "url": v.get("download_url") or "",
-                       "page": p.get("package_url") or "", "downloads": sum(x.get("downloads") or 0 for x in p["versions"]),
-                       "nsfw": p.get("has_nsfw_content")}
-                      for p in raw if p.get("versions") and not p.get("is_deprecated") for v in [p["versions"][0]]]
+                pk = parse(_get(url)) if parse else parse_mod_page(src, provider, _get_text(url))
                 cache.kv_set(key, pk)
-        out += pk
-    return sorted(out, key=lambda x: -x["downloads"])
+            except (httpx.HTTPError, ValueError, RuntimeError):
+                pk = cache.kv_get(key) or []
+        out += [x for x in pk if "game" not in x or mod_matches(x, games, consoles)]
+    return sorted(out, key=lambda x: -(x.get("downloads") or 0))
+
+
+def _get_text(url: str) -> str:
+    r = httpx.get(url, headers=UA, timeout=httpx.Timeout(20, connect=8), follow_redirects=True)
+    r.raise_for_status()
+    return r.text[:2_000_000]
+
+
+def _mod_download(url: str, dest: Path, provider: str, max_bytes: int = MOD_MAX_DOWNLOAD):
+    """Download di una mod: solo https dall'host della fonte, interrotto oltre max_bytes."""
+    if not _host_ok(url, provider):
+        raise ValueError("indirizzo della mod non consentito")
+    with httpx.stream("GET", url, headers=UA, timeout=httpx.Timeout(60, connect=10), follow_redirects=True) as r:
+        r.raise_for_status()
+        if not _host_ok(str(r.url), provider):
+            raise ValueError("la mod rimanda a un altro sito: download rifiutato")
+        done = 0
+        with open(dest, "wb") as f:
+            for b in r.iter_bytes(1 << 20):
+                done += len(b)
+                if done > max_bytes:
+                    raise ValueError("mod troppo grande")
+                f.write(b)
+
+
+def _extract_mod_zip(archive: Path, out: Path) -> list[str]:
+    """Estrae la mod in out; rifiuta percorsi che escono dalla cartella. Ritorna i file (relativi, con /)."""
+    files = []
+    with zipfile.ZipFile(archive) as z:
+        members = [i for i in z.infolist() if not i.is_dir() and Path(i.filename).name.lower() not in MOD_META]
+        targets = [_inside(out, i.filename) for i in members]  # prima si controllano tutti, poi si scrive
+        for i, dst in zip(members, targets):
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            with z.open(i) as f, open(dst, "wb") as w:
+                shutil.copyfileobj(f, w)
+            files.append(dst.relative_to(out.resolve()).as_posix())
+    return files
+
+
+def _bps_num(p: bytes, i: int) -> tuple[int, int]:
+    data, shift = 0, 1
+    while True:
+        x = p[i]
+        i += 1
+        data += (x & 0x7F) * shift
+        if x & 0x80:
+            return data, i
+        shift <<= 7
+        data += shift
+
+
+def apply_patch_copy(source: Path, dest: Path, patch: Path):
+    """Applica una patch IPS o BPS (ROM hack, traduzioni) scrivendo SOLO dest: la ROM originale non si tocca."""
+    src, p = source.read_bytes(), patch.read_bytes()
+    if p[:5] == b"PATCH":
+        out, i = bytearray(src), 5
+        while p[i:i + 3] != b"EOF":
+            off, size = int.from_bytes(p[i:i + 3], "big"), int.from_bytes(p[i + 3:i + 5], "big")
+            i += 5
+            if size:
+                chunk = p[i:i + size]
+                i += size
+            else:  # RLE
+                chunk = p[i + 2:i + 3] * int.from_bytes(p[i:i + 2], "big")
+                i += 3
+            if len(out) < off + len(chunk):
+                out.extend(b"\0" * (off + len(chunk) - len(out)))
+            out[off:off + len(chunk)] = chunk
+    elif p[:4] == b"BPS1":
+        if zlib.crc32(p[:-4]) & 0xFFFFFFFF != int.from_bytes(p[-4:], "little"):
+            raise ValueError("patch BPS danneggiata")
+        if zlib.crc32(src) & 0xFFFFFFFF != int.from_bytes(p[-12:-8], "little"):
+            raise ValueError("la patch BPS e' per un'altra versione della ROM")
+        i = 4
+        _, i = _bps_num(p, i)
+        tsize, i = _bps_num(p, i)
+        meta, i = _bps_num(p, i)
+        i += meta
+        out, sp, tp = bytearray(), 0, 0
+        while i < len(p) - 12:
+            data, i = _bps_num(p, i)
+            cmd, length = data & 3, (data >> 2) + 1
+            if cmd == 0:  # SourceRead
+                out += src[len(out):len(out) + length]
+            elif cmd == 1:  # TargetRead
+                out += p[i:i + length]
+                i += length
+            else:
+                d, i = _bps_num(p, i)
+                delta = -(d >> 1) if d & 1 else d >> 1
+                if cmd == 2:  # SourceCopy
+                    sp += delta
+                    out += src[sp:sp + length]
+                    sp += length
+                else:  # TargetCopy: puo' sovrapporsi, byte per byte
+                    tp += delta
+                    for _ in range(length):
+                        out.append(out[tp])
+                        tp += 1
+        if len(out) != tsize or zlib.crc32(out) & 0xFFFFFFFF != int.from_bytes(p[-8:-4], "little"):
+            raise ValueError("risultato della patch BPS non valido")
+    else:
+        raise ValueError("formato di patch non supportato (solo IPS e BPS)")
+    tmp = dest.with_name(dest.name + ".tmp")
+    tmp.write_bytes(bytes(out))
+    os.replace(tmp, dest)
+
+
+def _mod_store(cfg, slug: str, mod_id: str) -> Path:
+    """Cartella con l'archivio della mod e il backup dei file del port che sostituisce."""
+    return ports_dir(cfg) / ".mods" / re.sub(r"[^\w.-]+", "_", slug) / re.sub(r"[^\w.-]+", "_", mod_id)
+
+
+def _mod_apply(folder: Path, target: Path, archive: Path) -> list[str]:
+    rel = target.relative_to(folder.resolve()).as_posix()
+    return [f"{rel}/{f}" for f in _extract_mod_zip(archive, target)]
+
+
+def _mod_unapply(folder: Path, record: dict, store: Path):
+    """Toglie i file della mod e rimette quelli originali salvati nel backup."""
+    for f in record.get("files") or []:
+        _inside(folder, f).unlink(missing_ok=True)
+    backup = store / "backup.zip"
+    if backup.is_file():
+        with zipfile.ZipFile(backup) as z:
+            for i in z.infolist():
+                dst = _inside(folder, i.filename)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                with z.open(i) as f, open(dst, "wb") as w:
+                    shutil.copyfileobj(f, w)
 
 
 def install_mod(cfg, slug: str, mod: dict) -> dict:
     m = all_installed(cfg).get(slug)
     if not m:
         raise KeyError(slug)
-    folder = Path(m["folder"])
-    if not str(mod.get("url") or "").startswith("https://thunderstore.io/"):
+    provider, url = mod.get("provider") or "thunderstore", str(mod.get("url") or "")
+    if not _host_ok(url, provider):
         raise ValueError("mod non valida")
+    folder = Path(m["folder"])
     target = _inside(folder, (m.get("mods") or {}).get("path") or "mods")
-    work = _work(cfg, "mod-" + slug)
+    store = _mod_store(cfg, slug, mod["id"])
+    shutil.rmtree(store, ignore_errors=True)
+    store.mkdir(parents=True)
     try:
-        _download(mod["url"], work / "mod.zip")
-        files = []
-        with zipfile.ZipFile(work / "mod.zip") as z:
-            for i in z.infolist():
-                if i.is_dir() or Path(i.filename).name.lower() in MOD_META:
-                    continue
-                dst = _inside(target, i.filename)
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                with z.open(i) as f, open(dst, "wb") as out:
-                    shutil.copyfileobj(f, out)
-                files.append(dst.relative_to(folder).as_posix())
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
+        archive = store / "mod.zip"
+        _mod_download(url, archive, provider)
+        want = (mod.get("sha256") or "").lower()
+        if want and _sha256(archive) != want:
+            raise RuntimeError("la mod scaricata non corrisponde al checksum: download rifiutato")
+        with zipfile.ZipFile(archive) as z:  # backup dei file del port che la mod sostituira'
+            names = [i.filename for i in z.infolist() if not i.is_dir() and Path(i.filename).name.lower() not in MOD_META]
+        replaced = [p for p in (_inside(target, n) for n in names) if p.is_file()]
+        if replaced:
+            with zipfile.ZipFile(store / "backup.zip", "w", zipfile.ZIP_DEFLATED) as z:
+                for p in replaced:
+                    z.write(p, p.relative_to(folder.resolve()).as_posix())
+        files = _mod_apply(folder, target, archive)
+    except Exception:
+        shutil.rmtree(store, ignore_errors=True)
+        raise
     mods = dict(m.get("installed_mods") or {})
-    mods[mod["id"]] = {"name": mod.get("name") or mod["id"], "version": mod.get("version") or "", "files": files}
+    mods[mod["id"]] = {"name": mod.get("name") or mod["id"], "version": mod.get("version") or "", "files": files,
+                       "enabled": True, "provider": provider, "download_url": url,
+                       "backup": (store / "backup.zip").relative_to(ports_dir(cfg)).as_posix()}
+    return set_manifest(cfg, slug, installed_mods=mods)
+
+
+def set_mod_enabled(cfg, slug: str, mod_id: str, enabled: bool) -> dict:
+    m = all_installed(cfg).get(slug)
+    if not m:
+        raise KeyError(slug)
+    mods = dict(m.get("installed_mods") or {})
+    record = dict(mods[mod_id])  # KeyError: mod non installata
+    if record.get("enabled", True) == enabled:
+        return m
+    folder, store = Path(m["folder"]), _mod_store(cfg, slug, mod_id)
+    if enabled:
+        if not (store / "mod.zip").is_file():
+            raise ValueError("archivio della mod mancante: reinstallala")
+        target = _inside(folder, (m.get("mods") or {}).get("path") or "mods")
+        record["files"] = _mod_apply(folder, target, store / "mod.zip")
+    else:
+        _mod_unapply(folder, record, store)
+    record["enabled"] = enabled
+    mods[mod_id] = record
     return set_manifest(cfg, slug, installed_mods=mods)
 
 
@@ -898,6 +1104,9 @@ def remove_mod(cfg, slug: str, mod_id: str) -> dict:
         raise KeyError(slug)
     folder = Path(m["folder"])
     mods = dict(m.get("installed_mods") or {})
-    for f in (mods.pop(mod_id, None) or {}).get("files", []):
-        _inside(folder, f).unlink(missing_ok=True)
+    record = mods.pop(mod_id, None) or {}
+    store = _mod_store(cfg, slug, mod_id)
+    if record.get("enabled", True):
+        _mod_unapply(folder, record, store)
+    shutil.rmtree(store, ignore_errors=True)
     return set_manifest(cfg, slug, installed_mods=mods)

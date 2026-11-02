@@ -1,0 +1,85 @@
+{
+ "files": {
+  "bios7.bin": {
+   "crc": "1280F0D5",
+   "md5": "df692a80a5b1bc90728bc3dfc76cd948",
+   "sha1": "24f67bdea115a2c847c8813a262502ee1607b7df",
+   "size": 16384
+  },
+  "bios9.bin": {
+   "crc": "2AB23573",
+   "md5": "a392174eb3e572fed6447e956bde4b25",
+   "sha1": "bfaac75f101c135e32e2aaf541de6b1be4c8c62d",
+   "size": 4096
+  },
+  "bios_cd_e.bin": {
+   "crc": "529AC15A",
+   "md5": "e66fa1dc5820d254611fdcdba0662372",
+   "sha1": "f891e0ea651e2232af0c5c4cb46a0cae2ee8f356",
+   "size": 131072
+  },
+  "bios_cd_j.bin": {
+   "crc": "9D2DA8F2",
+   "md5": "278a9397d192149e84e820ac621a8edd",
+   "sha1": "4846f448160059a7da0215a5df12ca160f26dd69",
+   "size": 131072
+  },
+  "bios_cd_u.bin": {
+   "crc": "C6D10268",
+   "md5": "2efd74e3232ff260e371b99f84024f7f",
+   "sha1": "f4f315adcef9b8feb0364c21ab7f0eaf5457f3ed",
+   "size": 131072
+  },
+  "dc_boot.bin": {
+   "crc": "89F2B1A1",
+   "md5": "e10c53c2f8b90bab96ead2d368858623",
+   "sha1": "8951d1bb219ab2ff8583033d2119c899cc81f18c",
+   "size": 2097152
+  },
+  "firmware.bin": {
+   "crc": "945F9DC9",
+   "md5": "e45033d9b0fa6b0de071292bba7c9d13",
+   "sha1": "cfe072921ee3fb93f688743f8beef89043c3e9ad",
+   "size": 262144
+  },
+  "gba_bios.bin": {
+   "crc": "81977335",
+   "md5": "a860e8c0b6d573d191e4ec7db1b1e4f6",
+   "sha1": "300c20df6731a33952ded8c436f7f186d25d3492",
+   "size": 16384
+  },
+  "mpr-17933.bin": {
+   "crc": "4AFCF0FA",
+   "md5": "3240872c70984b6cbfda1586cab68dbe",
+   "sha1": "faa8ea183a6d7bbe5d4e03bb1332519800d3fbc3",
+   "size": 524288
+  },
+  "scph5500.bin": {
+   "crc": "FF3EEB8C",
+   "md5": "8dd7d5296a650fac7319bce665a6a53c",
+   "sha1": "b05def971d8ec59f346f2d9ac21fb742e3eb6917",
+   "size": 524288
+  },
+  "scph5501.bin": {
+   "crc": "8D8CB7E4",
+   "md5": "490f666e1afb15b7362b406ed1cea246",
+   "sha1": "0555c6fae8906f3f09baf5988f00e55f88e9f30b",
+   "size": 524288
+  },
+  "scph5502.bin": {
+   "crc": "D786F0B9",
+   "md5": "32736f17079d0b2b7024407c39bd3050",
+   "sha1": "f6bc2d1f5eb6593de7d089c425ac681d6fffd3f0",
+   "size": 524288
+  },
+  "sega_101.bin": {
+   "crc": "224B752C",
+   "md5": "85ec9ca47d8f6807718151cbcca8b964",
+   "sha1": "df94c5b4d47eb3cc404d88b33a8fda237eaf4720",
+   "size": 524288
+  }
+ },
+ "fonte": "https://raw.githubusercontent.com/libretro/libretro-database/master/dat/System.dat",
+ "generato": "2026-11-02",
+ "versione": "v1.19.0"
+}

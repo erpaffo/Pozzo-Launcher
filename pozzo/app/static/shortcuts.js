@@ -11,7 +11,8 @@
 
   /* ---- registro: id, etichetta, gruppo, keys (personalizzabili), fixed (gia' gestiti altrove), scope, typing */
   const REGISTRY = [
-    { id: "search", label: "Cerca", group: "Navigazione", keys: ["Mod+K"], fixed: ["/"], scope: "desktop", typing: true },
+    { id: "search", label: "Cerca", group: "Navigazione", keys: ["/"], scope: "desktop" },
+    { id: "palette", label: "Palette comandi (giochi, console, impostazioni, azioni)", group: "Navigazione", keys: ["Mod+K"], scope: "desktop", typing: true },
     { id: "settings", label: "Impostazioni", group: "Navigazione", keys: ["Mod+,"], scope: "desktop", typing: true },
     { id: "viewAll", label: "Libreria", group: "Navigazione", keys: ["Mod+1"], scope: "desktop" },
     { id: "viewFav", label: "Preferiti", group: "Navigazione", keys: ["Mod+2"], scope: "desktop" },
@@ -28,6 +29,7 @@
     { id: "bigPicture", label: "Big Picture (entra / esci)", group: "Aspetto", keys: ["Mod+Shift+B", "F11"], scope: "both" },
     { id: "nextExperience", label: "Grafica successiva", group: "Aspetto", keys: ["Mod+Shift+E"], scope: "desktop" },
     { id: "nextTheme", label: "Tema successivo", group: "Aspetto", keys: ["Mod+Shift+T"], scope: "desktop" },
+    { id: "profile", label: "Cambia utente (schermata «Chi gioca?»)", group: "Aspetto", keys: ["Mod+P"], scope: "both" },
     { id: "legend", label: "Mostra/nascondi la legenda dei comandi", group: "Big Picture", keys: ["Mod+Shift+H"], scope: "bp" },
     { id: "help", label: "Elenco delle scorciatoie", group: "Aiuto", keys: ["Mod+/", "?"], scope: "both", typing: true },
     { id: "playPause", label: "Musica: play/pausa", group: "Musica e Discord", keys: ["Mod+Alt+P"], scope: "both", typing: true },
@@ -155,7 +157,7 @@
 
   const PS = { REGISTRY, MEDIA_IDS, PAD_BTN, PAD_CHORDS, PAD_HELP, PAD_DEADZONE, PAD_THRESHOLD, isMacPlatform, MAC, padState,
     padStateAll, isPlayStation, comboFromEvent, formatCombo, findAction, conflictOf, keysOf, isTyping, allowedWhileTyping,
-    dispatch, bind, runMedia, saveOverrides, getOverrides: () => overrides,
+    dispatch, bind, runMedia, saveOverrides, run: (id, scope = "desktop") => handlers[scope]?.[id]?.(), getOverrides: () => overrides,
     keyLabel: (id) => { const en = REGISTRY.find((x) => x.id === id); const k = en && (keysOf(en)[0] || en.fixed?.[0]); return k ? formatCombo(k) : ""; } };
   root.PozzoShortcuts = PS;
   if (typeof module !== "undefined" && module.exports) module.exports = PS;
@@ -245,6 +247,7 @@
   const leaveLayers = () => { if (settingsOpen()) closeSettings(); if (S.detail) closeDetail(); };
   const cycle = (list, current) => list[(Math.max(0, list.findIndex((x) => x.id === current)) + 1) % list.length];
   bind("desktop", {
+    palette: () => (root.GSPalette ? root.GSPalette.toggle() : false),
     search: () => { leaveLayers(); const el = $("#search"); el.focus(); el.select(); },
     settings: () => { openSettings(); },
     viewAll: () => { leaveLayers(); setView({ type: "all" }); },
@@ -267,6 +270,7 @@
     random: () => { const b = $("#random-btn"); if (!b) return false; leaveLayers(); b.click(); },
     bigPicture: () => enterBigPicture(),
     help: () => openPanel(),
+    profile: () => { if (typeof GSProfilePicker === "undefined") return false; GSProfilePicker.open({ onChange: applyProfile, toast }); },
     nextTheme: async () => {
       const ext = await api("/api/extensions"), next = cycle(ext.themes, ext.active_theme);
       await api("/api/app/theme", { body: { theme: next.id } });
@@ -283,5 +287,5 @@
   });
   document.addEventListener("keydown", (e) => { dispatch(e, "desktop"); });
   const sb = $("#search");
-  if (sb) sb.title = `Cerca (${PS.keyLabel("search")} oppure /)`;
+  if (sb) sb.title = `Cerca (${PS.keyLabel("search")})`;
 })();

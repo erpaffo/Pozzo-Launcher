@@ -18,6 +18,8 @@
   // "-" = separatore, {h} = titolo di gruppo, chk() = segno di spunta (puo' essere asincrono)
   const MENUS = {
     File: () => [
+      { l: "👥 Cambia utente…", a: "profile", f: () => GSProfilePicker.open({ onChange: applyProfile, toast }) },
+      "-",
       { l: "＋ Aggiungi gioco manualmente…", f: () => openAddGame("game") },
       { l: "🧩 Aggiungi applicazione…", f: () => openAddGame("app") },
       "-",
@@ -71,6 +73,12 @@
   bar.innerHTML = Object.keys(MENUS).map((k) => `<button type="button" class="mb-top" data-m="${k}">${k}</button>`).join("");
   document.getElementById("app").before(bar); // in cima alla finestra, sopra ogni esperienza
   document.documentElement.style.setProperty("--mb-h", `${bar.offsetHeight}px`);
+
+  // Utente attivo: il menu del profilo (cambia utente, nuovo profilo, icona e PIN), uguale a quello della barra laterale
+  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-profile" title="Utente attivo: clicca per cambiare" aria-haspopup="menu">`
+    + `<span id="mb-profile-ico">👤</span><span id="mb-profile-name">Principale</span><span class="muted">▾</span></button>`);
+  document.getElementById("mb-profile").onclick = (e) => { e.stopPropagation(); profileMenu(e.currentTarget); };
+  if (typeof paintProfile === "function" && S?.profiles) paintProfile(); // i profili possono essere gia' arrivati
 
   // Attivita': tutte le operazioni in sottofondo (pannello qui sotto o finestra separata)
   bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-act" title="Operazioni in corso">⚙ Attività <span id="mb-act-n"></span></button>`);

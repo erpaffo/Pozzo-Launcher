@@ -49,7 +49,7 @@ class Rawg(Source):
         return True
 
     async def lookup(self, game: Game) -> Result | None:
-        r = await request(self.client, "GET", API, limiter=self.limiter, cache_ttl=30 * 86400, ok404=False,
+        r = await request(self.client, "GET", API, limiter=self.limiter, cache_source="rawg", ok404=False,
                           params={"key": self.key, "search": game.search_name, "page_size": 8})
         if r is None:
             return None

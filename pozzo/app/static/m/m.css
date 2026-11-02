@@ -98,7 +98,7 @@ body.pad-on { overflow: hidden; height: 100%; touch-action: none; }
 #pad-info { color: var(--muted); min-width: 0; max-width: 32vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pad-area { position: absolute; inset: 0; }
 .pad-area > * { position: absolute; }
-.on-press, [data-btn].down, .dpad span.down { background: var(--accent) !important; color: #fff !important; transform: scale(.94); }
+[data-btn].down, .dpad span.down { background: var(--accent) !important; color: #fff !important; transform: scale(.94); }
 .shoulder { top: 0; width: 18vw; height: 13vh; display: flex; align-items: center; justify-content: center; font-weight: 800;
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08); font-size: 14px; }
 .shoulder.l2 { left: 0; border-radius: 0 0 22px 0; } .shoulder.l1 { left: 18.4vw; border-radius: 0 0 16px 16px; width: 12vw; }

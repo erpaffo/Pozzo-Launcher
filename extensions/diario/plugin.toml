@@ -4,4 +4,5 @@ version = "1.0"
 author = "Pozzo Launcher"
 description = "Nel dettaglio di ogni gioco, un diario con voci datate (a che punto sei, trucchi, password) e la cronologia delle sessioni giocate. Si affianca alla nota personale già presente."
 api = 1
+load = "lazy"
 min_app = "0.7.1"

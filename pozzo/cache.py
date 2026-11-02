@@ -141,6 +141,21 @@ class Cache:
         self.db.execute("INSERT OR REPLACE INTO kv VALUES(?,?,?)", (k, json.dumps(v), time.time()))
         self.commit()
 
+    def kv_stats(self, prefix: str, older_than: float) -> dict:
+        """Righe kv con quel prefisso: {rows, bytes, expired} (scadute = piu' vecchie di older_than secondi)."""
+        n, b, e = self.db.execute("SELECT COUNT(*), COALESCE(SUM(LENGTH(v)), 0), COALESCE(SUM(ts < ?), 0) FROM kv "
+                                  "WHERE substr(k, 1, ?) = ?", (time.time() - older_than, len(prefix), prefix)).fetchone()
+        return {"rows": n, "bytes": b, "expired": e}
+
+    def kv_delete(self, prefix: str, older_than: float = 0) -> int:
+        """Toglie le righe kv con quel prefisso (solo le piu' vecchie di older_than secondi, se dato)."""
+        q, args = "DELETE FROM kv WHERE substr(k, 1, ?) = ?", [len(prefix), prefix]
+        if older_than:
+            q, args = q + " AND ts < ?", args + [time.time() - older_than]
+        n = self.db.execute(q, args).rowcount
+        self.commit()
+        return n
+
     # ------------------------------------------------------------ stats
     def stats(self) -> list[tuple]:
         return self.db.execute(

@@ -4,4 +4,5 @@ version = "1.0"
 author = "Pozzo Launcher"
 description = "Il tuo anno in giochi: ore, giochi più giocati, console preferita, mese e giorno più attivi, giochi finiti. Con un'immagine da salvare e condividere."
 api = 1
+load = "lazy"
 min_app = "0.7.1"

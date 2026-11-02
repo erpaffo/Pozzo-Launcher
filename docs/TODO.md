@@ -27,7 +27,7 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
   - Stile Steam: logo animato, messaggi di stato («Carico la libreria…», «Cerco il controller…»), poi transizione alla Home
 - [x] **[M]** Avanzamento reale dell'avvio nello splash — v0.13.0
   - Collegare la barra ai passi veri (db, libreria, estensioni) invece di un timer; mostrare l'eventuale errore
-- [ ] **[M]** Avvio diretto in Big Picture — v0.13.0
+- [x] **[M]** Avvio diretto in Big Picture — v0.13.0
   - Opzione «apri in Big Picture all'avvio» e parametro da riga di comando, utile per HTPC e console casalinga
 - [ ] **[L]** Ripresa rapida dell'ultima sessione — v0.16.0
   - Riaprire l'ultima vista e l'ultimo gioco selezionato senza ricaricare tutto
@@ -36,15 +36,15 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
 
 - [ ] **[H]** Primo avvio guidato (onboarding) — v0.12.0
   - Procedura in 4 passi: cartelle ROM, emulatori, store, tema. Evita impostazioni sparse per il nuovo utente
-- [ ] **[M]** Ricerca globale con scorciatoia (Ctrl+K) — v0.13.0
+- [x] **[M]** Ricerca globale con scorciatoia (Ctrl+K) — v0.13.0
   - Palette comandi per giochi, impostazioni, console e azioni; usa il pannello scorciatoie già presente
 - [ ] **[M]** Schede «Continua a giocare» e «Riprendi» — v0.13.0
   - Home con ultimo gioco, tempo rimasto, salvataggio più recente e avvio con un clic
-- [ ] **[M]** Messaggi d'errore con azione risolutiva — v0.13.0
+- [x] **[M]** Messaggi d'errore con azione risolutiva — v0.13.0
   - Ogni errore (emulatore mancante, cartella non raggiungibile) propone il pulsante che lo risolve
 - [ ] **[M]** Accessibilità: focus visibile e navigazione da tastiera ovunque — v0.13.0
   - Verificare con screen reader e contrasto; estendere quanto fatto in Big Picture al resto dell'app
-- [ ] **[L]** Suggerimenti contestuali al primo uso di ogni funzione — v0.16.0
+- [x] **[L]** Suggerimenti contestuali al primo uso di ogni funzione — v0.16.0
   - Brevi tooltip dismissibili, memorizzati per non ripetersi
 - [ ] **[L]** Localizzazione interfaccia (italiano/inglese) — v0.16.0
   - Estrarre le stringhe in file di traduzione; oggi l'interfaccia è solo in italiano
@@ -137,21 +137,21 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
 
 - [ ] **[H]** Metadati collegati alle ROM tramite hash — v0.14.0
   - Identificare la ROM con CRC/SHA1 (DAT No-Intro, Redump, LaunchBox) invece del solo nome file, per abbinamenti sicuri
-- [ ] **[H]** Classifiche collegate alle ROM — v0.14.0
+- [x] **[H]** Classifiche collegate alle ROM — v0.14.0
   - Punteggi e Top per console agganciati alla ROM (non solo ai giochi con store), da LaunchBox/RAWG/IGDB
-- [ ] **[H]** Suggerimenti per giochi non presenti in nessuno store — v0.14.0
+- [x] **[H]** Suggerimenti per giochi non presenti in nessuno store — v0.14.0
   - Raccomandazioni basate su generi, serie, sviluppatore e punteggi, anche per titoli solo ROM o solo cataloghi esterni
-- [ ] **[M]** Verifica dump: ROM buone, danneggiate, hack e traduzioni — v0.15.0
+- [x] **[M]** Verifica dump: ROM buone, danneggiate, hack e traduzioni — v0.15.0
   - Confronto con DAT No-Intro/Redump; badge «verificata» e rapporto
-- [ ] **[M]** «Perché te lo consiglio» — v0.15.0
+- [x] **[M]** «Perché te lo consiglio» — v0.15.0
   - Ogni suggerimento mostra il motivo (stesso sviluppatore, simile a un gioco amato, genere preferito)
 - [ ] **[M]** Giochi simili nel dettaglio di ogni gioco — v0.15.0
   - Sezione con titoli affini, anche non posseduti, con pulsante «Aggiungi alla wishlist»
-- [ ] **[M]** Serie, franchise e ordine di gioco — v0.15.0
+- [x] **[M]** Serie, franchise e ordine di gioco — v0.15.0
   - Riconoscere i capitoli di una saga e proporre l'ordine consigliato e cosa manca
 - [ ] **[M]** Importazione metadati da IGDB — v0.15.0
   - Fonte aggiuntiva con chiavi dell'utente, per copertura di titoli rari
-- [ ] **[M]** Classifica personale e statistiche di gusto — v0.15.0
+- [x] **[M]** Classifica personale e statistiche di gusto — v0.15.0
   - Generi e decenni preferiti dedotti da tempo di gioco e voti; alimenta i suggerimenti
 - [ ] **[M]** Novità interessanti per la tua libreria — v0.15.0
   - Elenco di giochi usciti di recente o remaster legati a ciò che hai
@@ -170,15 +170,15 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
   - File grandi da spezzare per area (libreria, store, impostazioni) per manutenzione e caricamento più rapido
 - [ ] **[M]** Caricamento differito delle estensioni non usate — v0.13.0
   - Avviare le estensioni solo quando servono, con misura del tempo di avvio per ognuna
-- [ ] **[M]** Cache disco per le risposte delle fonti dati — v0.13.0
+- [x] **[M]** Cache disco per le risposte delle fonti dati — v0.13.0
   - Evitare richieste ripetute a LaunchBox, RAWG, HLTB; scadenza e invalidazione chiare
 - [x] **[M]** Test end-to-end dell'interfaccia (browser headless) — v0.13.0
   - Provare avvio, ricerca, apertura dettaglio e Big Picture; coprire anche la mancanza del test reale su exe
 - [ ] **[M]** Test con gioco ed emulatore reali in CI — v0.13.0
   - Smoke test con un emulatore e una ROM di prova libera
-- [ ] **[M]** Compressione e formati moderni per le copertine — v0.13.0
+- [x] **[M]** Compressione e formati moderni per le copertine (AVIF escluso) — v0.13.0
   - WebP/AVIF e miniature per griglia, per risparmiare disco, banda e RAM
-- [ ] **[L]** Pulizia del codice morto e delle dipendenze — v0.16.0
+- [x] **[L]** Pulizia del codice morto e delle dipendenze — v0.16.0
   - Rimuovere moduli e CSS inutilizzati dopo i grandi cambi di interfaccia (Skyscraper, vecchie grafiche)
 - [ ] **[L]** Telemetria locale opzionale degli errori — v0.16.0
   - Registro degli errori leggibile e inviabile a mano; nessun invio automatico

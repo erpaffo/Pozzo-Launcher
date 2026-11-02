@@ -45,11 +45,13 @@ CREATE TABLE games(id INTEGER PRIMARY KEY, key TEXT UNIQUE, platform TEXT, title
                    video_url TEXT, canonical TEXT, crc TEXT, origin TEXT, grp TEXT, is_primary INT,
                    store TEXT, installed INT, launch TEXT, install_uri TEXT, page TEXT, store_playtime REAL,
                    install_dir TEXT, rating_count INT, rating_critics REAL, ratings TEXT, size INT, hltb TEXT,
-                   store_pages TEXT, content TEXT, md5 TEXT, sha1 TEXT);
+                   store_pages TEXT, content TEXT, md5 TEXT, sha1 TEXT,
+                   verify TEXT, match_by TEXT);  -- verify: stato del dump rispetto al DAT (vedi libretro.Index.verify)
 CREATE TABLE collections(slug TEXT PRIMARY KEY, name TEXT);
 CREATE INDEX games_grp ON games(grp);
 CREATE TABLE collection_games(slug TEXT, key TEXT, PRIMARY KEY(slug, key));
 CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE game_owners(key TEXT, owner TEXT, PRIMARY KEY(key, owner));  -- solo giochi non condivisi, vedi ownership.py
 """
 
 # stessi franchise con nomi diversi tra libretro e IGDB
@@ -319,7 +321,7 @@ def _store_entries(cfg, cache) -> list[dict]:
             "install_uri": s.get("install_uri") or None, "page": s.get("page") or None,
             "store_playtime": s.get("playtime") or 0, "install_dir": s.get("install_dir") or None,
             "size": s.get("size") or None, "kind": s.get("kind") or "game", "content": content,
-            "grp": "windows/t:" + normalize(title),
+            "grp": "windows/t:" + normalize(title), "owners": s.get("owners") or [],
         })
     # metadati SOLO dalle fonti offline (LaunchBox/TheGamesDB), cercati col pulsante "Metadati store":
     # descrizioni/generi/valutazioni forniti online dagli store non si usano (tranne i dati fissi di Minecraft, Battle.net e Riot
@@ -761,6 +763,10 @@ def update_manual(cfg) -> bool:
     try:
         db.execute("DELETE FROM collection_games WHERE key IN (SELECT key FROM games WHERE store='manual')")
         db.execute("DELETE FROM games WHERE store='manual'")
+        db.execute("CREATE TABLE IF NOT EXISTS game_owners(key TEXT, owner TEXT, PRIMARY KEY(key, owner))")
+        db.execute("DELETE FROM game_owners WHERE key LIKE 'windows/manual:%'")
+        db.executemany("INSERT OR IGNORE INTO game_owners VALUES(?,?)",
+                       [(e["key"], o) for e in pc if e["store"] == "manual" for o in e["owners"]])
         db.executemany(INSERT_GAME, [_pc_row(e) for e in pc if e["store"] == "manual"])
         # un gioco a mano con lo stesso titolo di uno store puo' diventare (o smettere di essere) la versione principale
         db.executemany("UPDATE games SET is_primary=? WHERE key=?", [(e["primary"], e["key"]) for e in pc])
@@ -852,6 +858,13 @@ def build(cfg, log=print, progress=None) -> dict:
                          json.dumps(rc.get("ratings", [])), e["size"],
                          json.dumps(e.get("sources") or [], ensure_ascii=False), e["content"], None, None))
         db.executemany(INSERT_GAME, rows)
+        db.executemany("UPDATE games SET verify=?, match_by=? WHERE key=?",
+                       [(g.verify_status or None, g.match_by or None, key) for key, g in merged.items()
+                        if g.verify_status or g.match_by])
+        from ..ownership import file_owners
+        db.executemany("INSERT OR IGNORE INTO game_owners VALUES(?,?)",
+                       [(k, o) for k, os_ in {**file_owners(cfg, files), **{e["key"]: e["owners"] for e in pc if e["owners"]}}.items()
+                        for o in os_])
         _attach_hltb(db, cache)
         db.executemany("INSERT INTO collections VALUES(?,?)", [(s, n) for s, (n, _) in colls.items()])
         db.executemany("INSERT INTO collection_games VALUES(?,?)",

@@ -12,6 +12,7 @@ const S = {
   nodes: new Map(), selected: null, detail: null, running: null, openSeq: 0,
   instFilter: store.get("instFilter", "all"), stores: [],
   allLocal: store.get("allLocal", false), // Tutti i giochi: solo quelli presenti sul PC, divisi per console
+  langFilter: store.get("language", ""),
   disc: store.get("disc", { preset: "", genre: "", decade: "" }),
   shopF: store.get("shopF", { src: "", plat: "", size: "", hideDlc: false }), shop: [], shopIds: new Set(),
 };
@@ -41,6 +42,7 @@ async function loadLibrary() {
 }
 
 function libraryChanged() {
+  renderLanguageFilter();
   S.shop = shopGames(S.games);
   renderDiscTools();
   S.shopIds = new Set(S.shop.map((g) => g.id));
@@ -86,6 +88,28 @@ function loading(text) {
 
 /* ------------------------------------------------------------------ filtri e ordinamento */
 const platName = (id) => S.plats.get(id)?.name || id;
+const gameLanguages = (g) => g.languageCodes || (g.languageCodes = GSLanguages.codes(g.title));
+
+function renderLanguageFilter() {
+  const select = $("#language-filter");
+  if (!select) return;
+  const languages = new Set();
+  for (const game of S.games) for (const code of gameLanguages(game)) languages.add(code);
+  if (typeof S.langFilter === "string" && S.langFilter) languages.add(S.langFilter);
+  const options = [...languages].sort((a, b) => collator.compare(GSLanguages.label(a), GSLanguages.label(b)));
+  select.innerHTML = `<option value="">Tutte le lingue</option>${options.map((code) =>
+    `<option value="${esc(code)}">${esc(GSLanguages.label(code))}</option>`).join("")}`;
+  select.value = S.langFilter;
+  if (!select.dataset.bound) {
+    select.onchange = (event) => {
+      S.langFilter = event.target.value;
+      store.set("language", S.langFilter);
+      refreshGrid();
+    };
+    select.dataset.bound = "true";
+  }
+}
+
 // le applicazioni aggiunte a mano hanno questo genere (vedi build.py: APP_GENRE)
 const APP_GENRE = "Applicazione";
 const isApp = (g) => g.store === "manual" && String(g.genres || "").split(", ").includes(APP_GENRE);
@@ -153,6 +177,8 @@ const SORTS = {
   "-hltb": (a, b) => (b.hltb ?? -1) - (a.hltb ?? -1) || collator.compare(a.sort, b.sort),
   size: (a, b) => (a.size || Infinity) - (b.size || Infinity) || collator.compare(a.sort, b.sort),
   store: (a, b) => collator.compare(shopSource(a), shopSource(b)) || collator.compare(a.sort, b.sort),
+  language: (a, b) => collator.compare(gameLanguages(a).map(GSLanguages.label).join(", "),
+    gameLanguages(b).map(GSLanguages.label).join(", ")) || collator.compare(a.sort, b.sort),
 };
 
 function computeItems() {
@@ -162,6 +188,7 @@ function computeItems() {
   // «Nascondi DLC»: via anche gli extra (temi, avatar, colonne sonore), che non sono giochi nemmeno loro
   it = it.filter((g) => g.content !== "update" && !((g.content === "dlc" || g.content === "extra") && S.hideDlc?.has(g.platform)));
   if (S.view.type === "shop") it = shopFilter(it, S.shopF);
+  if (S.langFilter) it = it.filter((g) => gameLanguages(g).includes(S.langFilter));
   const d = discover(it, S.disc);
   it = d.items;
   S.discScore = d.preset.score || null;

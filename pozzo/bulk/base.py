@@ -47,6 +47,29 @@ class BulkDB:
                 "size_mb": round(self.db_path.stat().st_size / 2**20, 1) if self.ready() else 0,
                 "refresh_days": self.refresh_days}
 
+    def cache_stats(self) -> dict:
+        """Per Impostazioni › cache delle fonti: dimensione, ultimo aggiornamento, giorni alla scadenza."""
+        if not self.ready():
+            return {"rows": 0, "bytes": 0, "expired": 0, "updated": 0, "days_left": 0}
+        m, now = self.meta(), time.time()
+        left = self.refresh_days - (now - m.get("checked", 0)) / 86400
+        return {"rows": m.get("games", 0), "bytes": self.db_path.stat().st_size, "expired": int(left <= 0),
+                "updated": m.get("indexed", 0), "days_left": max(0, round(left, 1))}
+
+    def clear(self) -> int:
+        """Toglie i file scaricati: al prossimo uso si riscaricano. Ritorna quanti file ha rimosso."""
+        self.close()
+        n = 0
+        for f in [*self.dir.glob(f"{self.id}.*"), self.dir / self.filename]:
+            if not f.exists():
+                continue
+            try:
+                f.unlink()
+                n += 1
+            except OSError:  # file aperto (Windows): resta e si riprova al prossimo svuotamento
+                pass
+        return n
+
     def stale(self) -> bool:
         return not self.ready() or time.time() - self.meta().get("checked", 0) > self.refresh_days * 86400
 

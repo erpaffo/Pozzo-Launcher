@@ -105,7 +105,7 @@ class Igdb(Source):
         if self.stopped:
             raise Skipped()
         for attempt in range(2):
-            r = await request(self.client, "POST", API + endpoint, limiter=self.limiter, content=body,
+            r = await request(self.client, "POST", API + endpoint, limiter=self.limiter, content=body, cache_source="igdb",
                               headers={"Client-ID": self.client_id, "Authorization": f"Bearer {self.token}"})
             if r is not None and r.status_code == 401 and attempt == 0:
                 await self._get_token(force=True)

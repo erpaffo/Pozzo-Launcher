@@ -39,6 +39,7 @@ class StoreGame:
     reviews: dict = field(default_factory=dict)
     size: int = 0  # byte (se lo store lo indica)
     kind: str = "game"  # tipo dichiarato dallo store: "game", "dlc", "app"
+    owner: str = ""  # solo giochi a mano: profilo proprietario ("" = condiviso)
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -31,6 +31,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .. import config as C
+from .. import ownership as OW
+from .. import profilecfg as PC
 from .. import platforms as P
 from .. import storelinks as SL
 from ..library import launcher as L
@@ -82,18 +84,24 @@ SKIPPER_JS = """
 
 class _ActiveUser:
     """Dati utente del profilo attivo: il server usa sempre questo oggetto, cambiare profilo cambia quello sotto.
+    Il profilo e' per dispositivo: se la richiesta ha il cookie gs_profile (middleware, profilecfg.override) si usa
+    quello, altrimenti (thread di sfondo, telefono, richieste senza cookie) il profilo del server, self.ud.
     shortcut: una partita gia' in corso quando si cambia profilo viene registrata sul profilo nuovo; per evitarlo
     il launcher dovrebbe tenere il profilo con cui e' partita."""
 
-    def __init__(self, ud: UserData):
-        self.ud, self.switches = ud, 0
+    def __init__(self, ud: UserData, user_of=None):
+        self.ud, self.switches, self._of = ud, 0, user_of
+
+    def _cur(self) -> UserData:
+        pid = PC.active_override()
+        return self._of(pid) if pid and self._of else self.ud
 
     def __getattr__(self, name):
-        return getattr(self.ud, name)
+        return getattr(self._cur(), name)
 
     @property
     def rev(self) -> int:  # cambia anche cambiando profilo: le pagine aperte ricaricano i dati
-        return self.ud.rev + self.switches * 1_000_000
+        return self._cur().rev + self.switches * 1_000_000
 
 
 class Library:
@@ -116,6 +124,7 @@ class Library:
         self.by_key: dict[str, dict] = {}
         self.groups: dict[str, list[dict]] = defaultdict(list)  # vuoti al primo avvio (libreria non ancora creata)
         self.auto: dict[str, dict] = {}
+        self.has_owners = False  # c'e' almeno un gioco non condiviso (profili): serve filtrare per profilo
         self.built_at = 0.0
         self.lock = threading.RLock()
         self.full = threading.Event()  # impostato quando ci sono anche i giochi del catalogo online
@@ -150,6 +159,7 @@ class Library:
         for slug, key in db.execute("SELECT slug, key FROM collection_games"):
             auto[slug]["keys"].add(key)
         built = db.execute("SELECT v FROM meta WHERE k='built_at'").fetchone()
+        has_owners = OW.apply(db, games)  # proprietari dei giochi non condivisi (profili)
         db.close()
         with self.lock:
             self.games = games
@@ -158,7 +168,7 @@ class Library:
             self.groups: dict[str, list[dict]] = defaultdict(list)
             for g in games:
                 self.groups[g["grp"]].append(g)
-            self.auto = auto
+            self.auto, self.has_owners = auto, has_owners
             self.built_at = float(built[0]) if built else 0.0
             self.patches, self.patch_base, self._url_keys = [], self.meta_rev, None
         if online:
@@ -329,7 +339,6 @@ def create_app(cfg) -> FastAPI:
     threading.Thread(target=lib.load, daemon=True).start()
     Path(cfg.cache).mkdir(parents=True, exist_ok=True)  # prima installazione: la cache non esiste ancora
     from .. import sync as SY
-    from .. import profilecfg as PC
     PC.migrate(cfg)  # primo avvio dopo l'introduzione dei profili: il principale copia gli account globali
     users: dict[str, UserData] = {}  # profili aperti: restano aperti (chi ne ha un metodo continua a funzionare)
 
@@ -338,7 +347,16 @@ def create_app(cfg) -> FastAPI:
             users[pid] = SY.open_profile(cfg, pid)
         return users[pid]
     active = cfg.app.get("profile") or "default"
-    user = _ActiveUser(user_of(active if any(p["id"] == active for p in SY.profiles(cfg)) else "default"))
+    user = _ActiveUser(user_of(active if any(p["id"] == active for p in SY.profiles(cfg)) else "default"), user_of)
+
+    @app.middleware("http")
+    async def _profile_cookie(request, call_next):
+        """Profilo per dispositivo: il cookie gs_profile (impostato da POST /api/profiles/active) vale per questa richiesta."""
+        pid = request.cookies.get("gs_profile")
+        if pid and any(p["id"] == pid for p in SY.profiles(cfg)):
+            with PC.override(pid):
+                return await call_next(request)
+        return await call_next(request)
     sync = SY.Sync(cfg, user_of)
     events = X.Events()
     app.state.events = events  # chi ascolta in streaming (/api/v1/events) e i test
@@ -481,6 +499,8 @@ def create_app(cfg) -> FastAPI:
             uc = user.collections()
             edits = user.edits()
             groups = lib.groups if only is None else {grp: lib.groups[grp] for grp in only}
+            pid = PC.active(cfg)  # il gioco principale e' scelto tra le versioni visibili al profilo
+            groups = {grp: OW.members(ms, pid) for grp, ms in groups.items()} if lib.has_owners else groups
             # collezioni: automatiche + personali, a livello di GRUPPO (tutte le versioni di un gioco)
             colls: dict[str, dict] = {}
             for slug, c in lib.auto.items():
@@ -638,7 +658,7 @@ WINDOW_FOCUS = {"fn": None}  # impostata quando l'app gira in una finestra nativ
 
 def _theme_bg(cfg, bigpicture: bool = False) -> str:
     """Colore di sfondo (--bg) del tema attivo: la finestra nasce gia' di quel colore."""
-    tid = cfg.app.get("theme", "default")
+    tid = PC.get(cfg, "theme", "default")  # tema del profilo del server (la finestra nasce prima di ogni richiesta)
     if isinstance(tid, str) and tid != "default":
         for base in X.theme_dirs(cfg):
             try:

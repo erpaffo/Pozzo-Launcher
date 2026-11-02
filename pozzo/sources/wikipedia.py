@@ -124,7 +124,7 @@ class Wikipedia(Source):
 
     async def _api(self, lang: str, params: dict):
         r = await request(self.client, "GET", f"https://{lang}.wikipedia.org/w/api.php", limiter=self.limiter,
-                          cache_ttl=90 * 86400, headers={"User-Agent": UA},
+                          cache_source="wikipedia", headers={"User-Agent": UA},
                           params={"format": "json", "formatversion": "2", **params})
         if r is None or r.status_code != 200:
             return None

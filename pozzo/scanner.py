@@ -2,9 +2,8 @@
 
 Ottimizzazioni:
 - le cartelle console sono cercate anche in profondita' (es. Myrient/No-Intro/<set>)
-- la scansione NON legge i file: l'hash si calcola solo dopo aver provato l'identificazione
-  per nome esatto sui DAT No-Intro/Redump (vedi pipeline), quindi per collezioni gia'
-  nominate correttamente non si legge quasi nulla
+- la scansione iniziale NON legge i file; prima del confronto coi DAT si calcolano gli hash
+  una volta, poi si prova l'identificazione per hash e infine per nome
 - ZIP: il CRC32 del file interno si legge dalla central directory, senza decomprimere
 - hashing adattato al disco: su HDD i file grandi si leggono uno alla volta in ordine
   (niente salti della testina), su SSD in parallelo su tutti i core
@@ -50,6 +49,8 @@ class Game:
     dat_md5: str = ""
     dat_sha1: str = ""
     dat_size: int = 0
+    match_by: str = ""
+    verify_status: str = ""
     needs_hash: bool = False
     # risultati
     data: dict[str, object] = field(default_factory=dict)  # field -> valore unito
@@ -377,7 +378,7 @@ def scan(cfg, cache, targets: list[tuple[P.Platform, Path]], progress=None) -> l
                      mtime=st.st_mtime, is_dir=is_dir)
             if not is_dir:
                 cached = cache.get_file(str(path), g.size, g.mtime)
-                if cached is not None and (cached.get("md5") or cached.get("dat_crc") or not cfg.full_hash):
+                if cached is not None and (cached.get("md5") if cfg.full_hash else cached.get("crc")):
                     g.apply_file_data(cached)
                 else:
                     g.needs_hash = True

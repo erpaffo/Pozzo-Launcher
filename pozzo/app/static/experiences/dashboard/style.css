@@ -411,19 +411,6 @@
   color: var(--accent);
 }
 
-.gs-dashboard__empty-note {
-  margin-top: 24px;
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg-2);
-}
-
-.gs-dashboard__empty-note p {
-  margin: 0 0 12px;
-  color: var(--muted);
-}
-
 .gs-dashboard__guide {
   position: sticky;
   top: 0;

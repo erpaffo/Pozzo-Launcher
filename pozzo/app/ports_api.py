@@ -12,6 +12,7 @@ from fastapi import Body, HTTPException
 
 from .. import config as C
 from .. import platforms as P
+from .. import profilecfg as PC
 from .. import ports as PT
 from ..library.launcher import LaunchError
 
@@ -372,7 +373,7 @@ def register(app, cfg, lib, launcher, start_store_job):
                 raise HTTPException(400, "Indica un percorso completo (es. D:\\Ports)")
             vals["ports_dir"] = d or None
         if "token" in body:
-            vals["github_token"] = (body.get("token") or "").strip() or None
+            PC.set(cfg, "github_token", (body.get("token") or "").strip() or None)  # per profilo
         if "auto" in body:
             vals["ports_auto_update"] = bool(body.get("auto"))
         if "short_dir" in body:

@@ -30,7 +30,7 @@ class ArcadeDB(Source):
         return platform.arcade
 
     async def _query(self, names: list[str]) -> dict[str, dict]:
-        r = await request(self.client, "GET", API, limiter=self.limiter,
+        r = await request(self.client, "GET", API, limiter=self.limiter, cache_source="arcadedb",
                           params={"ajax": "query_mame", "game_name": ";".join(names), "use_parent": 1})
         if r is None or r.status_code != 200:
             raise RuntimeError(f"ArcadeDB HTTP {r.status_code if r else 404}")

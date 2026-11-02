@@ -11,18 +11,35 @@ from collections import defaultdict
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
-from ... import config as C, platforms as P, storelinks as SL, stores as STORES
+from ... import config as C, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
 from ...library import launcher as L
 from ..icons import CREDIT
 from ..server import STORE_NAMES, _hltb_main, _json, _players, _players_label
+
+
+class ApiError(HTTPException):
+    """HTTPException con un `code` stabile e `details` per l'interfaccia; `detail` resta il testo per la persona."""
+
+    def __init__(self, status_code: int, detail: str, code: str, details: dict | None = None):
+        super().__init__(status_code, detail)
+        self.code, self.details = code, dict(details or {})
+
+
+def launch_error(e: L.LaunchError, status: int = 409) -> HTTPException:
+    """Errore di avvio come risposta: strutturato se ha un codice, come prima (solo testo) altrimenti."""
+    return ApiError(status, str(e), e.code, e.details) if e.code else HTTPException(status, str(e))
 
 
 def build_router(ctx) -> APIRouter:
     _media, _start_store_job, app, cfg, launcher, lib = ctx._media, ctx._start_store_job, ctx.app, ctx.cfg, ctx.launcher, ctx.lib
     lib_payloads, shots, user, view = ctx.lib_payloads, ctx.shots, ctx.user, ctx.view
     router = APIRouter()
+
+    @app.exception_handler(ApiError)
+    async def _api_error(request, exc: ApiError):
+        return JSONResponse({"detail": exc.detail, "code": exc.code, "details": exc.details}, status_code=exc.status_code)
 
     # ------------------------------------------------------------ API
     @router.get("/api/library")
@@ -34,12 +51,15 @@ def build_router(ctx) -> APIRouter:
         ck = (lib.built_at, lib.meta_rev, user.rev, part, bool(cfg.app.get("skip_duplicates", True)),
               tuple(cfg.app.get("hide_dlc") or []),
               tuple(sorted((k, tuple(v or [])) for k, v in cfg.catalogs.items())),
-              len(cfg.app.get("smart_collections") or []))
+              len(cfg.app.get("smart_collections") or []), PC.active(cfg))  # ultimo: il profilo (ognuno vede i suoi giochi)
+        pid = ck[-1]
         hit = lib_payloads.get(ck)
         if hit is not None:
             return Response(content=hit, media_type="application/json")
         with lib.lock:
             sel = lib.games if not part else [g for g in lib.games if (g.get("store") == "online") == (part == "online")]
+            if lib.has_owners:
+                sel = [g for g in sel if OW.visible(g, pid)]
             grp_list = list(dict.fromkeys(g["grp"] for g in sel))
             v = view(grp_list)
             coll_list = sorted((c for c in v["colls"].values()), key=lambda c: c["name"].lower())
@@ -53,7 +73,7 @@ def build_router(ctx) -> APIRouter:
             for grp in grp_list:
                 d = v["groups"][grp]
                 groups.append([d["primary"], d["favorite"], d["hidden"], round(d["last_played"]), round(d["playtime"]),
-                               d["play_count"], grp_colls.get(grp, []), len(lib.groups[grp]), d["status"]])
+                               d["play_count"], grp_colls.get(grp, []), len(OW.members(lib.groups[grp], pid)), d["status"]])
             del v  # i dati di 150.000 gruppi (~40 MB): non servono piu' mentre si scrive il JSON
             rows = [[g["id"], g["title"], g["sort_title"], g["platform"], g["year"], int("cover" in g["media"]),
                      grp_idx[g["grp"]], g["rating"], g["developer"] or "", ", ".join(g["genres"]), g["found"],
@@ -62,9 +82,10 @@ def build_router(ctx) -> APIRouter:
                      round((g.get("store_playtime") or 0) / 60), _hltb_main(g.get("hltb")), g.get("content") or "game"]
                     for g in sel]
             plats = defaultdict(int)
-            for grp, members in lib.groups.items():
-                if members[0].get("store") != "online":  # i giochi solo online non contano come posseduti
-                    plats[members[0]["platform"]] += 1
+            for members in lib.groups.values():
+                m0 = (OW.members(members, pid) if lib.has_owners else members)[0]
+                if OW.visible(m0, pid) and m0.get("store") != "online":  # i giochi solo online non contano come posseduti
+                    plats[m0["platform"]] += 1
             for p, urls in cfg.catalogs.items():
                 if urls:
                     plats[p] += 0  # console con uno store online ma senza giochi posseduti
@@ -87,7 +108,7 @@ def build_router(ctx) -> APIRouter:
                 "smart": cfg.app.get("smart_collections") or [],
             })
             # si tengono solo le parti (posseduti, catalogo, tutto) della libreria attuale: le vecchie sono ~26 MB l'una
-            for k in [k for k in lib_payloads if k[:3] + k[4:] != ck[:3] + ck[4:]]:
+            for k in [k for k in lib_payloads if k[:3] + k[4:-1] != ck[:3] + ck[4:-1]]:
                 del lib_payloads[k]
             lib_payloads[ck] = body
             return Response(content=body, media_type="application/json")
@@ -100,8 +121,9 @@ def build_router(ctx) -> APIRouter:
             if since < lib.patch_base:
                 return {"rev": lib.meta_rev, "reset": True}
             ids = {i for rev, xs in lib.patches if rev > since for i in xs}
+            pid = PC.active(cfg)
             rows = [[g["id"], int("cover" in g["media"]), g["year"], g["developer"] or "", ", ".join(g["genres"])]
-                    for g in (lib.by_id.get(i) for i in ids) if g]
+                    for g in (lib.by_id.get(i) for i in ids) if g and OW.visible(g, pid)]
         return {"rev": lib.meta_rev, "games": rows}
 
     FIELD_LABELS = {"title": "dati del gioco", "description": "descrizione", "developer": "sviluppatore",
@@ -345,11 +367,13 @@ def build_router(ctx) -> APIRouter:
         p = P.PLATFORMS.get(g["platform"])
         path = next((Path(f) for f in g["files"] if Path(f).exists()), None)
         if not p or not path:
-            raise HTTPException(404, "File del gioco non trovato (disco scollegato?)")
+            folders = [str(Path(f).parent) for f in g["files"]]
+            raise ApiError(404, "File del gioco non trovato (disco scollegato?)", "rom_folder_missing",
+                           {"path": folders[0] if folders else ""})
         try:
             launcher.launch(g["key"], g["title"], p, path)
         except L.LaunchError as e:
-            raise HTTPException(409, str(e))
+            raise launch_error(e)
         return {"ok": True}
 
     @router.post("/api/game/{gid}/shortcut")

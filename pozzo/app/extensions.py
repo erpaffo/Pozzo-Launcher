@@ -11,6 +11,8 @@ PLUGIN - cartella <config>/plugins/<id>/:
     frontend.js     (facoltativo) modulo ES: export default function (gs, ctx) { ... }
     style.css       (facoltativo)
     backend.py      (facoltativo) def register(gs): ...   con gs = PluginAPI (vedi sotto)
+    load = "lazy"   (facoltativo, in [plugin]) il backend si avvia al primo uso invece che all'avvio dell'app:
+                    solo per plugin che usano soltanto gs.route (vedi LazyPlugin)
 
 Un plugin backend puo': aggiungere endpoint (gs.route), fornitori di libreria/store (gs.add_store),
 fonti di metadati per lo scraping (gs.add_source), reagire agli eventi (gs.on), lavori periodici (gs.job) e salvare
@@ -19,6 +21,7 @@ impostazioni proprie (gs.settings / gs.save_settings). Guida completa: docs/ESTE
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import json
 import queue
@@ -28,6 +31,10 @@ import time
 import tomllib
 import traceback
 from pathlib import Path
+
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from starlette.routing import Route
 
 from .. import config as C
 
@@ -279,6 +286,8 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
                     "backend": str(d / "backend.py") if (d / "backend.py").exists() else None,
                     "settings": settings.get(d.name, {}), "error": (errors or {}).get(d.name),
                     "dir": str(d), "load_ms": LOAD_MS.get(d.name),
+                    "load": "lazy" if m.get("load") == "lazy" else "eager", "first_use_ms": FIRST_USE_MS.get(d.name),
+                    "eager_needed": sorted(EAGER_NEEDED.get(d.name, ())),
                     "jobs": [{"name": j.name, "every": j.every, "runs": j.runs, "error": j.last_error}
                              for j in JOBS if j.pid == d.name],
                 })
@@ -307,7 +316,10 @@ def plugin_file(cfg, pid: str, rel: str) -> Path | None:
 
 
 JOBS: list["Job"] = []           # lavori periodici dei plugin (gs.job), fermati con stop_jobs()
-LOAD_MS: dict[str, float] = {}   # {id plugin: millisecondi spesi in register()}
+LOAD_MS: dict[str, float] = {}   # {id plugin: millisecondi spesi all'avvio (register() se eager, solo il montaggio se lazy)}
+FIRST_USE_MS: dict[str, float] = {}  # {id plugin lazy: millisecondi di import + register() al primo accesso}
+EAGER_NEEDED: dict[str, set] = {}    # {id plugin lazy: API non differibili usate in register()}
+LOAD_TOTAL_MS = 0.0              # tempo totale di load_backends all'avvio
 _HOOKED_APPS: set[int] = set()
 
 
@@ -392,13 +404,106 @@ class PluginAPI:
         C.save_settings(self.cfg, plugins={self.id: dict(self.settings)})
 
 
+class _LazyAPI(PluginAPI):
+    """gs di un plugin lazy: le route vanno nel router privato del plugin; gs.on/job/add_store/add_source
+    funzionano ma, essendo chiamate solo al primo uso, vengono segnalate (il plugin va reso eager)."""
+
+    def __init__(self, sub: APIRouter, *a):
+        super().__init__(*a)
+        self.sub = sub
+
+    def route(self, path: str, methods=("GET",)):
+        def deco(fn):
+            self.sub.add_api_route(f"/plugin-api/{self.id}/{path.lstrip('/')}", fn, methods=list(methods))
+            return fn
+        return deco
+
+    def _late(self, what: str):
+        EAGER_NEEDED.setdefault(self.id, set()).add(what)
+        self.log(f"Plugin {self.id}: load = \"lazy\" ma usa {what}, che serve dall'avvio: resta attivo solo dal primo uso. "
+                 "Va reso eager (togli load dal plugin.toml)")
+
+    def on(self, event, fn):
+        self._late("gs.on")
+        super().on(event, fn)
+
+    def job(self, *a, **k):
+        self._late("gs.job")
+        return super().job(*a, **k)
+
+    def add_store(self, provider_cls):
+        self._late("gs.add_store")
+        super().add_store(provider_cls)
+
+    def add_source(self, source_cls):
+        self._late("gs.add_source")
+        super().add_source(source_cls)
+
+
+class LazyPlugin:
+    """Segnaposto di un plugin load = "lazy": risponde su /plugin-api/<id>/{path} e al PRIMO accesso importa il
+    backend ed esegue register(); poi le sue route prendono il posto del segnaposto (come un plugin eager).
+    Un errore in import/register() da' 500 solo sulle route di quel plugin, senza riprovare."""
+
+    def __init__(self, app, cfg, p: dict, events, log, errors: dict):
+        self.app, self.cfg, self.p, self.events, self.log, self.errors = app, cfg, p, events, log, errors
+        self.sub, self.error, self.done = APIRouter(), None, False
+        self.lock = threading.Lock()
+        self.route = Route(f"/plugin-api/{p['id']}/{{path:path}}", self)
+
+    def mount(self):
+        self.app.router.routes.append(self.route)
+
+    def _load(self):
+        pid = self.p["id"]
+        with self.lock:
+            if self.done:
+                return
+            t0 = time.perf_counter()
+            try:
+                spec = importlib.util.spec_from_file_location(f"gs_plugin_{pid}", self.p["backend"])
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                if hasattr(mod, "register"):
+                    mod.register(_LazyAPI(self.sub, self.app, self.cfg, pid, self.events, self.log))
+            except Exception as e:
+                self.error = f"{type(e).__name__}: {e}"
+                self.errors[pid] = self.error
+                self.log(f"Plugin {pid}: errore nel backend: {self.error}")
+            finally:
+                FIRST_USE_MS[pid] = round((time.perf_counter() - t0) * 1000, 1)
+                self.done = True
+
+    async def __call__(self, scope, receive, send):
+        if not self.done:
+            await asyncio.to_thread(self._load)
+            routes = self.app.router.routes  # il cambio avviene sul ciclo di eventi, mai durante un confronto di route
+            if self.error is None and self.route in routes:
+                i = routes.index(self.route)
+                routes[i:i + 1] = self.sub.routes
+        if self.error:
+            await JSONResponse({"detail": f"Plugin {self.p['id']}: errore nel backend: {self.error}"},
+                               status_code=500)(scope, receive, send)
+            return
+        await self.sub(scope, receive, send)
+
+
 def load_backends(app, cfg, events: Events, log=print) -> dict[str, str]:
-    """Carica i backend dei plugin abilitati. Ritorna {id: errore} per quelli falliti."""
+    """Carica i backend dei plugin abilitati (quelli lazy solo montati). Ritorna {id: errore} per quelli falliti."""
+    global LOAD_TOTAL_MS
     errors = {}
+    t_all = time.perf_counter()
     for p in list_plugins(cfg):
         if not p["enabled"] or not p["backend"]:
             continue
         try:
+            if p["load"] == "lazy":
+                t0 = time.perf_counter()
+                FIRST_USE_MS.pop(p["id"], None)
+                EAGER_NEEDED.pop(p["id"], None)
+                LazyPlugin(app, cfg, p, events, log, errors).mount()
+                LOAD_MS[p["id"]] = round((time.perf_counter() - t0) * 1000, 1)
+                continue
             spec = importlib.util.spec_from_file_location(f"gs_plugin_{p['id']}", p["backend"])
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
@@ -411,4 +516,5 @@ def load_backends(app, cfg, events: Events, log=print) -> dict[str, str]:
         except Exception as e:
             errors[p["id"]] = f"{type(e).__name__}: {e}"
             log(f"Plugin {p['id']}: errore nel backend: {errors[p['id']]}")
+    LOAD_TOTAL_MS = round((time.perf_counter() - t_all) * 1000, 1)
     return errors

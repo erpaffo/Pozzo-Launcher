@@ -1,12 +1,16 @@
 """Copie di sicurezza dei dati dell'utente: preferiti, tempi di gioco, stati, collezioni personali (userdata.db)
 e impostazioni dell'app (settings.json: emulatori, cartelle associate).
 
+Anche profiles/*.json (account e impostazioni di ogni profilo: Epic, GOG, Steam, Spotify, chiavi, token): ATTENZIONE,
+la copia contiene credenziali, va tenuta come le password.
+
 Non si salvano cache, metadati e immagini: si possono riscaricare. Ogni copia e' uno zip in <cache>/backups.
 userdata.db si copia con l'API di backup di sqlite, quindi la copia e' coerente anche con l'app aperta (database in WAL).
 """
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import tempfile
 import time
@@ -40,6 +44,9 @@ def create(cfg, reason: str = "manuale") -> Path:
         cache = Path(cfg.cache)
         # userdata.db (profilo principale) e gli altri profili utente in profiles/
         names = ["userdata.db", *(f"profiles/{f.name}" for f in sorted((cache / "profiles").glob("*.db")))]
+        # file degli account per profilo: stanno accanto a settings.json, si zippano cosi' come sono
+        pj = C.settings_path(cfg).parent / "profiles"
+        jsons = sorted(f for f in pj.glob("*.json") if not f.name.endswith(".rotto.json")) if pj.is_dir() else []
         for n in names:
             if (cache / n).exists():
                 (Path(t) / n).parent.mkdir(parents=True, exist_ok=True)
@@ -51,6 +58,8 @@ def create(cfg, reason: str = "manuale") -> Path:
             for n in names:
                 if (Path(t) / n).exists():
                     z.write(Path(t) / n, n)
+            for f in jsons:
+                z.write(f, f"profiles/{f.name}")
             s = C.settings_path(cfg)
             if s.exists():
                 z.write(s, "settings.json")
@@ -112,6 +121,17 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
                 src.backup(dst)
                 dst.close()
             src.close()
+            restored.append(n)
+        pj = C.settings_path(cfg).parent / "profiles"
+        for n in sorted(x for x in names if x.startswith("profiles/") and x.endswith(".json") and "/" not in x[9:]):
+            try:
+                json.loads(z.read(n))
+            except ValueError:
+                continue  # file danneggiato: non sovrascrive quello attuale
+            pj.mkdir(parents=True, exist_ok=True)
+            tmp = pj / (Path(n).name + ".tmp")
+            tmp.write_bytes(z.read(n))
+            C._replace(tmp, pj / Path(n).name)
             restored.append(n)
         if "settings.json" in names:
             s = C.settings_path(cfg)

@@ -1,0 +1,24 @@
+/* Procedura guidata di primo avvio (onboarding.js) */
+.onb { position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center; background: rgba(0, 0, 0, .6); padding: 16px; }
+.onb-card { width: min(640px, 100%); max-height: 90vh; overflow: auto; background: var(--panel, #1b1e27); color: var(--text, #e8eaf0);
+  border: 1px solid var(--border, #3a3f4f); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.onb-card header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.onb-card h2 { margin: 0; font-size: 1.15rem; }
+.onb-steps { display: flex; flex-wrap: wrap; gap: 6px 14px; list-style: none; margin: 0; padding: 0; font-size: .85rem; opacity: .75; }
+.onb-steps .on { opacity: 1; font-weight: 600; }
+.onb-steps .skip { text-decoration: line-through; }
+.onb-body { display: flex; flex-direction: column; gap: 10px; min-height: 160px; }
+.onb-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.onb-row input[type=text] { flex: 1 1 240px; min-width: 0; padding: 8px 10px; }
+.onb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 38vh; overflow: auto; }
+.onb-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.onb-info, .onb-msg, .onb-prog { opacity: .75; font-size: .85rem; }
+.onb-opt { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; padding: 6px 0; }
+.onb-nav { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.onb-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.onb input:focus-visible, .onb button:focus-visible { outline: 3px solid var(--accent, #6aa9ff); outline-offset: 2px; }
+.onb button { min-height: 40px; }
+.onb-card { animation: onb-in .18s ease-out; }
+@keyframes onb-in { from { opacity: 0; transform: translateY(8px); } }
+html[data-motion="off"] .onb-card, html[data-motion="reduced"] .onb-card { animation: none; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion="normal"]) .onb-card { animation: none; } }

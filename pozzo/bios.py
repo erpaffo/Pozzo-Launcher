@@ -3,6 +3,11 @@
 Pozzo non include e non scarica nessun file BIOS: qui ci sono solo i nomi dei file attesi, gli hash noti e il link
 a una guida. check(console_id, folder) dice per ogni file se e' presente e se il suo hash corrisponde a uno noto.
 
+Gli hash non si scrivono a mano: arrivano da pozzo/data/bios_hashes.json, generato da tools/update_bios_hashes.py
+dal dat/System.dat di libretro (dimensione, crc, md5 e sha1 ufficiali). Un file che non e' li' resta «hash non noto»,
+mai dato per buono. Le chiavi della Switch (prod.keys, title.keys) e la cartella firmware sono personali e non hanno
+hash pubblico: si controlla solo che ci siano e che abbiano la forma giusta.
+
 Gruppi: i file con lo stesso gruppo sono alternativi (per esempio una regione di PlayStation): ne basta uno
 presente e ok. Nell'elenco degli item sono tutti required=True; il campo ok di primo livello tiene conto dei gruppi.
 """
@@ -10,16 +15,36 @@ presente e ok. Nell'elenco degli item sono tutti required=True; il campo ok di p
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 
 from . import config as C
 from . import platforms as P
 from .library import launcher as L
 
-# Hash noti, per nome file in minuscolo -> insiemi di hash esadecimali minuscoli. Vuote di proposito: un hash va
-# aggiunto solo se verificato su una fonte fidata (wiki dell'emulatore o di libretro), mai inventato.
-SHA1_NOTI: dict[str, set[str]] = {}
-MD5_NOTI: dict[str, set[str]] = {}
+# Hash ufficiali per nome file in minuscolo (da libretro dat/System.dat), letti una volta all'avvio.
+BIOS_HASHES = Path(__file__).parent / "data" / "bios_hashes.json"
+KEYS = {"prod.keys", "title.keys"}  # chiavi della Switch: personali, nessun hash pubblico
+
+
+def load_hashes(path: Path | str = BIOS_HASHES) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """(sha1, md5) attesi per nome file. JSON mancante o illeggibile: nessun hash noto, si controlla la presenza."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}, {}
+    sha1: dict[str, set[str]] = {}
+    md5: dict[str, set[str]] = {}
+    for nome, rec in (data.get("files") or {}).items():
+        if rec.get("sha1"):
+            sha1[nome.lower()] = {str(rec["sha1"]).lower()}
+        if rec.get("md5"):
+            md5[nome.lower()] = {str(rec["md5"]).lower()}
+    return sha1, md5
+
+
+SHA1_NOTI, MD5_NOTI = load_hashes()
 
 # console -> file attesi: (nome, obbligatorio, gruppo) e guida ufficiale dell'emulatore (help).
 # Il primo emulatore dei preset della console (launcher.PRESETS) dice dove si cercano i file.
@@ -73,6 +98,42 @@ def _hash(path: Path) -> tuple[str, str]:
     return s1.hexdigest(), m5.hexdigest()
 
 
+def _chiavi_ok(path: Path) -> bool:
+    """Chiavi della Switch: righe «nome = esadecimale», nient'altro. Il contenuto non si usa per altro."""
+    try:
+        testo = path.read_text(encoding="utf-8", errors="replace")[:64 * 1024]
+    except OSError:
+        return False
+    righe = [r.strip() for r in testo.splitlines() if r.strip()]
+    return bool(righe) and all(re.fullmatch(r"[A-Za-z0-9_]+\s*=\s*[0-9A-Fa-f]+", r) for r in righe)
+
+
+def _cartella_piena(path: Path) -> bool:
+    try:
+        return any(f.is_file() for f in path.iterdir())
+    except OSError:
+        return False
+
+
+def _giudica(nome: str, trovato: Path | None, sha1: str | None, md5: str | None) -> tuple[bool, str]:
+    """(ok, motivo in italiano) di un file atteso: hash noto che corrisponde, formato per i file personali, o niente."""
+    if trovato is None:
+        return False, "manca"
+    if trovato.is_dir():  # la cartella «firmware» della Switch
+        piena = _cartella_piena(trovato)
+        return piena, "cartella firmware presente" if piena else "cartella vuota"
+    if nome.lower() in KEYS:
+        return ((True, "formato valido (hash non pubblico)") if _chiavi_ok(trovato) else
+                (False, "formato non valido: righe «nome = esadecimale»"))
+    if sha1 is None:
+        return False, "file non leggibile"
+    if sha1 in SHA1_NOTI.get(nome.lower(), set()) or md5 in MD5_NOTI.get(nome.lower(), set()):
+        return True, "ok"
+    if nome.lower() in SHA1_NOTI or nome.lower() in MD5_NOTI:
+        return False, "hash diverso"
+    return False, "hash non noto"
+
+
 def check(console_id: str, folder: str | None = None) -> dict:
     """Stato dei BIOS e firmware di una console.
 
@@ -91,18 +152,15 @@ def check(console_id: str, folder: str | None = None) -> dict:
     items, gruppi, singoli = [], {}, []
     for nome, obbligatorio, gruppo in spec["files"]:
         trovato = next((c / nome for c in cartelle if (c / nome).exists()), None)
-        sha1 = None
+        sha1 = md5 = None
         if trovato is not None and trovato.is_file():
             try:
                 sha1, md5 = _hash(trovato)
             except OSError:  # file illeggibile: presente ma non verificabile
                 sha1 = None
-        if trovato is not None and sha1 is not None:
-            ok = sha1 in SHA1_NOTI.get(nome.lower(), set()) or md5 in MD5_NOTI.get(nome.lower(), set())
-        else:
-            ok = False
+        ok, motivo = _giudica(nome, trovato, sha1, md5)
         item = {"file": nome, "required": obbligatorio or gruppo is not None, "found": trovato is not None,
-                "ok": ok, "sha1": sha1, "help_url": spec["help"]}
+                "ok": ok, "sha1": sha1, "motivo": motivo, "help_url": spec["help"]}
         items.append(item)
         if gruppo:
             gruppi[gruppo] = gruppi.get(gruppo, False) or ok

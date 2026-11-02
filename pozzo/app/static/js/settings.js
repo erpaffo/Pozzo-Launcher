@@ -7,6 +7,7 @@ function toast(msg, err = false) {
   const t = $("#toast");
   if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
   t.textContent = msg;
+  t.removeAttribute("role");
   t.className = err ? "err" : "";
   t.hidden = false;
   clearTimeout(toastTimer);
@@ -17,6 +18,7 @@ function savedToast(undo, label = "Salvato") {
   const t = $("#toast");
   if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
   t.className = "";
+  t.removeAttribute("role");
   t.replaceChildren(document.createTextNode(label));
   if (undo) {
     t.append(" · ");
@@ -33,6 +35,56 @@ function savedToast(undo, label = "Salvato") {
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (t.hidden = true), 4000);
+}
+
+/* @errors-begin: codice d'errore -> messaggio e azione che lo risolve (le azioni usano le pagine di impostazioni gia' esistenti).
+   Un nuovo codice del server si aggiunge qui; ERROR_PATTERNS lo riconosce anche dal solo testo di risposte senza `code`. */
+const ERROR_ACTIONS = {
+  emulator_missing: { text: "Nessun emulatore configurato per questa console.", label: "Configura gli emulatori", run: () => openSettings("emu") },
+  rom_folder_missing: { text: "File o cartella del gioco non trovati: il disco è scollegato o la cartella è stata spostata.",
+    label: "Ricollega le cartelle", run: () => openSettings("scan") },
+};
+const ERROR_PATTERNS = [
+  [/^Nessun emulatore configurato/, "emulator_missing"],
+  [/^File del gioco non trovato|^Nessun file avviabile nella cartella/, "rom_folder_missing"],
+];
+
+/** Codice dell'errore: quello esplicito (`err.code`) se la tabella lo conosce, altrimenti dedotto dal testo; "" se non ce n'e'. */
+function errorCode(err) {
+  if (err && ERROR_ACTIONS[err.code]) return err.code;
+  const msg = String((err && err.message) || err || "");
+  const hit = ERROR_PATTERNS.find(([re]) => re.test(msg));
+  return hit ? hit[1] : "";
+}
+/* @errors-end */
+
+/** Toast d'errore che resta finche' non lo si chiude (role=alert), con il bottone dell'azione che risolve il problema. */
+function failToast(code, details = {}) {
+  const entry = ERROR_ACTIONS[code];
+  const t = $("#toast");
+  if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
+  t.className = "err";
+  t.setAttribute("role", "alert");
+  t.replaceChildren(document.createTextNode(details.message || (entry && entry.text) || "Operazione non riuscita"));
+  const add = (label, onclick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "toast-undo";
+    b.textContent = label;
+    b.onclick = onclick;
+    t.append(" ? ", b);
+  };
+  if (entry) add(entry.label, () => { t.hidden = true; entry.run(details); });
+  add("Chiudi", () => { t.hidden = true; });
+  t.hidden = false;
+  clearTimeout(toastTimer);
+}
+if (window.GS) GS.fail = failToast;
+
+/** Mostra un errore: persistente e con azione se il codice e' noto, altrimenti il toast normale. */
+function toastError(err) {
+  const code = errorCode(err);
+  return code ? failToast(code, { message: err.message, ...(err.details || {}) }) : toast(err.message, true);
 }
 
 function autosaveControl(element, save) {
@@ -204,7 +256,7 @@ function showTab(tab) {
     ? (GS.ui.settingsTabs.find((x) => `ext:${x.id}` === id)?.label || "Estensione")
     : (settingsCategory(id)?.[1] || "Impostazioni");
   $("#settings-body").scrollTop = 0;
-  if (id === "generale") { loadPower(); loadNotify(); }
+  if (id === "generale") { loadPower(); loadNotify(); loadProfilesSettings(); loadHints(); }
   else if (id === "sistema") { loadHealth(); loadAbout(); }
   else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); api("/api/status").then(showStatus); }
   else if (id === "fonti") { loadSources(); pollHltb(); pollCollart(); }
@@ -318,10 +370,21 @@ async function loadIntegrations() {
   try { renderIntegrations(await api("/api/integrations")); } catch (e) { toast(e.message, true); }
 }
 
+function loadHints() {
+  const sel = $("#hint-mode"), h = GS.hints?.settings;
+  if (!sel || !h) return;
+  sel.value = h.mode();
+  if (sel.dataset.bound) return;
+  sel.dataset.bound = "1";
+  sel.addEventListener("change", () => h.setMode(sel.value));
+  $("#hint-reset").addEventListener("click", () => { h.resetSeen(); toast("I suggerimenti si rivedranno"); });
+}
+
 async function loadNotify() {
   try {
     const n = await api("/api/app/notify");
     $("#nt-on").checked = !!n.enabled;
+    $("#bp-start").checked = !!(await api("/api/app/start-bigpicture")).enabled;
     $("#nt-state").textContent = n.available ? "" : "Le notifiche di Windows sono disponibili solo su Windows.";
   } catch (e) { toast(e.message, true); }
 }
@@ -403,6 +466,29 @@ async function loadStorage(force = false) {
       + `<h5>Store online e altri dati</h5>` + tbl(["Dati", "Voci", "Peso"], d.kv.map((k) => [esc(k.label), n(k.rows), esc(fmtSize(k.bytes))]))
       + `<h5>Database</h5>` + tbl(["File", "Peso"], Object.entries(d.files).map(([k, v]) => [esc(k), esc(fmtSize(v))]));
   } catch (e) { box.innerHTML = ""; toast(e.message, true); }
+}
+
+async function loadCacheSources() {
+  const box = $("#csrc-box");
+  try {
+    const d = (await api("/api/cache/sources")).sources;
+    const day = (t) => (t ? new Date(t * 1000).toLocaleDateString("it") : "—");
+    const row = ([id, s]) => `<tr><td>${esc(id === "launchbox" ? "LaunchBox (database)" : id === "hltb" ? "HowLongToBeat" : id)}</td>`
+      + `<td style="text-align:right">${s.rows.toLocaleString("it")}</td><td style="text-align:right">${esc(fmtSize(s.bytes))}</td>`
+      + `<td style="text-align:right">${id === "launchbox" ? (s.rows || s.bytes ? `aggiornato ${day(s.updated)} · scade tra ${s.days_left} g` : "non scaricato") : `${s.expired} scadute`}</td>`
+      + `<td><button class="btn" data-csrc="${esc(id)}">Svuota</button></td></tr>`;
+    box.innerHTML = `<table class="tbl"><thead><tr><th>Fonte</th><th style="text-align:right">Voci</th><th style="text-align:right">Peso</th><th style="text-align:right">Stato</th><th></th></tr></thead><tbody>`
+      + Object.entries(d).map(row).join("") + `</tbody></table>`;
+    box.querySelectorAll("[data-csrc]").forEach((b) => { b.onclick = () => clearCacheSource(b.dataset.csrc); });
+  } catch (e) { box.innerHTML = ""; toast(e.message, true); }
+}
+
+async function clearCacheSource(source) {
+  try {
+    const r = await api("/api/cache/sources/clear", { body: source ? { source } : {} });
+    toast(`Cache svuotata: ${r.removed} elementi`);
+    loadCacheSources();
+  } catch (e) { toast(e.message, true); }
 }
 
 async function loadAbout() {
@@ -517,6 +603,10 @@ function paintProfile() {
   const ico = $("#profile-ico");
   ico.textContent = cur.avatar || "👤";
   ico.style.background = cur.color || "";
+  // lo stesso utente nella barra dei menu (c'e' in ogni grafica, la barra laterale puo' essere nascosta)
+  const mbName = $("#mb-profile-name"), mbIco = $("#mb-profile-ico");
+  if (mbName) mbName.textContent = cur.name;
+  if (mbIco) { mbIco.textContent = cur.avatar || "👤"; mbIco.style.background = cur.color || ""; }
 }
 
 async function loadProfile() {
@@ -530,6 +620,56 @@ async function unlockProfile(anchor, p) {
   if (!pin) return false;
   S.profiles = await api(`/api/profiles/${encodeURIComponent(p.id)}/unlock`, { body: { pin } });
   return true;
+}
+
+/** Dopo un cambio di profilo: libreria comune a tutti, si rilegge solo cio' che il server restituisce per il profilo attivo. */
+async function applyProfile() {
+  await loadProfile();
+  let ps = null;
+  try { ps = await api("/api/profile/settings"); } catch { /* route assente: restano tema ed esperienza comuni */ }
+  if (ps?.experience && ps.experience !== GS.experience?.id) {
+    store.set("view", GS.experiences.get(ps.experience)?.home ? { type: "home" } : { type: "all" });
+    location.reload();
+    return;
+  }
+  if (ps?.theme && ps.theme !== GS.extensions?.active_theme) await loadExtensions();
+  await reload(true);
+  toast(`Profilo: ${$("#profile-name").textContent}`);
+}
+
+/** Impostazioni > Generale: elenco profili (modifica, PIN, elimina) e «Chi gioca?» all'avvio. */
+async function loadProfilesSettings() {
+  const box = $("#prof-list");
+  if (!box) return;
+  await loadProfile();
+  const st = S.profiles;
+  $("#prof-section").hidden = !st;
+  if (!st) return;
+  box.innerHTML = st.profiles.map((x) => `<div class="row wrap" data-pid="${esc(x.id)}"><span class="ico" style="background:${esc(x.color || "")}">${esc(x.avatar || "👤")}</span>`
+    + `<span>${esc(x.name)}${x.locked ? " 🔒" : ""}${x.id === st.active ? ' <span class="muted small">(in uso)</span>' : ""}</span>`
+    + `<button class="btn" type="button" data-pf="edit">Modifica…</button></div>`).join("");
+  $("#prof-ask").checked = !!st.ask;
+  $("#prof-active").textContent = (st.profiles.find((x) => x.id === st.active) || {}).name || "";
+  $("#prof-remember").checked = !!st.remembered;
+}
+
+function bindProfilesSettings() {
+  $("#prof-list")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pf]");
+    const p = b && S.profiles.profiles.find((x) => x.id === b.closest("[data-pid]").dataset.pid);
+    if (p) GSProfilePicker.edit(p, { toast, onDone: async () => { await loadProfilesSettings(); if (S.profiles.active !== p.id && !S.profiles.profiles.some((x) => x.id === S.profiles.active)) await applyProfile(); } });
+  });
+  $("#prof-new")?.addEventListener("click", () => GSProfilePicker.edit(null, { toast, onDone: loadProfilesSettings }));
+  $("#prof-ask")?.addEventListener("change", async (e) => {
+    try { await api("/api/profiles/ask", { body: { ask: e.target.checked } }); } catch (err) { e.target.checked = !e.target.checked; toast(err.message, true); }
+  });
+  $("#prof-switch")?.addEventListener("click", () => GSProfilePicker.open({ onChange: async () => { await applyProfile(); await loadProfilesSettings(); }, toast }));
+  $("#prof-remember")?.addEventListener("change", async (e) => {
+    try {
+      await api("/api/profiles/remember", { body: { remember: e.target.checked } });
+      toast(e.target.checked ? "Su questo dispositivo entri sempre con questo profilo" : "All'avvio ti chiederò con quale profilo entrare");
+    } catch (err) { e.target.checked = !e.target.checked; toast(err.message, true); }
+  });
 }
 
 async function switchProfile(id) {
@@ -546,10 +686,11 @@ function profileMenu(anchor) {
   p.innerHTML = `<div class="opts">${st.profiles.map((x) => `<div class="opt${x.id === st.active ? " hl" : ""}" data-pid="${esc(x.id)}">`
       + `<span>${x.id === st.active ? "✓ " : ""}${x.color ? `<i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(x.color)}"></i> ` : ""}`
       + `${esc(x.avatar ? `${x.avatar} ` : "")}${esc(x.name)}${x.locked ? " 🔒" : ""}</span></div>`).join("")}
-    <div class="opt" data-act="new">＋ Nuovo profilo…</div>
-    <div class="opt" data-act="rename">✎ Rinomina «${esc(cur.name)}»…</div>
-    <div class="opt" data-act="edit">🎨 Icona, colore e PIN…</div>
-    ${st.active !== "default" ? `<div class="opt" data-act="delete">🗑 Elimina «${esc(cur.name)}»…</div>` : ""}</div>`;
+    <div class="opt" data-act="switch"><span>👥 Cambia utente…</span></div>
+    <div class="opt" data-act="new"><span>＋ Nuovo profilo…</span></div>
+    <div class="opt" data-act="rename"><span>✎ Rinomina «${esc(cur.name)}»…</span></div>
+    <div class="opt" data-act="edit"><span>🎨 Icona, colore e PIN…</span></div>
+    ${st.active !== "default" ? `<div class="opt" data-act="delete"><span>🗑 Elimina «${esc(cur.name)}»…</span></div>` : ""}</div>`;
   placePopover(anchor);
   p.onclick = async (e) => {
     const o = e.target.closest(".opt");
@@ -559,6 +700,8 @@ function profileMenu(anchor) {
       if (o.dataset.pid) {
         const t = st.profiles.find((x) => x.id === o.dataset.pid);
         if (t.id !== st.active && (!t.locked || await unlockProfile(anchor, t))) await switchProfile(t.id);
+      } else if (o.dataset.act === "switch") {
+        await GSProfilePicker.open({ onChange: applyProfile, toast });
       } else if (o.dataset.act === "edit") {
         if (cur.locked && !(await unlockProfile(anchor, cur))) return;
         // invio vuoto = non cambiare; «-» = togli

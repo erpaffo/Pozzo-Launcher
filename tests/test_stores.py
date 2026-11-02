@@ -128,6 +128,10 @@ def test_library_and_api(tmp: Path):
         assert c.get("/api/extensions").json()["active_experience"] == "shelves"
         assert c.get("/api/extensions").json()["active_theme"] == "oled"
         print("ok  temi e plugin: esperienza globale persistente e tema indipendente dal profilo")
+        # i giochi solo posseduti (Epic) sono dell'account del Principale: Luca non li vede, il Principale si'
+        lib_luca = c.get("/api/library").json()
+        assert "Celeste" not in {r[1] for r in lib_luca["games"]["rows"]}
+        assert c.post("/api/profiles/active", json={"id": "default"}).status_code == 200
 
         lib = c.get("/api/library").json()
         cols = lib["games"]["cols"]

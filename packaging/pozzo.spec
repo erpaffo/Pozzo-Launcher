@@ -19,6 +19,7 @@ datas = [
     (str(APP / "static"), "pozzo/app/static"),
     (str(APP / "themes"), "pozzo/app/themes"),
     (str(APP / "plugins"), "pozzo/app/plugins"),
+    (str(ROOT / "pozzo" / "data"), "pozzo/data"),  # hash dei BIOS (pozzo/bios.py)
     (str(ROOT / "config.example.toml"), "."),
     (str(ROOT / "packaging" / "icon.ico"), "packaging"),  # icona nell'area di notifica
     (str(ROOT / "changelog.md"), "."),  # mostrato in Impostazioni > Info

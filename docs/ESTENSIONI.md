@@ -328,6 +328,14 @@ def register(gs):
 - I lavori si fermano alla chiusura dell'app. `gs.job` restituisce l'oggetto del lavoro: `.stop()` lo ferma prima.
 - Nell'elenco dei plugin (`GET /api/extensions`, campo `plugins`) ogni plugin riporta `load_ms` (millisecondi spesi in `register()`) e `jobs` (nome, intervallo, giri fatti, ultimo errore).
 
+#### Caricamento differito (`load = "lazy"`)
+
+Di default il backend si importa e `register()` gira all'avvio dell'app (`load = "eager"`). Con `load = "lazy"` nel `[plugin]` di `plugin.toml` l'app monta solo un segnaposto su `/plugin-api/<id>/...`: al **primo accesso** a una sua route importa `backend.py`, esegue `register()` (una volta sola) e inoltra la richiesta; da lì in poi si comporta come un plugin eager. `frontend.js` e `style.css` sono file statici e si servono come sempre.
+
+- Usalo solo se `register()` usa **soltanto `gs.route`**. `gs.on`, `gs.job`, `gs.add_store` e `gs.add_source` devono essere attivi dall'avvio: in un plugin lazy funzionano, ma solo dopo il primo uso (gli eventi prima di allora si perdono). L'app lo scrive nel log e lo segnala in `eager_needed`: in quel caso togli `load`.
+- Un errore in `import`/`register()` di un plugin lazy dà una risposta 500 con il motivo solo sulle sue route (compare anche in `error`); il resto dell'app non ne risente. Il backend non viene riprovato fino al riavvio.
+- In `GET /api/extensions` ogni plugin riporta anche `load` (`eager`/`lazy`), `first_use_ms` (import + `register()` al primo accesso, `null` se eager o non ancora usato) e `eager_needed`. `load_ms` per un lazy è il solo montaggio (circa 0).
+
 ### Esempio completo
 
 Il plugin **Statistiche** (`extensions/statistiche/`) usa tutte le parti:

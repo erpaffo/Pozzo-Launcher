@@ -30,13 +30,14 @@ class TheGamesDb(Source):
     async def _get(self, path: str, params: dict) -> dict | None:
         if self.remaining is not None and self.remaining <= int(self.cfg.tgdb.get("quota_reserve", 20)):
             raise Stop("quota mensile TheGamesDB esaurita")
-        r = await request(self.client, "GET", API + path, limiter=self.limiter, params={"apikey": self.key, **params})
+        r = await request(self.client, "GET", API + path, limiter=self.limiter, cache_source="thegamesdb",
+                          params={"apikey": self.key, **params})
         if r is None:
             return None
         if r.status_code in (401, 403):
             raise Stop(f"TheGamesDB: chiave API non valida o quota esaurita ({r.status_code})")
         d = r.json()
-        if "remaining_monthly_allowance" in d:
+        if "remaining_monthly_allowance" in d and not r.headers.get("x-pozzo-cache"):  # da cache la quota e' vecchia
             self.remaining = int(d["remaining_monthly_allowance"])
         return d
 

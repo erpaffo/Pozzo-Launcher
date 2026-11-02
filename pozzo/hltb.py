@@ -19,9 +19,10 @@ import sqlite3
 import time
 from pathlib import Path
 
+from .cachepolicy import TTL
 from .matching import normalize
 
-FOUND_TTL, MISS_TTL = 180 * 86400, 30 * 86400
+FOUND_TTL, MISS_TTL = TTL["hltb"]  # trovato / non trovato (cache negativa), vedi cachepolicy.py
 # nomi delle piattaforme su HowLongToBeat (per preferire il gioco giusto tra gli omonimi)
 HLTB_PLATFORMS = {
     "windows": "pc", "dos": "pc", "nes": "nes", "snes": "super nintendo", "n64": "nintendo 64", "gb": "game boy",

@@ -31,7 +31,6 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 .bp-clock { font-size: 1.15rem; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 #bp-main { overflow: hidden; position: relative; }
-.focus-ring { outline: none; box-shadow: 0 0 0 4px var(--accent), 0 0 30px color-mix(in srgb, var(--accent) 60%, transparent) !important; }
 .bp-tab.focus { color: #fff; background: var(--accent); }
 
 /* home: scaffali */
@@ -102,8 +101,6 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 .search-res .card { width: 9.5rem; }
 
 /* elenco (console / collezioni) */
-.bp-list { position: absolute; inset: 0; padding: .5rem 3rem; }
-.bp-list .card.tile-text { position: absolute; }
 
 /* suggerimenti tasti */
 #bp-hints { display: flex; flex-wrap: wrap; gap: .4rem 2rem; justify-content: flex-end; padding: .8rem 3rem 1.2rem; color: var(--muted); font-size: .95rem; max-height: 6.5rem; overflow-y: auto; scrollbar-width: none; }
@@ -200,21 +197,17 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 
 html[data-palette="deuteranopia"] { --accent: #4f9dff; --ok: #f2b134; --text: #f2f4f8; --muted: #a8b0c2; }
 html[data-palette="deuteranopia"] .card.focus .cv,
-html[data-palette="deuteranopia"] .focus-ring { box-shadow: 0 0 0 4px #7fb2ff, 0 14px 40px rgba(0,0,0,.6) !important; }
 
 html[data-palette="protanopia"] { --accent: #3f8cff; --ok: #ffd166; --text: #f4f6fa; --muted: #aab2c4; }
 html[data-palette="protanopia"] .card.focus .cv,
-html[data-palette="protanopia"] .focus-ring { box-shadow: 0 0 0 4px #9cc4ff, 0 14px 40px rgba(0,0,0,.6) !important; }
 
 html[data-palette="tritanopia"] { --accent: #ff6b9d; --ok: #ffd166; --text: #f6f4f8; --muted: #b6aec4; }
 html[data-palette="tritanopia"] .card.focus .cv,
-html[data-palette="tritanopia"] .focus-ring { box-shadow: 0 0 0 4px #ff9dc0, 0 14px 40px rgba(0,0,0,.6) !important; }
 
 html[data-palette="contrast"] { --bg: #000; --bg-2: #07080a; --bg-3: #101216; --text: #fff; --muted: #d8dde8;
   --accent: #ffe01b; --ok: #7dffb0; --line: #ffffff; }
 html[data-palette="contrast"] #bp-bg .bg-img { display: none; }
 html[data-palette="contrast"] .card.focus .cv,
-html[data-palette="contrast"] .focus-ring { box-shadow: 0 0 0 6px #ffe01b, 0 0 0 10px #000 !important; }
 html[data-palette="contrast"] .card .lbl,
 html[data-palette="contrast"] .bp-hero .meta,
 html[data-palette="contrast"] .shelf h2 { color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; }

@@ -97,7 +97,7 @@ def profile_id(name: str) -> str:
 def open_profile(cfg, pid: str) -> UserData:
     path = profile_path(cfg, pid)
     path.parent.mkdir(parents=True, exist_ok=True)
-    return UserData(path, shared=profile_path(cfg, "default"))
+    return UserData(path, shared=profile_path(cfg, "default"), profile=pid)
 
 
 def add_profile(cfg, name: str) -> dict:
@@ -160,6 +160,13 @@ def delete_profile(cfg, pid: str) -> Path | None:
     if pj and pj.exists():
         (pj.parent / "eliminati").mkdir(parents=True, exist_ok=True)
         pj.replace(pj.parent / "eliminati" / f"{pid}-{stamp}.json")
+    from .cache import Cache  # le liste degli store di questo profilo (kv "store:<id>:<profilo>") non servono piu'
+    c = Cache(cfg.cache)
+    try:
+        c.db.execute("DELETE FROM kv WHERE k LIKE ?", (f"store:%:{pid}",))
+        c.commit()
+    finally:
+        c.close()
     src = profile_path(cfg, pid)
     if not src.exists():
         return None

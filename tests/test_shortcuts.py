@@ -45,22 +45,30 @@ assert.strictEqual(S.isMacPlatform({ platform: "Win32" }), false);
 
 // evento -> azione
 const find = (combo, scope) => S.findAction(combo, scope, {})?.id;
-assert.strictEqual(find("Mod+K", "desktop"), "search");
+assert.strictEqual(find("Mod+K", "desktop"), "palette");
+assert.strictEqual(find("/", "desktop"), "search");
+assert.strictEqual(find("/", "bp"), undefined);
 assert.strictEqual(find("Mod+K", "bp"), undefined);
 assert.strictEqual(find("Mod+Shift+B", "bp"), "bigPicture");
 assert.strictEqual(find("F11", "desktop"), "bigPicture");
 assert.strictEqual(find("Mod+R", "desktop"), undefined); // ricarica del browser: libera
 assert.strictEqual(find("Mod+C", "desktop"), undefined); // copia/incolla intatti
 assert.strictEqual(find("Mod+V", "desktop"), undefined);
-assert.strictEqual(S.findAction("Mod+K", "desktop", { search: ["Mod+J"] })?.id, undefined); // override
+assert.strictEqual(S.findAction("Mod+K", "desktop", { palette: ["Mod+J"] })?.id, undefined); // override
+assert.strictEqual(S.findAction("Mod+J", "desktop", { palette: ["Mod+J"] })?.id, "palette");
+assert.strictEqual(S.findAction("/", "desktop", { search: ["Mod+J"] })?.id, undefined); // override
 assert.strictEqual(S.findAction("Mod+J", "desktop", { search: ["Mod+J"] })?.id, "search");
 assert.strictEqual(S.conflictOf("viewFav", "Mod+1", {})?.id, "viewAll");
 assert.strictEqual(S.conflictOf("viewFav", "Escape", {})?.id, "back");
 assert.strictEqual(S.conflictOf("viewFav", "Mod+9", {}), null);
+assert.strictEqual(S.conflictOf("search", "Mod+K", {})?.id, "palette"); // il vecchio tasto della ricerca ora e' della palette
+assert.strictEqual(S.conflictOf("palette", "/", {})?.id, "search");
+assert.strictEqual(S.conflictOf("search", "Mod+K", { palette: ["Mod+J"] }), null); // override della palette libera Mod+K
 
 // campi di testo: passano solo le voci "typing" con Mod
 const en = (id) => S.REGISTRY.find((x) => x.id === id);
-assert.strictEqual(S.allowedWhileTyping(en("search"), "Mod+K"), true);
+assert.strictEqual(S.allowedWhileTyping(en("palette"), "Mod+K"), true);
+assert.strictEqual(S.allowedWhileTyping(en("search"), "/"), false); // "/" in un campo di testo e' scrittura
 assert.strictEqual(S.allowedWhileTyping(en("help"), "?"), false);
 assert.strictEqual(S.allowedWhileTyping(en("favorite"), "F"), false);
 assert.strictEqual(S.allowedWhileTyping(en("viewAll"), "Mod+1"), false);
@@ -113,7 +121,7 @@ def main():
         print("skip  node non trovato: controlli JS saltati")
         return
 
-    for name in ("shortcuts.js", "pad.js", "bigpicture.js", "menubar.js", "app.js", *(f"js/{f.name}" for f in sorted((STATIC / "js").glob("*.js")))):
+    for name in ("shortcuts.js", "palette.js", "pad.js", "bigpicture.js", "menubar.js", "app.js", *(f"js/{f.name}" for f in sorted((STATIC / "js").glob("*.js")))):
         r = run(NODE, "--check", str(STATIC / name))
         assert r.returncode == 0, f"{name}: {r.stderr}"
 
@@ -134,7 +142,7 @@ def main():
         assert len(set(entry["keys"])) == len(entry["keys"]), entry["id"]
     ids = [e["id"] for e in registry]
     assert len(ids) == len(set(ids)), "id duplicati nel registro"
-    for must in ("search", "settings", "viewAll", "viewFav", "viewShop", "bigPicture", "nextExperience", "nextTheme", "sidebar",
+    for must in ("search", "palette", "settings", "viewAll", "viewFav", "viewShop", "bigPicture", "nextExperience", "nextTheme", "sidebar",
                  "back", "favorite", "hide", "random", "viewWishlist", "viewStats", "help", "playPause", "next", "prev", "muteMic", "deafen"):
         assert must in ids, f"manca l'azione {must}"
     # ogni azione desktop con tasti ha un gestore in bind("desktop", {...}) (le media sono legate da bind per tutti)
@@ -148,6 +156,9 @@ def main():
     assert not reserved & {k for e in registry for k in e["keys"]}, "combinazione riservata al browser"
 
     r = run(NODE, "-e", NODE_TEST, str(STATIC / "shortcuts.js"))
+    assert r.returncode == 0 and r.stdout.strip() == "ok", r.stdout + r.stderr
+
+    r = run(NODE, str(ROOT / "tests" / "test_palette.js"))
     assert r.returncode == 0 and r.stdout.strip() == "ok", r.stdout + r.stderr
 
     # la documentazione elenca ogni combinazione (Windows e macOS)

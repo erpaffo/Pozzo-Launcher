@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="/static/app.css?v={{v}}">
 <link rel="stylesheet" href="/static/motion.css?v={{v}}">
 <link rel="stylesheet" href="/static/skeleton.css?v={{v}}">
+<link rel="stylesheet" href="/static/profile-picker.css?v={{v}}">
+<link rel="stylesheet" href="/static/settings/emulatori-extra.css?v={{v}}">
 </head>
 <body>
 <div id="app">
@@ -104,12 +106,14 @@
           <select id="disc-preset" title="Scopri: filtri su valutazioni e voti" aria-label="Scopri"></select>
           <select id="disc-genre" title="Genere" aria-label="Genere"></select>
           <select id="disc-decade" title="Decennio" aria-label="Decennio"></select>
+          <select id="language-filter" title="Lingua del gioco" aria-label="Lingua"></select>
           <button type="button" class="tb-reset" id="disc-reset" title="Azzera i filtri Scopri" hidden>✕ Azzera</button>
         </div>
         <div class="tb-group" role="group" aria-label="Ordinamento">
           <span class="tb-lbl">Ordina</span>
           <select id="sort" title="Ordinamento" aria-label="Ordina per">
             <option value="title">Titolo A–Z</option>
+            <option value="language">Lingua</option>
             <option value="year">Anno ↑</option>
             <option value="-year">Anno ↓</option>
             <option value="platform">Console</option>
@@ -348,6 +352,7 @@
 <script src="/static/icons.js?v={{v}}"></script>
 <script src="/static/reco.js"></script>
 <script src="/static/setup.js"></script>
+<script src="/static/languages.js?v={{v}}"></script>
 <script src="/static/js/state.js?v={{v}}"></script>
 <script src="/static/js/grid.js?v={{v}}"></script>
 <script src="/static/js/sidebar.js?v={{v}}"></script>
@@ -368,9 +373,14 @@
 <script src="/static/motion.js?v={{v}}"></script>
 <script src="/static/motion-settings.js?v={{v}}"></script>
 <script src="/static/splash.js?v={{v}}"></script>
+<script src="/static/profile-picker.js?v={{v}}"></script>
 <script src="/static/palette.js?v={{v}}"></script>
 <script src="/static/onboarding.js?v={{v}}"></script>
+<script src="/static/settings/emulatori-extra.js?v={{v}}"></script>
 <script src="/static/hints.js?v={{v}}"></script>
+<script src="/static/js/detail-mods.js?v={{v}}"></script>
+<script src="/static/js/detail-verify.js?v={{v}}"></script>
+<script src="/static/js/profiles-exp.js?v={{v}}"></script>
 <script src="/static/i18n.js?v={{v}}"></script>
 </body>
 </html>

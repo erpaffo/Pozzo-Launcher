@@ -4,4 +4,5 @@ version = "1.0"
 author = "Pozzo Launcher"
 description = "Un badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi, di qualche anno fa, e la pagina «Oggi nel…» con l'elenco."
 api = 1
+load = "lazy"
 min_app = "0.7.1"

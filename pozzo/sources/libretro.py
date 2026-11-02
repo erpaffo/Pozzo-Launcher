@@ -1,8 +1,9 @@
 """libretro-database + thumbnails.libretro.com
 
 E' la chiave della velocita': i DAT No-Intro/Redump vengono scaricati una volta (cache 30 giorni)
-e le ROM sono identificate OFFLINE per CRC (o per nome esatto/normalizzato), senza alcuna
-chiamata API. Gli stessi DAT forniscono sviluppatore, editore, genere, anno, giocatori.
+e le ROM sono identificate OFFLINE prima per hash e poi per nome, senza alcuna chiamata API.
+Gli hash vengono calcolati una sola volta e riusati per la verifica e per l'identificazione.
+Gli stessi DAT forniscono sviluppatore, editore, genere, anno, giocatori.
 Le immagini (box, screenshot, title screen) arrivano da thumbnails.libretro.com, senza quota.
 
 Il nome canonico identificato qui viene poi usato dalle altre sorgenti come termine di
@@ -20,7 +21,7 @@ from urllib.parse import quote
 
 from .. import matching
 from ..net import RateLimiter, request
-from ..scanner import Game, clean_title, regions_of
+from ..scanner import Game, clean_title, hash_games, regions_of
 from .base import Result, Source
 
 RAW = "https://raw.githubusercontent.com/libretro/libretro-database/master/"
@@ -52,20 +53,31 @@ class Index:
     def __init__(self):
         self.system = ""
         self.by_crc: dict[str, str] = {}
+        self.by_hash: dict[tuple[str, str], list[tuple[str, int]]] = defaultdict(list)
         self.by_name: dict[str, str] = {}
         self.by_norm: dict[str, list[str]] = defaultdict(list)
         self.meta_crc: dict[str, dict] = defaultdict(dict)
         self.meta_name: dict[str, dict] = defaultdict(dict)
         self.rom_info: dict[str, dict] = {}  # stem del file (o nome gioco a ROM singola) -> crc/size/md5/sha1
+        self.has_dat = False
 
     def add_main(self, text: str):
         for g in parse_dat(text):
             name = g.get("name") or g.get("comment")
             if not name:
                 continue
+            self.has_dat = True
             self.by_name.setdefault(name.lower(), name)
             self.by_norm[matching.normalize(name)].append(name)
             for r in g["roms"]:
+                size = int(r.get("size") or 0)
+                for kind in ("crc", "md5", "sha1"):
+                    value = r.get(kind)
+                    if value:
+                        key = (kind, value.upper())
+                        entry = (name, size)
+                        if entry not in self.by_hash[key]:
+                            self.by_hash[key].append(entry)
                 if r.get("crc"):
                     self.by_crc.setdefault(r["crc"].upper(), name)
                 if r.get("name"):
@@ -97,21 +109,48 @@ class Index:
                 return self.by_name[stem.lower()], self.rom_info.get(stem.lower(), {})
         return None
 
-    def identify(self, game: Game, regions: list[str]) -> str | None:
-        for crc in (game.crc, game.crc_nh, game.dat_crc):
-            if crc and crc in self.by_crc:
-                return self.by_crc[crc]
+    def _hash_match(self, game: Game) -> tuple[str, str] | None:
+        size = game.inner_size or game.size
+        for kind, value in (("sha1", game.sha1), ("md5", game.md5), ("crc", game.crc),
+                            ("crc", game.crc_nh)):
+            if not value:
+                continue
+            for name, dat_size in self.by_hash.get((kind, value.upper()), ()):
+                if not dat_size or not size or dat_size == size:
+                    return name, kind
+        return None
+
+    def identify_match(self, game: Game, regions: list[str] = ()) -> tuple[str, str, str] | None:
+        """Corrisponde prima per hash letto dal file, poi per nome. Non usa hash dichiarati dal DAT."""
+        matched = self._hash_match(game)
+        if matched:
+            return matched[0], "hash", matched[1]
         for stem in (game.stem, Path(game.inner_name).stem if game.inner_name else ""):
             if stem and stem.lower() in self.by_name:
-                return self.by_name[stem.lower()]
+                return self.by_name[stem.lower()], "name", ""
         cands = self.by_norm.get(matching.normalize(game.stem))
         if cands:
             want = regions_of(game.stem) + regions
             def rank(n):
                 rs = regions_of(n)
                 return min((want.index(r) for r in rs if r in want), default=99), len(n)
-            return min(cands, key=rank)
+            return min(cands, key=rank), "name", ""
         return None
+
+    def identify(self, game: Game, regions: list[str]) -> str | None:
+        matched = self.identify_match(game, regions)
+        return matched[0] if matched else None
+
+    def verify(self, game: Game) -> dict:
+        """Stato d'integrità derivato solo dagli hash già calcolati, senza aprire la ROM."""
+        if not self.has_dat:
+            return {"status": "nessun DAT", "name": "", "match_by": "", "hash_kind": ""}
+        matched = self._hash_match(game)
+        if matched:
+            return {"status": "verificata", "name": matched[0], "match_by": "hash", "hash_kind": matched[1]}
+        name_match = self.identify_match(game)
+        return {"status": "sconosciuta", "name": name_match[0] if name_match else "",
+                "match_by": name_match[1] if name_match else "", "hash_kind": ""}
 
     def meta(self, game: Game, name: str) -> dict:
         m = dict(self.meta_name.get(name.lower(), {}))
@@ -188,16 +227,23 @@ class Libretro(Source):
         return bool(self.indexes)
 
     def name_first(self, games: list[Game]) -> list[Game]:
-        """Identifica per nome esatto i giochi non ancora hashati. Ritorna quelli riconosciuti
-        (per cui non serve leggere il file: CRC/MD5/SHA1 arrivano dal DAT)."""
+        """Calcola gli hash una volta e solo dopo identifica per hash o nome."""
+        hash_games(self.cfg, self.cache, games, log=self.log)
         hits = []
         for g in games:
             idx = self.indexes.get(g.platform.id)
-            if not idx or g.is_dir:
+            if g.is_dir:
                 continue
-            r = idx.identify_by_name(g)
-            if r:
-                name, info = r
+            if not idx:
+                continue
+            verification = idx.verify(g)
+            g.verify_status = verification["status"]
+            g.data["verify_status"] = verification["status"]
+            matched = idx.identify_match(g, self.cfg.regions)
+            if matched:
+                name, g.match_by, _ = matched
+                g.data["match_by"] = g.match_by
+                info = idx.rom_info.get(name.lower(), {})
                 g.apply_file_data(info)
                 g.canonical = g.canonical or name
                 hits.append(g)
@@ -205,14 +251,20 @@ class Libretro(Source):
 
     async def lookup(self, game: Game) -> Result | None:
         idx = self.indexes[game.platform.id]
-        name = idx.identify(game, self.cfg.regions)
+        verification = idx.verify(game)
+        game.verify_status = verification["status"]
+        matched = idx.identify_match(game, self.cfg.regions)
         res = Result()
+        name = matched[0] if matched else None
+        game.match_by = matched[1] if matched else ""
         thumb = name or game.stem  # molte collezioni usano gia' i nomi No-Intro
         res.media = {t: f"{THUMBS}{quote(idx.system)}/{d}/{quote(thumb_name(thumb))}.png" for t, d in THUMB_DIRS.items()}
         if not name:
             return res if self.cfg.libretro.get("thumbs_by_filename", True) else None
         f = res.fields
         f["canonical"] = name
+        f["match_by"] = game.match_by
+        f["verify_status"] = game.verify_status
         f["title"] = clean_title(name)
         f["region"] = ",".join(regions_of(name))
         m = idx.meta(game, name)

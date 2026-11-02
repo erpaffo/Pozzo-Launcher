@@ -121,8 +121,14 @@ class HttpCache:
         self.db = sqlite3.connect(db_path, timeout=60, check_same_thread=False)
         self.db.execute("CREATE TABLE IF NOT EXISTS http_cache(key TEXT PRIMARY KEY, status INT, body BLOB, "
                         "ctype TEXT, ts REAL)")
+        for col in ("source TEXT", "exp REAL"):  # colonne aggiunte dopo: cache.db esistenti
+            try:
+                self.db.execute("ALTER TABLE http_cache ADD COLUMN " + col)
+            except sqlite3.OperationalError:
+                pass
         self.db.commit()
         self.hits = 0
+        self.clock = time.time  # sostituibile nei test
 
     @staticmethod
     def key(method: str, url: str, params=None, content=None, data=None) -> str:
@@ -138,36 +144,93 @@ class HttpCache:
     def get(self, key: str, ttl: float):
         if not self.enabled:
             return None
-        r = self.db.execute("SELECT status, body, ctype, ts FROM http_cache WHERE key=?", (key,)).fetchone()
-        if not r or time.time() - r[3] > ttl:
+        r = self.db.execute("SELECT status, body, ctype, ts, exp FROM http_cache WHERE key=?", (key,)).fetchone()
+        now = self.clock()
+        if not r or now - r[3] > ttl or (r[4] is not None and now > r[4]):  # exp: scadenza (anche negativa) fissata alla scrittura
             return None
         self.hits += 1
         return httpx.Response(r[0], content=r[1], headers={"content-type": r[2] or "application/json",
                                                            "x-pozzo-cache": "hit"})
 
-    def put(self, key: str, r: httpx.Response):
+    def put(self, key: str, r: httpx.Response, source: str = "", ttl: float = 0, neg_ttl: float = 0):
         if not self.enabled or r.status_code not in (200, 404):
             return
-        self.db.execute("INSERT OR REPLACE INTO http_cache VALUES(?,?,?,?,?)",
-                        (key, r.status_code, r.content, r.headers.get("content-type", ""), time.time()))
+        now = self.clock()
+        negative = r.status_code == 404 or _empty(r.content)
+        life = neg_ttl if negative else ttl
+        self.db.execute("INSERT OR REPLACE INTO http_cache(key, status, body, ctype, ts, source, exp) VALUES(?,?,?,?,?,?,?)",
+                        (key, r.status_code, r.content, r.headers.get("content-type", ""), now, source,
+                         now + life if life else None))
         self.db.commit()
+
+    def invalidate(self, source: str | None = None, key: str | None = None) -> int:
+        """Toglie le righe di una fonte, una sola chiave, o tutto. Ritorna quante."""
+        cond, args = [], []
+        if source is not None:
+            cond.append("source=?")
+            args.append(source)
+        if key is not None:
+            cond.append("key=?")
+            args.append(key)
+        n = self.db.execute("DELETE FROM http_cache" + (" WHERE " + " AND ".join(cond) if cond else ""), args).rowcount
+        self.db.commit()
+        return n
+
+    def _expired_sql(self) -> tuple[str, list]:
+        # senza exp (righe vecchie) vale il massimo TTL in uso
+        return "(exp IS NOT NULL AND exp < ?) OR (exp IS NULL AND ts < ?)", [self.clock(), self.clock() - 90 * 86400]
+
+    def stats(self) -> dict[str, dict]:
+        """{fonte: {rows, bytes, expired}}."""
+        cond, args = self._expired_sql()
+        q = (f"SELECT COALESCE(source, ''), COUNT(*), COALESCE(SUM(LENGTH(body)), 0), SUM(CASE WHEN {cond} THEN 1 ELSE 0 END) "
+             "FROM http_cache GROUP BY 1")
+        return {s or "altro": {"rows": n, "bytes": b, "expired": e or 0} for s, n, b, e in self.db.execute(q, args)}
+
+    def purge_expired(self) -> int:
+        cond, args = self._expired_sql()
+        n = self.db.execute("DELETE FROM http_cache WHERE " + cond, args).rowcount
+        self.db.commit()
+        return n
 
     def close(self):
         self.db.close()
+
+
+def _empty(body: bytes) -> bool:
+    """Risposta JSON senza risultati ([], {}, count 0, results/search vuoti): cache negativa."""
+    import json as _json
+    try:
+        d = _json.loads(body)
+    except ValueError:
+        return False
+    if not isinstance(d, dict):
+        return d == []
+    q = d.get("query")
+    return (not d or d.get("count") == 0 or d.get("results") == []
+            or (isinstance(q, dict) and q.get("search") == []))
 
 
 HTTP_CACHE: HttpCache | None = None  # impostata dalla pipeline durante uno scraping
 
 
 async def request(client: httpx.AsyncClient, method: str, url: str, *, limiter: RateLimiter | None = None,
-                  retries: int = 4, ok404: bool = True, cache_ttl: float = 0, **kw) -> httpx.Response | None:
+                  retries: int = 4, ok404: bool = True, cache_ttl: float = 0, cache_source: str = "",
+                  **kw) -> httpx.Response | None:
     """Richiesta con retry su errori di rete / 429 / 5xx. Ritorna None su 404.
 
-    cache_ttl > 0: la risposta viene riusata (senza contattare il sito) per quei secondi."""
+    cache_source: la risposta si riusa (senza contattare il sito ne' toccare il budget) per le scadenze di
+    cachepolicy.py. cache_ttl > 0: stessa cosa con una scadenza propria (la fonte e' il sito)."""
     ckey = None
-    if cache_ttl and HTTP_CACHE is not None:
+    if (cache_ttl or cache_source) and HTTP_CACHE is not None:
+        from urllib.parse import urlsplit
+
+        from .cachepolicy import ttls
+        pos, neg = ttls(cache_source) if cache_source else (cache_ttl, cache_ttl)
+        pos = cache_ttl or pos
+        source = cache_source or urlsplit(url).hostname or ""
         ckey = HttpCache.key(method, url, kw.get("params"), kw.get("content"), kw.get("data"))
-        hit = HTTP_CACHE.get(ckey, cache_ttl)
+        hit = HTTP_CACHE.get(ckey, pos)
         if hit is not None:
             return None if hit.status_code == 404 and ok404 else hit
     delay = 2.0
@@ -199,7 +262,7 @@ async def request(client: httpx.AsyncClient, method: str, url: str, *, limiter: 
         if limiter:
             limiter.report(True)
         if ckey:
-            HTTP_CACHE.put(ckey, r)
+            HTTP_CACHE.put(ckey, r, source, pos, neg)
         if r.status_code == 404 and ok404:
             return None
         return r

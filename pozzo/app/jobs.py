@@ -743,6 +743,6 @@ def preview(cfg, library_files: set[str], incomplete: dict[str, tuple[int, int]]
             unknown.append(d.name)
     except OSError:
         pass
-    from ..config import rom_roots
-    extra = [{"path": str(r), "online": r.exists()} for r in rom_roots(cfg)[1:]]
+    from ..ownership import visible_roots
+    extra = [{"path": str(r), "online": r.exists(), "own": mine} for r, mine in visible_roots(cfg)]
     return {"root": str(cfg.roms), "platforms": rows, "unknown": unknown, "extra": extra}

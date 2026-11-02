@@ -33,10 +33,10 @@ class Gog(StoreProvider):
         return reg_get("HKLM", r"SOFTWARE\WOW6432Node\GOG.com\GalaxyClient\paths", "client")
 
     def detected(self) -> bool:
-        return bool(reg_subkeys("HKLM", REG)) or bool(self.galaxy()) or bool(self.cache.kv_get("auth:gog"))
+        return bool(reg_subkeys("HKLM", REG)) or bool(self.galaxy()) or bool(PC.get(self.cfg, "gog"))
 
     def account(self) -> dict:
-        a = self.cache.kv_get("auth:gog") or {}
+        a = PC.get(self.cfg, "gog", {})
         return {"connected": bool(a.get("refresh_token")), "user": a.get("user", ""), "galaxy": bool(self.galaxy())}
 
     @staticmethod

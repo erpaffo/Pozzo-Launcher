@@ -2,6 +2,10 @@
 
 Ogni store salva la propria lista in cache (kv "store:<id>"): se in un secondo momento un login
 scade o un client viene disinstallato, i giochi gia' noti restano visibili.
+
+Steam, Epic e GOG hanno un account per profilo: la lista di ogni profilo e' in "store:<id>:<profilo>" (la chiave
+senza profilo e' del Principale). Un gioco installato sul PC e' di tutti, uno solo posseduto e' del suo profilo
+(vedi ownership.py). load_snapshots() unisce le liste: lo stesso gioco in due profili e' una sola voce.
 """
 
 from __future__ import annotations
@@ -34,11 +38,32 @@ def enabled(cfg, pid: str) -> bool:
     return (getattr(cfg, "stores", {}) or {}).get(pid, {}).get("enabled", True)
 
 
-def load_snapshots(cache) -> list[dict]:
-    out = []
+PER_PROFILE = ("steam", "epic", "gog")  # store con account per profilo
+
+
+def snap_key(sid: str, pid: str = "default") -> str:
+    return f"store:{sid}" if pid == "default" or sid not in PER_PROFILE else f"store:{sid}:{pid}"
+
+
+def load_snapshots(cache, pids=None) -> list[dict]:
+    """Giochi di tutti gli store e profili (`pids`; None = quelli che hanno una lista in cache), senza doppioni. Ogni voce ha "owners": [] = condivisa, altrimenti
+    i profili proprietari."""
+    out: dict[tuple, dict] = {}
+    if pids is None:
+        pids = ["default"] + sorted({r[0].rsplit(":", 1)[1] for r in cache.db.execute(
+            "SELECT k FROM kv WHERE k LIKE 'store:%:%'")})
     for p in PROVIDERS:
-        out += cache.kv_get(f"store:{p.id}") or []
-    return out
+        for pid in (pids if p.id in PER_PROFILE else ("default",)):
+            for s in cache.kv_get(snap_key(p.id, pid)) or []:
+                # condiviso: installato sul PC, store del sistema, gioco a mano senza proprietario
+                own = pid if p.id in PER_PROFILE and not s.get("installed") else s.get("owner") or ""
+                e = out.setdefault((p.id, s["id"]), {**s, "_owners": set()})
+                e["_owners"].add(own)
+                e["installed"] = e.get("installed") or s.get("installed")
+    for e in out.values():
+        o = e.pop("_owners")
+        e["owners"] = [] if "" in o else sorted(o)
+    return list(out.values())
 
 
 # ---------------------------------------------------------------- immagini
@@ -151,6 +176,7 @@ async def _download_images(cfg, cache, client, games: list[dict], log, progress=
 async def refresh(cfg, cache, log=print, only: list[str] | None = None, progress=None, images: bool = True) -> dict:
     """Aggiorna gli store (tutti o solo `only`) e salva le istantanee in cache.
     images=False salta la ricerca e il download delle copertine (aggiunta rapida di giochi a mano)."""
+    from .. import profilecfg as PC
     summary = {}
     async with make_client() as client:
         for P in PROVIDERS:
@@ -158,27 +184,33 @@ async def refresh(cfg, cache, log=print, only: list[str] | None = None, progress
                 continue
             if not enabled(cfg, P.id):
                 continue
-            prov = P(cfg, cache, client, log)
-            try:
-                if not prov.detected():
-                    if cache.kv_get(f"store:{P.id}"):  # store disinstallato: niente giochi fantasma dall'istantanea vecchia
-                        cache.kv_set(f"store:{P.id}", [])
-                    continue
-                games = [g.to_dict() for g in await prov.fetch()]
-            except Exception as e:
-                log(f"{P.name}: errore: {type(e).__name__}: {e}")
-                continue
-            # conserva le immagini gia' scaricate
-            old = {g["id"]: g for g in cache.kv_get(f"store:{P.id}") or []}
-            for g in games:
-                if g["id"] in old:
-                    g["media"] = old[g["id"]].get("media", {})
-            for g in games:
-                g.setdefault("media", {})
-            if images:
-                await _download_images(cfg, cache, client, games, log, progress)
-            cache.kv_set(f"store:{P.id}", games)
-            summary[P.id] = {"games": len(games), "installed": sum(1 for g in games if g["installed"])}
+            # store con account: una lista per profilo (il principale sempre, gli altri solo con l'account collegato)
+            for pid in PC.profile_ids(cfg) if P.id in PER_PROFILE else ["default"]:
+                with PC.override(pid):
+                    prov = P(cfg, cache, client, log)
+                    k = snap_key(P.id, pid)
+                    try:
+                        if not prov.detected() or (pid != "default" and not prov.account().get("connected")):
+                            if cache.kv_get(k):  # store disinstallato o account scollegato: niente giochi fantasma
+                                cache.kv_set(k, [])
+                            continue
+                        games = [g.to_dict() for g in await prov.fetch()]
+                    except Exception as e:
+                        log(f"{P.name}: errore: {type(e).__name__}: {e}")
+                        continue
+                # conserva le immagini gia' scaricate
+                old = {g["id"]: g for g in cache.kv_get(k) or []}
+                for g in games:
+                    if g["id"] in old:
+                        g["media"] = old[g["id"]].get("media", {})
+                for g in games:
+                    g.setdefault("media", {})
+                if images:
+                    await _download_images(cfg, cache, client, games, log, progress)
+                cache.kv_set(k, games)
+                s = summary.setdefault(P.id, {"games": 0, "installed": 0})
+                s["games"] += len(games)
+                s["installed"] += sum(1 for g in games if g["installed"])
     cache.kv_set("stores:refreshed", time.time())
     return summary
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
-from ... import config as C, platforms as P, relink as RL
+from ... import config as C, platforms as P, profilecfg as PC, relink as RL
 
 
 def build_router(ctx) -> APIRouter:
@@ -267,9 +267,10 @@ def build_router(ctx) -> APIRouter:
                 _refresh_manual()
             return {"added": added}
         p = p.resolve()
-        cur = [str(x) for x in cfg.extra_roms]
-        if p != Path(cfg.roms).resolve() and str(p) not in cur:
-            C.save_settings(cfg, paths={"extra_roms": [*cur, str(p)]})
+        shared = [str(x) for x in cfg.extra_roms]
+        own = [str(x) for x in PC.get(cfg, "roms_extra", [])]  # la cartella e' PROPRIA del profilo attivo
+        if p != Path(cfg.roms).resolve() and str(p) not in shared and str(p) not in own:
+            PC.set(cfg, "roms_extra", [*own, str(p)])
         C.save_settings(cfg, platform_folders={str(p): pid})
         return api_scan_start({"platforms": [pid]})
 

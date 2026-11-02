@@ -89,6 +89,7 @@ function bind() {
   });
   // integrazioni: notifiche di Windows
   autosaveControl($("#nt-on"), (enabled) => api("/api/app/notify", { body: { enabled } }));
+  autosaveControl($("#bp-start"), (enabled) => api("/api/app/start-bigpicture", { body: { enabled } }));
   // a coda vuota: sospendi o spegni
   autosaveControl($("#pw-after"), (after_jobs) => api("/api/app/power", { body: { after_jobs } }).then(loadPower));
   $("#pw-abort").onclick = async () => {
@@ -165,13 +166,17 @@ function bind() {
     e.preventDefault();
     openPlatCtx(e, a.dataset.id);
   });
-  layer.addEventListener("contextmenu", (e) => {
-    const t = e.target.closest(".tile");
-    const g = t && S.byId.get(+t.dataset.id);
+  document.addEventListener("contextmenu", (e) => {
+    // dove serve (campi di testo, finestre aperte, il menu stesso) resta quello del browser
+    if (e.target.closest("input, textarea, select, [contenteditable], dialog, #ctxmenu")) return;
+    const g = gameFromEvent(e);
     if (!g) return;
     e.preventDefault();
     openCtx(e, g);
   });
+  // Home, scaffali e le altre viste; lo scorrimento del menu stesso (ha un'altezza massima) non lo chiude
+  document.addEventListener("scroll", (e) => { if (!(e.target instanceof Element && e.target.closest("#ctxmenu"))) closeCtx(); },
+    { capture: true, passive: true });
   document.addEventListener("mousedown", (e) => { if (!e.target.closest("#ctxmenu")) closeCtx(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCtx(); });
   scroller.addEventListener("scroll", () => closeCtx(), { passive: true });
@@ -368,6 +373,7 @@ function bind() {
     .then((r) => { loadSaveDir(r); toast("Cartella dei salvataggi salvata"); }, (e) => toast(e.message, true));
   bindSync();
   $("#profile-btn").onclick = (e) => profileMenu(e.currentTarget);
+  bindProfilesSettings();
   $("#ra-save").onclick = async () => {
     const body = { username: $("#ra-user").value };
     if ($("#ra-key").value.trim()) body.key = $("#ra-key").value.trim();
@@ -393,6 +399,8 @@ function bind() {
   $("#health-reload").onclick = loadHealth;
   $("#about-check").onclick = () => checkUpdate(true, true);
   $("#storage-go").onclick = () => loadStorage(true);
+  $("#csrc-go").onclick = loadCacheSources;
+  $("#csrc-clear-all").onclick = () => clearCacheSource("");
   $("#api-token-copy").onclick = async () => {
     try { await navigator.clipboard.writeText($("#api-token").value); toast("Token copiato"); }
     catch { toast("Copia non riuscita: selezionalo e copialo a mano", true); }

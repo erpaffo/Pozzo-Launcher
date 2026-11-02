@@ -49,15 +49,34 @@ eliminarlo.
 | Separato per profilo | Comune a tutti i profili |
 |---|---|
 | Preferiti, nascosti, stati, note e voti | La libreria: ROM, giochi PC, store online, dati scaricati |
-| Tempo di gioco, partite, *Giocati di recente* | Emulatori, profili di avvio, giochi aggiunti a mano |
-| Collezioni personali e modifiche alle collezioni | Impostazioni, temi, plugin, collezioni intelligenti |
-| Lista desideri | Schermate |
-| Account Spotify, Discord (presenza e voce), RetroAchievements, Epic e GOG | Tema e esperienza (per ora) |
+| Tempo di gioco, partite, *Giocati di recente* | Emulatori, profili di avvio |
+| Collezioni personali e modifiche alle collezioni | Plugin, collezioni intelligenti |
+| Lista desideri e le sue chiavi (IsThereAnyDeal, GG.deals) | Schermate |
+| Account Spotify, Discord (presenza e voce), RetroAchievements, Epic, GOG, Steam (chiave API e id), token GitHub dei port | Percorsi e cartelle ROM globali, store del sistema (Battle.net, Amazon, Xbox, Riot) |
+| Tema ed esperienza (un profilo nuovo parte da quelli già scelti) | |
+| Quali giochi si vedono: cartelle ROM proprie, giochi aggiunti a mano, giochi del proprio account negli store | |
 
 Ogni profilo ha un'icona (emoji o parola) e un colore, mostrati nel pulsante 👤: si cambiano dal menu, alla voce
 **🎨 Icona, colore e PIN…**. Il **PIN** (4-8 cifre) blocca il profilo nel menu: per passarci, o per cambiarne l'aspetto
 e il PIN, bisogna prima inserirlo. Il PIN serve a non cambiare profilo per sbaglio, non protegge i file: chi ha
 accesso alla cartella dati vede gli account. Dopo cinque PIN sbagliati si aspetta 30 secondi.
+
+**Dove si cambia utente.** L'utente in uso è sempre in alto a destra, nella barra dei menu (**👤 nome ▾**): un clic apre il menu del profilo con **👥 Cambia utente…**, **＋ Nuovo profilo…** e la modifica di icona, colore e PIN. Lo stesso comando è nel menu **File**, in *Impostazioni → Generale → Profili utente* (**👥 Cambia utente…**), con `Ctrl+P` e, in Big Picture, dalla scheda **Utente**. Vale in ogni grafica, anche quando la barra laterale è nascosta.
+
+Con due o più profili compare all'avvio la schermata **«Chi gioca?»**: si sceglie con mouse, frecce e Invio o con il controller; un profilo con PIN chiede il PIN con un tastierino. Spuntando **«Entra sempre con questo profilo su questo dispositivo»** la schermata non compare più su quel dispositivo (il PC e il telefono si ricordano ciascuno la propria scelta). Per tornare a scegliere a ogni avvio togli la spunta in *Impostazioni → Generale → Profili utente*, oppure la casella dalla stessa schermata; da lì puoi anche disattivare del tutto «Chi gioca?». Un profilo con PIN lo richiede di nuovo a ogni nuovo avvio dell'app, anche se ricordato. La libreria resta una sola per tutti.
+
+### Una libreria sola, ognuno vede i suoi giochi
+
+Metadati, copertine e cache sono **una sola copia per PC**: se due profili hanno lo stesso gioco, ha un solo record e una sola
+copertina. Cambia solo *chi lo vede*: le cartelle ROM globali, i giochi installati sul PC e gli store del sistema sono di
+tutti; una cartella ROM aggiunta da un profilo (`roms_extra`), i giochi aggiunti a mano da un profilo e i giochi solo
+posseduti sul suo account Steam/Epic/GOG sono suoi (se due profili hanno la stessa cartella o lo stesso gioco, lo vedono
+entrambi). I giochi aggiunti a mano prima di questa versione restano di tutti. Dopo aver cambiato cartelle o account
+si ricostruisce la libreria.
+
+Il profilo è **per dispositivo**: il PC e un altro browser possono avere profili diversi (cookie `gs_profile`). Il telefono
+(`/m/`) si abbina con un token, non con il cookie del PC: usa il profilo scelto per ultimo sul server finché non ne sceglie
+un altro. Le copie di sicurezza includono anche i file `profiles/*.json: contengono le credenziali degli account.
 
 Il profilo **Principale** c'è sempre e non si elimina. Eliminare un altro profilo non cancella niente: il suo
 database e il file con gli account vanno in `cache/profiles/eliminati/` (il file degli account sta nella cartella
@@ -125,8 +144,10 @@ Azioni principali:
 
 ### Menu del tasto destro
 
-Un clic destro su una copertina apre un menu rapido: Gioca, Dettagli, Mostra nella cartella, **🖼 Cerca immagini…**,
-preferiti, aggiungi a una collezione, stato, nascondi. **Rimuovi da…** toglie il gioco dalla vista corrente (per
+Un clic destro su un gioco apre un menu rapido, in tutte le viste (libreria, Per te, Top, statistiche e le grafiche Cinema,
+Console, Dashboard, Vetrina e Scaffali): Gioca, Dettagli, Mostra nella cartella, **🖼 Cerca immagini…**, applicazioni
+abbinate, **⬇ Installa** e **🛒 Pagina dello store** (giochi degli store), **🖥 Collegamento sul desktop**, **📋 Copia il
+titolo**, preferiti, aggiungi a una collezione, **voto a stelle** (1-5), stato, nascondi. **Rimuovi da…** toglie il gioco dalla vista corrente (per
 esempio da «Giocati di recente», che azzera solo l'ultima partita lasciando tempo di gioco e numero di avvii) o dalle
 altre categorie a cui appartiene.
 

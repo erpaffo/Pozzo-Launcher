@@ -8,7 +8,7 @@ import time
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
-from ... import config as C, platforms as P, storerefresh as SR, stores as STORES
+from ... import config as C, platforms as P, profilecfg as PC, storerefresh as SR, stores as STORES
 from ...library.build import build
 
 
@@ -24,7 +24,7 @@ def build_router(ctx) -> APIRouter:
         c = Cache(cfg.cache)
         try:
             for p in STORES.PROVIDERS:
-                snap = c.kv_get(f"store:{p.id}") or []
+                snap = c.kv_get(STORES.snap_key(p.id, PC.active(cfg))) or []  # lista del profilo attivo
                 out[p.id] = (len(snap), sum(1 for s in snap if s.get("installed")))
             out["_refreshed"] = c.kv_get("stores:refreshed") or 0
         finally:
@@ -54,11 +54,11 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/accounts/steam")
     def api_account_steam(body: dict = Body(...)):
-        cur = dict(cfg.stores.get("steam", {}))
+        cur = dict(PC.get(cfg, "steam", {}))  # chiave API e id sono del profilo attivo
         for k in ("api_key", "steamid"):
             if k in body:
                 cur[k] = (body[k] or "").strip()
-        C.save_settings(cfg, stores={"steam": {k: v for k, v in cur.items() if v}})
+        PC.set(cfg, "steam", {k: v for k, v in cur.items() if v} or None)
         return api_accounts()
 
     @router.post("/api/accounts/{sid}/enabled")
@@ -95,13 +95,8 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/accounts/{sid}/logout")
     def api_account_logout(sid: str):
-        from ...cache import Cache
-        c = Cache(cfg.cache)
-        try:
-            c.db.execute("DELETE FROM kv WHERE k=?", (f"auth:{sid}",))
-            c.commit()
-        finally:
-            c.close()
+        if sid in PC.KV_KEYS:  # Epic e GOG: il token e' del profilo attivo
+            PC.set(cfg, sid, None)
         return api_accounts()
 
     def _start_store_job(only=None):

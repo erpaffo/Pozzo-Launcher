@@ -4,4 +4,5 @@ version = "1.4"
 author = "Pozzo Launcher"
 description = "Aggiunge allo «Store online» di ogni console le cartelle di minerva-archive.org elencate su r-roms.github.io e gli store preimpostati (Switch: NXBrew, Ziperto; PS4 e PS5: superpsx), senza leggerli. Un pulsante «Leggi» per console scarica gli elenchi dei giochi."
 api = 1
+load = "lazy"
 min_app = "0.7.1"

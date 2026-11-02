@@ -24,7 +24,8 @@ UA = {"User-Agent": "PozzoLauncher/1.0"}
 
 
 def settings(cfg) -> dict:
-    w = dict(cfg.app.get("wishlist") or {})
+    from . import profilecfg as PC
+    w = dict(PC.get(cfg, "wishlist", {}))  # chiavi e soglia del profilo attivo
     return {"itad_key": w.get("itad_key") or "", "gg_key": w.get("gg_key") or "",
             "country": (w.get("country") or "IT").upper(), "threshold": int(w.get("threshold") or 50)}
 

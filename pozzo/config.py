@@ -234,9 +234,11 @@ def apply_settings(cfg: Config):
 
 
 def rom_roots(cfg: Config) -> list[Path]:
-    """Cartella ROM principale + cartelle aggiuntive, senza doppioni (anche quelle non raggiungibili)."""
+    """Cartella ROM principale + cartelle aggiuntive + quelle proprie dei profili, senza doppioni (anche quelle non
+    raggiungibili)."""
+    from .ownership import profile_roots
     out: list[Path] = []
-    for r in [cfg.roms, *getattr(cfg, "extra_roms", [])]:
+    for r in [cfg.roms, *getattr(cfg, "extra_roms", []), *profile_roots(cfg)]:
         if r and Path(r) not in out:
             out.append(Path(r))
     return out

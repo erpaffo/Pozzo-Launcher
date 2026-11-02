@@ -19,6 +19,19 @@ pip install -r requirements.txt pyinstaller
 pyinstaller packaging/pozzo.spec --noconfirm     # risultato in dist/PozzoLauncher/
 ```
 
+### Aggiornamenti dell'app installata
+
+GitHub Releases offre URL di download per asset interi, non per singoli file dentro uno ZIP. Per questo il workflow
+mantiene gli archivi completi come fallback e pubblica anche un manifest (`version`, `file` con `path`, `sha256` e
+`size`) e un piccolo asset tar per ogni file dei pacchetti portatili. Gli asset hanno nomi derivati dal percorso
+relativo, così l'updater può scaricare solo quelli cambiati senza richieste Range o servizi aggiuntivi.
+
+Il differenziale si applica solo se il manifest installato e quello della release sono validi e tutti gli hash
+corrispondono; rimozioni, file cambiati e verifiche avvengono in una cartella di staging sullo stesso volume.
+Terminato il controllo, l'updater rinomina la vecchia cartella e attiva quella nuova, ripristinando la vecchia in
+caso di errore. Qualsiasi manifest, asset o hash non valido porta al download e alla verifica dell'archivio completo;
+lo stato dell'aggiornamento mostra i MB previsti per il differenziale e per il fallback completo.
+
 ## Struttura del codice
 
 ```
@@ -179,7 +192,7 @@ disegnano man mano che scorri).
 | | Pozzo Launcher |
 |---|---|
 | Identificazione | **Offline**: CRC e nome confrontati con i DAT No-Intro/Redump di libretro |
-| Hash delle ROM | **Prima si prova il nome esatto sui DAT**: se corrisponde, CRC/MD5/SHA1 arrivano dal DAT e il file non viene letto. Gli altri: CRC degli ZIP letto dall'indice, blocchi da 8 MB, strategia HDD/SSD, risultati in cache |
+| Hash delle ROM | Si calcolano una volta CRC/MD5/SHA1 (CRC degli ZIP letto dall'indice, file a blocchi da 8 MB, strategia HDD/SSD, risultati in cache), poi si confrontano prima gli hash e infine il nome con i DAT. La verifica riusa gli hash già letti. |
 | Rete | Asincrona con HTTP/2, rate limit solo dove serve |
 | ScreenScraper | Media scaricati in parallelo, e solo quelli mancanti |
 | IGDB | **10 giochi per richiesta**, 4 richieste/s |
@@ -202,9 +215,31 @@ Ogni fonte è uno stadio con la propria coda. Un gioco passa alla fonte successi
 
 Ogni sorgente riceve **solo** i giochi a cui manca qualcosa che lei sa fornire. Per sfruttare al massimo la velocità, chiedi i media `wheel`/`marquee`/`video` solo se ti servono: esistono quasi solo su ScreenScraper, e quindi la quota giornaliera del tuo account (es. 20.000 richieste) diventa il limite. Per 10.000 giochi, con quei media, servono circa 10-12.000 richieste ScreenScraper, cioè 1 giorno con un account base. Se la quota finisce, l'esecuzione si ferma pulita e riprende il giorno dopo.
 
+## Cache delle fonti
+
+Le risposte delle fonti (RAWG, IGDB, ScreenScraper, TheGamesDB, ArcadeDB, Wikipedia) restano in `cache.db` (tabella `http_cache`); le durate di HowLongToBeat in `kv` (`hltb:<piattaforma>:<titolo normalizzato>`). La chiave e' l'URL con i parametri (senza credenziali) o il titolo normalizzato, **mai il profilo**: tutti i profili condividono una sola copia.
+
+- Scadenze in `pozzo/cachepolicy.py`: `TTL[fonte] = (positivo, negativo)`. Il negativo (404 o risposta senza risultati) dura meno (7 giorni; HLTB 30) ma evita di richiedere lo stesso titolo mancante a ogni scansione.
+- Si attiva con `request(..., cache_source="rawg")`. Una risposta dalla cache (`x-pozzo-cache: hit`) non passa dal limitatore, quindi non consuma il budget; ScreenScraper e TheGamesDB, che contano la quota da soli, la rimborsano.
+- `HttpCache.stats()` (righe, byte, scadute per fonte), `.invalidate(source=None, key=None)`, `.purge_expired()`. Il campo `exp` e' fissato alla scrittura.
+- API: `GET /api/cache/sources`, `POST /api/cache/sources/clear {source?}`. Le righe scadute si tolgono in background all'avvio, a UI pronta.
+- "Riscarica tutto" ignora la cache in lettura ma la aggiorna.
+
 ## Cosa non c'è
 
 - Il compositing delle immagini: vengono salvate le immagini originali.
 - I moduli MobyGames (API ora a pagamento), OpenRetro e WorldOfSpectrum.
 
 Se servono, si possono aggiungere come nuovi moduli in `pozzo/sources/` o in `export.py`.
+
+## Profili e proprietà dei giochi
+`pozzo/profilecfg.py`: account e impostazioni per profilo (`profiles/<id>.json`); `get`/`set` lavorano sul profilo attivo, che è quello del
+cookie `gs_profile` (middleware di `server.py`, `profilecfg.override`) o, senza cookie, quello del server (`cfg.app["profile"]`).
+Una chiave nuova: aggiungila a `KEYS` e al suo `_legacy` (migrazione una tantum con `_done`). `pozzo/ownership.py` spiega il
+modello di visibilità (tabella `game_owners` di library.db, `visible(game, profilo)`); le liste degli store con account stanno
+in `store:<id>:<profilo>` (`stores.snap_key`). Libreria, metadati e cache non si duplicano mai per profilo. Test: `tests/test_profile_library.py`.
+
+## Preset esperienza
+`GET/POST/DELETE /api/exp-profiles` elencano, salvano ed eliminano preset `{id, nome, experience, theme, animations}`; `POST /api/exp-profiles/activate` applica il preset. I quattro iniziali sono Classico, Cinema serata, Console TV e Leggero.
+La collezione e le animazioni attive sono salvate in `profiles/<id>.json` per profilo utente (`profilecfg.set`); tema ed esperienza non disponibili ricadono su `default` e `catalog`.
+La UI è `pozzo/app/static/js/profiles-exp.js`: va inclusa da `index.html` dopo `motion-settings.js`; il mount usa `#experience-list` in `settings/aspetto.html`.

@@ -17,15 +17,17 @@ concurrency:
 
 jobs:
   test:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.name }} (${{ matrix.shard }}/3)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+        shard: [1, 2, 3]
         include:
-          - { name: windows, os: windows-latest }
-          - { name: macos, os: macos-latest }
-          - { name: linux, os: ubuntu-22.04 }
+          - { os: windows-latest, name: windows }
+          - { os: macos-latest, name: macos }
+          - { os: ubuntu-22.04, name: linux }
     steps:
       - uses: actions/checkout@v6
 
@@ -49,4 +51,4 @@ jobs:
         env:
           PYTHONUTF8: "1"
           PYTHONUNBUFFERED: "1"
-        run: python packaging/run_tests.py
+        run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3

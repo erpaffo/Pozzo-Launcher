@@ -117,6 +117,7 @@ const TABS = [
   { id: "search", label: "Cerca", open: () => push(searchScreen()) },
   { id: "look", label: "Aspetto", open: () => push(lookScreen()) },
   { id: "media", label: "Musica", aria: "Musica e chiamate", icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>', open: () => window.PozzoMedia?.toggle() },
+  { id: "user", label: "Utente", aria: "Cambia utente", open: () => { beep("ok"); GSProfilePicker.open({ toast }); } },
   { id: "exit", label: "Esci", open: () => exitBigPicture() },
 ];
 const MEDIA_TAB = TABS.findIndex((t) => t.id === "media");
@@ -127,14 +128,14 @@ window.addEventListener("pozzo-media-close", () => { const s = cur(); if (s && "
 function openTab(i) {
   const t = TABS[i];
   if (!t) return;
-  if (t.id === "exit" || t.id === "media") { t.open(); return; }
+  if (t.id === "exit" || t.id === "media" || t.id === "user") { t.open(); return; }
   BP.stack = [homeScreen()];
   if (t.id === "home") show(); else t.open();
 }
 
 /** L1/R1 (LB/RB), Q/E, Tab: scheda precedente/successiva ("Esci" non si apre scorrendo). */
 function stepTab(d) {
-  const ids = TABS.map((_, i) => i).filter((i) => TABS[i].id !== "exit" && TABS[i].id !== "media");
+  const ids = TABS.map((_, i) => i).filter((i) => !["exit", "media", "user"].includes(TABS[i].id));
   let k = ids.findIndex((i) => TABS[i].id === cur().tab);
   if (k < 0) k = 0;
   k = (k + d + ids.length) % ids.length;
@@ -556,6 +557,7 @@ function mediaChord(name) {
 }
 
 function input(action) {
+  if (window.GSProfilePicker?.isOpen()) { window.GSProfilePicker.pad(action); return; } // «Chi gioca?» cattura tutto
   if (window.PozzoMedia?.handlePad?.(action)) return;
   const s = cur();
   if (helpOpen()) { // il pannello comandi cattura tutto: X cambia la legenda, il resto lo chiude
@@ -652,7 +654,7 @@ document.addEventListener("contextmenu", (e) => { e.preventDefault(); input("b")
 document.addEventListener("mousemove", () => { $("#bp").classList.add("mouse"); clearTimeout(document.mt); document.mt = setTimeout(() => $("#bp").classList.remove("mouse"), 2500); });
 
 window.addEventListener("gamepadconnected", (e) => toast(`Controller collegato: ${e.gamepad.id.split("(")[0].trim()}`));
-PozzoShortcuts.bind("bp", { help: openHelp, legend: toggleHints, bigPicture: () => { if (BP.running) return false; exitBigPicture(); } });
+PozzoShortcuts.bind("bp", { help: openHelp, legend: toggleHints, profile: () => { if (BP.running) return false; GSProfilePicker.open({ toast }); }, bigPicture: () => { if (BP.running) return false; exitBigPicture(); } });
 
 /* ------------------------------------------------------------------ avvio */
 function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" }); }

@@ -1,5 +1,70 @@
 # Changelog
 
+## 0.12.1 (2026-11-02)
+
+### Aggiunto
+
+- Avvio diretto in Big Picture: casella «Apri in Big Picture all'avvio» in Impostazioni › Generale; da riga di comando `--bigpicture` la forza e `--no-bigpicture` forza il desktop (la riga di comando vince)
+- Clic destro sui giochi in tutte le viste (Per te, Top, statistiche e le grafiche Cinema, Console, Dashboard, Vetrina e Scaffali, non solo la griglia della libreria). Il menu ora ha anche Installa e Pagina dello store per i giochi degli store, Collegamento sul desktop, Copia il titolo e il voto a stelle; il preferito e lo stato mostrano una conferma
+- Utente in uso nella barra dei menu, in alto a destra (👤 nome ▾), con il menu per cambiare utente e creare profili: vale in ogni grafica, anche quando la barra laterale è nascosta. «Cambia utente…» è anche nel menu File e in Impostazioni › Generale › Profili utente
+- Con più profili, la schermata «Chi gioca?» compare a ogni avvio; spuntando «Entra sempre con questo profilo su questo dispositivo» non compare più su quel dispositivo (PC e telefono ricordano la scelta ciascuno), e si può togliere dalle Impostazioni. Un profilo con PIN lo richiede di nuovo a ogni nuovo avvio
+- Procedura guidata di primo avvio in 4 passi facoltativi e riprendibili: cartella ROM, console (emulatore e BIOS), store, tema ed esperienza. Sostituisce la vecchia configurazione guidata e si riapre da «Rifai la procedura»
+- Schermata «Chi gioca?» per scegliere il profilo, con mouse, tastiera e controller (anche in Big Picture) e tastierino per il PIN. Si apre dal menu profilo, con `Ctrl+P` o all'avvio se lo attivi in Impostazioni › Generale, dove puoi anche modificare nome, avatar, colore e PIN dei profili ed eliminarli
+- Profili con i propri giochi sopra una libreria unica: cartelle ROM proprie, giochi aggiunti a mano e giochi del proprio account Steam, Epic e GOG, senza duplicare metadati e copertine. Account e impostazioni per profilo (tema, esperienza, Steam, lista desideri, token GitHub) e un profilo diverso su ogni dispositivo
+- Impostazioni › Emulatori: per ogni console l'emulatore consigliato con il motivo, lo stato dei BIOS (verde, rosso o giallo «da verificare») con il link alla guida, e l'installazione «un clic» con avanzamento
+- Verifica dei BIOS con hash veri, presi dal DAT di libretro (`tools/update_bios_hashes.py`, dati in `pozzo/data/bios_hashes.json`): niente più «sempre da verificare». Per le chiavi della Switch e i firmware personali si controlla solo il formato, perché non hanno un hash pubblico
+- API per il gusto personale (`/api/taste`), l'ordine di gioco di una serie (`/api/franchise/{id}`), i consigli con il motivo (`/api/recommend`) e la classifica delle ROM per console con il punteggio combinato delle fonti (`/api/top/roms`). Con 160.000 giochi i consigli si calcolano in circa 2,5 secondi alla prima richiesta. I pannelli dell'interfaccia sono scritti ma non ancora collegati alle pagine: per ora si usano solo come API
+- Moduli di calcolo `pozzo/taste.py`, `franchise.py`, `similar.py` e `rankings.py`: funzioni pure, testate, che lavorano sulla libreria condivisa. Un remake o una remaster non contano come capitolo nuovo di una serie
+- Palette comandi con `Ctrl/Cmd+K`: cerca giochi, console, sezioni delle Impostazioni e azioni, con frecce, Invio ed Esc
+- Errori d'avvio con il pulsante che li risolve: emulatore mancante apre Impostazioni › Emulatori, file o cartella non trovati aprono le cartelle ROM. L'avviso resta finché non lo chiudi
+- Verifica dei dump: confronto della ROM con i DAT No-Intro/Redump per hash (prima dell'abbinamento per nome), badge «ROM verificata / sconosciuta» nel dettaglio e rapporto per console (`GET /api/verify/report`). Lo stato si calcola alla costruzione della libreria
+- Mod dei port nella scheda del gioco: Thunderstore con installazione, attivazione e disattivazione (i file sostituiti vanno in un backup e tornano al loro posto), GameBanana e ModDB come link alla pagina; Nexus non è letto senza chiave API. Patch IPS e BPS applicate solo su una copia della ROM
+- Preset di esperienza (esperienza, tema e animazioni insieme) in Impostazioni › Aspetto: Classico, Cinema serata, Console TV e Leggero, più quelli salvati da te, per profilo
+- Suggerimenti al primo uso: fumetti con «Ho capito» e «Più tardi», uno alla volta, sul pulsante Big Picture, sulla ricerca, su Impostazioni e sul clic destro dei giochi. In Impostazioni › Generale › Suggerimenti puoi disattivarli per 7 giorni o per sempre e rivederli tutti
+- Test: nessun errore JavaScript in desktop, Impostazioni › Emulatori e Big Picture, e risposta 200 delle API nuove (`tests/e2e/test_console_errors.py`, con Playwright)
+
+### Cambiato
+
+- `Ctrl/Cmd+K` apre la palette comandi; la ricerca rapida nella barra passa a `/`
+- Le cartelle ROM aggiunte da Impostazioni › Cartelle ROM o dal pulsante «Incolla cartella» sono ora proprie del profilo attivo e gli altri profili non le vedono; quelle già presenti restano di tutti
+- Le copie di sicurezza includono anche i file dei profili, con account e credenziali: conservale con cura
+
+### Migliorato
+
+- HLTB e LaunchBox compaiono nelle statistiche e nello svuotamento della cache (Impostazioni › Sistema › Cache delle fonti)
+- Le risposte di RAWG, IGDB, ScreenScraper, TheGamesDB, ArcadeDB e Wikipedia restano su disco con una scadenza chiara, anche per i giochi non trovati: meno richieste ripetute e meno quota consumata, con una sola copia per tutti i profili. Statistiche e svuotamento della cache per fonte; le righe scadute si tolgono da sole all'avvio
+- Le copertine scaricate dagli store si salvano in WebP quando pesa meno dell'originale (altrimenti resta com'era), e le miniature usano lo stesso modulo delle immagini, senza codice duplicato
+- Le estensioni che usano solo endpoint (Anniversari, Calendario uscite, Diario, Link → Store, Minerva, Obiettivi, Riepilogo annuale) e lo Store estensioni incluso si avviano al primo uso invece che all'avvio. In Impostazioni › Estensioni compaiono i tempi di avvio di ognuna e il totale
+
+## 0.12.0 (2026-11-02)
+
+### Aggiunto
+
+- Schermata di avvio con logo, barra di avanzamento e fase corrente, sul desktop e a schermo intero in Big Picture. Segue le fasi vere dell'avvio (server, impostazioni, libreria, store, estensioni), esposte in `GET /api/boot`; se il server non risponde si chiude da sola dopo pochi secondi
+- Profili utente più completi: icona, colore e PIN facoltativo (👤 › Icona, colore e PIN) e account separati per profilo: Spotify, Discord (presenza e voce), RetroAchievements, Epic e GOG. Al primo avvio gli account esistenti passano al profilo Principale. Il PIN blocca il cambio di profilo dal menu, non protegge i file della cartella dati
+- Scorciatoie: `Ctrl/Cmd+4` Lista desideri, `Ctrl/Cmd+5` Statistiche, `R` gioco a caso, `H` nasconde o mostra il gioco aperto
+- Animazioni: interruttore in Impostazioni › Aspetto (complete, ridotte, nessuna), che vale subito, si ricorda e, senza una scelta, segue il movimento ridotto del sistema; riduzione automatica del movimento sui dispositivi meno potenti, con FPS bassi o a batteria (la scelta manuale ha sempre la precedenza)
+- Animazioni: finestre, avvisi e impostazioni si chiudono con una dissolvenza, dissolvenza al cambio di vista, entrata di menu e popover, risposta alla pressione di pulsanti, Preferito, stelle e Gioca, barretta sulla voce attiva della barra laterale
+- API per la verifica di BIOS e firmware (`GET /api/emulators/bios`, per PS1, PS2, Saturn, Dreamcast, GBA, DS, 3DS, Switch e Mega CD) e per l'installazione dell'emulatore consigliato di una console (`GET /api/emulators/recommend`, `POST /api/emulators/install-recommended`). Pozzo non include né scarica file BIOS. Per ora senza interfaccia, e senza hash noti inseriti: finora ogni BIOS trovato risulta da verificare
+- Test: budget di tempo e RAM per avvio e libreria (`tests/perf`), smoke test del browser con Playwright (`tests/e2e`, saltati senza Playwright), liste virtuali, splash, animazioni, profili, BIOS e installazione consigliata
+
+### Cambiato
+
+- Interno: gli endpoint di `server.py` sono divisi in moduli in `pozzo/app/routes/` e l'interfaccia in `static/js/`, senza cambiamenti visibili
+- `docs/sviluppo.md` descrive l'architettura attuale, le liste virtuali, le animazioni, le icone e come aggiungere un tema
+
+### Migliorato
+
+- Liste lunghe: Top, lista desideri, giochi gratis, port e schermate disegnano solo le righe visibili. Con 2.000 voci per vista i nodi della pagina scendono da 13.000-37.000 a meno di 1.700
+- Lo scheletro delle copertine e quello della Home del telefono animano solo trasparenza e movimento, senza ridisegnare la pagina a ogni frame
+- Release: viene pubblicata anche se la build di un sistema fallisce, con i file dei sistemi riusciti, un avviso nelle note e nel riepilogo del run; senza nessuna build riuscita non si pubblica nulla
+
+### Corretto
+
+- GOG: errore alla lettura di una voce del registro rimasta senza la cartella del gioco (mancava un import)
+- Manuale in PDF: la generazione falliva per un pacchetto LaTeX mancante e per due titoli «Scorciatoie» con lo stesso identificativo
+- Test: l'installer degli emulatori e il limite di lunghezza dei percorsi dei port valgono solo per Windows e non fanno più fallire macOS e Linux; i test di prestazioni ora girano anche nella CI
+
 ## 0.11.1 (2026-11-01)
 
 ### Aggiunto

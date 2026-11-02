@@ -9,7 +9,7 @@ import time
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, stores as STORES
+from ... import config as C, profilecfg as PC, stores as STORES
 from ...matching import normalize
 
 
@@ -105,7 +105,7 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/wishlist/settings")
     def api_wishlist_settings(body: dict = Body(...)):
-        cur = dict(cfg.app.get("wishlist") or {})
+        cur = dict(PC.get(cfg, "wishlist", {}))
         for k in ("itad_key", "gg_key"):
             if k in body:
                 cur[k] = (body.get(k) or "").strip() or None
@@ -113,8 +113,7 @@ def build_router(ctx) -> APIRouter:
             cur["country"] = str(body["country"]).strip().upper()[:2]
         if body.get("threshold") not in (None, ""):
             cur["threshold"] = max(5, min(95, int(body["threshold"])))
-        C.save_settings(cfg, app={"wishlist": cur})
-        cfg.app["wishlist"] = cur
+        PC.put(cfg, "wishlist", cur, mirror=True)
         return _wish_payload()
 
     @router.post("/api/wishlist/seen")

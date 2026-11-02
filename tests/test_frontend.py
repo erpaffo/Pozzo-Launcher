@@ -567,7 +567,8 @@ def test_updates():
             yield data
 
     launched, quits = [], []
-    saved = (httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach)
+    saved = (httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach,
+             updates._update_work_dir)
     httpx.get = lambda url, **k: httpx.Response(200, json={"tag_name": "v99.0.0", "assets": assets},
                                                 request=httpx.Request("GET", url))
     httpx.stream = lambda method, url, **k: Stream(url)
@@ -579,13 +580,15 @@ def test_updates():
             updates.install(c, quit=lambda: quits.append(1))
             assert updates.STATE["status"] == "error" and "sorgenti" in updates.STATE["phase"], updates.STATE
             updates.install_kind, updates.app_dir = (lambda: "win"), (lambda: Path(t) / "app")
+            updates._update_work_dir = lambda: Path(t) / "update-work"
             (Path(t) / "app").mkdir()
             updates.install(c, quit=lambda: quits.append(1))
             assert updates.STATE["status"] == "done" and quits == [1], updates.STATE
             script = Path(launched[-1][-1])
             body = script.read_text(encoding="utf-8")
             assert str(Path(t) / "app") in body and "/MIR" not in body and "/PURGE" not in body, body
-            new = script.parent / "new" / "PozzoLauncher" / "PozzoLauncher.exe"
+            stage = next(Path(t).glob(".app.stage-*"))
+            new = stage / "PozzoLauncher.exe"
             assert new.read_text() == "nuovo", "lo zip va estratto prima di sostituire l'app"
             assets[1]["digest"] = "sha256:0"  # file manomesso: niente installazione
             launched.clear()
@@ -593,7 +596,8 @@ def test_updates():
             assert updates.STATE["status"] == "error" and "checksum" in updates.STATE["phase"] and not launched
             c.close()
     finally:
-        httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach = saved
+        (httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach,
+         updates._update_work_dir) = saved
     print("ok  aggiornamento dall'app: download verificato, script di sostituzione, niente dati cancellati")
 
 

@@ -42,10 +42,11 @@ DELETED = "__deleted__"
 
 
 class UserData:
-    def __init__(self, path: Path, shared: Path | None = None):
+    def __init__(self, path: Path, shared: Path | None = None, profile: str | None = None):
         """shared: userdata.db del profilo principale, per i dati comuni a tutti i profili (profili di avvio,
         giochi aggiunti a mano). Le tabelle allegate si trovano anche senza prefisso, quindi le query restano uguali."""
         self.path = Path(path)
+        self.owner = profile  # id del profilo: i giochi aggiunti a mano da qui sono suoi (None = condivisi)
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
@@ -64,6 +65,8 @@ class UserData:
             self.db.execute("ALTER TABLE manual_games ADD COLUMN kind TEXT DEFAULT 'game'")
         if "meta" not in {r[1] for r in self.db.execute("PRAGMA table_info(manual_games)")}:  # browser: JSON dei metadati della pagina
             self.db.execute("ALTER TABLE manual_games ADD COLUMN meta TEXT")
+        if "profile" not in {r[1] for r in self.db.execute("PRAGMA table_info(manual_games)")}:  # proprietario, NULL = di tutti
+            self.db.execute("ALTER TABLE manual_games ADD COLUMN profile TEXT")
         wcols = {r[1] for r in self.db.execute("PRAGMA table_info(wishlist)")}
         # prezzo migliore sui negozi di key (GG.deals): attuale, minimo storico, pagina di confronto;
         # aks = dettaglio prezzi (JSON: Steam, key, offerte ITAD; nome storico, prima veniva da allkeyshop), cover = copertina
@@ -252,9 +255,9 @@ class UserData:
     # ------------------------------------------------------------ giochi PC aggiunti a mano
     def manual_games(self) -> list[dict]:
         import json
-        cur = self._q("SELECT id, title, exe, args, cwd, kind, meta FROM manual_games ORDER BY title")
+        cur = self._q("SELECT id, title, exe, args, cwd, kind, meta, profile FROM manual_games ORDER BY title")
         return [{"id": r[0], "title": r[1], "exe": r[2], "args": json.loads(r[3] or "[]"), "cwd": r[4],
-                 "kind": r[5] or "game", "meta": json.loads(r[6] or "{}")} for r in cur]
+                 "kind": r[5] or "game", "meta": json.loads(r[6] or "{}"), "profile": r[7]} for r in cur]
 
     def add_manual(self, title: str, exe: str, args: list[str], cwd: str = "", kind: str = "game",
                    meta: dict | None = None) -> int:
@@ -262,19 +265,26 @@ class UserData:
         Giochi browser (kind="browser"): `exe` e' l'URL e `meta` i metadati della pagina."""
         import json
         with self.lock:
-            row = self.db.execute("SELECT id FROM manual_games WHERE lower(exe)=lower(?) AND args=?",
+            row = self.db.execute("SELECT id, profile FROM manual_games WHERE lower(exe)=lower(?) AND args=?",
                                   (exe, json.dumps(args))).fetchone()
             if row:
+                if row[1] and row[1] != self.owner:  # lo stesso gioco di un altro profilo: un solo record, ora di tutti
+                    self.db.execute("UPDATE manual_games SET profile=NULL WHERE id=?", (row[0],))
+                    self.db.commit()
+                    self.rev += 1
                 return row[0]
-            cur = self.db.execute("INSERT INTO manual_games(title, exe, args, cwd, added, kind, meta) VALUES(?,?,?,?,?,?,?)",
+            cur = self.db.execute("INSERT INTO manual_games(title, exe, args, cwd, added, kind, meta, profile) "
+                                  "VALUES(?,?,?,?,?,?,?,?)",
                                   (title.strip(), exe, json.dumps(args), cwd, time.time(), kind,
-                                   json.dumps(meta, ensure_ascii=False) if meta else None))
+                                   json.dumps(meta, ensure_ascii=False) if meta else None, self.owner))
             self.db.commit()
             return cur.lastrowid
 
     def dedupe_manual(self) -> int:
         """Tiene la voce piu' vecchia per ogni exe+argomenti e cancella le altre. Ritorna quante ne ha tolte."""
         with self.lock:
+            self.db.execute("UPDATE manual_games SET profile=NULL WHERE id IN (SELECT MIN(id) FROM manual_games "
+                            "GROUP BY lower(exe), args HAVING COUNT(DISTINCT COALESCE(profile, '')) > 1)")
             ids = [r[0] for r in self.db.execute(
                 "SELECT id FROM manual_games WHERE id NOT IN "
                 "(SELECT MIN(id) FROM manual_games GROUP BY lower(exe), args)")]

@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
-from ... import config as C, stores as STORES
+from ... import config as C, ownership as OW, profilecfg as PC, stores as STORES
 from ...library.build import build
 from ..server import _plain
 
@@ -133,21 +133,26 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/roms/extra")
     def api_roms_extra(body: dict = Body(...)):
-        """Aggiunge (action=add) o toglie (action=remove) una cartella ROM aggiuntiva (es. un altro disco)."""
+        """Aggiunge (action=add) o toglie (action=remove) una cartella ROM aggiuntiva (es. un altro disco).
+        Una cartella aggiunta qui e' PROPRIA del profilo attivo (la vede solo lui); quelle globali, aggiunte prima dei
+        profili, restano di tutti e si tolgono come prima."""
         raw = str(body.get("path") or "").strip().strip('"')
         p = Path(os.path.expandvars(os.path.expanduser(raw)))
-        cur = [str(x) for x in cfg.extra_roms]
+        shared = [str(x) for x in cfg.extra_roms]
+        own = [str(x) for x in PC.get(cfg, "roms_extra", [])]
         if body.get("action") == "remove":
-            cur = [x for x in cur if x != raw]
+            if raw in own:
+                PC.set(cfg, "roms_extra", [x for x in own if x != raw] or None)
+            else:
+                C.save_settings(cfg, paths={"extra_roms": [x for x in shared if x != raw]})
         else:
             if not raw or not p.is_dir():
                 raise HTTPException(400, "Cartella non trovata")
             p = p.resolve()
-            if p == Path(cfg.roms).resolve() or str(p) in cur:
+            if p == Path(cfg.roms).resolve() or str(p) in shared or str(p) in own:
                 raise HTTPException(400, "Cartella gia' presente")
-            cur.append(str(p))
-        C.save_settings(cfg, paths={"extra_roms": cur})
-        return {"extra": [{"path": str(r), "online": r.exists()} for r in C.rom_roots(cfg)[1:]]}
+            PC.set(cfg, "roms_extra", [*own, str(p)])
+        return {"extra": [{"path": str(r), "online": r.exists(), "own": mine} for r, mine in OW.visible_roots(cfg)]}
 
     @router.post("/api/roms")
     def api_roms(body: dict = Body(...)):

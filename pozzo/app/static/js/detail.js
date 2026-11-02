@@ -44,6 +44,7 @@ async function openDetail(id) {
   const u = d.user;
   const dl = [
     ["Sviluppatore", d.developer], ["Editore", d.publisher], ["Uscita", d.release_date || d.year],
+    ["Lingue", GSLanguages.labels(d.title).join(", ")],
     ["Generi", (d.genres || []).join(", ")], ["Giocatori", d.players_local],
     ["Regione", d.region], ["Dimensione", fmtSize(d.size)],
     ["Tempo di gioco", u.playtime ? fmtTime(u.playtime) : ""], ["Ultima partita", u.last_played ? fmtDate(u.last_played) : ""],
@@ -142,7 +143,9 @@ async function openDetail(id) {
     <div class="files">${d.files.map(esc).join("<br>")}${d.crc ? `<br>CRC ${esc(d.crc)}` : ""}
       ${Object.keys(d.sources).length ? `<br>Fonti: ${esc([...new Set(Object.values(d.sources))].join(", "))}` : ""}</div>`;
   presentDetail();
+  window.dispatchEvent(new CustomEvent("pozzo:detail-open", { detail: d }));
   renderDetailSections(d);
+  if (typeof loadDetailMods === "function") loadDetailMods(d);
   if (d.shots) loadDetailShots(d.id);
   loadSaves(d);
   if (online || storePages.length) loadGameLinks(d);

@@ -178,13 +178,21 @@ def cmd_export_frontend(args):
     console.print(f"Esportati {sum(summary.values())} giochi in {out}")
 
 
+def want_bigpicture(cfg, flag: bool = False, no_flag: bool = False) -> bool:
+    """Pagina iniziale: la riga di comando vince sull'impostazione app.start_bigpicture."""
+    if flag or no_flag:
+        return bool(flag) and not no_flag
+    return bool(cfg.app.get("start_bigpicture", False))
+
+
 def cmd_app(args):
     from . import applog
     from .app.server import run
     cfg = C.load(args.config)
     # log su file: --log (predefinito <cache>/logs/diagnostica.log) oppure POZZO_LOG=<percorso>
     applog.start(getattr(args, "log", None) or os.environ.get("POZZO_LOG"), cfg.cache)
-    run(cfg, port=args.port, browser=args.browser, bigpicture=args.bigpicture)
+    run(cfg, port=args.port, browser=args.browser,
+        bigpicture=want_bigpicture(cfg, args.bigpicture, args.no_bigpicture))
 
 
 def _local_server(cfg):
@@ -280,6 +288,7 @@ def main(argv=None):
     ap_app.add_argument("--port", type=int, default=8765)
     ap_app.add_argument("--browser", action="store_true", help="apri nel browser invece che in una finestra")
     ap_app.add_argument("--bigpicture", action="store_true", help="avvia in modalita' Big Picture (schermo intero, controller)")
+    ap_app.add_argument("--no-bigpicture", action="store_true", help="forza il desktop anche se l'impostazione apre Big Picture")
     ap_app.add_argument("--log", nargs="?", const="1", default=None,
                         help="scrive i log su file (predefinito <cache>/logs/diagnostica.log; puoi indicare un percorso)")
     sub.add_parser("platforms")

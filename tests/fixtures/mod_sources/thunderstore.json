@@ -1,0 +1,16 @@
+[
+  {
+    "full_name": "FixtureOwner/FixtureMod",
+    "name": "Fixture_Mod",
+    "owner": "FixtureOwner",
+    "package_url": "https://thunderstore.io/c/sample/p/FixtureOwner/FixtureMod/",
+    "versions": [
+      {
+        "version_number": "1.2.3",
+        "download_url": "https://thunderstore.io/package/download/FixtureOwner/FixtureMod/1.2.3/",
+        "description": "Fixture description",
+        "sha256": ""
+      }
+    ]
+  }
+]

@@ -38,7 +38,7 @@ class Epic(StoreProvider):
     login_url = LOGIN_URL
 
     def detected(self) -> bool:
-        return MANIFESTS.exists() or bool(self.cache.kv_get("auth:epic"))
+        return MANIFESTS.exists() or bool(PC.get(self.cfg, "epic"))
 
     def account(self) -> dict:
         a = PC.get(self.cfg, "epic", {})

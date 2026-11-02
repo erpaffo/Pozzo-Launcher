@@ -18,6 +18,44 @@ permissions:
   contents: write
 
 jobs:
+  # i test girano in parallelo alla build (3 parti per sistema); la release parte solo se sono tutti verdi
+  test:
+    name: test ${{ matrix.name }} (${{ matrix.shard }}/3)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+        shard: [1, 2, 3]
+        include:
+          - { os: windows-latest, name: windows-x64 }
+          - { os: macos-latest, name: macos-arm64 }
+          - { os: ubuntu-22.04, name: linux-x64 }
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dipendenze di sistema (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libnss3 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1
+
+      - name: Dipendenze Python
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          if [ "$RUNNER_OS" = "Linux" ]; then pip install "pywebview[qt]"; fi
+
+      - name: Test
+        env:
+          PYTHONUTF8: "1"
+          PYTHONUNBUFFERED: "1"  # l'output dei test arriva subito: un blocco si vede dove succede
+        run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
+
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -47,12 +85,6 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt pyinstaller
           # Linux: finestra con Qt (autonoma). Senza, l'app si apre comunque nel browser.
           if [ "$RUNNER_OS" = "Linux" ]; then pip install "pywebview[qt]"; fi
-
-      - name: Test
-        env:
-          PYTHONUTF8: "1"
-          PYTHONUNBUFFERED: "1"  # l'output dei test arriva subito: un blocco si vede dove succede
-        run: python packaging/run_tests.py
 
       - name: Build
         run: pyinstaller packaging/pozzo.spec --noconfirm --distpath dist --workpath build
@@ -135,13 +167,16 @@ jobs:
           archive: false
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    # parte anche se una build e' fallita: si pubblicano le piattaforme riuscite (vedi «Piattaforme mancanti»)
+    # (ma solo con i test verdi)
+    if: ${{ !cancelled() && needs.test.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
+    needs: [test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v8
+        continue-on-error: true  # nessun artifact = nessuna build riuscita: lo dice «Piattaforme mancanti»
         with:
           path: release
           merge-multiple: true
@@ -162,6 +197,7 @@ jobs:
           restore-keys: ${{ runner.os }}-apt-texlive-
 
       - name: Manuale PDF
+        continue-on-error: true  # senza manuale la release esce comunque (lo segnala «Piattaforme mancanti»)
         run: |
           pip install pyyaml
           sudo apt-get update
@@ -176,6 +212,26 @@ jobs:
           awk -v v="$VER" '/^## /{p = ($2 == v); next} p' changelog.md > notes.md
           [ -s notes.md ] || echo "Nessuna voce per la versione $VER in changelog.md." > notes.md
           cat notes.md
+
+      # le build fallite non bloccano la release: si pubblica cio' che c'e' e si avvisa di cio' che manca
+      # (nelle note della release, nel riepilogo del run e come avviso); nessuna build riuscita = niente release
+      - name: Piattaforme mancanti
+        run: |
+          mkdir -p release
+          missing=""
+          for p in windows-x64 macos-arm64 linux-x64; do
+            compgen -G "release/*${p}*" > /dev/null || missing="$missing $p"
+          done
+          if [ "$missing" = " windows-x64 macos-arm64 linux-x64" ]; then
+            echo "::error::nessuna build riuscita: release non pubblicata"
+            exit 1
+          fi
+          compgen -G "release/*manuale.pdf" > /dev/null || missing="$missing manuale-PDF"
+          if [ -n "$missing" ]; then
+            echo "::warning::release pubblicata senza:$missing (vedi i job falliti)"
+            printf '\n\n> **Attenzione:** in questa release mancano i file per:%s. La build non è riuscita: arriveranno in una versione successiva.\n' "$missing" >> notes.md
+            echo "Release pubblicata senza:$missing" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # impronte SHA-256 di tutti i file: chi scarica puo' verificare che siano integri (gli eseguibili non sono firmati)
       - name: Checksum

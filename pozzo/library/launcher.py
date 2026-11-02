@@ -170,7 +170,11 @@ MAX_EXTRACTED = 3  # ZIP di dischi estratti tenuti in cache (i piu' recenti)
 
 
 class LaunchError(Exception):
-    pass
+    """Errore di avvio: il testo resta per la persona; `code` (es. emulator_missing) e `details` servono all'interfaccia."""
+
+    def __init__(self, message: str = "", code: str = "", details: dict | None = None):
+        super().__init__(message)
+        self.code, self.details = code, dict(details or {})
 
 
 def open_uri(uri: str):
@@ -289,7 +293,7 @@ def resolve_target(platform: P.Platform, path: Path) -> Path:
         return max(cands, key=lambda f: f.stat().st_size)
     if files:
         return max(files, key=lambda f: f.stat().st_size)
-    raise LaunchError(f"Nessun file avviabile nella cartella {path}")
+    raise LaunchError(f"Nessun file avviabile nella cartella {path}", "rom_folder_missing", {"path": str(path)})
 
 
 def _needs_extract(pl: dict, platform: P.Platform, target: Path) -> bool:
@@ -704,7 +708,8 @@ class Launcher:
             if not pl:
                 cands = ", ".join(e + (f" (core {c})" if c else "") for e, c in PRESETS.get(platform.id, [])) or "nessun preset"
                 raise LaunchError(f"Nessun emulatore configurato per {platform.name}. Aggiungi in config.toml, "
-                                  f"sezione [emulators], uno di: {cands}")
+                                  f"sezione [emulators], uno di: {cands}", "emulator_missing",
+                                  {"platform": platform.id, "platform_name": platform.name})
             self._stop_evt.clear()
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],
                           "emulator_id": pl["emulator"], "exe": pl["exe"], "profile": pl.get("profile", False),

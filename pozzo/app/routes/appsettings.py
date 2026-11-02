@@ -3,31 +3,88 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
+import unicodedata
+import uuid
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import FileResponse
 
 from .. import extensions as X
-from ... import config as C
+from ... import config as C, profilecfg as PC
 from ...library import launcher as L
+
+
+DEFAULT_EXP_PROFILES = (
+    {"id": "classico", "nome": "Classico", "experience": "catalog", "theme": "default", "animations": "normal"},
+    {"id": "cinema-serata", "nome": "Cinema serata", "experience": "cinema", "theme": "default", "animations": "reduced"},
+    {"id": "console-tv", "nome": "Console TV", "experience": "console", "theme": "default", "animations": "reduced"},
+    {"id": "leggero", "nome": "Leggero", "experience": "catalog", "theme": "default", "animations": "off"},
+)
+EXP_PROFILE_ANIMATIONS = frozenset(("normal", "reduced", "off"))
+EXP_PROFILE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}\Z")
 
 
 def build_router(ctx) -> APIRouter:
     cfg, plugin_errors, thumbs_dir = ctx.cfg, ctx.plugin_errors, ctx.thumbs_dir
     router = APIRouter()
 
+    def _exp_profiles() -> list[dict]:
+        saved = PC.get(cfg, "exp_profiles")
+        if not isinstance(saved, list):
+            return [dict(item) for item in DEFAULT_EXP_PROFILES]
+        return [
+            {key: item[key] for key in ("id", "nome", "experience", "theme", "animations")}
+            for item in saved
+            if isinstance(item, dict)
+            and all(isinstance(item.get(key), str) for key in ("id", "nome", "experience", "theme", "animations"))
+            and EXP_PROFILE_ID.fullmatch(item["id"])
+            and item["nome"].strip()
+        ]
+
+    def _resolved_exp_profile(item: dict) -> dict:
+        experiences = {x["id"] for x in X.list_experiences() if x.get("available")}
+        themes = {x["id"] for x in X.list_themes(cfg)}
+        return {
+            "experience": item["experience"] if item["experience"] in experiences else "catalog",
+            "theme": item["theme"] if item["theme"] in themes else "default",
+            "animations": item["animations"] if item["animations"] in EXP_PROFILE_ANIMATIONS else "normal",
+        }
+
+    def _exp_profiles_state() -> dict:
+        presets = _exp_profiles()
+        experiences = {x["id"] for x in X.list_experiences() if x.get("available")}
+        themes = {x["id"] for x in X.list_themes(cfg)}
+        current = {
+            "experience": PC.get(cfg, "experience", "catalog"),
+            "theme": PC.get(cfg, "theme", "default"),
+            "animations": PC.get(cfg, "exp_animations"),
+        }
+        current_resolved = {
+            "experience": current["experience"] if isinstance(current["experience"], str)
+            and current["experience"] in experiences else "catalog",
+            "theme": current["theme"] if isinstance(current["theme"], str) and current["theme"] in themes else "default",
+            "animations": current["animations"] if isinstance(current["animations"], str)
+            and current["animations"] in EXP_PROFILE_ANIMATIONS else None,
+        }
+        active = next((p["id"] for p in presets if _resolved_exp_profile(p) == current_resolved), None)
+        return {"profiles": presets, "active": active, "animations": current["animations"]}
+
     # ------------------------------------------------------------ temi, plugin, link esterni
     @router.get("/api/extensions")
     def api_extensions():
         themes = X.list_themes(cfg)
-        active = cfg.app.get("theme", "default")
+        active = PC.get(cfg, "theme", "default")
         if not isinstance(active, str) or active not in {t["id"] for t in themes}:
             active = "default"
-        return {"themes": themes, "active_theme": active, "active_experience": X.active_experience(cfg),
+        exp = PC.get(cfg, "experience", "catalog")  # come X.active_experience, ma del profilo
+        if exp not in {i["id"] for i in X.list_experiences() if i.get("available")}:
+            exp = "catalog"
+        return {"themes": themes, "active_theme": active, "active_experience": exp,
                 "experiences": X.list_experiences(),
-                "plugins": X.list_plugins(cfg, plugin_errors),
+                "plugins": X.list_plugins(cfg, plugin_errors), "load_total_ms": X.LOAD_TOTAL_MS,
                 "paths": {"themes": str(X.user_dir(cfg, "themes")), "plugins": str(X.user_dir(cfg, "plugins"))}}
 
     @router.get("/api/app/launch")
@@ -63,6 +120,17 @@ def build_router(ctx) -> APIRouter:
     def api_power_get():
         from ... import power
         return {"after_jobs": cfg.app.get("after_jobs") or "none", "modes": list(power.MODES), **power.pending()}
+
+    @router.get("/api/app/start-bigpicture")
+    def api_startbp_get():
+        return {"enabled": bool(cfg.app.get("start_bigpicture", False))}
+
+    @router.post("/api/app/start-bigpicture")
+    def api_startbp_set(body: dict = Body(...)):
+        on = bool(body.get("enabled"))
+        C.save_settings(cfg, app={"start_bigpicture": on})
+        cfg.app["start_bigpicture"] = on
+        return {"enabled": on}
 
     @router.post("/api/app/power")
     def api_power_set(body: dict = Body(...)):
@@ -116,7 +184,7 @@ def build_router(ctx) -> APIRouter:
         tid = body.get("theme") or "default"
         if tid not in {t["id"] for t in X.list_themes(cfg)}:
             raise HTTPException(404, "Tema non trovato")
-        C.save_settings(cfg, app={"theme": tid})
+        PC.put(cfg, "theme", tid, mirror=True)
         return {"ok": True}
 
     @router.post("/api/app/experience")
@@ -126,8 +194,69 @@ def build_router(ctx) -> APIRouter:
             x["id"] for x in X.list_experiences() if x.get("available")
         }:
             raise HTTPException(400, "Profilo di esperienza non valido")
-        C.save_settings(cfg, app={"experience": experience})
+        PC.put(cfg, "experience", experience, mirror=True)
         return {"experience": experience}
+
+    @router.get("/api/exp-profiles")
+    def api_exp_profiles():
+        return _exp_profiles_state()
+
+    @router.post("/api/exp-profiles")
+    def api_exp_profiles_save(body: dict = Body(...)):
+        name = body.get("nome")
+        experience = body.get("experience")
+        theme = body.get("theme")
+        animations = body.get("animations")
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > 40:
+            raise HTTPException(400, "Nome non valido")
+        if not isinstance(experience, str) or experience not in {
+            x["id"] for x in X.list_experiences() if x.get("available")
+        }:
+            raise HTTPException(400, "Profilo di esperienza non valido")
+        if not isinstance(theme, str) or theme not in {x["id"] for x in X.list_themes(cfg)}:
+            raise HTTPException(400, "Tema non valido")
+        if not isinstance(animations, str) or animations not in EXP_PROFILE_ANIMATIONS:
+            raise HTTPException(400, "Impostazione animazioni non valida")
+
+        presets = _exp_profiles()
+        profile_id = body.get("id")
+        if profile_id is None:
+            slug = unicodedata.normalize("NFKD", name.strip().lower()).encode("ascii", "ignore").decode("ascii")
+            slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-") or "profilo"
+            profile_id = f"{slug[:28]}-{uuid.uuid4().hex[:8]}"
+        elif not isinstance(profile_id, str) or not EXP_PROFILE_ID.fullmatch(profile_id):
+            raise HTTPException(400, "Id profilo non valido")
+
+        preset = {"id": profile_id, "nome": name.strip(), "experience": experience,
+                  "theme": theme, "animations": animations}
+        presets = [p for p in presets if p["id"] != profile_id]
+        presets.append(preset)
+        PC.set(cfg, "exp_profiles", presets)
+        return _exp_profiles_state()
+
+    @router.delete("/api/exp-profiles")
+    def api_exp_profiles_delete(body: dict = Body(...)):
+        profile_id = body.get("id")
+        if not isinstance(profile_id, str) or not EXP_PROFILE_ID.fullmatch(profile_id):
+            raise HTTPException(400, "Id profilo non valido")
+        presets = _exp_profiles()
+        remaining = [p for p in presets if p["id"] != profile_id]
+        if len(remaining) == len(presets):
+            raise HTTPException(404, "Preset non trovato")
+        PC.set(cfg, "exp_profiles", remaining)
+        return _exp_profiles_state()
+
+    @router.post("/api/exp-profiles/activate")
+    def api_exp_profiles_activate(body: dict = Body(...)):
+        profile_id = body.get("id")
+        preset = next((p for p in _exp_profiles() if p["id"] == profile_id), None)
+        if preset is None:
+            raise HTTPException(404, "Preset non trovato")
+        resolved = _resolved_exp_profile(preset)
+        PC.put(cfg, "experience", resolved["experience"], mirror=True)
+        PC.put(cfg, "theme", resolved["theme"], mirror=True)
+        PC.set(cfg, "exp_animations", resolved["animations"])
+        return {"active": profile_id, **resolved}
 
     @router.post("/api/app/plugin")
     def api_plugin_toggle(body: dict = Body(...)):

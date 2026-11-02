@@ -9,13 +9,39 @@
   <span class="muted small" id="pw-state"></span>
 </div>
 
+<h3>Avvio</h3>
+<label class="chk"><input type="checkbox" id="bp-start"> Apri in Big Picture all'avvio</label>
+<p class="muted small">Utile per HTPC e console casalinga. Da riga di comando <code>--no-bigpicture</code> forza il desktop.</p>
+
 <h3>Scorciatoie da tastiera</h3>
 <p class="muted small">Ctrl (Windows) o Cmd (Mac) + K cerca, + , impostazioni, + 1/2/3 Libreria/Preferiti/Store.
   Premi <code>?</code> per l'elenco completo.</p>
 <button class="btn" type="button" data-sc-open>⌨ Mostra e personalizza le scorciatoie…</button>
+
+<h3>Suggerimenti</h3>
+<p class="muted small">Piccoli fumetti che spiegano le funzioni la prima volta che le incontri.</p>
+<div class="row wrap">
+  <select class="field" id="hint-mode"><option value="on">Attivi</option>
+    <option value="snooze">Disattiva per 7 giorni</option><option value="off">Disattiva per sempre</option></select>
+  <button class="btn" id="hint-reset" type="button">Rivedi tutti i suggerimenti</button>
+</div>
 
 <h3>Notifiche di Windows</h3>
 <p class="muted small">Un avviso quando un gioco scende sotto la soglia di prezzo, esce un gioco gratis,
   un port PC ha un aggiornamento o finisce una ricerca. Restano nel centro notifiche di Windows.</p>
 <label class="chk"><input type="checkbox" id="nt-on"> Attiva le notifiche</label>
 <p class="muted small" id="nt-state"></p>
+
+<div id="prof-section" hidden>
+<h3>Profili utente</h3>
+<p class="muted small">Ogni profilo ha i suoi preferiti, il tempo di gioco e le collezioni; la libreria, i dati e le copertine
+  sono una sola copia per tutti. Il PIN blocca il cambio di profilo dal menu: non protegge i file del computer.</p>
+<div class="row wrap" id="prof-now"><span>Utente in uso: <b id="prof-active"></b></span>
+  <button class="btn" id="prof-switch" type="button">👥 Cambia utente…</button></div>
+<div id="prof-list"></div>
+<div class="row wrap"><button class="btn" id="prof-new" type="button">＋ Nuovo profilo…</button></div>
+<label class="chk"><input type="checkbox" id="prof-ask"> Con più profili, chiedi con quale entrare all'avvio («Chi gioca?»)</label>
+<label class="chk"><input type="checkbox" id="prof-remember"> Su questo dispositivo entra sempre con il profilo in uso</label>
+<p class="muted small">Se spunti l'ultima casella, «Chi gioca?» non compare più su questo dispositivo: per cambiare utente usa il pulsante
+  qui sopra, il menu in alto a destra o <kbd>Ctrl+P</kbd>. Toglila per tornare a scegliere a ogni avvio.</p>
+</div>

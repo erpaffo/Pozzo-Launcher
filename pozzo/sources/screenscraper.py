@@ -127,14 +127,19 @@ class ScreenScraper(Source):
 
     async def _call(self, endpoint: str, params: dict) -> dict | None:
         self._spend()
-        r = await request(self.client, "GET", API + endpoint, limiter=self.api_limiter,
+        r = await request(self.client, "GET", API + endpoint, limiter=self.api_limiter, cache_source="screenscraper",
                           params={**self.auth, **params}, ok404=False)
         if r is None:
             return None
+        cached = bool(r.headers.get("x-pozzo-cache"))
+        if cached:  # risposta dalla cache: nessuna richiesta al sito, la quota non cala
+            self.used -= 1
+            if self.remaining is not None:
+                self.remaining += 1
         text = r.text
         self._check_fatal(text)
         if "non trouvée" in text[:300] or r.status_code in (400, 404):
-            if self.ko_remaining is not None:
+            if self.ko_remaining is not None and not cached:
                 self.ko_remaining -= 1
             return None
         if r.status_code in (401, 403, 423, 426, 429, 430, 431):
@@ -148,7 +153,7 @@ class ScreenScraper(Source):
                 data = json.loads(text.replace("],\n\t\t}", "]\n\t\t}"))
             except ValueError:
                 return None
-        u = data.get("response", {}).get("ssuser") or {}
+        u = {} if cached else data.get("response", {}).get("ssuser") or {}
         if u.get("requeststoday") and u.get("maxrequestsperday"):
             self.remaining = int(u["maxrequestsperday"]) - int(u["requeststoday"])
         if u.get("maxrequestskoperday"):

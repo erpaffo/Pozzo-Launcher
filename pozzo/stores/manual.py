@@ -27,11 +27,11 @@ class Manual(StoreProvider):
                 games.append(StoreGame(
                     store=self.id, id=str(m["id"]), title=m["title"], installed=True, page=m["exe"],
                     description=meta.get("description") or "", images={"cover": meta["image"]} if meta.get("image") else {},
-                    launch={"type": "uri", "target": m["exe"]}))
+                    owner=m.get("profile") or "", launch={"type": "uri", "target": m["exe"]}))
                 continue
             exe = Path(m["exe"])
             games.append(StoreGame(
                 store=self.id, id=str(m["id"]), title=m["title"], installed=exe.exists(), install_dir=str(exe.parent),
-                kind=m["kind"],
+                kind=m["kind"], owner=m.get("profile") or "",
                 launch={"type": "exe", "target": str(exe), "args": m["args"], "cwd": m.get("cwd") or str(exe.parent)}))
         return games

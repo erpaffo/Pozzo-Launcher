@@ -26,16 +26,8 @@ def build_router(ctx) -> APIRouter:
         out = thumbs_dir / str(w) / f"{h}.webp"
         if out.exists():
             return out
-        from PIL import Image
-        out.parent.mkdir(parents=True, exist_ok=True)
-        with Image.open(src) as im:
-            im.thumbnail((w, w * 3), Image.Resampling.LANCZOS)
-            if im.mode not in ("RGB", "RGBA"):
-                im = im.convert("RGBA")
-            tmp = out.with_suffix(".tmp")
-            im.save(tmp, "WEBP", quality=82, method=4)
-            os.replace(tmp, out)
-        return out
+        from ... import imgopt
+        return imgopt.thumb(src, w, quality=82, dest=out, tall=3)
 
     def _media(g: dict) -> dict:
         """Immagini del gioco: quelle scelte dall'utente hanno la precedenza su quelle delle fonti."""
@@ -141,6 +133,12 @@ def build_router(ctx) -> APIRouter:
             folder.mkdir(parents=True, exist_ok=True)
             dest = folder / f"{h}.{ext}"
             dest.write_bytes(r.content)
+            if ext in ("png", "jpg", "bmp"):  # non video/animate; se non conviene o fallisce resta l'originale
+                try:
+                    from ... import imgopt
+                    dest = imgopt.optimize(dest)
+                except Exception:
+                    pass
             return dest.relative_to(cfg.cache).as_posix()
         return None
 

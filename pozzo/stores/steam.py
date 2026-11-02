@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .. import profilecfg as PC
 from ..net import request
 from .base import StoreGame, StoreProvider, parse_vdf, reg_get
 
@@ -34,6 +35,12 @@ class Steam(StoreProvider):
     id = "steam"
     name = "Steam"
     login = "apikey"
+
+    @property
+    def settings(self) -> dict:
+        """Chiave API e id sono del profilo attivo; percorso e abilitazione restano della macchina."""
+        g = {k: v for k, v in super().settings.items() if k not in ("api_key", "steamid")}
+        return {**g, **(PC.get(self.cfg, "steam", {}) or {})}
 
     def path(self) -> Path | None:
         p = self.settings.get("path") or reg_get("HKCU", r"Software\Valve\Steam", "SteamPath")
