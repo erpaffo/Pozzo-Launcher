@@ -21,7 +21,8 @@ if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (
         print("-- saltato: installer degli emulatori solo Windows")
         sys.exit(0)
     import pytest
-    pytest.skip("installer degli emulatori solo Windows", allow_module_level=True)
+    # pytestmark e non pytest.skip(allow_module_level): quello esce con codice 5 e run_tests lo conta come errore
+    pytestmark = pytest.mark.skip(reason="installer degli emulatori solo Windows")
 
 
 def _zip(files: dict) -> bytes:
