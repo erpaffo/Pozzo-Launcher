@@ -39,6 +39,10 @@ def test_extra_roms_per_profilo(tmp):
     assert paths(r) == {(str(glob), False), (str(sua.resolve()), True)}, "il Principale non vede la cartella di Luca"
     assert PC.values(cfg, "roms_extra") == {"luca": [str(mia.resolve())], "default": [str(sua.resolve())]}
     assert add(pc, mia).status_code == 400 and add(pc, glob).status_code == 400, "niente doppioni"
+    # la globale salvata in forma non canonica (sui runner tmp e' un link o un nome corto): il doppione va riconosciuto
+    cfg.extra_roms = [glob / ".." / glob.name]
+    assert add(pc, glob).status_code == 400, "doppione con globale non normalizzata"
+    cfg.extra_roms = [glob]
 
     r = pc.post("/api/roms/extra", json={"action": "remove", "path": str(mia.resolve())})
     assert paths(r) == {(str(glob), False)}

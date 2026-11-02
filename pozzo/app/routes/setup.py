@@ -149,7 +149,8 @@ def build_router(ctx) -> APIRouter:
             if not raw or not p.is_dir():
                 raise HTTPException(400, "Cartella non trovata")
             p = p.resolve()
-            if p == Path(cfg.roms).resolve() or str(p) in shared or str(p) in own:
+            # confronto tra percorsi risolti: la stessa cartella puo' essere salvata in forma diversa (link, nome corto)
+            if p == Path(cfg.roms).resolve() or any(Path(x).resolve() == p for x in [*shared, *own]):
                 raise HTTPException(400, "Cartella gia' presente")
             PC.set(cfg, "roms_extra", [*own, str(p)])
         return {"extra": [{"path": str(r), "online": r.exists(), "own": mine} for r, mine in OW.visible_roots(cfg)]}
