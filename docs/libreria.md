@@ -227,7 +227,7 @@ I numeri arrivano dal tempo di gioco registrato dall'app più quello dichiarato 
 Il voto mostrato combina tutte le fonti pesandole per **numero di voti** (media bayesiana): 4,7 con 1.800 voti conta
 più di 5,0 con 2 voti. Il voto della **critica** (Metacritic o IGDB) è mostrato a parte.
 
-## Scorciatoie
+## Scorciatoie della libreria
 
 | Tasto | Azione |
 |---|---|

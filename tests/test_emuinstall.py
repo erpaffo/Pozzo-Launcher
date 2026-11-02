@@ -16,6 +16,13 @@ from pozzo import config  # noqa: E402
 from pozzo import emuinstall as EI  # noqa: E402
 from pozzo import ports as PT  # noqa: E402
 
+if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (vedi emuinstall.py)
+    if __name__ == "__main__":
+        print("-- saltato: installer degli emulatori solo Windows")
+        sys.exit(0)
+    import pytest
+    pytest.skip("installer degli emulatori solo Windows", allow_module_level=True)
+
 
 def _zip(files: dict) -> bytes:
     b = io.BytesIO()
@@ -81,9 +88,6 @@ def test_install(tmp: Path):
 
 
 if __name__ == "__main__":
-    if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (vedi emuinstall.py)
-        print("-- saltato: installer degli emulatori solo Windows")
-        sys.exit(0)
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_install(Path(t))
     print("TUTTI I TEST OK")

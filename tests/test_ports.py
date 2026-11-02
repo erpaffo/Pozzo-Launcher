@@ -262,6 +262,8 @@ def test_estrazione_7z(tmp: Path):
 def test_percorso_breve(tmp: Path):
     """Un port che compila dentro la propria cartella (SMS Launcher) non sta in un percorso lungo: si installa
     in una cartella breve, e quello gia' installato si sposta conservando salvataggi e impostazioni."""
+    if sys.platform != "win32":  # il limite di lunghezza dei percorsi esiste solo su Windows (ports.path_problem)
+        return
     (tmp / "roms").mkdir()
     (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n[scrape]\nsources = []\n', encoding="utf-8")
     cfg = config.load(tmp / "config.toml")
