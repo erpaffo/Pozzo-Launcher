@@ -1,6 +1,6 @@
-# Manuale di Pozzo Launcher: sito (MkDocs Material, GitHub Pages) e PDF (tools/docs_pdf.py, stesso ordine di "nav").
+# Manuale e Sito Ufficiale di Pozzo Launcher (MkDocs Material, GitHub Pages) e PDF (tools/docs_pdf.py).
 site_name: Pozzo Launcher
-site_description: Manuale di Pozzo Launcher, la libreria di giochi per ROM e store PC
+site_description: Il launcher universale per ROM di console e store PC. Gratuito, open source e locale.
 repo_name: erpaffo/Pozzo-Launcher
 repo_url: https://github.com/erpaffo/Pozzo-Launcher
 copyright: "Copyright &copy; 2026 Pozzo Launcher"
@@ -8,6 +8,12 @@ docs_dir: docs
 exclude_docs: |
   obsidian/
   TODO.md
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/download.js
 
 theme:
   name: material
@@ -49,27 +55,30 @@ markdown_extensions:
   - pymdownx.superfences
 
 nav:
-  - Introduzione: index.md
-  - Centro Assistenza e FAQ: assistenza.md
-  - Primi passi:
-      - Installazione e aggiornamenti: installazione.md
-      - La libreria: libreria.md
-  - Giochi:
-      - ROM e scraping dei dati: rom-e-scraping.md
-      - Giocare: giocare.md
-      - Giochi PC dagli store: store-pc.md
-  - Store:
-      - Aggiungere store online e store PC: store-online.md
-      - Giochi gratis, lista desideri, port PC: extra.md
-  - Altri modi di giocare:
-      - Telefono e streaming: telefono-streaming.md
-      - Big Picture: bigpicture.md
-      - Musica e chiamate: musica-chiamate.md
-      - Scorciatoie da tastiera e controller: scorciatoie.md
-  - Personalizzare:
-      - Temi e plugin: ESTENSIONI.md
-  - Manutenzione:
-      - Dati, copie di sicurezza e salute: manutenzione.md
-      - Riferimento (configurazione e comandi): riferimento.md
-  - Per sviluppatori:
-      - Sviluppo e prestazioni: sviluppo.md
+  - Home: index.md
+  - Download: download.md
+  - Documentazione:
+      - Guida introduttiva: guida.md
+      - Primi passi:
+          - Installazione e aggiornamenti: installazione.md
+          - La libreria: libreria.md
+      - Giochi:
+          - ROM e scraping dei dati: rom-e-scraping.md
+          - Giocare: giocare.md
+          - Giochi PC dagli store: store-pc.md
+      - Store:
+          - Aggiungere store online e store PC: store-online.md
+          - Giochi gratis, lista desideri, port PC: extra.md
+      - Altri modi di giocare:
+          - Telefono e streaming: telefono-streaming.md
+          - Big Picture: bigpicture.md
+          - Musica e chiamate: musica-chiamate.md
+          - Scorciatoie da tastiera e controller: scorciatoie.md
+      - Personalizzare:
+          - Temi e plugin: ESTENSIONI.md
+      - Manutenzione:
+          - Dati, copie di sicurezza e salute: manutenzione.md
+          - Riferimento (configurazione e comandi): riferimento.md
+      - Per sviluppatori:
+          - Sviluppo e prestazioni: sviluppo.md
+  - Assistenza e FAQ: assistenza.md

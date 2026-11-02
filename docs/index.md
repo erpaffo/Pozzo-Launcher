@@ -1,102 +1,217 @@
-# Introduzione
-
-Pozzo Launcher è una libreria universale di videogiochi per il PC: raccoglie in un'unica interfaccia elegante e velocissima le **ROM delle console** che hai sul disco e i **giochi PC** di tutti i tuoi store (Steam, Epic Games, GOG, Riot Games, Battle.net, Amazon, Xbox e Minecraft), li completa automaticamente con copertine in alta risoluzione, descrizioni, valutazioni della critica e durate, e li avvia con un semplice clic.
-
-![La libreria: copertine delle ROM delle console e dei giochi PC in un'unica griglia, con ricerca, filtri e barra laterale](images/libreria-griglia.jpg)
-
-> Il manuale è disponibile anche in formato PDF completo: [PozzoLauncher-manuale.pdf](PozzoLauncher-manuale.pdf), identico al sito web ma organizzato per la stampa o la consultazione offline. Si trova anche tra gli allegati di ogni versione su GitHub.
-
+---
+title: Pozzo Launcher - La tua intera collezione di videogiochi
+description: Il launcher universale per ROM di console e giochi PC. Raccoglie in un'unica interfaccia elegante Steam, Epic, GOG, console retro, streaming su smartphone e modalità Big Picture per la TV. Gratuito e 100% open source.
+hide:
+  - navigation
+  - toc
 ---
 
-## 🎯 Cosa vuoi fare oggi? (Percorsi guidati con anteprima)
+<div class="hero-section">
+  <div class="landing-container">
+    
+    <a href="download.md" class="hero-release-pill">
+      <span class="hero-pulse-dot"></span>
+      <span>Disponibile la nuova versione <strong class="gh-release-tag">v0.12.1</strong> · Gratuito e Open Source</span>
+    </a>
 
-Seleziona l'obiettivo che desideri raggiungere per visualizzare subito la schermata corrispondente e la guida passo-passo:
+    <h1 class="hero-title">
+      Tutti i tuoi giochi, le tue ROM e i tuoi store.<br>In un unico launcher elegante.
+    </h1>
 
-### 1. 🚀 Esplorare la mia collezione e avviare un gioco subito
-Cerchi un'interfaccia istantanea, fluida anche con centinaia di migliaia di giochi, con ricerca in tempo reale, filtri per console e schede dettagliate complete di voti e screenshot?
+    <p class="hero-subtitle">
+      Pozzo Launcher riunisce in un'interfaccia ultra-veloce i giochi PC di Steam, Epic Games, GOG, Riot, Battle.net e Xbox con la tua intera collezione di ROM per console. Copertine in alta definizione, metadati automatici, modalità Big Picture per la TV e streaming controller su smartphone.
+    </p>
 
-[![Esplora la libreria e la scheda dettaglio del gioco](images/libreria-dettaglio.jpg)](libreria.md)
+    <!-- Gruppo di Download Principale Intelligente -->
+    <div class="hero-cta-group">
+      <a id="hero-download-btn" class="btn-download-primary" href="https://github.com/erpaffo/Pozzo-Launcher/releases/latest">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.949-1.801"/>
+        </svg>
+        <div class="btn-download-meta">
+          <span class="btn-download-title" id="hero-download-text">Scarica per Windows</span>
+          <span class="btn-download-sub" id="hero-download-sub">Programma di installazione .exe · 64-bit</span>
+        </div>
+      </a>
 
-👉 **Cosa fare:** Vai al capitolo [La libreria](libreria.md) per scoprire come organizzare le viste, ordinare per valutazione o durata e personalizzare le copertine.
+      <div class="hero-cta-secondary-row">
+        <span class="hero-os-detected-badge" id="hero-os-detected">Rilevato Windows (64-bit)</span>
+        <span>·</span>
+        <a id="hero-portable-link" href="https://github.com/erpaffo/Pozzo-Launcher/releases/latest">Versione Portatile (.zip)</a>
+        <span>·</span>
+        <a href="download.md">Tutte le piattaforme (macOS, Linux) ↗</a>
+      </div>
+    </div>
 
----
+    <!-- Mockup Finestra Desktop Hero -->
+    <div class="hero-mockup-wrapper">
+      <div class="mockup-window-header">
+        <div class="mockup-window-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="mockup-window-title">Pozzo Launcher — Libreria Universale</div>
+      </div>
+      <img src="images/libreria-griglia.jpg" alt="Libreria di Pozzo Launcher con copertine in griglia e filtri rapidi" class="hero-mockup-img" loading="eager">
+    </div>
 
-### 2. 🎲 Non so a cosa giocare stasera!
-Hai poco tempo, giochi in compagnia o vuoi un consiglio intelligente basato sui titoli che hai amato di più?
+  </div>
+</div>
 
-[![Stasera a cosa giochiamo: consigli intelligenti e selezione casuale rapida](images/stasera.jpg)](libreria.md#per-te-e-a-cosa-vuoi-giocare)
+<div class="landing-container">
 
-👉 **Cosa fare:** Apri la vista **✨ Per te** nella barra laterale o premi **🎲 A cosa vuoi giocare?**: l'app ti farà 3 semplici domande (tempo a disposizione, giocatori, genere) proponendoti subito i migliori giochi pronti da avviare! Leggi la guida [Per te e consigli](libreria.md#per-te-e-a-cosa-vuoi-giocare).
+  <!-- 4 Punti di Forza Distintivi -->
+  <div class="highlights-strip">
+    <div class="highlight-item">
+      <svg class="highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <h3>Zero Configurazioni Noiose</h3>
+      <p>Indica la cartella delle tue ROM: Pozzo Launcher riconosce da solo le console e scarica copertine, loghi, voti e durate senza liste manuali.</p>
+    </div>
 
----
+    <div class="highlight-item">
+      <svg class="highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      <h3>Tutti i Tuoi Store PC Uniti</h3>
+      <p>Collega Steam, Epic Games, GOG, Riot, Battle.net, Xbox e Amazon Games per avere un solo catalogo aggiornato con un clic.</p>
+    </div>
 
-### 3. 📱 Usare il telefono come telecomando, controller o schermo touch per DS e 3DS
-Vuoi controllare il PC dal divano, usare lo smartphone come joypad con giroscopio per Mario Kart o come touchscreen per Nintendo DS e 3DS?
+    <div class="highlight-item">
+      <svg class="highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <h3>100% Locale e Riservato</h3>
+      <p>Niente account obbligatori, zero pubblicità e nessuna telemetria. L'app gira in locale sul tuo PC consumando pochissima memoria RAM.</p>
+    </div>
 
-[![Il telefono come telecomando e controller virtuale](images/telefono.jpg)](telefono-streaming.md)
+    <div class="highlight-item">
+      <svg class="highlight-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+        <line x1="12" y1="18" x2="12.01" y2="18"/>
+      </svg>
+      <h3>Telefono come Controller e Touch</h3>
+      <p>Inquadra il QR code per usare il telefono come gamepad wireless a 4 giocatori, telecomando da divano o schermo touch per DS e 3DS.</p>
+    </div>
+  </div>
 
-👉 **Cosa fare:** Vai in [Telefono e streaming](telefono-streaming.md): bastano 30 secondi per inquadrare il codice QR, senza installare app dagli store, con certificato locale protetto.
+  <!-- Showcase Funzionalità Visive Asimmetriche -->
+  <div class="feature-showcase-grid">
 
----
+    <!-- Feature 1: Libreria e Scheda Dettaglio -->
+    <div class="feature-row">
+      <div class="feature-content">
+        <h2>La tua collezione completa, ricca di dettagli e facile da sfogliare</h2>
+        <p>
+          Ogni titolo prende vita con copertine ad alta definizione, descrizioni complete in italiano, sviluppatore, data di uscita, valutazioni della critica e tempi di completamento da <strong>HowLongToBeat</strong>.
+        </p>
+        <p>
+          Ordina per voto, filtra per console, crea collezioni personalizzate o lasciati guidare dalla funzione intelligente <strong>"A cosa vuoi giocare stasera?"</strong> per trovare subito il gioco perfetto per il tuo tempo a disposizione.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">Ricerca Istantanea</span>
+          <span class="feature-tag-pill">HowLongToBeat</span>
+          <span class="feature-tag-pill">ScreenScraper & IGDB</span>
+          <span class="feature-tag-pill">Collezioni Personali</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/libreria-dettaglio.jpg" alt="Scheda dettaglio del gioco con ore di gioco HowLongToBeat, voti e screenshot" loading="lazy">
+      </div>
+    </div>
 
-### 4. 📺 Giocare sulla TV dal divano (Modalità Big Picture)
-Hai collegato il PC al televisore del salotto e vuoi navigare la libreria esclusivamente tramite controller senza toccare mouse o tastiera?
+    <!-- Feature 2: Big Picture (Reverse) -->
+    <div class="feature-row reverse">
+      <div class="feature-content">
+        <h2>Modalità Big Picture: il PC diventa una console da salotto</h2>
+        <p>
+          Collega il PC alla televisione e premi <code>F11</code>: l'interfaccia si trasforma in un'esperienza a 10 piedi studiata per essere navigata esclusivamente tramite gamepad Xbox, PlayStation o Nintendo Switch.
+        </p>
+        <p>
+          Navigazione con suoni dinamici, caroselli fluidi a 60 fotogrammi al secondo, controllo multimediale di Spotify in sovrimpressione e comandi vocali rapidi per Discord direttamente con combinazioni di tasti del controller.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">Controller Xbox & DualSense</span>
+          <span class="feature-tag-pill">Navigazione 10-foot per TV</span>
+          <span class="feature-tag-pill">Widget Spotify & Discord</span>
+          <span class="feature-tag-pill">Zero Mouse</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/bigpicture.jpg" alt="Modalità Big Picture a schermo intero per TV e controller con visualizzazione cinema" loading="lazy">
+      </div>
+    </div>
 
-[![Big Picture: modalità a schermo intero per TV e controller](images/bigpicture.jpg)](bigpicture.md)
+    <!-- Feature 3: Telefono & Secondo Schermo DS/3DS -->
+    <div class="feature-row">
+      <div class="feature-content">
+        <h2>Il tuo smartphone come telecomando, controller e schermo touch</h2>
+        <p>
+          Nessuna applicazione da scaricare o configurazioni complicate: basta inquadrare il codice QR mostrato nell'app con la fotocamera del tuo telefono per aprire una web app protetta da certificato locale sicuro.
+        </p>
+        <p>
+          Puoi controllare la musica, sfogliare la libreria dal divano, usare fino a 4 telefoni contemporaneamente come joypad virtuali per giocare con gli amici, oppure trasmettere a bassa latenza lo schermo inferiore degli emulatori Nintendo DS e 3DS con supporto touch screen reale.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">Secondo Schermo DS/3DS Touch</span>
+          <span class="feature-tag-pill">Fino a 4 Giocatori in Locale</span>
+          <span class="feature-tag-pill">Nessuna App da Installare</span>
+          <span class="feature-tag-pill">Connessione Crittografata</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/telefono.jpg" alt="Interfaccia mobile sul telefono con controlli touch e telecomando" loading="lazy">
+      </div>
+    </div>
 
-👉 **Cosa fare:** Premi `F11` per entrare in [Big Picture](bigpicture.md): interfaccia a 10 piedi con suoni, navigazione a frecce e schermata home personalizzabile.
+    <!-- Feature 4: Temi e Personalizzazione (Reverse) -->
+    <div class="feature-row reverse">
+      <div class="feature-content">
+        <h2>Personalizzazione totale: 6 esperienze grafiche e 4 temi di colore</h2>
+        <p>
+          Pozzo Launcher non ti impone una sola grafica: scegli tra 6 profili desktop differenti, tra cui <strong>Scaffali</strong> (in stile streaming orizzontale), <strong>Cinema</strong>, <strong>Console</strong>, <strong>Vetrina</strong>, <strong>Dashboard</strong> e <strong>Catalogo</strong>.
+        </p>
+        <p>
+          Abbina la disposizione al tuo tema cromatico preferito: il nero profondo del tema <strong>Nero OLED</strong> per monitor moderni, il rilassante <strong>Notte Blu</strong>, l'iconico <strong>Retrò anni '80</strong> o un fresco <strong>Tema Chiaro</strong>.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">6 Layout Desktop</span>
+          <span class="feature-tag-pill">Nero Puro OLED</span>
+          <span class="feature-tag-pill">Negozio Estensioni Integrato</span>
+          <span class="feature-tag-pill">Supporto Riduzione Movimento</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/impostazioni-aspetto.jpg" alt="Impostazioni di aspetto con anteprime dei temi e dei profili grafici" loading="lazy">
+      </div>
+    </div>
 
----
+  </div>
 
-### 5. 🎨 Cambiare tema e personalizzare l'esperienza grafica
-Preferisci un tema scuro per monitor OLED, un look retrò anni '80 o una disposizione dell'interfaccia a scaffali orizzontali in stile Netflix?
+  <!-- Banner Finale Call-To-Action -->
+  <div class="final-cta-banner">
+    <h2>Pronto a riscoprire tutti i tuoi videogiochi?</h2>
+    <p>
+      Scarica l'ultima versione di Pozzo Launcher per Windows, macOS o Linux. È completamente gratuito, open source e pronto all'uso in meno di due minuti.
+    </p>
+    <div class="final-cta-buttons">
+      <a class="btn-download-primary" href="download.md">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 22px; height: 22px;">
+          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        <span>Vai alla Pagina di Download</span>
+      </a>
+      <a class="btn-secondary" href="guida.md">
+        <span>Leggi la Documentazione ↗</span>
+      </a>
+      <a class="btn-secondary" href="assistenza.md">
+        <span>Centro Assistenza & FAQ ↗</span>
+      </a>
+    </div>
+  </div>
 
-[![Impostazioni Aspetto: temi cromatici e profili di esperienza desktop](images/impostazioni-aspetto.jpg)](ESTENSIONI.md)
-
-👉 **Cosa fare:** Consulta la guida [Temi e profili di esperienza](ESTENSIONI.md) per vedere le anteprime dei 4 temi inclusi (OLED, Notte Blu, Retrò, Chiaro) e dei 6 profili desktop (Scaffali, Cinema, Console, Dashboard, Vetrina, Catalogo).
-
----
-
-### 6. 🎁 Giochi gratis del momento, lista desideri e porting PC
-Vuoi riscattare i giochi gratuiti settimanali di Epic, Steam, GOG e Prime Gaming, oppure installare le ricompilazioni native per PC dei capolavori console?
-
-[![Giochi gratis del momento e offerte imperdibili](images/giochi-gratis.jpg)](extra.md)
-
-👉 **Cosa fare:** Leggi la sezione [Giochi gratis, lista desideri e port PC](extra.md) per scoprire come monitorare i prezzi minimi storici e giocare ai porting PC con grafica potenziata.
-
----
-
-### 7. 🆘 Ho una domanda o qualcosa non funziona?
-Hai dubbi sull'avvio di un emulatore, la sincronizzazione dei salvataggi tra due PC o un errore di rete?
-
-[![Pagina Salute e diagnostica rapida](images/impostazioni-salute.jpg)](assistenza.md)
-
-👉 **Cosa fare:** Consulta il nostro nuovo [Centro Assistenza e Domande Frequenti (FAQ)](assistenza.md) in stile Assistenza Google per trovare risposte immediate e soluzioni guidate a tutti i problemi comuni!
-
----
-
-## Panoramica delle funzionalità
-
-| Area | In breve | Dove approfondire |
-|---|---|---|
-| **Libreria** | Griglia di copertine con ricerca istantanea, filtri, collezioni automatiche e personali, consigli | [La libreria](libreria.md) |
-| **ROM e Metadati** | Riconosce le cartelle console, identifica i giochi offline e scarica dati e immagini da molte fonti | [ROM e scraping dei dati](rom-e-scraping.md) |
-| **Giocare** | Avvia ogni gioco con l'emulatore giusto, registra il tempo di sessione, copia i salvataggi | [Giocare](giocare.md) |
-| **Giochi PC** | Giochi installati e posseduti di Steam, Epic, GOG, Riot, Battle.net, Amazon, Xbox | [Giochi PC dagli store](store-pc.md) |
-| **Store online** | Cataloghi di giochi da scaricare per console e PC, letti da siti e archivi web | [Aggiungere store](store-online.md) |
-| **Extra** | Giochi gratis settimanali, lista desideri con prezzi chiavi, port PC dei giochi console | [Giochi gratis, lista desideri, port PC](extra.md) |
-| **Telefono** | Il telefono come telecomando, controller (anche 4 giocatori) e doppio schermo touch DS/3DS | [Telefono e streaming](telefono-streaming.md) |
-| **TV** | Interfaccia a schermo intero nativa per controller e schermi 4K | [Big Picture](bigpicture.md) |
-| **Personalizzazione** | 4 temi di colore, 6 profili di esperienza desktop e store di estensioni/plugin | [Temi e plugin](ESTENSIONI.md) |
-| **Più PC e Famiglia** | Sincronizzazione dati tra due PC in LAN/cartella condivisa e profili utente separati | [Dati e manutenzione](manutenzione.md#sincronizzazione-tra-pc), [Profili](libreria.md#profili-utente) |
-| **Integrazioni** | Presenza su Discord, avvisi di Windows, esportazione libreria in pagina web statica | [Giocare](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Avvisi](extra.md#avvisi-di-windows) |
-| **Assistenza & FAQ** | Risoluzione problemi passo-passo, autodiagnostica Salute, domande frequenti | [Centro Assistenza e FAQ](assistenza.md) |
-
----
-
-## Architettura e Sicurezza
-
-Pozzo Launcher è composto da un **server locale leggero** (Python, FastAPI) che comunica con un'interfaccia web visualizzata in una finestra nativa di sistema.
-- Il server locale risponde esclusivamente sul PC su cui è in esecuzione (`127.0.0.1`).
-- Lo smartphone o altri dispositivi della rete locale possono collegarsi solo dopo un esplicito abbinamento tramite codice QR o codice temporaneo di sicurezza (vedi [Telefono e streaming](telefono-streaming.md)).
-- Tutti i dati sensibili, i progressi e le collezioni rimangono memorizzati **esclusivamente sul tuo computer**: nessun dato di gioco o credenziale viene mai inviato a server cloud proprietari.
+</div>

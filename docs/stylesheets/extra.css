@@ -1,0 +1,564 @@
+/* ==========================================================================
+   Pozzo Launcher - Custom Stylesheet per Sito Ufficiale e Download
+   Rispetta i requisiti di craft floor: contrasto elevato, gerarchia calibrata,
+   niente testo gradiente, ombre morbide con offset e blur, focus ring visibili.
+   ========================================================================== */
+
+:root {
+  --pozzo-primary: #6366f1;
+  --pozzo-primary-hover: #4f46e5;
+  --pozzo-accent: #38bdf8;
+  --pozzo-accent-glow: rgba(56, 189, 248, 0.15);
+  --pozzo-bg-dark: #0b0f19;
+  --pozzo-card-dark: #131b2e;
+  --pozzo-border-dark: #1e293b;
+  --pozzo-text-main: #f8fafc;
+  --pozzo-text-muted: #94a3b8;
+  --pozzo-radius-sm: 6px;
+  --pozzo-radius-md: 12px;
+  --pozzo-radius-lg: 18px;
+  --pozzo-radius-full: 9999px;
+  --pozzo-shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --pozzo-shadow-glow: 0 0 40px -5px rgba(99, 102, 241, 0.25);
+}
+
+/* Colore di selezione testo personalizzato */
+::selection {
+  background-color: rgba(99, 102, 241, 0.35);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Layout Landing Page (a larghezza piena quando toc e nav sono nascosti)
+   -------------------------------------------------------------------------- */
+.md-main__inner:has(.hero-section) {
+  max-width: 100%;
+  margin: 0;
+}
+
+.landing-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Hero Section
+   -------------------------------------------------------------------------- */
+.hero-section {
+  padding: 4rem 1.5rem 3rem;
+  background: radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.12) 0%, rgba(11, 15, 25, 0) 70%),
+              radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.08) 0%, rgba(11, 15, 25, 0) 50%);
+  text-align: center;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.hero-release-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--pozzo-radius-full);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--pozzo-accent);
+  margin-bottom: 1.5rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.hero-release-pill:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: var(--pozzo-accent);
+}
+
+.hero-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.hero-title {
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--md-default-fg-color);
+  max-width: 900px;
+  margin: 0 auto 1.25rem;
+}
+
+.hero-subtitle {
+  font-size: clamp(1.1rem, 2vw, 1.28rem);
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+  max-width: 740px;
+  margin: 0 auto 2.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   CTA Download Buttons
+   -------------------------------------------------------------------------- */
+.hero-cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 2rem;
+}
+
+.btn-download-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  background-color: var(--pozzo-primary);
+  color: #ffffff !important;
+  padding: 0.95rem 2rem;
+  border-radius: var(--pozzo-radius-md);
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  min-width: 290px;
+}
+
+.btn-download-primary:hover {
+  background-color: var(--pozzo-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
+.btn-download-primary:active {
+  transform: translateY(0);
+}
+
+.btn-download-primary svg {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.btn-download-meta {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.btn-download-title {
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.btn-download-sub {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.hero-cta-secondary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.hero-cta-secondary-row a {
+  color: var(--md-default-fg-color--light);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.hero-cta-secondary-row a:hover {
+  color: var(--pozzo-primary);
+}
+
+.hero-os-detected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--md-default-fg-color--lightest);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--pozzo-radius-full);
+  font-size: 0.8rem;
+}
+
+/* --------------------------------------------------------------------------
+   Mockup Finestra App Hero
+   -------------------------------------------------------------------------- */
+.hero-mockup-wrapper {
+  max-width: 1040px;
+  margin: 2.5rem auto 0;
+  border-radius: var(--pozzo-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--pozzo-shadow-soft), var(--pozzo-shadow-glow);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: #111625;
+}
+
+.mockup-window-header {
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  background: #0f1422;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mockup-window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.mockup-window-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #334155;
+  display: inline-block;
+}
+
+.mockup-window-dots span:nth-child(1) { background: #ef4444; }
+.mockup-window-dots span:nth-child(2) { background: #eab308; }
+.mockup-window-dots span:nth-child(3) { background: #22c55e; }
+
+.mockup-window-title {
+  margin: 0 auto;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.hero-mockup-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Feature Sections (Asimmetriche e Visuali)
+   -------------------------------------------------------------------------- */
+.feature-showcase-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3.5rem;
+  padding: 4rem 0;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (min-width: 860px) {
+  .feature-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 3.5rem;
+  }
+
+  .feature-row.reverse {
+    direction: rtl;
+  }
+
+  .feature-row.reverse > * {
+    direction: ltr;
+  }
+}
+
+.feature-content h2 {
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+  letter-spacing: -0.01em;
+}
+
+.feature-content p {
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1.25rem;
+}
+
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.feature-tag-pill {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--pozzo-radius-full);
+  background: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color);
+  font-weight: 500;
+}
+
+.feature-media-frame {
+  border-radius: var(--pozzo-radius-md);
+  overflow: hidden;
+  box-shadow: var(--pozzo-shadow-soft);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-fg-color--lightest);
+  transition: transform 0.2s ease;
+}
+
+.feature-media-frame:hover {
+  transform: scale(1.015);
+}
+
+.feature-media-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Quick Highlights Bar
+   -------------------------------------------------------------------------- */
+.highlights-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  margin: 2rem 0;
+}
+
+.highlight-item {
+  padding: 1.25rem;
+  background: var(--md-default-fg-color--lightest);
+  border-radius: var(--pozzo-radius-md);
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.highlight-item:hover {
+  border-color: var(--pozzo-primary);
+}
+
+.highlight-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 0.75rem;
+  color: var(--pozzo-accent);
+}
+
+.highlight-item h3 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.highlight-item p {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Final Call To Action Banner
+   -------------------------------------------------------------------------- */
+.final-cta-banner {
+  text-align: center;
+  padding: 4.5rem 2rem;
+  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, rgba(11, 15, 25, 0.2) 80%);
+  border-radius: var(--pozzo-radius-lg);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  margin: 4rem 0 2rem;
+}
+
+.final-cta-banner h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  margin: 0 0 1rem;
+}
+
+.final-cta-banner p {
+  font-size: 1.15rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 620px;
+  margin: 0 auto 2rem;
+}
+
+.final-cta-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: transparent;
+  color: var(--md-default-fg-color) !important;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  padding: 0.85rem 1.75rem;
+  border-radius: var(--pozzo-radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--pozzo-primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Download Center Styles (download.md)
+   -------------------------------------------------------------------------- */
+.download-page-header {
+  text-align: center;
+  padding: 2.5rem 0 2rem;
+}
+
+.download-page-header h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.download-platforms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.75rem;
+  margin: 2.5rem 0;
+}
+
+.platform-card {
+  background: var(--md-default-fg-color--lightest);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: var(--pozzo-radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.platform-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--pozzo-primary);
+  box-shadow: var(--pozzo-shadow-soft);
+}
+
+.platform-card.recommended-os-card {
+  border: 2px solid var(--pozzo-primary);
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.06) 0%, var(--md-default-fg-color--lightest) 100%);
+}
+
+.recommended-os-badge {
+  display: none;
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  background: var(--pozzo-primary);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.75rem;
+  border-radius: var(--pozzo-radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.platform-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.platform-card-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  color: var(--pozzo-accent);
+}
+
+.platform-card-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.platform-card-arch {
+  font-size: 0.85rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.platform-downloads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1.5rem 0;
+}
+
+.platform-download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: var(--pozzo-radius-sm);
+  text-decoration: none;
+  color: var(--md-default-fg-color);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.15s ease;
+}
+
+.platform-download-item:hover {
+  border-color: var(--pozzo-primary);
+  background: rgba(99, 102, 241, 0.05);
+  transform: translateX(3px);
+}
+
+.platform-download-item .file-size-badge {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  font-weight: 400;
+}
+
+.platform-card-meta {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  font-size: 0.85rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Box note informative */
+.download-notes-box {
+  margin: 3rem 0;
+  padding: 1.5rem 2rem;
+  background: var(--md-default-fg-color--lightest);
+  border-radius: var(--pozzo-radius-md);
+  border: 1px solid var(--md-default-fg-color--lighter);
+}
+
+.download-notes-box h3 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}

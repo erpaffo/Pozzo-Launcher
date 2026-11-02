@@ -27,13 +27,19 @@ HEADER = r"""
 \setkeys{Gin}{width=\linewidth,keepaspectratio}
 """
 
+SKIP_PDF = {"index.md", "download.md"}
+
 
 def pages(nav) -> list[str]:
     """File del nav di mkdocs, in ordine (le sezioni si appiattiscono)."""
     out = []
     for item in nav:
         for value in item.values():
-            out += [value] if isinstance(value, str) else pages(value)
+            if isinstance(value, str):
+                if value not in SKIP_PDF:
+                    out.append(value)
+            else:
+                out += pages(value)
     return out
 
 

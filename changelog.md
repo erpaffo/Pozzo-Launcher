@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0 (2026-11-02)
+### Aggiunto
+
+- Sito ufficiale su GitHub Pages con landing page del prodotto, rilevamento automatico del sistema operativo e download diretto da GitHub Releases
+
+### Cambiato
+
+- Separazione chiara nell'header tra il sito ufficiale per il download (Home, Download) e la documentazione tecnica (Guida, Primi passi, Assistenza)
 ## 0.12.1 (2026-11-02)
 
 ### Aggiunto
