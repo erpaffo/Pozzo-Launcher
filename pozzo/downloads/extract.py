@@ -354,17 +354,25 @@ def _run7z(cmd: list, cancelled, on_progress=None, total=0) -> tuple[int, str]:
 
     t = threading.Thread(target=watch, daemon=True)
     t.start()
-    tail, last = "", -1
+    tail, last, carry = "", -1, ""
     try:
         while b := proc.stdout.read1(4096):
-            tail = (tail + b.decode("utf-8", "replace"))[-4000:]
-            # la riga e' «NN% n nome-del-file» e poi viene cancellata con spazi: con un nome lungo la percentuale
-            # e' molto prima della fine, quindi si cerca l'ultima in tutto il pezzo letto
-            if on_progress and total and (m := re.findall(r"(\d{1,3})%", tail)):
-                pct = min(int(m[-1]), 100)
+            text = b.decode("utf-8", "replace")
+            tail = (tail + text)[-4000:]
+            if not (on_progress and total):
+                continue
+            # la riga e' «NN% n nome-del-file» e poi viene cancellata con spazi (con un nome lungo la percentuale e'
+            # lontana dalla fine). Piu' percentuali possono arrivare in una lettura sola: si riportano tutte, in ordine;
+            # `carry` tiene la coda senza «%» per un numero spezzato tra due letture
+            buf = carry + text
+            end = 0
+            for m in re.finditer(r"(\d{1,3})%", buf):
+                end = m.end()
+                pct = min(int(m[1]), 100)
                 if pct != last:
                     last = pct
                     on_progress(total * pct // 100, total)
+            carry = buf[end:][-3:]
         proc.wait()
     finally:
         stop.set()

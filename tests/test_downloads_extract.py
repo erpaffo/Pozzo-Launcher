@@ -426,3 +426,9 @@ def test_avanzamento_7z_con_nome_lungo(monkeypatch):
     seen = []
     E._run7z(["7z"], lambda: False, lambda done, total: seen.append(done * 100 // total), 1000)
     assert seen == [24, 61]
+
+    # macOS: piu' percentuali nella stessa lettura (prima si teneva solo l'ultima) e un numero spezzato tra due letture
+    chunks[:] = [b"\x08\x08\x08 10%\x08\x08\x08\x08 50%", b"\x08\x08\x08\x08 7", b"5% 1 a.bin", b"\x08" * 12 + b"100%"]
+    seen.clear()
+    E._run7z(["7z"], lambda: False, lambda done, total: seen.append(done * 100 // total), 1000)
+    assert seen == [10, 50, 75, 100]
