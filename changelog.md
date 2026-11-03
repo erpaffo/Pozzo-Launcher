@@ -19,6 +19,11 @@
 - «Aggiungi un gioco o un'applicazione» dava «Internal Server Error» con una libreria costruita da una versione precedente (colonne `md5`/`sha1` mancanti): ora le colonne mancanti si aggiungono da sole
 - Riaprendo il launcher subito dopo averlo chiuso, il server del telefono e della sincronizzazione aspetta che la porta si liberi invece di restare spento con l'errore «[Errno 10048]»
 
+### Migliorato
+
+- Gli errori imprevisti dicono subito che errore sono, invece di «Internal Server Error»: il messaggio riporta la causa (es. «Errore imprevisto (RuntimeError: …)»), e quando la riconosce spiega anche che cosa fare (database di una versione diversa → ricostruisci la libreria, file o cartella non trovati, permesso negato, disco pieno, rete non raggiungibile). La risposta dell'API include anche il tipo (`error`) e il punto del codice (`where`) per le segnalazioni; la traccia completa resta nel registro
+- Gli errori che nessuno gestiva (una richiesta che fallisce senza che il pulsante lo dica) ora compaiono in un avviso; se il launcher non risponde, il messaggio lo dice invece di «Failed to fetch»
+
 ## 0.14.1 (2026-11-03)
 
 ### Aggiunto

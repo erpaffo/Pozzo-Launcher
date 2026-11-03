@@ -31,6 +31,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .. import config as C
+from ..errors import explain as explain_error, where as error_where
 from .. import ownership as OW
 from .. import profilecfg as PC
 from .. import platforms as P
@@ -317,7 +318,7 @@ def _players_label(v, platform: str = "") -> str:
 # codice stabile per ogni errore: i client esterni di /api/v1 lo usano per capire il caso senza leggere il testo
 ERROR_CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found",
                405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "invalid_request",
-               429: "too_many_requests", 500: "internal_error", 503: "unavailable"}
+               429: "too_many_requests", 500: "internal_error", 502: "bad_gateway", 503: "unavailable", 504: "timeout"}
 
 
 def create_app(cfg) -> FastAPI:
@@ -345,6 +346,14 @@ def create_app(cfg) -> FastAPI:
         detail = exc.detail or http.HTTPStatus(exc.status_code).phrase
         return JSONResponse({"detail": detail, "code": ERROR_CODES.get(exc.status_code, "error")},
                             status_code=exc.status_code, headers=getattr(exc, "headers", None))
+
+    @app.exception_handler(Exception)
+    async def _unhandled(request, exc):
+        """Eccezione che nessuno ha gestito: si dice che errore e' e dove e' nato, invece di «Internal Server Error».
+        Starlette la rilancia dopo la risposta, quindi finisce comunque nel registro con la traccia completa."""
+        status, detail = explain_error(exc)
+        return JSONResponse({"detail": detail, "code": ERROR_CODES.get(status, "internal_error"),
+                             "error": type(exc).__name__, "where": error_where(exc)}, status_code=status)
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request, exc):

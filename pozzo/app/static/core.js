@@ -351,13 +351,31 @@ document.addEventListener("click", (e) => {
 async function api(path, opts = {}) {
   const init = { method: opts.method || "GET", headers: { "Content-Type": "application/json" } };
   if (opts.body !== undefined) { init.body = JSON.stringify(opts.body); init.method = opts.method || "POST"; }
-  const r = await fetch(path, init);
+  let r;
+  try { r = await fetch(path, init); }
+  catch { throw new Error("Pozzo Launcher non risponde: l'app è stata chiusa o si sta riavviando?"); }  // fetch dice solo «Failed to fetch»
   if (!r.ok) {
-    let m = r.statusText;
+    let m = r.statusText || `Errore ${r.status}`;
     try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
     throw new Error(m);
   }
   return r.json();
+}
+
+/* Errori che nessuno ha gestito (una promessa rifiutata, un'eccezione in un gestore): si dicono subito invece di restare muti.
+ * Lo stesso errore ripetuto si mostra una volta ogni 5 secondi. */
+if (typeof window !== "undefined" && window.addEventListener) {
+  let lastErr = "", lastAt = 0;
+  const sayError = (m) => {
+    m = String(m || "").trim();
+    // «Script error.» e ResizeObserver sono rumore del browser: non dicono nulla di utile
+    if (!m || /^Script error\.?$|ResizeObserver/.test(m) || (m === lastErr && Date.now() - lastAt < 5000)) return;
+    lastErr = m; lastAt = Date.now();
+    console.error(m);
+    if (typeof toast === "function") toast(m, true);
+  };
+  window.addEventListener("unhandledrejection", (e) => sayError(e.reason && e.reason.message || e.reason));
+  window.addEventListener("error", (e) => sayError(e.message));
 }
 
 /** Decodifica la risposta compatta di /api/library in oggetti comodi da usare. */

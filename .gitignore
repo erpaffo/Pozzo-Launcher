@@ -39,9 +39,14 @@ docs/TODO.md
 # manuale generato (sito MkDocs e PDF)
 site/
 docs/PozzoLauncher-manuale.pdf
-release.*
+/release.*
 
+# agenti e strumenti dell'editor (restano solo in locale)
 .agent/
+.github/agents/
+.github/skills/
+.github/hooks/
+.impeccable/
 docs/PARALLEL.md
 docs/changelog.d/
 *.csv
