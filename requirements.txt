@@ -4,6 +4,7 @@ rapidfuzz>=3
 beautifulsoup4>=4.12  # store online type_a/type_b e «Link → Store»
 # frontend
 fastapi>=0.110
+python-multipart>=0.0.9  # upload del file .torrent (File/Form di FastAPI): senza, create_app non parte
 uvicorn[standard]>=0.29
 pillow>=10
 pywebview>=5
