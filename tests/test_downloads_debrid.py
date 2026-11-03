@@ -167,7 +167,10 @@ def test_rotte(tmp):
         assert c.post("/api/downloads/resume-all").json() == {"ok": True}
         r = c.get(f"/api/downloads/{a}/log").json()
         assert r["lines"][0]["msg"].startswith("Aggiunto (http)") and r["n"] == len(r["lines"]) + r["from"] and r["from"] == 0
-        assert c.get(f"/api/downloads/{a}/log", params={"after": r["n"]}).json()["lines"] == []
+        # il download puo' scrivere altre righe mentre si legge: si controlla che `after` riparta dalla riga giusta
+        r2 = c.get(f"/api/downloads/{a}/log", params={"after": r["n"]}).json()
+        full = c.get(f"/api/downloads/{a}/log").json()
+        assert r2["from"] == r["n"] and full["lines"][r["n"] - full["from"]:][:len(r2["lines"])] == r2["lines"]
         assert "log_n" in c.get("/api/downloads").json()["tasks"][0] and "logs" not in c.get("/api/downloads").json()["tasks"][0]
         assert c.get("/api/downloads/nessuno/log").status_code == 404 and c.post("/api/downloads/nessuno/log/clear").status_code == 404
         assert c.post(f"/api/downloads/{a}/log/clear").json() == {"ok": True}

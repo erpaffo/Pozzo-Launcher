@@ -31,6 +31,9 @@ MAX_PER_CALL = 25         # giochi passati a on_new in una volta
 MAX_DEPTH = 6  # profondita' massima della scansione per le console non dir_games
 FULL_EVERY = 10  # ogni quanti passaggi si rilegge tutto anche se i mtime delle cartelle non sono cambiati
 MAX_BACKOFF = 600.0
+# margine (s) sul confronto delle date: exFAT e condivisioni di rete arrotondano il mtime a 1-2 secondi, quindi un
+# file copiato subito dopo la lettura lascerebbe la cartella con la stessa data e non verrebbe visto
+MTIME_MARGIN = 2.0
 _TEMP_SUFFIX = (".part", ".crdownload", ".tmp", ".!qb")
 
 __all__ = ["RomWatcher", "settings_of", "LIGHT_MAX", "DEFAULT_POLL", "DEFAULT_DEBOUNCE"]
@@ -138,6 +141,7 @@ class _Folder:
         self.paths: dict[str, Path] = {}
         self.seen: set[str] = set()  # voci gia' riportate (o presenti alla base)
         self.since: float | None = None  # inizio attesa (None = nulla in sospeso)
+        self.at_ns = 0  # quando l'abbiamo letta (per MTIME_MARGIN)
         self.last_change = 0.0
         self.fails = 0
         self.retry_at = 0.0
@@ -259,6 +263,7 @@ class RomWatcher:
         return done
 
     def _baseline(self, f: _Folder) -> None:
+        f.at_ns = time.time_ns()
         try:
             f.snap, f.dirs, f.paths = _scan(f.p, f.path)
         except OSError:
@@ -267,8 +272,10 @@ class RomWatcher:
         f.seen = set(f.snap)
 
     def _unchanged(self, f: _Folder) -> bool:
+        # vale solo se la data e' vecchia abbastanza da non poter essere stata scritta dopo la nostra lettura
+        limit = f.at_ns - int(MTIME_MARGIN * 1e9)
         try:
-            return bool(f.dirs) and all(os.stat(d).st_mtime_ns == m for d, m in f.dirs.items())
+            return bool(f.dirs) and all(m <= limit and os.stat(d).st_mtime_ns == m for d, m in f.dirs.items())
         except OSError:
             return False
 
@@ -277,6 +284,7 @@ class RomWatcher:
         now = self.clock()
         if f.since is None and not full and self._unchanged(f):
             return False
+        f.at_ns = time.time_ns()
         try:
             new, dirs, f.paths = _scan(f.p, f.path)
         except OSError:

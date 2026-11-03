@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import threading
-import time
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException, Request
@@ -16,12 +15,12 @@ def build_router(ctx) -> APIRouter:
 
     # ------------------------------------------------------------ sincronizzazione tra PC
     def _sync_loop():
-        time.sleep(15)  # dopo l'avvio, senza rallentarlo
-        while True:
+        delay = 15  # dopo l'avvio, senza rallentarlo
+        while not ctx.stop.wait(delay):  # esce all'arresto, prima che i database si chiudano
             c = SY.conf(cfg)
             if c.get("folder") or c.get("peers"):
                 sync.run()
-            time.sleep(SY.INTERVAL)
+            delay = SY.INTERVAL
 
     def _sync_state():
         c = SY.conf(cfg)
