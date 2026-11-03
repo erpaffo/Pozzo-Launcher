@@ -168,15 +168,15 @@
     {
       "id": "steamgriddb",
       "name": "SteamGridDB",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Pozzo Launcher",
       "description": "Fonte di copertine (verticali), sfondi (hero) e logo da SteamGridDB, per i giochi a cui le altre fonti non le hanno trovate. Serve una chiave gratuita di steamgriddb.com.",
       "min_app": "0.7.1",
       "base": "steamgriddb/",
       "files": {
-        "backend.py": "db709a541b6e5eba4ec0b3b572794583411bc5e105637af9d7298066527df3c0",
+        "backend.py": "db52d953507281852773bcef42aae244d9fe83355cca5449d94c9cefc9143fb0",
         "frontend.js": "b2db9476220602938fe6e094f857a004f345b9cd2f72cb31a11b62561507cdfc",
-        "plugin.toml": "ba643fd447eeb6c2955dec21af2c0a205a896c217e0c64ab602880e4a69c69be"
+        "plugin.toml": "b02d1cc4288d3cc5138ad05dfbdbe8b6c3721b4c26157906e3d73c568b9fa0cb"
       }
     }
   ]

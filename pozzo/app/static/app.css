@@ -426,6 +426,21 @@ table.emu td.num.warn { color: var(--warn); }
 .theme-card.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .plugin-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .small-dlg { width: min(560px, 92vw); }
+/* immagini del gioco: una casella per tipo, quella scelta evidenziata */
+.md-dlg { width: min(760px, 94vw); }
+.md-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.md-tile { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.md-tile:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.md-tile.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg-3)); }
+.md-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.md-img { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: var(--radius-sm); background: var(--bg); overflow: hidden; }
+.md-img img { width: 100%; height: 100%; object-fit: contain; }
+.md-cap { display: flex; flex-direction: column; font-size: 13px; line-height: 1.3; }
+.md-cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; max-height: 220px; overflow-y: auto; }
+.md-cands button { padding: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); cursor: pointer; aspect-ratio: 2 / 3; overflow: hidden; }
+.md-cands button:hover, .md-cands button:focus-visible { border-color: var(--accent); outline: none; }
+.md-cands img { width: 100%; height: 100%; object-fit: cover; }
+.md-dlg.drop .dlg-body { outline: 2px dashed var(--accent); outline-offset: -6px; }
 .lbl-field { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; font-size: 13px; color: var(--muted); }
 .lbl-field .field { color: var(--text); }
 .row.tight { margin: 0; }

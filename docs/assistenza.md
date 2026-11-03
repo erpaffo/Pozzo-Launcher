@@ -40,7 +40,7 @@ Se copi una ROM in una cartella di console mentre l'app è aperta, compare da so
 **Risposta:** Pozzo Launcher identifica i giochi tramite una combinazione di firme digitali (CRC32, MD5, SHA-1 del file o della partizione) e pulizia intelligente del nome del file:
 - **Verifica il nome del file**: Nomi puliti come `Pokemon - Versione Rubino.gba` o codici scena No-Intro vengono identificati al primo colpo. Nomi con caratteri insoliti o abbreviazioni criptiche possono fallire.
 - **Formati compressi**: I file `.zip` e `.7z` sono supportati per le console classiche. Per Switch sono supportati `.nsp`, `.xci` e `.nsz`.
-- **Riprova la ricerca manuale**: Clicca con il tasto destro sul gioco e seleziona **🖼 Cerca immagini…**: potrai cercare su SteamGridDB o incollare direttamente l'URL di un'immagine trovata su Internet.
+- **Riprova la ricerca manuale**: Clicca con il tasto destro sul gioco e seleziona **🖼 Immagini del gioco…**: potrai caricare un'immagine dal PC, sceglierne una da SteamGridDB o incollare l'URL di un'immagine trovata su Internet.
 - **Consulta la vista ? Senza dati**: Nella barra laterale, clicca su **? Senza dati** per vedere tutti i giochi che necessitano di una verifica e avviare **⟳ Cerca dati mancanti** solo per loro.
 
 ![La vista Senza dati: raggruppa tutti i giochi che richiedono attenzione o metadati manuali](images/libreria-senza-dati.jpg)

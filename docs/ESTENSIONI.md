@@ -415,7 +415,7 @@ non parte (WinError 448). La release contiene solo lo store.
 | **Limite di tempo** | notifica quando superi X ore al giorno o a settimana (del profilo attivo); è un avviso, non chiude il gioco |
 | **Obiettivi personali** | obiettivi a periodo (giochi finiti, ore, giorni di gioco), serie di giorni consecutivi e distintivi |
 | **Riepilogo annuale** | il tuo anno in giochi (ore, più giocati, console, mese) con un'immagine da salvare |
-| **SteamGridDB** | fonte di copertine verticali, sfondi e logo mancanti; chiave gratuita in Impostazioni › SteamGridDB. Alimenta anche **🖼 Cerca immagini…** del menu del tasto destro (candidati da scegliere per il singolo gioco) |
+| **SteamGridDB** | fonte di copertine verticali, sfondi e logo mancanti; chiave gratuita in Impostazioni › SteamGridDB. Alimenta anche **🖼 Immagini del gioco…** del menu del tasto destro (candidati da scegliere per il singolo gioco) |
 | **Calendario uscite** | uscite future dei giochi in lista desideri e dei prossimi titoli dei tuoi generi, da RAWG (usa la chiave di Impostazioni › Fonti) |
 
 **Store Minerva + Switch** tiene i preset in `PRESETS` (`backend.py`): per aggiungerne altri basta una riga

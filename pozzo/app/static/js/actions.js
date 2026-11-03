@@ -137,7 +137,7 @@ function openCtx(e, g) {
   if (g.store !== "online") rows.push({ l: "▶ Gioca", f: () => play(g.id) });
   rows.push({ l: "Dettagli", f: () => openDetail(g.id) });
   if (!g.store) rows.push({ l: "📂 Mostra nella cartella", f: () => api(`/api/game/${g.id}/open-folder`, { body: {} }) });
-  rows.push({ l: "🖼 Cerca immagini…", f: () => openMediaPick(g) });
+  rows.push({ l: "🖼 Immagini del gioco…", f: () => openMediaPick(g) });
   if (g.store !== "online") rows.push({ l: "🔗 Applicazioni abbinate…", f: () => openProfile(g) });
   if (g.store && !["online", "manual"].includes(g.store)) {
     if (!g.installed) rows.push({ l: "⬇ Installa", f: () => installGame(g.id) });
@@ -207,24 +207,104 @@ function googleImages() {
   $("#md-google").href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`;
 }
 
-function openMediaPick(g) {
+/* ---- immagini del gioco: per tipo, quelle delle fonti e quelle scelte a mano (file dal PC o indirizzo) */
+let MDK = null;  // risposta di GET /api/game/{id}/media
+
+async function openMediaPick(g, kind = "cover") {
   MD = g;
+  MDK = null;
   $("#md-game").textContent = `— ${g.title}`;
   $("#md-q").value = g.title;
   $("#md-url").value = "";
+  $("#md-tiles").innerHTML = `<p class="muted small">Carico le immagini…</p>`;
   googleImages();
   $("#media-dlg").showModal();
+  try { MDK = await api(`/api/game/${g.id}/media`); } catch (e) { return toast(e.message, true); }
+  renderMedia(kind);
+}
+
+function renderMedia(kind) {
+  if (!MDK) return;
+  const sel = $("#md-kind");
+  if (sel.options.length !== MDK.kinds.length) sel.innerHTML = MDK.kinds.map((k) => `<option value="${k.kind}">${esc(k.label)}</option>`).join("");
+  sel.value = kind;
+  const t = Date.now();  // stesso indirizzo /img/… con un file nuovo: si forza il ricaricamento
+  $("#md-tiles").innerHTML = MDK.kinds.map((k) => `<button type="button" class="md-tile${k.kind === kind ? " on" : ""}" data-kind="${k.kind}" aria-pressed="${k.kind === kind}">
+    <span class="md-img">${k.url ? `<img src="${k.url}?w=300&t=${t}" alt="" loading="lazy">` : `<span class="muted small">Nessuna</span>`}</span>
+    <span class="md-cap">${esc(k.label)}<span class="muted small">${k.custom ? "scelta da te" : k.source ? "dalle fonti" : "—"}</span></span></button>`).join("");
+  const cur = MDK.kinds.find((k) => k.kind === kind);
+  $("#md-reset").hidden = !cur?.custom;
+  $("#md-reset").textContent = cur?.source ? "↺ Torna all'originale" : "🗑 Togli";
+  sgdbCands(kind);
+}
+
+/* candidati di SteamGridDB per il tipo scelto, se l'estensione c'e' e ha la chiave (risultati tenuti per gioco e tipo) */
+const SGDB = { cache: new Map(), off: false };
+async function sgdbCands(kind) {
+  const box = $("#md-sgdb"), g = MD;
+  if (SGDB.off || !g) { box.hidden = true; return; }
+  const ck = `${g.id}:${kind}`;
+  let r = SGDB.cache.get(ck);
+  if (!r) {
+    box.hidden = false;
+    $("#md-sgdb-msg").textContent = "Cerco su SteamGridDB…";
+    $("#md-cands").innerHTML = "";
+    try { r = await api(`/plugin-api/steamgriddb/cerca?q=${encodeURIComponent($("#md-q").value.trim() || g.title)}&kind=${kind}`); }
+    catch (e) {
+      // estensione non installata (404): la sezione sparisce; chiave mancante o rete: si dice perche'
+      if (/not found/i.test(e.message)) { SGDB.off = true; box.hidden = true; return; }
+      r = { error: e.message, items: [] };
+    }
+    SGDB.cache.set(ck, r);
+  }
+  if (MD !== g || $("#md-kind").value !== kind) return;  // nel frattempo si e' scelto altro
+  box.hidden = false;
+  $("#md-sgdb-msg").textContent = r.error || (r.items.length ? `Da SteamGridDB${r.game ? ` («${r.game}»)` : ""}: un clic per usarla` : "SteamGridDB non ha immagini di questo tipo per il gioco");
+  const img = (u) => /^https:\/\/cdn2\.steamgriddb\.com\//.test(u) ? `/remote-img?u=${encodeURIComponent(u)}` : u;
+  $("#md-cands").innerHTML = r.items.map((i) => `<button type="button" data-url="${esc(i.url)}" title="${i.w && i.h ? `${i.w}×${i.h}` : ""}"><img src="${esc(img(i.thumb))}" alt="" loading="lazy"></button>`).join("");
+}
+
+async function mediaChanged(r, msg) {
+  MDK = r;
+  renderMedia($("#md-kind").value);
+  toast(msg);
+  const g = MD;
+  await reload(true);
+  if (S.detail?.id === g.id) openDetail(g.id);
 }
 
 async function useMedia(url) {
   const g = MD;
   if (!g || !/^https?:\/\//i.test(url || "")) return toast("Serve un indirizzo di immagine (http o https)", true);
-  try { await api(`/api/game/${g.id}/media`, { body: { kind: $("#md-kind").value, url } }); }
+  let r;
+  try { r = await api(`/api/game/${g.id}/media`, { body: { kind: $("#md-kind").value, url } }); }
   catch (e) { return toast(e.message, true); }
-  $("#media-dlg").close();
-  toast("Immagine salvata");
-  await reload(true);
-  if (S.detail?.id === g.id) openDetail(g.id);
+  $("#md-url").value = "";
+  await mediaChanged(r, "Immagine salvata");
+}
+
+async function uploadMedia(file) {
+  const g = MD;
+  if (!g || !file) return;
+  if (!/^image\//.test(file.type || "image/")) return toast("Serve un file immagine (PNG, JPG, GIF, WebP, BMP)", true);
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch(`/api/game/${g.id}/media/${$("#md-kind").value}/file`, { method: "POST", body: fd });
+  if (!r.ok) {
+    let m = r.statusText;
+    try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
+    return toast(m, true);
+  }
+  await mediaChanged(await r.json(), "Immagine caricata");
+}
+
+async function resetMedia() {
+  const g = MD;
+  if (!g) return;
+  let r;
+  try { r = await api(`/api/game/${g.id}/media/${$("#md-kind").value}`, { method: "DELETE" }); }
+  catch (e) { return toast(e.message, true); }
+  await mediaChanged(r, "Immagine scelta tolta");
 }
 
 /* ---- incolla una cartella per una console (o per i giochi PC) e cerca solo i giochi nuovi */

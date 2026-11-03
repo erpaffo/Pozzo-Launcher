@@ -140,6 +140,34 @@ def test_fine_gioco_togli_presenza(tmp_path):
     print("ok  fine partita: la presenza viene tolta")
 
 
+def test_party_in_activity():
+    p = {"id": "room-1", "size": [2, 4]}
+    assert D.activity("Mario", party=p)["party"] == p
+    assert "party" not in D.activity("Mario"), D.activity("Mario")
+    print("ok  activity: party incluso solo se fornito")
+
+
+def test_set_party_durante_gioco(tmp_path):
+    cfg, svc, saved, ch = make_service(tmp_path, {"enabled": True, "client_id": "1"})
+    svc.game_started({"key": "snes/Mario", "title": "Mario"})
+    svc.set_party({"id": "room-1", "size": [2, 4]})
+    act = ch.activities()[-1]
+    assert act["party"] == {"id": "room-1", "size": [2, 4]}, act
+    assert "netplay" in act["state"], act
+    print("ok  set_party durante il gioco: activity con party e «netplay»")
+
+
+def test_fine_gioco_azzera_party(tmp_path):
+    cfg, svc, saved, ch = make_service(tmp_path, {"enabled": True, "client_id": "1"})
+    svc.game_started({"key": "snes/Mario", "title": "Mario"})
+    svc.set_party({"id": "room-1", "size": [2, 4]})
+    svc.game_stopped({"key": "snes/Mario", "title": "Mario"})
+    assert svc.party is None
+    svc.game_started({"key": "snes/Mario", "title": "Mario"})
+    assert "party" not in ch.activities()[-1], ch.activities()[-1]
+    print("ok  fine partita: il party viene azzerato")
+
+
 def test_spento_non_contatta_discord(tmp_path):
     cfg, svc, saved, ch = make_service(tmp_path, {"enabled": False, "client_id": "1"})
     svc.game_started({"key": "snes/Mario", "title": "Mario"})
@@ -184,9 +212,10 @@ if __name__ == "__main__":
     test_frame_e_lettura()
     test_percorsi_canali()
     test_activity_pulita()
+    test_party_in_activity()
     for fn in (test_handshake_e_presenza, test_tempo_disattivabile, test_fine_gioco_togli_presenza,
                test_spento_non_contatta_discord, test_salvataggio_impostazioni, test_senza_id_errore_chiaro,
-               test_discord_non_aperto):
+               test_discord_non_aperto, test_set_party_durante_gioco, test_fine_gioco_azzera_party):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
             fn(Path(t))
     print("TUTTI I TEST OK")

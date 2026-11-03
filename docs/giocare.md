@@ -116,6 +116,41 @@ non si possono mostrare, perché Discord accetta solo asset caricati sull'applic
 
 ![Impostazioni › Integrazioni: avvisi di Windows e presenza su Discord](images/impostazioni-integrazioni.jpg)
 
+## Giocare con un amico
+
+Con RetroArch si può giocare in rete con un amico, nello stesso gioco (netplay, due giocatori). Pozzo non ha un server:
+crea un **codice invito** che mandi all'amico su Discord, WhatsApp o come preferisci.
+
+### Creare l'invito
+
+Nel dettaglio di un gioco RetroArch, **👥 Gioca con un amico** chiede il nick e l'IP del tuo PC. **Crea invito** avvia il
+gioco come host e mostra il codice, che inizia con `POZZO-`. Premi **Copia** e mandalo all'amico.
+
+### Unirsi all'invito
+
+L'amico, nella barra in alto, sceglie **Unisciti a un amico** e incolla il codice. Pozzo mostra la conferma («Entrare
+nella partita di … a …?»): alla conferma avvia lo stesso gioco e RetroArch si collega al tuo.
+
+### Cosa serve
+
+- **Stesso gioco, stessa ROM e stesso core RetroArch** sui due PC. Il gioco deve essere nella libreria anche sul PC
+  dell'amico. Se il core è diverso Pozzo lo segnala; se la ROM è diversa RetroArch non si connette.
+- La porta è la **55435**.
+- **In LAN** (stessa rete di casa) funziona direttamente con l'IP locale proposto.
+- **Su internet** c'è da fare una delle due cose:
+  - **port forwarding**: sul router dell'host si inoltra la porta 55435 verso il PC dell'host, e l'IP pubblico si scrive
+    nel campo IP;
+  - **una VPN gratuita** come Tailscale o ZeroTier: installata su entrambi i PC, dà a ciascuno un IP che resta uguale.
+    Quell'IP si sceglie nella finestra al posto dell'IP di casa.
+
+### Scadenza e limiti
+
+- Il codice scade dopo **1 ora**: dopo, si crea un invito nuovo.
+- Per ora funziona solo con **RetroArch**. Per gli altri emulatori Pozzo propone lo **Share Play** (streaming con
+  Sunshine e Moonlight), in cui l'amico gioca la tua partita da remoto.
+- Con il client Discord aperto e la presenza attiva (**Impostazioni › 🧩 Integrazioni**) il tuo profilo mostra la partita
+  come «(1 di 2)», perché RetroArch in rete gestisce due giocatori.
+
 ## Download mentre giochi
 
 In **Impostazioni › Download › Mentre giochi** si sceglie cosa fanno i download quando parte un gioco:

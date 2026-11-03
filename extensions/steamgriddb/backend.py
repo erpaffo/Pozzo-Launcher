@@ -22,8 +22,9 @@ MEDIA = {
     "fanart": ("heroes", {"types": "static"}),
     "wheel": ("logos", {"types": "static"}),
 }
-# tipo chiesto dalla finestra «Cerca immagini…» -> stesso schema; None = SteamGridDB non lo ha
-CERCA = {"cover": MEDIA["cover"], "splash": MEDIA["fanart"], "screenshot": None}
+# tipo chiesto dalla finestra «Immagini del gioco» -> stesso schema; assente = SteamGridDB non lo ha
+CERCA = {"cover": MEDIA["cover"], "fanart": MEDIA["fanart"], "hero": MEDIA["fanart"], "splash": MEDIA["fanart"],
+         "wheel": MEDIA["wheel"], "logo": MEDIA["wheel"], "icon": ("icons", {"types": "static"})}
 
 
 def best_url(items: list[dict]) -> str | None:
@@ -109,7 +110,7 @@ def register(gs):
         key = chiave(gs.cfg)
         if not key:
             raise HTTPException(400, "Serve la chiave di SteamGridDB (Impostazioni › SteamGridDB)")
-        spec = CERCA.get(str(kind), CERCA["cover"])
+        spec = CERCA.get(str(kind))
         if spec is None or not str(q).strip():
             return {"game": None, "items": []}
         path, params = spec

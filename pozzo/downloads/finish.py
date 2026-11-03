@@ -112,6 +112,8 @@ def _run(t, mgr, ctx) -> None:
             def progress(d, total):
                 pct = d * 100 // total if total else 0
                 if pct != last[0]:
+                    if pct // 10 > max(last[0], 0) // 10 and pct < 100:
+                        t.log(f"Estrazione {pct // 10 * 10}%")
                     last[0] = pct
                     t.phase = f"Estraggo {first.name}… {pct}%"
                     mgr._poke()
@@ -121,6 +123,7 @@ def _run(t, mgr, ctx) -> None:
             found = X.find_games(out[0], exts) if exts else []
             games += found
             done.append((out[0], group))
+            t.options["placed"] = str(out[0])  # «Apri cartella» porta qui, non piu' all'archivio
             t.log(f"Estratto in {out[0].name}: {len(found)} file di gioco")
         except X.ArchiveError as e:
             t.log(f"Estrazione non riuscita: {e}", "error")
@@ -166,6 +169,10 @@ def _run(t, mgr, ctx) -> None:
         t.log(f"Libreria: {res.get('error') or 'non riuscito'}", "error")
         return
     t.log("Nella libreria: " + ", ".join(Path(p).name for p in res.get("files") or []))
+    if res.get("files"):
+        t.options["placed"] = str(res["files"][0])
+        with mgr.lock:
+            mgr.store.save([t])
     if res.get("pending"):
         t.log("Il gioco e' a posto ma la libreria non si e' aggiornata in tempo: comparira' con la prossima scansione "
               "(«Cerca nuovi giochi» o aggiornamento libreria)", "warn")

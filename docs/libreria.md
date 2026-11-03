@@ -145,7 +145,7 @@ Azioni principali:
 ### Menu del tasto destro
 
 Un clic destro su un gioco apre un menu rapido, in tutte le viste (libreria, Per te, Top, statistiche e le grafiche Cinema,
-Console, Dashboard, Vetrina e Scaffali): Gioca, Dettagli, Mostra nella cartella, **🖼 Cerca immagini…**, applicazioni
+Console, Dashboard, Vetrina e Scaffali): Gioca, Dettagli, Mostra nella cartella, **🖼 Immagini del gioco…**, applicazioni
 abbinate, **⬇ Installa** e **🛒 Pagina dello store** (giochi degli store), **🖥 Collegamento sul desktop**, **📋 Copia il
 titolo**, preferiti, aggiungi a una collezione, **voto a stelle** (1-5), stato, nascondi. **Rimuovi da…** toglie il gioco dalla vista corrente (per
 esempio da «Giocati di recente», che azzera solo l'ultima partita lasciando tempo di gioco e numero di avvii) o dalle
@@ -153,10 +153,17 @@ altre categorie a cui appartiene.
 
 ### Scegliere l'immagine del gioco
 
-**🖼 Cerca immagini…** apre una finestra con i candidati di **SteamGridDB** per quel gioco: *Copertina*, *Sfondo* o
-*Schermata*. Un clic su un candidato lo salva e sostituisce l'immagine scaricata dalle fonti. Se l'estensione non è
-installata o manca la chiave, si incolla l'**indirizzo di un'immagine** (http o https) e si preme **Usa**: l'app la
-scarica e la usa per quel gioco soltanto.
+**🖼 Immagini del gioco…** (menu del tasto destro, oppure **🖼 Immagini** nella scheda del gioco) mostra una casella per
+ogni tipo di immagine: *Copertina*, *Sfondo*, *Banner*, *Logo*, *Icona*, *Schermata*… Sotto ognuna c'è da dove arriva:
+**dalle fonti** (scaricata durante lo scraping) o **scelta da te**. Scelto un tipo puoi:
+
+- **📁 Carica dal PC**: un file PNG, JPG, GIF, WebP o BMP (fino a 25 MB). Puoi anche trascinarlo nella finestra.
+- un clic su un candidato di **SteamGridDB**, se l'estensione è attiva e ha la chiave;
+- incollare l'**indirizzo di un'immagine** (http o https) e premere **Usa**: l'app la scarica. Serve l'indirizzo
+  dell'immagine, non quello della pagina che la contiene. Se il sito la blocca, salvala sul PC e caricala;
+- **↺ Torna all'originale**: toglie la tua scelta e rimette l'immagine delle fonti (o nessuna, se le fonti non l'hanno).
+
+Funziona anche per i giochi a cui le fonti non hanno trovato nulla, come Hearthstone su Battle.net.
 
 Con un solo posto da guardare, l'immagine scelta vale ovunque: griglia, scheda, Big Picture, telefono e pagina web
 esportata.

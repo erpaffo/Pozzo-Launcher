@@ -358,7 +358,9 @@ def _run7z(cmd: list, cancelled, on_progress=None, total=0) -> tuple[int, str]:
     try:
         while b := proc.stdout.read1(4096):
             tail = (tail + b.decode("utf-8", "replace"))[-4000:]
-            if on_progress and total and (m := re.findall(r"(\d{1,3})%", tail[-40:])):
+            # la riga e' «NN% n nome-del-file» e poi viene cancellata con spazi: con un nome lungo la percentuale
+            # e' molto prima della fine, quindi si cerca l'ultima in tutto il pezzo letto
+            if on_progress and total and (m := re.findall(r"(\d{1,3})%", tail)):
                 pct = min(int(m[-1]), 100)
                 if pct != last:
                     last = pct

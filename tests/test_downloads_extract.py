@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -405,3 +406,23 @@ def test_delete_archive_set_tocca_solo_il_set(tmp_path):
     assert sorted(p.name for p in tmp_path.iterdir()) == ["g.part1.rar.bak", "g.txt", "h.part1.rar"]
     assert E.delete_archive_set([tmp_path / "gia_tolto.rar"]) == 0
     assert E.delete_archive_set(v[2]) == 1 and not v[2].exists()
+
+
+def test_avanzamento_7z_con_nome_lungo(monkeypatch):
+    """7-Zip scrive «NN% 1 nome» e la cancella con spazi: con un nome lungo la percentuale va trovata lo stesso."""
+    name = "Super Long Game Name Collection (Europe) (En,Fr,De,Es,It) (Disc 1).iso"
+    chunks = [f" 24% 1 {name}".encode(), b"\r" + b" " * 80 + b"\r", f" 61% 1 {name}".encode(), b"\r" + b" " * 80 + b"\r"]
+
+    class Proc:
+        returncode = 0
+        stdout = SimpleNamespace(read1=lambda n: chunks.pop(0) if chunks else b"")
+
+        def wait(self):
+            pass
+
+        def poll(self):
+            return 0
+    monkeypatch.setattr(E.subprocess, "Popen", lambda *a, **k: Proc())
+    seen = []
+    E._run7z(["7z"], lambda: False, lambda done, total: seen.append(done * 100 // total), 1000)
+    assert seen == [24, 61]

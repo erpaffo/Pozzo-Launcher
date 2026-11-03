@@ -88,6 +88,17 @@ def test_preset_scritto_e_gioco_avviato(tmp, monkeypatch):
     assert FakeSub.sent and FakeSub.sent[0][0] == pl["exe"] and ln.state["status"] == "finished"
 
 
+def test_next_args_solo_al_prossimo_avvio(tmp, monkeypatch):
+    ln, rom, target, pl = _setup(tmp, monkeypatch)
+    ln.next_args = ["-n", "host"]
+    _go(ln, rom, pl)
+    cmd = FakeSub.sent[0]
+    assert cmd[0] == pl["exe"] and cmd[1:3] == ["-n", "host"], cmd
+    assert ln.next_args == []
+    _go(ln, rom, pl)
+    assert "-n" not in FakeSub.sent[1], FakeSub.sent[1]
+
+
 def test_preset_da_console(tmp, monkeypatch):
     ln, rom, target, pl = _setup(tmp, monkeypatch, console="quality")
     _go(ln, rom, pl)

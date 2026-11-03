@@ -98,7 +98,8 @@ async function openDetail(id) {
         + `${minerva && dlBase.length <= 1 ? "⬇ Scarica" : "🧲 Torrent"} (solo questo gioco)</button>` : "")
     : pc && !d.installed
     ? `<button class="btn primary" id="d-install" ${d.can_install ? "" : "disabled"}>⬇ Installa</button>`
-    : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ Gioca</button>`;
+    : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ Gioca</button>`
+      + (d.emulator ? `<button class="btn" id="d-party" title="Partita in rete con un amico (netplay)">👥 Gioca con un amico</button>` : "");
   const actions = GS.ui.gameActions.filter((a) => { try { return !a.when || a.when(d); } catch { return false; } });
   $("#detail-body").innerHTML = `
     <div class="d-top">
@@ -125,7 +126,8 @@ async function openDetail(id) {
       : d.emulator ? "Emulatore: " + esc(d.emulator) + (d.profile ? ` <span class="tag" title="Profilo di avvio di questo gioco">profilo</span>` : "")
       : `Nessun emulatore configurato per ${esc(d.platform_name)} — <a href="#" id="d-emu-cfg">impostazioni</a>`}
       ${!online ? `<a href="#" id="d-profile" title="${pc ? "Script prima e dopo il gioco" : "Emulatore, core, eseguibile, argomenti e script solo per questo gioco"}">⚙ Profilo di avvio</a>
-      · <a href="#" id="d-shortcut" title="Collegamento sul desktop che avvia il gioco con Pozzo Launcher">🖥 Collegamento sul desktop</a>` : ""}</div>
+      · <a href="#" id="d-shortcut" title="Collegamento sul desktop che avvia il gioco con Pozzo Launcher">🖥 Collegamento sul desktop</a>` : ""}
+      ${online ? "" : "·"} <a href="#" id="d-media" title="Copertina, sfondo, logo…: quelle delle fonti, un file dal PC o un indirizzo internet">🖼 Immagini</a></div>
     ${storePages.length ? `<div class="d-emu muted" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span>🌐 Pagine dello store:</span>
       ${storePages.map((s) => `<button class="btn" data-open="${esc(s.url)}"
@@ -688,3 +690,73 @@ function openLinkMenu(e) {
 if (typeof document !== "undefined") document.addEventListener("contextmenu", (e) => {
   if (e.target instanceof Element && openLinkMenu(e)) { e.preventDefault(); e.stopPropagation(); }
 }, true);
+
+/* ------------------------------------------------------------------ gioca con un amico (netplay) */
+/* Come api() ma conserva detail.error (il server risponde {detail:{error}} o {detail:"testo"}). */
+async function partyApi(path, body) {
+  const r = await fetch(path, { method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  let j = null; try { j = await r.json(); } catch { /* non JSON */ }
+  if (!r.ok) { const dt = j && j.detail; const e = new Error(typeof dt === "string" ? dt : (dt && dt.error) || r.statusText); e.detail = dt; throw e; }
+  return j;
+}
+const PARTY_ERR = { "core-mismatch": "Il core di RetroArch è diverso da quello dell'amico" };
+const partyMsg = (e) => PARTY_ERR[e.detail && e.detail.error] || e.message;
+
+async function openParty(d) {
+  const dlg = $("#party-dlg"), body = $("#party-body");
+  body.innerHTML = `<p class="muted">Carico…</p>`;
+  dlg.showModal();
+  let cfg = {};
+  try { cfg = await partyApi("/api/party"); } catch { /* campi vuoti */ }
+  const hosts = cfg.hosts || [];
+  body.innerHTML = `
+    <label class="lbl-field">Il tuo nome<input id="pt-nick" class="field" value="${esc(cfg.nick || "")}"></label>
+    <label class="lbl-field">Il tuo indirizzo (IP)<input id="pt-host" class="field" list="pt-hosts" value="${esc(cfg.host || hosts[0] || "")}"></label>
+    <datalist id="pt-hosts">${hosts.map((h) => `<option value="${esc(h)}">`).join("")}</datalist>
+    <label class="lbl-field">Porta<input id="pt-port" class="field" type="number" value="${esc(cfg.port || 55435)}"></label>
+    <p id="pt-out" aria-live="polite"></p>
+    <div class="row end"><button class="btn primary" id="pt-go" type="button">Crea invito</button></div>`;
+  $("#pt-go").onclick = async () => {
+    const out = $("#pt-out"), port = +$("#pt-port").value;
+    try {
+      const r = await partyApi("/api/party/invite", { key: d.key, nick: $("#pt-nick").value.trim(), host: $("#pt-host").value.trim(), port });
+      out.innerHTML = `<label class="lbl-field">Codice da mandare all'amico
+        <span class="row tight"><input id="pt-code" class="field grow" readonly value="${esc(r.code)}"><button class="btn" id="pt-copy" type="button">Copia</button></span></label>
+        <span class="muted small">L'amico deve avere la stessa ROM e lo stesso core. Fuori dalla tua rete serve aprire la porta ${esc(r.port || port)} sul router, oppure usare una VPN gratuita come Tailscale e scegliere il suo IP.</span>`;
+      $("#pt-copy").onclick = () => navigator.clipboard.writeText(r.code).then(() => toast("Codice copiato"), () => { $("#pt-code").select(); toast("Non riesco a copiare: copialo a mano", true); });
+      $("#pt-code").select();
+    } catch (e) {
+      out.textContent = e.detail && e.detail.error === "no-netplay"
+        ? `Questo emulatore (${(e.detail.emulator || d.emulator || "")}) non supporta il gioco in rete: usa Share Play (streaming)`
+        : partyMsg(e);
+    }
+  };
+}
+
+function openJoin() {
+  $("#join-code").value = ""; $("#join-msg").textContent = "";
+  const go = $("#join-go"); go.textContent = "Controlla invito"; go.onclick = joinPreview;
+  $("#join-dlg").showModal(); $("#join-code").focus();
+}
+async function joinPreview() {
+  const code = $("#join-code").value.trim(), msg = $("#join-msg"), go = $("#join-go");
+  if (!code) return;
+  try {
+    const p = await partyApi("/api/party/preview", { code });
+    if (!p.have) { msg.textContent = `Non hai ${p.title} in libreria`; return; }
+    msg.textContent = `Entrare nella partita di ${p.nick} a ${p.title}?`;
+    go.textContent = "Entra";
+    go.onclick = async () => {
+      try { await partyApi("/api/party/join", { code }); $("#join-dlg").close(); toast("Partita avviata"); }
+      catch (e) { msg.textContent = partyMsg(e); }
+    };
+  } catch (e) { msg.textContent = partyMsg(e); }
+}
+
+// in node (test) il file si carica senza DOM
+if (typeof document !== "undefined") document.addEventListener("click", (e) => {
+  const t = e.target.closest && e.target.closest("#d-party, #join-btn");
+  if (!t) return;
+  if (t.id === "join-btn") openJoin();
+  else if (S.detail) openParty(S.detail);
+});

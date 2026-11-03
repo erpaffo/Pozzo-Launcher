@@ -57,6 +57,8 @@ def build_router(ctx) -> APIRouter:
     browserdl.SHOW["fn"] = lambda: bool(mgr.settings().get("show_browser"))  # finestra del browser visibile per seguirla
     mgr.on_completed = lambda t: finish.run(t, mgr, ctx)  # estrae e mette il gioco in libreria
     mgr.start()
+    # alla chiusura: file .part chiusi e stato salvato prima dell'uscita immediata (os._exit non svuota i buffer)
+    ctx.app.router.add_event_handler("shutdown", mgr.stop)
 
     @router.post("/api/links/mirrors")
     def api_links_mirrors(body: dict = Body(...)):
@@ -222,9 +224,11 @@ def build_router(ctx) -> APIRouter:
         if not t:
             raise HTTPException(404, "Download non trovato")
         folder = Path(t.save_path)
+        # dopo l'estrazione il gioco sta altrove (cartella estratta o libreria) e l'archivio puo' non esserci piu'
+        target = next((p for p in (t.options.get("placed"), t.name and folder / t.name) if p and Path(p).exists()), None)
         if sys.platform == "win32":
-            target = folder / t.name if t.status == "completed" and (folder / t.name).exists() else None
-            subprocess.Popen(["explorer", f"/select,{target}"] if target else ["explorer", str(folder)])
+            # "/select," separato dal percorso: attaccati, con gli spazi Python li quota insieme ed Explorer apre Documenti
+            subprocess.Popen(["explorer", "/select,", str(target)] if target else ["explorer", str(folder)])
         else:
             subprocess.Popen(["xdg-open", str(folder)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # niente shell: il percorso viene dall'utente
         return {"ok": True}

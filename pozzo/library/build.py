@@ -835,6 +835,12 @@ def update_manual(cfg) -> bool:
         cache.close()
     db = sqlite3.connect(dest)
     try:
+        # libreria costruita da una versione precedente: le colonne nuove (es. md5, sha1) si aggiungono qui,
+        # la prossima ricostruzione completa ricrea comunque la tabella
+        have = {r[1] for r in db.execute("PRAGMA table_info(games)")}
+        for col in re.search(r"games\((.*?)\) VALUES", INSERT_GAME).group(1).split(","):
+            if col.strip() not in have:
+                db.execute(f"ALTER TABLE games ADD COLUMN {col.strip()}")
         db.execute("DELETE FROM collection_games WHERE key IN (SELECT key FROM games WHERE store='manual')")
         db.execute("DELETE FROM games WHERE store='manual'")
         db.execute("CREATE TABLE IF NOT EXISTS game_owners(key TEXT, owner TEXT, PRIMARY KEY(key, owner))")

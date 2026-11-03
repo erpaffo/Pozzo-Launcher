@@ -170,6 +170,14 @@ class UserData:
     def set_media(self, key: str, kind: str, path: str):
         self._exec("INSERT OR REPLACE INTO media_overrides VALUES(?,?,?)", (key, kind, path))
 
+    def clear_media(self, key: str, kind: str):
+        """Torna all'immagine delle fonti (se c'e')."""
+        self._exec("DELETE FROM media_overrides WHERE key=? AND kind=?", (key, kind))
+
+    def media_keys(self, kind: str) -> set[str]:
+        """Giochi con un'immagine di questo tipo scelta dall'utente (per la griglia: una query sola)."""
+        return {r[0] for r in self._q("SELECT key FROM media_overrides WHERE kind=?", (kind,))}
+
     # ------------------------------------------------------------ lista dei desideri
     WISH_COLS = ("id", "title", "steam_appid", "itad_id", "target", "added", "price", "regular", "cut", "shop", "url",
                  "low", "currency", "checked", "alert", "seen", "key_price", "key_low", "key_url", "aks", "aks_checked", "cover")

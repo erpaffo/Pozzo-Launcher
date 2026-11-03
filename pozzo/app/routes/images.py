@@ -10,7 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from ..server import THUMB_WIDTHS, _REMOTE_DOWN, _REMOTE_MISS, _REMOTE_SEM
@@ -33,20 +33,70 @@ def build_router(ctx) -> APIRouter:
         """Immagini del gioco: quelle scelte dall'utente hanno la precedenza su quelle delle fonti."""
         return {**g["media"], **user.media_overrides(g["key"])}
 
+    KINDS = {"cover": "Copertina", "fanart": "Sfondo", "hero": "Banner", "header": "Intestazione",
+             "screenshot": "Schermata", "title": "Schermata del titolo", "wheel": "Logo (wheel)", "logo": "Logo",
+             "marquee": "Marquee", "icon": "Icona"}
+    MAX_UPLOAD = 25 * 1024 * 1024
+
+    def _kind(kind: str) -> str:
+        if kind not in KINDS:
+            raise HTTPException(400, "Tipo di immagine non valido")
+        return kind
+
+    @router.get("/api/game/{gid}/media")
+    def api_media_list(gid: int):
+        """Vista «Immagini del gioco»: per ogni tipo, se c'e' dalle fonti e se e' stata scelta dall'utente."""
+        g = lib.get(gid)
+        own = user.media_overrides(g["key"])
+        return {"title": g["title"], "kinds": [
+            {"kind": k, "label": label, "source": k in g["media"], "custom": k in own,
+             "url": f"/img/{gid}/{k}" if k in g["media"] or k in own else None} for k, label in KINDS.items()]}
+
+    @router.post("/api/game/{gid}/media/{kind}/file")
+    async def api_media_upload(gid: int, kind: str, file: UploadFile = File(...)):
+        """Immagine caricata dal PC: controllata dai primi byte (non dal nome), salvata nella cache dell'app."""
+        from ...net import sniff
+        g = lib.get(gid)
+        _kind(kind)
+        data = await file.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(413, "Immagine troppo grande (massimo 25 MB)")
+        ext = sniff(data[:16])
+        if not ext or ext in ("webm", "mp4"):
+            raise HTTPException(400, "Il file non è un'immagine PNG, JPG, GIF, WebP o BMP")
+        folder = Path(cfg.cache) / "media" / "user"
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = folder / f"{hashlib.sha1(data).hexdigest()}.{ext}"
+        dest.write_bytes(data)
+        if ext in ("png", "jpg", "bmp"):
+            try:
+                from ... import imgopt
+                dest = imgopt.optimize(dest)
+            except Exception:  # resta l'originale
+                pass
+        user.set_media(g["key"], kind, dest.relative_to(cfg.cache).as_posix())
+        return api_media_list(gid)
+
+    @router.delete("/api/game/{gid}/media/{kind}")
+    def api_media_reset(gid: int, kind: str):
+        """Toglie l'immagine scelta dall'utente: torna quella delle fonti (o nessuna)."""
+        g = lib.get(gid)
+        user.clear_media(g["key"], _kind(kind))
+        return api_media_list(gid)
+
     @router.post("/api/game/{gid}/media")
     def api_media_set(gid: int, body: dict = Body(...)):
         """Imposta un'immagine (copertina, sfondo, schermata...) scaricandola da un indirizzo scelto dall'utente."""
         g = lib.get(gid)
-        kind, url_ = str(body.get("kind") or ""), str(body.get("url") or "").strip()
-        if kind not in ("cover", "hero", "screenshot", "title", "wheel", "fanart", "marquee", "header", "logo", "icon"):
-            raise HTTPException(400, "Tipo di immagine non valido")
+        kind, url_ = _kind(str(body.get("kind") or "")), str(body.get("url") or "").strip()
         if not url_.startswith(("http://", "https://")):
             raise HTTPException(400, "Indirizzo non valido")
         rel = _fetch_remote(url_)
-        if not rel:
-            raise HTTPException(400, "Immagine non scaricabile")
+        if not rel:  # spesso e' l'indirizzo della pagina (Google, Pinterest...) e non dell'immagine, o il sito la blocca
+            raise HTTPException(400, "L'indirizzo non porta a un'immagine scaricabile: apri l'immagine e copia il suo "
+                                     "indirizzo, oppure salvala sul PC e usa «Carica dal PC»")
         user.set_media(g["key"], kind, rel)
-        return {"media": {k: f"/img/{gid}/{k}" for k in _media(g)}}
+        return {**api_media_list(gid), "media": {k: f"/img/{gid}/{k}" for k in _media(g)}}
 
     @router.get("/img/{gid}/{kind}")
     def api_img(gid: int, kind: str, request: Request, w: int = 0, q: int = 0):

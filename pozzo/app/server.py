@@ -584,10 +584,20 @@ def create_app(cfg) -> FastAPI:
     for mod in routes.ORDER:
         app.include_router(getattr(routes, mod).build_router(ctx))
 
+    def _phone_start():
+        # riaperto subito dopo la chiusura: la porta e' ancora della copia che sta uscendo, si aspetta che la lasci
+        host, port = phone_hub.conf.get("host") or "0.0.0.0", int(phone_hub.conf["port"])
+        for _ in range(30):
+            if stop.is_set() or _port_free(port, host):
+                break
+            time.sleep(1)
+        if not stop.is_set():
+            phone_hub.start(app)
+
     def _phone_startup():
         # il server HTTPS serve anche ai PC abbinati per la sincronizzazione in rete
         if phone_hub.conf.get("enabled") or any(d.get("kind") == "pc" for d in phone_hub.conf["devices"]):
-            threading.Thread(target=phone_hub.start, args=(app,), daemon=True).start()
+            threading.Thread(target=_phone_start, daemon=True).start()
         threading.Thread(target=ctx._sync_loop, daemon=True).start()
         threading.Thread(target=ctx._wish_loop, daemon=True).start()
         watcher.start()
@@ -640,11 +650,11 @@ def _plain(s: str) -> str:
     return re.sub(r"\[/?[a-z ]*\]", "", s)
 
 
-def _port_free(port: int) -> bool:
+def _port_free(port: int, host: str = "127.0.0.1") -> bool:
     import socket
     with socket.socket() as sk:
         try:
-            sk.bind(("127.0.0.1", port))
+            sk.bind((host, port))
             return True
         except OSError:
             return False

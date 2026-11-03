@@ -37,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
         body, name = DATA, "gioco.bin"
         REQS.append(self.headers.get("Range", ""))
         HITS[self.path] = HITS.get(self.path, 0) + 1
-        if self.path.startswith("/once") and HITS[self.path] > 1:  # come 1fichier: il link vale una volta sola
+        if (self.path.startswith("/once") and HITS[self.path] > 1) or self.path.startswith("/gone"):  # come 1fichier: il link vale una volta sola
             self.send_response(410)
             self.send_header("Content-Length", "0")
             self.end_headers()
@@ -52,7 +52,8 @@ class Handler(BaseHTTPRequestHandler):
         part = body[start:end + 1]
         self.send_response(206 if m and not self.path.startswith("/norange") else 200)
         self.send_header("Content-Length", str(len(part)))
-        self.send_header("ETag", '"v1"')
+        # /rotag: come datanodes, ogni richiesta arriva da un server diverso con un etag diverso
+        self.send_header("ETag", f'"r{HITS[self.path]}"' if self.path.startswith("/rotag") else '"v1"')
         self.send_header("Content-Disposition", f'attachment; filename="{name}"')
         if m and not self.path.startswith("/norange"):
             self.send_header("Content-Range", f"bytes {start}-{end}/{len(body)}")
@@ -107,6 +108,40 @@ async def test_ripresa_non_riscarica_il_gia_fatto(server, tmp):
     assert (tmp / "gioco.bin").read_bytes() == DATA
     # il gia' scaricato non si rivede: dopo la ripresa nessuna richiesta riparte da zero con un intervallo
     assert not [r for r in REQS if re.fullmatch(r"bytes=0-\d+", r)]
+
+
+async def test_ripresa_con_etag_diverso_riusa_link_e_part(server, tmp):
+    calls = []
+
+    def resolve(u):
+        calls.append(u)
+        return server + "/rotag"
+    t = _task("https://datanodes.example/pagina", tmp)
+    b = H.Bucket()
+    b.rate = 1024 * 1024
+    async with httpx.AsyncClient() as c:
+        job = asyncio.ensure_future(H.run(t, c, b, 2, resolve))
+        while t.done < 1024 * 1024:
+            await asyncio.sleep(0.05)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+        REQS.clear()
+        await H.run(t, c, H.Bucket(), 2, resolve)
+    assert len(calls) == 1, "alla ripresa il link risolto si riusa: niente passaggi rifatti"
+    assert (tmp / "gioco.bin").read_bytes() == DATA
+    assert not [r for r in REQS if re.fullmatch(r"bytes=0-\d+", r)], "etag diverso ma stessa dimensione: si riprende"
+    assert "url" not in t.options
+
+
+async def test_link_risolto_scaduto_si_risolve_di_nuovo(server, tmp):
+    calls = []
+    t = _task("https://host.example/pagina", tmp)
+    t.options.update(url=server + "/gone", url_at=time.time())
+    async with httpx.AsyncClient() as c:
+        await H.run(t, c, H.Bucket(), 2, lambda u: calls.append(u) or server + "/a")
+    assert calls == ["https://host.example/pagina"]
+    assert (tmp / "gioco.bin").read_bytes() == DATA
 
 
 async def test_senza_range(server, tmp):

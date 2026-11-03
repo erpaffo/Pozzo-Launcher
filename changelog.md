@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.14.2 (2026-11-03)
+
+### Aggiunto
+
+- «Gioca con un amico» nel dettaglio dei giochi RetroArch: crea un codice invito da mandare (Discord, WhatsApp…); l'amico lo incolla con «Unisciti a un amico» e RetroArch si collega in netplay (2 giocatori, stessa ROM e stesso core). Gli emulatori senza gioco in rete propongono Share Play
+- Con Discord aperto la presenza mostra la partita «(1 di 2)»
+- «🖼 Immagini del gioco…» (tasto destro, o «🖼 Immagini» nella scheda): per ogni tipo di immagine (copertina, sfondo, banner, logo, icona, schermata…) si vede se arriva dalle fonti o l'hai scelta tu, e puoi caricare un file dal PC (anche trascinandolo), sceglierne una da SteamGridDB, incollare un indirizzo o tornare all'originale
+
+### Corretto
+
+- Download da DataNodes (e host simili) dopo la chiusura del launcher: riprendono da dove erano invece di ripartire quasi da capo. Il link già risolto si riprova senza rifare i passaggi (si risolve di nuovo solo se è scaduto), e il file parziale vale anche se il server risponde con un ETag diverso
+- Alla chiusura i download si fermano in ordine, così l'ultima parte scaricata finisce davvero nel file
+- Estrazione dei RAR (e degli altri archivi aperti con 7-Zip) ferma allo 0% quando il file dentro l'archivio ha un nome lungo: ora la percentuale avanza, e il registro del download segna ogni 10%
+- «📂 Apri cartella» nella coda dei download: con percorsi che contengono spazi apriva una cartella qualsiasi; ora seleziona il file, e dopo l'estrazione porta al gioco (nella cartella estratta o in libreria) invece che all'archivio
+- La copertina scelta a mano non compariva nella griglia per i giochi senza copertina dalle fonti (es. Hearthstone su Battle.net): sembrava che non si potesse impostare
+- I candidati di SteamGridDB, descritti nel manuale, non comparivano nella finestra delle immagini: ora ci sono, anche per sfondo, banner, logo e icona
+- «Aggiungi un gioco o un'applicazione» dava «Internal Server Error» con una libreria costruita da una versione precedente (colonne `md5`/`sha1` mancanti): ora le colonne mancanti si aggiungono da sole
+- Riaprendo il launcher subito dopo averlo chiuso, il server del telefono e della sincronizzazione aspetta che la porta si liberi invece di restare spento con l'errore «[Errno 10048]»
+
 ## 0.14.1 (2026-11-03)
 
 ### Aggiunto

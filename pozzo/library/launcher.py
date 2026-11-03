@@ -604,6 +604,7 @@ class Launcher:
         self._stop_evt = threading.Event()  # "Chiudi gioco": fa smettere di aspettare il gioco, anche se non si trova il processo
         self.stop_found = False  # l'ultimo stop ha trovato (e chiuso) dei processi?
         self.state: dict = {}
+        self.next_args: list[str] = []  # argomenti in piu' per il solo prossimo avvio (es. netplay)
         self.lock = threading.Lock()
         self._hotkey = None
 
@@ -945,7 +946,8 @@ class Launcher:
             self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
             comp = self._companion(key)
-            cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *args]
+            cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *self.next_args, *args]
+            self.next_args = []  # valgono solo per questo avvio
             self.on_event("game_launching", dict(self.state))
             self._set(status="running", message=" ".join(f'"{c}"' if " " in c else c for c in cmd))
             t0 = time.time()

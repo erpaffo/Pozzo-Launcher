@@ -69,7 +69,9 @@ def test_update_manual(tmp: Path):
     cfg.cache = tmp
     assert B.update_manual(cfg) is False  # libreria non ancora costruita
     con = sqlite3.connect(tmp / "library.db")
-    con.executescript(B.SCHEMA)
+    old = B.SCHEMA.replace(" md5 TEXT, sha1 TEXT,", "")  # libreria di una versione precedente: niente md5/sha1
+    assert old != B.SCHEMA
+    con.executescript(old)
     con.close()
     cache = Cache(tmp)
     cache.kv_set("store:manual", [{**StoreGame(store="manual", id="7", title="Mio Gioco", installed=True,

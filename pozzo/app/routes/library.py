@@ -81,7 +81,8 @@ def build_router(ctx) -> APIRouter:
                 groups.append([d["primary"], d["favorite"], d["hidden"], round(d["last_played"]), round(d["playtime"]),
                                d["play_count"], grp_colls.get(grp, []), len(OW.members(lib.groups[grp], pid)), d["status"]])
             del v  # i dati di 150.000 gruppi (~40 MB): non servono piu' mentre si scrive il JSON
-            rows = [[g["id"], g["title"], g["sort_title"], g["platform"], g["year"], int("cover" in g["media"]),
+            own = user.media_keys("cover")  # copertine scelte a mano: valgono anche per i giochi senza copertina dalle fonti
+            rows = [[g["id"], g["title"], g["sort_title"], g["platform"], g["year"], int("cover" in g["media"] or g["key"] in own),
                      grp_idx[g["grp"]], g["rating"], g["developer"] or "", ", ".join(g["genres"]), g["found"],
                      g["region"] or "", g.get("store") or "", 1 if g.get("store") is None else g.get("installed") or 0,
                      g.get("size") or 0, g.get("rating_count") or 0, g.get("rating_critics"), _players(g.get("players"), g["platform"]),
@@ -128,7 +129,8 @@ def build_router(ctx) -> APIRouter:
                 return {"rev": lib.meta_rev, "reset": True}
             ids = {i for rev, xs in lib.patches if rev > since for i in xs}
             pid = PC.active(cfg)
-            rows = [[g["id"], int("cover" in g["media"]), g["year"], g["developer"] or "", ", ".join(g["genres"])]
+            own = user.media_keys("cover")
+            rows = [[g["id"], int("cover" in g["media"] or g["key"] in own), g["year"], g["developer"] or "", ", ".join(g["genres"])]
                     for g in (lib.by_id.get(i) for i in ids) if g and OW.visible(g, pid)]
         return {"rev": lib.meta_rev, "games": rows}
 

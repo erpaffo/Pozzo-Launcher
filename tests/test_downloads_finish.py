@@ -1,6 +1,7 @@
 """Dopo il download: estrazione, cartella ROM giusta, libreria, pulizia. Nessuna rete."""
 
 import sys
+import threading
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ class Mgr:
     def __init__(self, **s):
         self._s = {"auto_extract": True, "delete_archive": True, **s}
         self.store = SimpleNamespace(save=lambda tasks: None)
+        self.lock = threading.Lock()
 
     def settings(self):
         return self._s
@@ -55,6 +57,7 @@ def test_zip_estratto_e_messo_nella_cartella_rom(tmp):
     assert calls == [{"platforms": ["switch"]}] and got, (calls, got)
     assert not z.exists()  # archivio tolto a gioco messo a posto
     assert t.options["post_done"] and any("Nella libreria" in l["msg"] for l in t.log_after(0)[0])
+    assert Path(t.options["placed"]) == placed[0], "«Apri cartella» porta al gioco, non all'archivio cancellato"
 
 
 def test_senza_estrazione_automatica_non_tocca_l_archivio(tmp):

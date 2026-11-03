@@ -18,6 +18,7 @@ RESOLVE_TIMEOUT = 240  # secondi: tetto a tutta la catena dei risolutori (due pa
 MIN_SEGMENT = 2 * 1024 * 1024  # sotto questa dimensione un solo flusso basta
 # link che valgono una richiesta sola: ogni richiesta in piu' (anche il controllo) dà 410 Gone
 ONE_TIME = ('1fichier.com',)
+URL_TTL = 6 * 3600  # secondi: un link diretto risolto si riprova alla ripresa (se e' scaduto si risolve di nuovo)
 
 
 class Bucket:
@@ -63,7 +64,16 @@ def _meta(r: httpx.Response, url: str) -> tuple[str, int, bool, str]:
 
 
 async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve) -> None:
-    """Scarica `task` fino alla fine. Lo stato per riprendere sta in task.options (segs, tag): il manager lo salva."""
+    """Scarica `task` fino alla fine. Lo stato per riprendere sta in task.options (segs, tag, url): il manager lo salva."""
+    url = task.options.get("url")
+    if url and time.time() - float(task.options.get("url_at") or 0) < URL_TTL:
+        # ripresa: il link diretto di prima evita di rifare tutti i passaggi (pubblicita', pagina dell'host...)
+        task.log("Riprovo il link già risolto")
+        try:
+            return await _fetch(task, client, bucket, segments, url, time.time())
+        except (httpx.HTTPStatusError, httpx.TransportError, ValueError) as e:
+            task.log(f"Link di prima non più valido ({type(e).__name__}): lo risolvo di nuovo", "warn")
+        task.options.pop("url", None)
     task.log("Risolvo il link")
     t0 = time.time()
     try:  # il thread del risolutore non si ferma, ma il suo risultato tardivo non serve piu' a nessuno
@@ -71,6 +81,13 @@ async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, re
     except asyncio.TimeoutError:
         raise ValueError(f"Non sono riuscito a ottenere il link in {RESOLVE_TIMEOUT:g} s") from None
     task.log(f"Link risolto in {time.time() - t0:.1f} s")
+    host = urlsplit(url).hostname or ""
+    if not any(host == h or host.endswith("." + h) for h in ONE_TIME):  # un link monouso non si riusa
+        task.options.update(url=url, url_at=time.time())
+    await _fetch(task, client, bucket, segments, url, t0)
+
+
+async def _fetch(task, client, bucket, segments, url, t0):
     task.phase = "Preparo il download (nome e dimensione)"  # resta scritto se qualcosa va storto qui
     headers = task.options.get("headers") or {}
     # la prima richiesta e' anche il primo flusso: un link monouso non sopporta un controllo in piu'
@@ -102,11 +119,13 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
             final = dest / f"{stem} ({i}){ext}"
             part, i = final.with_name(final.name + ".part"), i + 1
         task.name = final.name
+    # stesso file anche con un etag diverso: host come datanodes danno a ogni risoluzione un server (e un etag) nuovo
+    same = task.options.get("tag") == tag or (total > 0 and task.size == total)
     task.size = total
     task.options["part"] = str(part)
 
     old = task.options.get("segs") or []
-    if not (part.exists() and task.options.get("tag") == tag and old and (ranged or len(old) == 1)):
+    if not (part.exists() and same and old and (ranged or len(old) == 1)):
         n = max(1, min(segments, total // MIN_SEGMENT)) if ranged else 1
         step = -(-total // n) if ranged else 0
         task.options["segs"] = [[i * step, min((i + 1) * step, total) - 1, i * step] for i in range(n)] if ranged \
@@ -187,6 +206,7 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
     sync_done()
     final.unlink(missing_ok=True)
     part.replace(final)
-    task.options.pop("segs", None)
+    for k in ("segs", "url", "url_at"):
+        task.options.pop(k, None)
     task.name = final.name
     task.size = task.size or task.done

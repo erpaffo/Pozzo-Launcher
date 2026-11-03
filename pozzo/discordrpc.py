@@ -66,7 +66,7 @@ def _clip(text: str | None) -> str:
 
 def activity(details: str, state: str = "", started: float | None = None,
              large_text: str = "", large_image: str = "", small_text: str = "",
-             small_image: str = "") -> dict:
+             small_image: str = "", party: dict | None = None) -> dict:
     """Oggetto activity di Discord. I campi vuoti si omettono (Discord li rifiuta se vuoti)."""
     act: dict = {"details": _clip(details) or "PozzoLauncher",
                  "instance": False}
@@ -85,6 +85,8 @@ def activity(details: str, state: str = "", started: float | None = None,
         assets["small_text"] = _clip(small_text)
     if assets:
         act["assets"] = assets
+    if party:
+        act["party"] = party  # {"id": str, "size": [attuali, massimo]}: partita in rete
     return act
 
 
@@ -265,6 +267,7 @@ class PresenceService:
         self.client: DiscordPresence | None = None
         self.current: dict | None = None
         self.on_air = False  # la presenza ? stata accettata da Discord
+        self.party: dict | None = None  # partita in rete, impostata da set_party
         self.conf()
 
     # ---------------------------------------------------------------- impostazioni
@@ -317,8 +320,16 @@ class PresenceService:
         self.current = dict(info or {})
         self.on_air = self._push(self.current, conf)
 
+    def set_party(self, party: dict | None):
+        """Mostra (o toglie, con None) la partita in rete; se un gioco è in corso riaggiorna subito la presenza."""
+        self.party = party
+        conf = self.conf()
+        if self.current is not None and conf["enabled"]:
+            self.on_air = self._push(self.current, conf)
+
     def game_stopped(self, info: dict | None = None):
         self.current = None
+        self.party = None
         self.on_air = False
         if self.client is not None:
             self.client.clear()
@@ -330,7 +341,10 @@ class PresenceService:
         pid = key.split("/", 1)[0]
         plat = getattr(P.PLATFORMS.get(pid), "name", "") or str(info.get("emulator") or "")
         detail = str(info.get("title") or "PozzoLauncher")
-        sub = f"{plat} · su PozzoLauncher" if plat else "su PozzoLauncher"
+        if self.party:
+            sub = f"{plat} · netplay" if plat else "netplay"
+        else:
+            sub = f"{plat} · su PozzoLauncher" if plat else "su PozzoLauncher"
         started = info.get("started") if conf.get("show_time", True) else None
         return self.client.set(activity(detail, sub, started=started, large_text=detail, large_image="pozzo",
-                                        small_text="PozzoLauncher", small_image="logo"))
+                                        small_text="PozzoLauncher", small_image="logo", party=self.party))

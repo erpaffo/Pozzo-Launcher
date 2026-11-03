@@ -99,6 +99,7 @@
       <div class="tb-actions" role="group" aria-label="Azioni">
         <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console">⟳ Nuovi giochi</button>
         <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso"><span data-icon="dice"></span> A caso</button>
+        <button class="btn" id="join-btn" title="Entra in una partita in rete con il codice di un amico">👥 Unisciti a un amico</button>
         <button class="btn accent" id="bp-btn" title="Modalità a schermo intero per il controller">🎮 Big Picture</button>
         <button class="btn" id="settings-btn" title="Impostazioni">⚙ Impostazioni</button>
       </div>
@@ -199,15 +200,18 @@
     <div class="row end"><button class="btn" id="pf-reset">Ripristina predefinito</button><span class="grow"></span>
       <button class="btn" id="pf-cancel">Annulla</button><button class="btn primary" id="pf-save">Salva</button></div>
   </dialog>
-  <dialog id="media-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Immagine <span class="muted small" id="md-game"></span></h2><button class="icon-btn">✕</button></form>
+  <dialog id="media-dlg" class="small-dlg md-dlg">
+    <form method="dialog" class="dlg-head"><h2>Immagini del gioco <span class="muted small" id="md-game"></span></h2><button class="icon-btn">✕</button></form>
     <div class="dlg-body">
-      <div class="row wrap">
-        <label>Tipo <select id="md-kind" class="field">
-          <option value="cover">Copertina</option>
-          <option value="fanart">Sfondo</option>
-          <option value="screenshot">Schermata</option></select></label>
+      <p class="muted small" style="margin:0 0 8px">Scegli un tipo, poi carica un file dal PC (anche trascinandolo qui), incolla un indirizzo o torna all'immagine delle fonti.</p>
+      <div id="md-tiles" class="md-tiles" role="group" aria-label="Tipi di immagine"></div>
+      <div class="row wrap" style="margin-top:10px">
+        <label>Tipo <select id="md-kind" class="field"></select></label>
+        <button class="btn primary" id="md-upload" type="button">📁 Carica dal PC</button>
+        <button class="btn" id="md-reset" type="button" hidden>↺ Torna all'originale</button>
+        <input type="file" id="md-file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
       </div>
+      <div id="md-sgdb" hidden><div class="muted small" id="md-sgdb-msg" style="margin:10px 0 6px"></div><div class="md-cands" id="md-cands"></div></div>
       <label class="lbl-field">Ricerca
         <span class="row tight"><input id="md-q" class="field grow" autocomplete="off">
         <a class="btn primary" id="md-google" target="_blank" rel="noopener">🔎 Cerca su Google Immagini</a></span></label>
@@ -341,6 +345,19 @@
     </div>
   </dialog>
 
+  <dialog id="party-dlg" class="small-dlg" aria-labelledby="party-title">
+    <form method="dialog" class="dlg-head"><h2 id="party-title">Gioca con un amico</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+    <div class="dlg-body" id="party-body"></div>
+  </dialog>
+  <dialog id="join-dlg" class="small-dlg" aria-labelledby="join-title">
+    <form method="dialog" class="dlg-head"><h2 id="join-title">Unisciti a un amico</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+    <div class="dlg-body">
+      <label class="lbl-field">Incolla il codice dell'invito
+        <textarea id="join-code" class="field" rows="3" autocomplete="off"></textarea></label>
+      <p id="join-msg" aria-live="polite"></p>
+      <div class="row end"><button class="btn primary" id="join-go" type="button">Controlla invito</button></div>
+    </div>
+  </dialog>
   <dialog id="dl-add-dlg" class="small-dlg">
     <form method="dialog" class="dlg-head"><h2>Aggiungi download</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
