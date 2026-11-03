@@ -1,5 +1,7 @@
 /* Big Picture: interfaccia per TV e controller. Usa le stesse variabili dei temi (--bg, --accent, ...). */
-html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background: var(--bg); }
+:root { --ui-zoom: 1; --space-scale: 1; --bp-tab-pad: calc(.55rem * var(--space-scale)) calc(1.2rem * var(--space-scale)); } /* zoom da Impostazioni > Aspetto: moltiplica la dimensione base, il layout e' in rem */
+html[data-ui-density="compact"] { --space-scale: .7; }
+html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); overflow: hidden; background: var(--bg); }
 #bp { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; color: var(--text); user-select: none; cursor: none; }
 #bp.mouse { cursor: default; }
 
@@ -8,7 +10,10 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 #bp-bg .bg-img { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(14px) brightness(.38) saturate(1.2);
   opacity: 0; transition: opacity .6s ease; }
 #bp-bg .bg-img.on { opacity: 1; }
-#bp-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 20%, transparent 0%, var(--bg) 85%),
+#bp-bg::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity .6s ease;
+  background: radial-gradient(ellipse at 70% 25%, color-mix(in srgb, var(--game-accent, transparent) 45%, transparent) 0%, transparent 65%); }
+#bp-bg[style*="--game-accent"]::before { opacity: 1; }
+#bp-bg::after { z-index: 2; content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 20%, transparent 0%, var(--bg) 85%),
   linear-gradient(180deg, transparent 40%, var(--bg)); }
 #bp > header, #bp > main, #bp > footer { position: relative; z-index: 1; }
 
@@ -26,7 +31,7 @@ html, body { font-size: clamp(15px, 1.15vw, 24px); overflow: hidden; background:
 #bp-exit .bp-tab { display: inline-block; }
 .bp-clock { flex: none; }
 @media (max-width: 1100px) { #bp-top { padding-inline: 1.4rem; gap: .8rem; } .bp-clock { display: none; } }
-.bp-tab { padding: .55rem 1.2rem; border-radius: 999px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+.bp-tab { padding: var(--bp-tab-pad); border-radius: 999px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .bp-tab.active { color: var(--text); background: rgba(255,255,255,.08); }
 .bp-clock { font-size: 1.15rem; font-variant-numeric: tabular-nums; color: var(--muted); }
 
@@ -213,10 +218,23 @@ html[data-palette="contrast"] .bp-hero .meta,
 html[data-palette="contrast"] .shelf h2 { color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; }
 html[data-palette="contrast"] .card .ph { background: #000; border: 2px solid #fff; }
 
-html[data-bptext="large"] body { font-size: clamp(18px, 1.4vw, 28px); }
+html[data-bptext="large"] body { font-size: calc(clamp(18px, 1.4vw, 28px) * var(--ui-zoom, 1)); }
 html[data-bptext="large"] .bp-hero h1 { font-size: 2.9rem; }
-html[data-bptext="xlarge"] body { font-size: clamp(21px, 1.7vw, 33px); }
+html[data-bptext="xlarge"] body { font-size: calc(clamp(21px, 1.7vw, 33px) * var(--ui-zoom, 1)); }
 html[data-bptext="xlarge"] .bp-hero h1 { font-size: 3.2rem; }
 html[data-bptext="xlarge"] .card { width: 12.5rem; }
 html[data-bptext="xlarge"] .card.tile-text { width: 17rem; }
 html[data-bptext="xlarge"] .shelf h2 { font-size: 1.3rem; }
+
+/* salvaschermo: copertine e schermate a rotazione lenta; il movimento segue data-fx (GSUi.attractMotion) */
+#bp-attract { position: fixed; inset: 0; z-index: 40; background: #05060a; overflow: hidden; cursor: none; }
+#bp-attract::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.78)); }
+#bp-attract .at-slide { position: absolute; inset: 0; opacity: 0; background-size: cover; background-position: center; transition: opacity 2.5s ease; }
+#bp-attract .at-slide.poster { background-size: contain; background-repeat: no-repeat; }
+#bp-attract .at-slide.on { opacity: 1; }
+#bp-attract[data-fx="full"] .at-slide.on { animation: at-zoom 16s linear forwards; }
+#bp-attract[data-fx="none"] .at-slide { transition: none; }
+#bp-attract .at-info { position: absolute; z-index: 1; left: 4vw; bottom: 6vh; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.8); }
+#bp-attract .at-info b { display: block; font-size: 2.4rem; }
+#bp-attract .at-info span { font-size: 1.2rem; opacity: .85; }
+@keyframes at-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }

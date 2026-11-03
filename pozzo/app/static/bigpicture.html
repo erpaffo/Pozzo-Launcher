@@ -2,6 +2,7 @@
 <html lang="it" data-mode="bigpicture">
 <head>
 <meta charset="utf-8">
+<script>/* ui-boot: come GSUi.applyPrefs (core.js), ma prima del primo disegno */try{var u=JSON.parse(localStorage.getItem("gs.ui")),r=document.documentElement;if(u&&typeof u==="object"){if(typeof u.zoom==="number"&&u.zoom>=90&&u.zoom<=125&&u.zoom%5===0&&u.zoom!==100){r.dataset.uiZoom=u.zoom;r.style.setProperty("--ui-zoom",u.zoom/100)}if(u.density==="compact")r.dataset.uiDensity="compact"}}catch(e){}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pozzo Launcher · Big Picture</title>
 <link rel="icon" href="/m/static/icon.png">
@@ -24,6 +25,7 @@
   <main id="bp-main"></main>
   <footer id="bp-hints"></footer>
   <div id="bp-running" hidden></div>
+  <div id="bp-attract" hidden aria-hidden="true"><div class="at-slide"></div><div class="at-slide"></div><div class="at-info"><b></b><span></span></div></div>
   <div id="bp-toast" role="status" aria-live="polite" hidden></div>
   <section id="bp-media-widget" aria-label="Musica e chiamate" hidden>
     <h2 class="media-title">Musica e chiamate</h2>

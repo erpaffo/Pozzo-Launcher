@@ -11,6 +11,11 @@ Facoltativo (what = "all"): anche le impostazioni non legate al PC (store online
 intelligenti...): vince la versione salvata piu' di recente. Percorsi, emulatori, account degli store, telefono e
 profili restano sempre del singolo PC.
 
+Facoltativo (saves = true): anche i file di salvataggio dei giochi scelti in saves_games. Il confronto e' a tre
+stati (questo PC, l'altro PC e l'ultima sincronizzazione nota): se ha cambiato solo un lato vince quello, se hanno
+cambiato entrambi non si sovrascrive niente e la versione dell'altro PC va tra le copie del gioco. Mai mentre il
+gioco e' in esecuzione.
+
 Trasporti:
 - cartella condivisa (OneDrive, Dropbox, NAS, Syncthing): <cartella>/PozzoLauncher-sync/<profilo>/<pc>.json, ogni PC
   scrive solo il proprio file, quindi il servizio di sincronizzazione non crea conflitti;
@@ -20,11 +25,13 @@ Trasporti:
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import http.client
 import json
 import os
 import re
+import shutil
 import socket
 import ssl
 import time
@@ -33,6 +40,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from . import config as C
+from .library import saves as SV
 from .library.userdata import DELETED, UserData
 
 FORMAT = 1
@@ -42,6 +50,11 @@ WISH_FIELDS = ("title", "steam_appid", "itad_id", "target", "added")
 SETTINGS_SECTIONS = ("catalogs", "pc_stores", "limits", "screenscraper", "igdb", "rawg", "thegamesdb", "custom_platforms")
 APP_KEYS = ("theme", "smart_collections", "disabled_plugins", "skip_duplicates", "wishlist", "retroachievements")
 DIR = "PozzoLauncher-sync"
+SAVES_DIR = "saves"  # dentro DIR: un JSON per PC e la sua sottocartella con i file
+SAVE_FILE_MAX = 256 << 20  # un file piu' grande non si sincronizza (si salta con un avviso)
+SAVE_MAX_BYTES = 512 << 20  # byte presi dagli altri PC in un giro
+SAVE_REQ_MAX = 32 << 20  # tetto di una singola richiesta di file al PC remoto
+CONFLICTS = "_conflicts"  # nello stato: chiavi "gioco\tfile" gia' archiviate come conflitto
 INTERVAL = 300  # secondi tra due sincronizzazioni automatiche
 
 
@@ -49,7 +62,8 @@ INTERVAL = 300  # secondi tra due sincronizzazioni automatiche
 
 def conf(cfg) -> dict:
     """Impostazioni della sincronizzazione (app.sync), con l'identita' di questo PC creata la prima volta."""
-    c = {"folder": "", "what": "personal", "peers": [], **(cfg.app.get("sync") or {})}
+    c = {"folder": "", "what": "personal", "peers": [], "saves": False, "saves_games": [],
+         **(cfg.app.get("sync") or {})}
     if not c.get("pc_id"):
         c["pc_id"] = uuid.uuid4().hex[:12]
         save_conf(cfg, c)
@@ -331,15 +345,90 @@ def merge_settings(cfg, c: dict, remote: dict | None) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- file di salvataggio (percorsi relativi)
+
+_RESERVED = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+
+
+def _safe_rel(rel) -> bool:
+    """Chiave relativa usabile come percorso. Arriva da un altro PC, quindi niente risalite (..), unita' di disco,
+    percorsi assoluti, caratteri di controllo o nomi riservati di Windows."""
+    if not isinstance(rel, str) or not rel or len(rel) > 200 or "\\" in rel or rel.startswith("/"):
+        return False
+    for part in rel.split("/"):
+        if not part or part in (".", "..") or ":" in part or any(ord(ch) < 32 for ch in part):
+            return False
+        if part.split(".")[0].strip().lower() in _RESERVED:
+            return False
+    return True
+
+
+def _rel_of(p: Path) -> str:
+    """Chiave stabile di un file di salvataggio: gli ultimi tre pezzi del percorso (la radice cambia da PC a PC)."""
+    return "/".join(p.parts[-3:])
+
+
+def _file_sha(p: Path | None) -> str:
+    if not p:
+        return ""
+    try:
+        return SV._sha1(p)
+    except OSError:  # file sparito o riscritto dal gioco in questo momento
+        return ""
+
+
+def _mb(n: int) -> str:
+    return f"{n / (1 << 20):.1f} MB" if n >= 1 << 20 else f"{max(1, n // 1024)} KB"
+
+
+def _inside(base: Path, dest: Path) -> bool:
+    b, d = base.resolve(), dest.resolve()
+    return d == b or b in d.parents
+
+
+def _write_file(base: Path, dest: Path, data: bytes | None = None, src: Path | None = None) -> bool:
+    """Scrive (o copia) un file di salvataggio dentro base: mai fuori, mai a meta' (tmp + replace)."""
+    if not _inside(base, dest):
+        return False
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".tmp")
+        if data is not None:
+            tmp.write_bytes(data)
+        else:
+            shutil.copyfile(src, tmp)
+        os.replace(tmp, dest)
+        return True
+    except OSError:
+        return False
+
+
+def _read_published(base: Path, rel: str) -> bytes | None:
+    """Byte di un file che un altro PC ha pubblicato nella sua sottocartella (mai fuori da li')."""
+    if not _safe_rel(rel):
+        return None
+    f = base / rel
+    try:
+        if not _inside(base, f) or not f.is_file() or f.stat().st_size > SAVE_FILE_MAX:
+            return None
+        return f.read_bytes()
+    except OSError:
+        return None
+
+
 # ---------------------------------------------------------------- un giro di sincronizzazione
 
 class Sync:
     """Stato e giro di sincronizzazione (cartella + PC in rete) per tutti i profili."""
 
-    def __init__(self, cfg, user_of):
+    def __init__(self, cfg, user_of, playing=None, saves_of=None):
         self.cfg, self.user_of = cfg, user_of  # user_of(pid) -> UserData del profilo (gia' aperto dal server)
         self.last: dict = {}
         self.busy = False
+        # salvataggi: gioco in esecuzione (mai sincronizzare) e file di salvataggio di un gioco
+        self.playing = playing or (lambda: False)
+        self.saves_of = saves_of or (lambda key, title: SV.resolved_manual(cfg, key))
+        self.title_of = None  # opzionale: key -> titolo (l'app lo imposta con la libreria)
 
     def pc(self) -> dict:
         c = conf(self.cfg)
@@ -367,6 +456,235 @@ class Sync:
             n[pid] = r
         return n
 
+    # ------------------------------------------------------------ salvataggi: elenco, manifest, stato
+    def _is_playing(self) -> bool:
+        try:
+            return bool(self.playing())
+        except Exception:
+            return True  # se non si sa, meglio non toccare i salvataggi
+
+    def saves_enabled(self) -> bool:
+        """Sincronizzazione dei salvataggi attiva, con almeno un gioco scelto e nessun gioco in esecuzione."""
+        c = conf(self.cfg)
+        return bool(c.get("saves")) and bool(self._saves_keys(c)) and not self._is_playing()
+
+    @staticmethod
+    def _saves_keys(c: dict) -> list[str]:
+        return [k.strip() for k in dict.fromkeys(c.get("saves_games") or []) if isinstance(k, str) and k.strip()]
+
+    def saves_title(self, key: str) -> str:
+        f = getattr(self, "title_of", None)
+        if f:
+            try:
+                return str(f(key) or key)[:200]
+            except Exception:
+                pass
+        return key[:200]
+
+    def saves_files(self, key: str, title: str | None = None) -> tuple[list[tuple[Path, str]], list[str]]:
+        """File di salvataggio del gioco come (percorso, chiave relativa), con gli avvisi di quelli scartati."""
+        warn: list[str] = []
+        try:
+            paths = [Path(p) for p in (self.saves_of(key, title or self.saves_title(key)) or [])]
+        except Exception as e:  # emulatore non configurato, cartella sparita...
+            return [], [f"{key}: {e}"]
+        found: dict[str, Path] = {}
+        for p in paths:
+            if p.is_file():
+                cand = [(p, p.name)]
+            elif p.is_dir():
+                cand = [(f, _rel_of(f)) for f in sorted(p.rglob("*")) if f.is_file()]
+            else:
+                cand = []
+            for f, rel in cand:
+                if not _safe_rel(rel):
+                    warn.append(f"{key}: percorso scartato («{str(rel)[:80]}»)")
+                elif rel in found:
+                    return [], warn + [f"{key}: due file con la stessa chiave «{rel}», gioco saltato"]
+                else:
+                    found[rel] = f
+        return [(f, rel) for rel, f in sorted(found.items())], warn
+
+    def saves_file(self, key: str, rel: str) -> Path | None:
+        """Il file di salvataggio locale con quella chiave relativa (per il PC remoto che lo chiede)."""
+        if not _safe_rel(rel):
+            return None
+        return next((f for f, r in self.saves_files(key)[0] if r == rel), None)
+
+    def saves_manifest(self) -> dict:
+        return self._saves_manifest()[0]
+
+    def _saves_manifest(self) -> tuple[dict, list[str]]:
+        """Manifest dei salvataggi di questo PC: hash, ora e dimensione di ogni file, per i giochi inclusi."""
+        c, pc, games, warn = conf(self.cfg), self.pc(), {}, []
+        for key in self._saves_keys(c):
+            title = self.saves_title(key)
+            files, w = self.saves_files(key, title)
+            warn.extend(w)
+            entries = {}
+            for f, rel in files:
+                try:
+                    st = f.stat()
+                    entries[rel] = {"sha1": SV._sha1(f), "mtime": int(st.st_mtime), "size": st.st_size}
+                except OSError:
+                    continue
+            if entries:
+                games[key] = {"title": title, "files": entries}
+        return {"format": FORMAT, "pc": pc["pc_id"], "pc_name": pc.get("pc_name") or "", "time": time.time(),
+                "games": games}, warn
+
+    def _saves_state_path(self) -> Path:
+        return Path(self.cfg.cache) / "sync" / "saves-state.json"
+
+    def _saves_state(self) -> dict:
+        """Ultimo stato sincronizzato: {gioco: {chiave: sha1}}. Serve a capire chi ha cambiato un file."""
+        try:
+            d = json.loads(self._saves_state_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return d if isinstance(d, dict) else {}
+
+    def _write_saves_state(self, state: dict):
+        p = self._saves_state_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name("saves-state.json.tmp")
+        tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, p)
+
+    def _saves_dirs(self, key: str, title: str) -> list[Path]:
+        try:
+            paths = [Path(p) for p in (self.saves_of(key, title) or [])]
+        except Exception:
+            return []
+        return list(dict.fromkeys(p if p.is_dir() else p.parent for p in paths))
+
+    def _saves_dest(self, local: dict[str, Path], dirs: list[Path], rel: str) -> tuple[Path, Path] | None:
+        """Dove scrivere qui un file che c'e' solo sull'altro PC: (radice per il controllo, destinazione)."""
+        parts = rel.split("/")
+        for f in local.values():  # stessa profondita' dei file gia' noti dello stesso gioco
+            k = len(parts) - 1
+            if k < len(f.parents):
+                base = f.parents[k]
+                return base, base.joinpath(*parts)
+        for d in dirs:  # nessun file locale: entro la cartella dei salvataggi che compare nella chiave
+            hit = [i for i, p in enumerate(parts[:-1]) if p == d.name]
+            if hit:
+                return d, d.joinpath(*parts[hit[-1] + 1:])
+        if dirs:
+            return dirs[0], dirs[0].joinpath(*parts)
+        return None
+
+    def _saves_fetch(self, key: str, rel: str, size: int, get, res: dict, sent: list[int]) -> bytes | None:
+        """Byte del file remoto, con i tetti di dimensione (per file e per giro)."""
+        if size > SAVE_FILE_MAX:
+            res["warnings"].append(f"{key}: {rel} troppo grande ({_mb(size)}), saltato")
+            return None
+        if sent[0] + max(size, 0) > SAVE_MAX_BYTES:
+            res["warnings"].append(f"{key}: salvataggi da copiare troppi per un giro ({_mb(SAVE_MAX_BYTES)}), saltato")
+            return None
+        if get is None:
+            res["warnings"].append(f"{key}: {rel} non richiedibile a questo trasporto, saltato")
+            return None
+        try:
+            data = get(key, rel)
+        except Exception as e:
+            res["warnings"].append(f"{key}: {rel} non letto ({e})")
+            return None
+        if data is None:
+            res["warnings"].append(f"{key}: {rel} non disponibile sull'altro PC")
+            return None
+        sent[0] += len(data)
+        return data
+
+    def saves_apply(self, remote: dict, res: dict, get_remote=None) -> None:
+        """Unisce i salvataggi dell'altro PC ai nostri, a tre stati: locale, remoto e ultima sincronizzazione nota.
+        Se ha cambiato solo un lato vince quello; se hanno cambiato entrambi non si tocca il file locale e la
+        versione remota va tra le copie del gioco."""
+        c = conf(self.cfg)
+        state = self._saves_state()
+        rname = str(remote.get("pc_name") or remote.get("pc") or "altro PC")[:60]
+        when = time.strftime("%Y-%m-%d %H:%M", time.localtime())
+        sent = [0]
+        for key in self._saves_keys(c):
+            g = (remote.get("games") or {}).get(key)
+            if not isinstance(g, dict):
+                continue
+            title = str(g.get("title") or self.saves_title(key))[:200]
+            rfiles = g.get("files") if isinstance(g.get("files"), dict) else {}
+            lfiles, warn = self.saves_files(key, title)
+            res["warnings"].extend(warn)
+            local = {rel: f for f, rel in lfiles}
+            dirs = self._saves_dirs(key, title)
+            base = state.get(key) if isinstance(state.get(key), dict) else {}
+            now: dict[str, str] = {}
+            for rel in sorted(set(rfiles) | set(local)):
+                if not _safe_rel(rel):  # manifest di un altro PC: non ci si fida dei percorsi
+                    res["warnings"].append(f"{title}: percorso scartato dal manifest di {rname} («{str(rel)[:80]}»)")
+                    continue
+                lp = local.get(rel)
+                r = rfiles[rel] if isinstance(rfiles.get(rel), dict) else {}
+                rh = str(r.get("sha1") or "")
+                lh = _file_sha(lp) if lp else ""
+                b = str(base.get(rel) or "")
+                if lh == rh or not rh or (lp and rh == b):
+                    # allineati, oppure c'e' solo qui, oppure ha cambiato solo questo PC: resta com'e' e la nostra
+                    # versione si pubblica a fine giro; negli altri casi si prende quella dell'altro o e' conflitto
+                    if lh == rh:  # contenuti uguali: il conflitto (se c'era) e' risolto
+                        (state.get(CONFLICTS) or {}).pop(f"{key}\t{rel}", None)
+                        now[rel] = lh
+                    elif lp and rh == b:  # solo questo PC: la base avanza quando l'altro conferma il contenuto
+                        now[rel] = b
+                    else:
+                        now[rel] = lh
+                    continue
+                try:
+                    size = int(r.get("size") or 0)
+                except (TypeError, ValueError):
+                    size = 0
+                data = self._saves_fetch(key, rel, size, get_remote, res, sent)
+                if data is None:
+                    now[rel] = lh
+                    continue
+                if lp and lh != b:  # hanno cambiato tutti e due: nessuna sovrascrittura
+                    cid = f"{key}\t{rel}"
+                    if (state.get(CONFLICTS) or {}).get(cid) != rh:  # la versione remota si archivia una volta sola
+                        try:
+                            out = SV._store(self.cfg, key, title, {SV._mkey(lp): (None, data)},
+                                            reason=f"conflitto {rname} {when}", dirs=[])
+                            SV.set_meta(self.cfg, key, out.name, note=f"{title} (conflitto {rname} {when})")
+                            state.setdefault(CONFLICTS, {})[cid] = rh
+                        except (OSError, ValueError) as e:  # copia non archiviata: il file resta comunque intatto
+                            res["warnings"].append(f"{title}: conflitto non archiviato ({e})")
+                    res["conflicts"].append(f"{title}: {rel} (conflitto con {rname}, {when})")
+                    now[rel] = b  # base invariata: il conflitto resta finche' i due file non combaciano
+                    continue
+                if lp:  # la versione che si perde resta tra le copie del gioco
+                    SV.backup(self.cfg, key, title, [lp], reason="sync", name=title)
+                    root, dest = next((d for d in dirs if _inside(d, lp)), lp.parent), lp
+                else:
+                    spot = self._saves_dest(local, dirs, rel)
+                    if spot is None:
+                        res["warnings"].append(f"{title}: {rel} non scritto (cartella dei salvataggi non trovata)")
+                        now[rel] = lh
+                        continue
+                    root, dest = spot
+                if not _write_file(root, dest, data):
+                    res["warnings"].append(f"{title}: {rel} non scritto (percorso non valido)")
+                    now[rel] = lh
+                    continue
+                now[rel] = _file_sha(dest)
+                res["updated"].append(f"{key}/{rel}")
+            if now:
+                state[key] = now
+        self._write_saves_state(state)
+
+    def fetch_save(self, peer: dict, key: str, rel: str) -> bytes | None:
+        """Byte di un file di salvataggio di un altro PC: una richiesta per file, con il suo tetto."""
+        r = request(peer["url"], "/api/sync/saves/file", {"key": key, "rel": rel},
+                    token=peer["token"], fp=peer.get("fp"))
+        data = r.get("data") or ""
+        return base64.b64decode(data) if data else None
+
     def run(self) -> dict:
         if self.busy:
             return self.last
@@ -374,11 +692,18 @@ class Sync:
         res = {"time": time.time(), "folder": None, "peers": {}}
         try:
             c = conf(self.cfg)
+            if self._is_playing():  # l'emulatore o il gioco riscriverebbero i salvataggi mentre li copiamo
+                res["saves"] = {"skipped": "gioco in esecuzione"}
             if c.get("folder"):
                 try:
                     res["folder"] = self.via_folder(Path(c["folder"]))
                 except Exception as e:  # cartella scollegata, OneDrive in pausa...: si riprova al prossimo giro
                     res["folder"] = {"error": f"{type(e).__name__}: {e}"}
+                if self.saves_enabled():
+                    try:
+                        res["saves"] = self.saves_folder(Path(c["folder"]))
+                    except Exception as e:  # i dati personali si sincronizzano lo stesso
+                        res["saves"] = {"error": f"{type(e).__name__}: {e}"}
             for peer in c.get("peers") or []:
                 try:
                     res["peers"][peer["id"]] = self.via_peer(peer)
@@ -416,9 +741,63 @@ class Sync:
 
     # ------------------------------------------------------------ PC in rete locale
     def via_peer(self, peer: dict) -> dict:
-        r = request(peer["url"], "/api/sync/exchange", {"pc": self.pc(), "bundles": self.bundles()},
-                    token=peer["token"], fp=peer.get("fp"))
-        return {"ok": True, "merged": self.receive(r.get("bundles") or {})}
+        on, body = self.saves_enabled(), {"pc": self.pc(), "bundles": self.bundles()}
+        if on:
+            body["saves"] = self.saves_manifest()
+        r = request(peer["url"], "/api/sync/exchange", body, token=peer["token"], fp=peer.get("fp"))
+        out = {"ok": True, "merged": self.receive(r.get("bundles") or {})}
+        if on:
+            res = {"ok": True, "from": 1 if isinstance(r.get("saves"), dict) else 0,
+                   "updated": [], "conflicts": [], "warnings": []}
+            if res["from"]:
+                self.saves_apply(r["saves"], res, get_remote=lambda k, rel: self.fetch_save(peer, k, rel))
+            out["saves"] = res
+        return out
+
+    # ------------------------------------------------------------ salvataggi nella cartella condivisa
+    def saves_folder(self, folder: Path) -> dict:
+        """Salvataggi nella cartella condivisa: ognuno scrive la propria sottocartella e legge quelle degli altri."""
+        root = folder / DIR / SAVES_DIR
+        me, res = self.pc()["pc_id"], {"ok": True, "from": 0, "updated": [], "conflicts": [], "warnings": []}
+        remotes: dict[str, dict] = {}
+        if root.is_dir():
+            for f in sorted(root.glob("*.json")):
+                if f.stem == me:
+                    continue
+                try:
+                    remotes[f.stem] = json.loads(f.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue  # file a meta' scrittura sull'altro PC: si legge al prossimo giro
+        res["from"] = len(remotes)
+        for pid, rem in remotes.items():
+            if isinstance(rem, dict):
+                self.saves_apply(rem, res, get_remote=lambda k, rel, d=root / pid:
+                                        _read_published(d / SV.folder(self.cfg, k).name, rel))
+        self._saves_publish(root, res)
+        return res
+
+    def _saves_publish(self, root: Path, res: dict):
+        """La nostra versione dei file e il nostro manifest nella nostra sottocartella, poi lo stato aggiornato."""
+        me, manifest = self.pc()["pc_id"], self._saves_manifest()[0]
+        base = root / me
+        for key, g in manifest.get("games", {}).items():
+            entries = g.get("files") or {}
+            for f, rel in self.saves_files(key, g.get("title") or key)[0]:
+                dest = base / SV.folder(self.cfg, key).name / rel
+                if entries.get(rel, {}).get("sha1") and entries[rel]["sha1"] == _file_sha(dest):
+                    continue  # gia' pubblicato
+                if not _write_file(base, dest, None, src=f):
+                    res["warnings"].append(f"{key}: {rel} non pubblicato")
+        root.mkdir(parents=True, exist_ok=True)
+        tmp = root / f".{me}.tmp"
+        tmp.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, root / f"{me}.json")
+        state = self._saves_state()
+        for key, g in manifest.get("games", {}).items():
+            cur = state.get(key) if isinstance(state.get(key), dict) else {}
+            # quello che l'unione ha gia' deciso non si sovrascrive: un conflitto resta tale finche' i file non combaciano
+            state[key] = {**{rel: (v or {}).get("sha1") or "" for rel, v in (g.get("files") or {}).items()}, **cur}
+        self._write_saves_state(state)
 
 
 def request(url: str, path: str, body: dict, token: str | None = None, fp: str | None = None) -> dict:

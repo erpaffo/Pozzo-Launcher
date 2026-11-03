@@ -45,6 +45,17 @@
 </div>
 <p class="small" id="dls-alt-state" role="status"></p>
 
+<h3>Mentre giochi</h3>
+<p class="muted small">Cosa fanno i download quando parte un gioco. Predefinito: continuano come sempre.</p>
+<div class="row wrap">
+  <label>Comportamento <select class="field" id="dls-game-mode">
+    <option value="off">Continua normalmente</option><option value="limit">Limita la banda</option><option value="pause">Metti in pausa i torrent</option></select></label>
+  <label>Banda lasciata al gioco (KB/s) <input class="field" id="dls-game-limit" type="number" min="0"></label>
+</div>
+<label class="chk"><input type="checkbox" id="dls-game-http"> Metti in pausa anche i download HTTP</label>
+<p class="muted small">Con «Limita la banda» il limite qui sopra sostituisce quello globale finché giochi (0 = nessun limite).
+  Alla chiusura del gioco riprendono solo i download fermati da questa modalità: quelli messi in pausa a mano restano fermi.</p>
+
 <h3>BitTorrent</h3>
 <div class="row wrap">
   <label>Porta (0 = casuale) <input class="field" id="dls-port" type="number" min="0" max="65535"></label>

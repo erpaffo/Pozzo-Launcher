@@ -4,4 +4,6 @@ version = "1.0"
 author = "Pozzo Launcher"
 description = "Pagina con tempo di gioco per console e store, giochi piu' giocati e completezza della libreria. Aggiunge anche «Video su YouTube» nel dettaglio dei giochi."
 api = 1
+load = "lazy"
+events = ["game_stopped"]  # il backend parte al primo evento, che gli viene consegnato
 min_app = "0.7.1"

@@ -57,6 +57,8 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       text: () => "«Big Picture» apre la libreria a schermo intero, pensata per il controller. «A caso» sceglie un gioco per te." },
     { id: "settings", sel: ["#settings-btn"], title: "Impostazioni",
       text: () => "Qui trovi le cartelle dei giochi, gli emulatori, gli store e tutte le altre opzioni." },
+    { id: "themes", sel: ["#settings-btn"], title: "Temi e aspetto",
+      text: () => "In Impostazioni ? Aspetto passa il mouse su un tema per vederne l'anteprima senza applicarlo; l? trovi anche zoom, densit? e l'editor dei colori." },
     { id: "profile", sel: ["#mb-profile", "#profile-btn"], title: "Chi gioca",
       text: () => "Ogni persona può avere il suo profilo, con preferiti e tempo di gioco. Da qui cambi utente." },
     { id: "keys", sel: ['.mb-top[data-m="Impostazioni"]'], title: "Scorciatoie da tastiera",

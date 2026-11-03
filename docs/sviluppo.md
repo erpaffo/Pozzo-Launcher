@@ -225,6 +225,14 @@ Le risposte delle fonti (RAWG, IGDB, ScreenScraper, TheGamesDB, ArcadeDB, Wikipe
 - API: `GET /api/cache/sources`, `POST /api/cache/sources/clear {source?}`. Le righe scadute si tolgono in background all'avvio, a UI pronta.
 - "Riscarica tutto" ignora la cache in lettura ma la aggiorna.
 
+## Smoke test con emulatore
+
+`tests/smoke/test_emulator_smoke.py` avvia RetroArch con il core gambatte e una ROM di test open-source (Blargg `cpu_instrs`, URL fissato a un commit e sha256 verificato), usando il comando composto da `launcher.plan()` piu' video e audio nulli, e controlla che il processo resti vivo qualche secondo.
+
+- Marker `smoke`: escluso dalla suite normale e da `packaging/run_tests.py` (che non guarda `tests/smoke`). In locale: `RETROARCH_EXE=... RETROARCH_CORES_DIR=... python -m pytest -m smoke tests/smoke -rs`.
+- Senza RetroArch, senza rete o con hash diverso il test salta con il motivo.
+- In CI il job `smoke` gira ogni notte e a mano (`workflow_dispatch`), su Linux, e non blocca push e pull request.
+
 ## Cosa non c'è
 
 - Il compositing delle immagini: vengono salvate le immagini originali.

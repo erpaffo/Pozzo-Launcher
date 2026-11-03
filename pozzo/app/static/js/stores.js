@@ -534,6 +534,7 @@ async function loadAppearance() {
   $("#plugin-list").innerHTML = ext.plugins.length ? ext.plugins.map((p) => `<div class="plugin-row">
       <label class="chk"><input type="checkbox" data-plugin="${esc(p.id)}" ${p.enabled ? "checked" : ""} ${p.locked ? "disabled" : ""}> <b>${esc(p.name)}</b></label>
       <span class="muted small">v${esc(p.version || "?")}${p.author ? " · " + esc(p.author) : ""} — ${esc(p.description || "")}
+      ${p.load_ms != null ? `<span class="plugin-timing">· avvio ${p.load_ms} ms${p.load === "lazy" ? ` (differito${p.first_use_ms != null ? `, primo uso ${p.first_use_ms} ms` : ""})` : ""}</span>` : ""}
       ${p.error ? `<span class="status-bad">${esc(p.error)}</span>` : ""}</span></div>`).join("")
     : `<p class="muted">Nessun plugin installato.</p>`;
   $("#ext-credit").textContent = S.iconsCredit;

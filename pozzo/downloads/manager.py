@@ -31,13 +31,14 @@ DEFAULTS = {"dir": "", "max_active": 3, "segments": 4, "limit_down": 0, "limit_u
             "seed_ratio": 0.0, "seed_minutes": 0, "alt_limit_down": 0, "alt_limit_up": 0, "alt_enabled": False,
             "alt_schedule": {"enabled": False, "from": "22:00", "to": "07:00", "days": [0, 1, 2, 3, 4, 5, 6]},
             "debrid": {}, "clipboard": False, "auto_extract": True, "delete_archive": True,
-            "show_browser": False}
+            "show_browser": False, "game_mode": "off", "game_limit_kbps": 0, "game_pause_http": False}
 INTS = {"max_active": (1, 10), "segments": (1, 8), "limit_down": (0, 10_000_000), "limit_up": (0, 10_000_000),
         "port": (0, 65535), "max_active_http": (0, 10), "max_active_torrent": (0, 10), "seed_minutes": (0, 100_000),
-        "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000)}
-BOOLS = ("alt_enabled", "clipboard", "auto_extract", "delete_archive", "show_browser")
+        "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000), "game_limit_kbps": (0, 10_000_000)}
+BOOLS = ("alt_enabled", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
 SCHEMES = ("http://", "https://")
 TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")
+GAME_MODES = ("off", "limit", "pause")  # mentre giochi: niente, solo un limite di banda, torrent in pausa
 
 
 def default_dir() -> Path:
@@ -73,6 +74,51 @@ def alt_active(s: dict, now: datetime | None = None) -> bool:
     return inside and day in (sc.get("days") or [])
 
 
+_TIME = re.compile(r"(\d{1,2}):(\d{2})")
+
+
+def _norm_schedule(start_at, days=None) -> dict:
+    """Pianificazione di un singolo download: {} se non c'e', altrimenti {"start_at": ..., "days": [...]}.
+
+    `start_at` = "HH:MM" (ogni giorno, o solo nei giorni di `days`, 0 = lunedi'), oppure data e ora ISO
+    "YYYY-MM-DD HH:MM" per un avvio una volta sola. ValueError con il motivo se non e' valida."""
+    txt = str(start_at or "").strip()
+    if not txt:
+        return {}
+    m = _TIME.fullmatch(txt)
+    if m:
+        if int(m[1]) > 23 or int(m[2]) > 59:
+            raise ValueError("start_at: ora non valida, serve HH:MM")
+        out = {"start_at": f"{int(m[1]):02d}:{m[2]}"}
+        if days is not None:
+            if not isinstance(days, (list, tuple)) or any(type(x) is not int or not 0 <= x <= 6 for x in days):
+                raise ValueError("days: giorni da 0 (lunedi') a 6")
+            out["days"] = sorted(set(days))
+        return out
+    try:
+        when = datetime.fromisoformat(txt)
+    except ValueError:
+        raise ValueError("start_at: serve un orario HH:MM o una data AAAA-MM-GG HH:MM")
+    return {"start_at": when.strftime("%Y-%m-%d %H:%M")}  # una data e ora precisa: i giorni non servono
+
+
+def _due(opts: dict, now: datetime) -> bool:
+    """Il download pianificato puo' partire adesso? Senza `start_at` (o con una pianificazione rovinata) sempre si'."""
+    at = str((opts or {}).get("start_at") or "").strip()
+    if not at:
+        return True
+    if _TIME.fullmatch(at):
+        if now.hour * 60 + now.minute < _mins(at):
+            return False
+        days = opts.get("days")
+        return not days or now.weekday() in days  # stessi giorni della modalita' lenta: 0 = lunedi'
+    try:
+        when = datetime.fromisoformat(at)
+    except ValueError:
+        return True
+    return now >= when
+
+
 def _bool(k: str, v) -> bool:
     if not isinstance(v, bool):
         raise ValueError(f"{k} deve essere true o false")
@@ -96,9 +142,11 @@ def _num(k: str, v, kind=int):
 
 
 class Manager:
-    def __init__(self, cfg, events=None, client_factory=net.make_client, save=None):
+    def __init__(self, cfg, events=None, client_factory=net.make_client, save=None, playing=None):
         self.cfg, self.events, self.client_factory = cfg, events, client_factory
         self._save = save or (lambda new: C.save_settings(cfg, app={"downloads": new}))
+        self.playing = playing or (lambda: False)  # fn() -> True se c'e' un gioco in corso (iniettata dalle rotte)
+        self.now = datetime.now  # orologio del ciclo: i test lo sostituiscono per la pianificazione
         self.store = Store(Path(cfg.cache))
         self.uploads = Path(cfg.cache) / "torrents" / "uploads"  # copie dei .torrent caricati dalla UI
         self.lock = threading.RLock()
@@ -114,6 +162,7 @@ class Manager:
         self._res: dict[str, tuple] = {}  # task id -> (token, note) della risoluzione del link in corso
         self._sent: dict[str, dict] = {}  # task id -> ultima vista mandata alla UI
         self._alt_sent: bool | None = None  # modalita' lenta all'ultimo evento: se cambia (orario) l'evento porta le impostazioni
+        self._game = {"on": False, "paused": []}  # partita in corso e i task fermati da lei (da riprendere alla fine)
 
     # ------------------------------------------------------------ impostazioni
     def _raw(self) -> dict:
@@ -132,6 +181,7 @@ class Manager:
         s["debrid"] = {k: {"enabled": bool((deb.get(k) or {}).get("enabled")), "key_set": bool((deb.get(k) or {}).get("key"))}
                        for k in SERVICES}
         s["alt_active"] = alt_active(s)
+        s["game_active"] = self._game["on"]
         return s
 
     def update_settings(self, body: dict) -> dict:
@@ -198,6 +248,10 @@ class Manager:
                         else:
                             e.pop("key", None)  # "" toglie la chiave
                 new["debrid"] = deb
+            if "game_mode" in body:
+                if body["game_mode"] not in GAME_MODES:
+                    raise ValueError("game_mode: off, limit o pause")
+                new["game_mode"] = body["game_mode"]
             self._save(new)
             self.cfg.app["downloads"] = new
             self._alt_sent = None  # il prossimo evento porta le impostazioni nuove (altre finestre aperte)
@@ -208,9 +262,47 @@ class Manager:
         return self.update_settings({"alt_enabled": bool(on)})
 
     def _limits(self, s: dict) -> tuple[int, int]:
-        """Limiti in KB/s in vigore: quelli lenti se la modalita' lenta e' attiva."""
+        """Limiti in KB/s in vigore: quelli lenti se la modalita' lenta e' attiva, la banda da lasciare al gioco se
+        e' la modalita' scelta e un gioco sta girando (vale per HTTP e torrent; l'upload resta quello globale)."""
         pre = "alt_" if alt_active(s) else ""
-        return int(s[pre + "limit_down"]), int(s[pre + "limit_up"])
+        down, up = int(s[pre + "limit_down"]), int(s[pre + "limit_up"])
+        game = int(s.get("game_limit_kbps") or 0)
+        if self._game["on"] and s.get("game_mode") == "limit" and game > 0:
+            down = game
+        return down, up
+
+    def _game_tick(self, s: dict):
+        """Partita che parte o finisce: in modalita' «pause» ferma i download in corso, in «limit» basta `_limits`.
+        Alla fine riprende solo quello che ha fermato lei: un download messo in pausa a mano resta fermo."""
+        try:
+            on = bool(self.playing())
+        except Exception:  # noqa: BLE001 - un callback rotto (launcher assente…) non deve fermare la coda
+            on = False
+        if on == self._game["on"]:
+            return
+        self._game["on"] = on
+        with self.lock:
+            if on:
+                if s.get("game_mode") != "pause":
+                    return
+                ids = []
+                for t in self.tasks.values():
+                    if t.status != RUNNING:  # i task in coda partono quando tocca a loro: in pausa non partirebbero piu'
+                        continue
+                    if not (t.type == "torrent" or s.get("game_pause_http")):
+                        continue
+                    self.pause(t.id)
+                    if t.status == PAUSED:  # chi stava solo condividendo resta completato: niente da riprendere
+                        ids.append(t.id)
+                        t.log("In pausa: c'è un gioco in esecuzione")
+                self._game["paused"] = ids
+            else:
+                ids, self._game["paused"] = self._game["paused"], []
+                for tid in ids:
+                    t = self.tasks.get(tid)
+                    if t and t.status == PAUSED:
+                        t.log("Il gioco è finito: riprendo i download")
+                        self.resume(tid)
 
     # ------------------------------------------------------------ ciclo di vita
     def start(self):
@@ -263,6 +355,7 @@ class Manager:
     # ------------------------------------------------------------ comandi
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
+        sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None))  # «Avvia alle», facoltativo
         kind = "torrent" if TOR.is_torrent(source) else "http"
         if kind == "torrent":
             if not self._torrent:
@@ -278,7 +371,7 @@ class Manager:
         except OSError as e:
             raise ValueError(f"Cartella non utilizzabile: {e}")
         t = DownloadTask(source=source, save_path=str(dest), type=kind, name=opts.pop("name", ""), priority=_prio(opts.pop("priority", 0)),
-                         category=opts.pop("category", ""), options=opts)
+                         category=opts.pop("category", ""), options={**opts, **sched})
         t.log(f"Aggiunto ({kind}): {source}  ->  {dest}")
         with self.lock:
             self.tasks[t.id] = t
@@ -432,6 +525,20 @@ class Manager:
             self.store.save([t])
         self._poke()
 
+    def set_schedule(self, tid: str, start_at, days=None):
+        """«Avvia alle»: il task resta in coda e parte da solo (stringa vuota = pianificazione cancellata)."""
+        sched = _norm_schedule(start_at, days)
+        with self.lock:
+            t = self._get(tid)
+            t.options.pop("start_at", None)
+            t.options.pop("days", None)
+            t.options.update(sched)
+            if sched and t.status == PAUSED:
+                t.status = QUEUED  # pianificato: torna in coda e parte all'ora scelta
+            t.log(f"Avvio pianificato per {sched['start_at']}" if sched else "Pianificazione annullata")
+            self.store.save([t])
+        self._poke()
+
     def _torrent_handle(self, tid: str):
         t = self._get(tid)
         if t.type != "torrent":
@@ -491,6 +598,7 @@ class Manager:
 
     def _tick(self):
         s = self._raw()
+        self._game_tick(s)
         down, up = self._limits(s)
         if self._torrent:
             self._torrent.configure({**s, "limit_down": down, "limit_up": up})
@@ -510,6 +618,8 @@ class Manager:
             busy = [self.tasks[tid].type if tid in self.tasks else "" for tid in self._jobs
                     if not (tid in self.tasks and self.tasks[tid].options.get("seeding"))]
             for t in sorted((t for t in self.tasks.values() if t.status == QUEUED and t.id not in self._jobs), key=_order):
+                if not _due(t.options, self.now()):
+                    continue  # pianificato («Avvia alle»): aspetta il suo orario, senza occupare un posto
                 if len(busy) >= int(s["max_active"]):
                     break
                 cap = int(s.get(f"max_active_{t.type}") or 0)
@@ -517,6 +627,9 @@ class Manager:
                     continue
                 busy.append(t.type)
                 t.status = RUNNING
+                planned = t.options.pop("start_at", None), t.options.pop("days", None)
+                if any(v is not None for v in planned):
+                    self.store.save([t])  # partito: la pianificazione non serve piu', neanche dopo un riavvio
                 t.log("Avviato")
                 self._jobs[t.id] = asyncio.ensure_future(self._job(t, int(s["segments"])))
             self._share(down)

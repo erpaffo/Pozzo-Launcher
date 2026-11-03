@@ -221,6 +221,7 @@ function openSettings(tab) {
 }
 
 function closeSettings() {
+  uiPreviewOff();
   $("#settings-page").hidden = true;
   document.body.classList.remove("settings-open");
   stopPadTest();
@@ -230,6 +231,7 @@ function closeSettings() {
 
 function showTab(tab) {
   stopPadTest();
+  uiPreviewOff(); // anteprime di temi e colori non salvate: si annullano uscendo da Aspetto
   watchStatusStop();
   const id = settingsCategory(tab)?.[0] || (tab.startsWith("ext:") ? tab : "generale");
   renderSettingsNav();
@@ -268,10 +270,168 @@ function showTab(tab) {
   else if (id === "emulatori") loadEmu();
   else if (id === "controller" || id === "streaming") loadRemote();
   else if (id === "integrazioni") loadIntegrations();
-  else if (id === "aspetto" || id === "estensioni") loadAppearance();
+  else if (id === "aspetto" || id === "estensioni") { loadAppearance(); if (id === "aspetto") initUiPrefs(); }
   else if (id === "dati") { loadBackups(); loadSync(); loadSaveDir(); }
   else if (id.startsWith("ext:")) stopPadTest();
   refreshSettingsHealth();
+}
+
+/* ------------------------------------------------------------------ Aspetto: zoom, densita', salvaschermo, editor del tema
+ * Logica pura in GSUi (core.js). Valori in localStorage "gs.ui" / "gs.userTheme" (dispositivo): vedi il commento in core.js. */
+const UI_TOKEN_LABELS = { bg: "Sfondo", "bg-2": "Sfondo 2", "bg-3": "Sfondo 3", panel: "Pannelli", line: "Linee", text: "Testo",
+  muted: "Testo secondario", accent: "Accento", "accent-2": "Accento 2", fav: "Preferiti" };
+const UI_ED = { name: "Il mio tema", tokens: null, themes: null };
+
+function uiSavePrefs(part) {
+  const next = { ...GSUi.prefs(GSUi.saved()), ...part };
+  store.set("ui", next);
+  if (JSON.stringify(GSUi.saved()) !== JSON.stringify(next)) throw new Error("Impossibile salvare: il browser non conserva i dati");
+  GSUi.applyPrefs(document, next);
+  window.dispatchEvent(new Event("gs-ui-change"));
+}
+
+/** Toglie le anteprime (editor colori e tema al passaggio del mouse) e rimette il tema utente salvato. */
+function uiHoverOff() {
+  document.getElementById("gs-theme-hover")?.remove();
+  const mine = document.getElementById("gs-user-theme");
+  if (mine) mine.media = "all";
+}
+function uiPreviewOff() {
+  GSUi.setStyle(document, "gs-user-theme-preview", "");
+  uiHoverOff();
+}
+
+function uiEditorTokens() {
+  if (UI_ED.tokens) return UI_ED.tokens;
+  const saved = GSUi.savedTheme();
+  const cs = getComputedStyle(document.documentElement);
+  UI_ED.tokens = saved ? { ...saved.tokens } : Object.fromEntries(GSUi.TOKENS.map((k) => [k, GSUi.toHex(cs.getPropertyValue("--" + k)) || "#808080"]));
+  if (saved) UI_ED.name = saved.name;
+  return UI_ED.tokens;
+}
+
+function uiEditorPaint(preview = true) {
+  const t = UI_ED.tokens;
+  if (preview) GSUi.setStyle(document, "gs-user-theme-preview", GSUi.themeCss(t));
+  $("#te-contrast").innerHTML = GSUi.contrastReport(t).map((c) => `<li class="${c.ok ? "status-ok" : "status-bad"}">`
+    + `${c.ok ? "?" : "?"} ${esc(UI_TOKEN_LABELS[c.fg])} su ${esc(UI_TOKEN_LABELS[c.bg])}: ${c.ratio}:1 (minimo ${c.min}:1)</li>`).join("");
+}
+
+function uiEditorBuild() {
+  const t = uiEditorTokens();
+  $("#te-name").value = UI_ED.name;
+  $("#te-tokens").innerHTML = GSUi.TOKENS.map((k) => {
+    const [h, s, l] = GSUi.hexToHsl(t[k]);
+    const range = (n, max, v, lbl) => `<label class="small">${lbl} <input type="range" data-hsl="${n}" min="0" max="${max}" value="${v}" aria-label="${esc(UI_TOKEN_LABELS[k])} ${lbl}"></label>`;
+    return `<div class="srow" data-token="${k}"><span class="sw" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:${t[k]}"></span>`
+      + `<div class="srow-txt"><div class="srow-title">${esc(UI_TOKEN_LABELS[k])}</div></div>`
+      + `<div class="row">${range(0, 360, h, "H")}${range(1, 100, s, "S")}${range(2, 100, l, "L")}</div></div>`;
+  }).join("");
+  uiEditorPaint(false); // aprire l'editor non cambia l'aspetto: l'anteprima parte alla prima modifica o importazione
+}
+
+async function uiThemeHover(card, on) {
+  const id = card?.querySelector("input")?.value;
+  if (!on || !id) return uiHoverOff();
+  try { UI_ED.themes = UI_ED.themes || (await api("/api/extensions")).themes; } catch { return; }
+  if (!card.matches(":hover, :focus-within")) return; // nel frattempo il puntatore e' uscito
+  const css = UI_ED.themes.find((x) => x.id === id)?.desktop;
+  uiHoverOff();
+  if (!css) return;
+  const link = document.createElement("link");
+  link.id = "gs-theme-hover"; link.rel = "stylesheet"; link.href = css;
+  document.head.appendChild(link);
+  const mine = document.getElementById("gs-user-theme");
+  if (mine) mine.media = "not all"; // il tema utente coprirebbe l'anteprima
+}
+
+function initUiPrefs() {
+  const p = GSUi.prefs(GSUi.saved());
+  const fill = (id, opts, value, save) => {
+    const el = $(id);
+    el.innerHTML = opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
+    el.value = String(value);
+    if (!el.dataset.bound) { el.dataset.bound = "1"; autosaveControl(el, save); }
+  };
+  const zoom = $("#ui-zoom"), zoomOut = $("#ui-zoom-out");
+  zoom.value = p.zoom; zoomOut.textContent = `${p.zoom}%`;
+  if (!zoom.dataset.bound) {
+    zoom.dataset.bound = "1";
+    zoom.addEventListener("input", () => { zoomOut.textContent = `${zoom.value}%`; });
+    autosaveControl(zoom, (v) => uiSavePrefs({ zoom: +v })); // salva al rilascio (change) e permette di annullare
+    zoom.addEventListener("change", () => { zoomOut.textContent = `${zoom.value}%`; });
+  }
+  const ca = $("#ui-cover-accent");
+  ca.checked = p.coverAccent;
+  if (!ca.dataset.bound) { ca.dataset.bound = "1"; autosaveControl(ca, (v) => uiSavePrefs({ coverAccent: !!v })); }
+  fill("#ui-density", [["comfortable", "Comoda"], ["compact", "Compatta"]], p.density, (v) => uiSavePrefs({ density: v }));
+  fill("#ui-idle", GSUi.IDLE.map((m) => [m, m ? `${m} min` : "Disattivato"]), p.idle, (v) => uiSavePrefs({ idle: +v }));
+
+  const msg = (s, err) => { const m = $("#te-msg"); m.textContent = s; m.className = err ? "status-bad small" : "muted small"; };
+  const enabled = $("#te-enabled");
+  enabled.checked = !!GSUi.savedTheme()?.enabled;
+  enabled.disabled = !GSUi.savedTheme();
+  uiEditorBuild();
+  if ($("#te-save").dataset.bound) return;
+  $("#te-save").dataset.bound = "1";
+
+  const persist = (theme) => {
+    store.set("userTheme", theme);
+    if (JSON.stringify(GSUi.savedTheme()) !== JSON.stringify(theme && { enabled: theme.enabled, name: theme.name, tokens: theme.tokens })) throw new Error("Impossibile salvare il tema");
+    uiPreviewOff();
+    GSUi.applyTheme(document);
+    enabled.checked = !!theme?.enabled; enabled.disabled = !theme;
+  };
+  $("#te-tokens").addEventListener("input", (e) => {
+    const row = e.target.closest("[data-token]");
+    if (!row || !e.target.dataset.hsl) return;
+    const [h, s, l] = [...row.querySelectorAll("input")].map((i) => +i.value);
+    const hex = GSUi.hslToHex(h, s, l);
+    UI_ED.tokens[row.dataset.token] = hex;
+    row.querySelector(".sw").style.background = hex;
+    uiEditorPaint();
+  });
+  $("#te-name").addEventListener("input", (e) => { UI_ED.name = e.target.value; });
+  $("#te-revert").onclick = () => { UI_ED.tokens = null; uiPreviewOff(); uiEditorBuild(); msg("Anteprima annullata."); };
+  $("#te-save").onclick = () => {
+    try {
+      const theme = GSUi.checkTheme({ format: "pozzo-theme", version: 1, name: UI_ED.name, tokens: UI_ED.tokens });
+      const bad = GSUi.contrastReport(theme.tokens).filter((c) => !c.ok);
+      if (bad.length) throw new Error("Contrasto insufficiente: correggi le voci in rosso prima di salvare");
+      persist({ enabled: true, ...theme });
+      msg(`Tema ?${theme.name}? salvato e attivo.`);
+    } catch (err) { msg(err.message, true); }
+  };
+  $("#te-export").onclick = () => {
+    try {
+      const theme = GSUi.checkTheme({ format: "pozzo-theme", version: 1, name: UI_ED.name, tokens: UI_ED.tokens });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([GSUi.serializeTheme(theme.name, theme.tokens)], { type: "application/json" }));
+      a.download = `${theme.name.replace(/[^\w-]+/g, "_")}.pozzo-theme.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch (err) { msg(err.message, true); }
+  };
+  $("#te-import").onchange = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      if (f.size > 4096) throw new Error("File non valido o troppo grande");
+      const theme = GSUi.parseTheme(await f.text());
+      UI_ED.name = theme.name; UI_ED.tokens = theme.tokens;
+      uiEditorBuild();
+      uiEditorPaint();
+      msg(`Tema ?${theme.name}? importato in anteprima: premi ?Salva come mio tema? per tenerlo.`);
+    } catch (err) { msg(err.message, true); }
+  };
+  $("#te-remove").onclick = () => { try { persist(null); UI_ED.tokens = null; uiEditorBuild(); msg("Tema utente rimosso."); } catch (err) { msg(err.message, true); } };
+  autosaveControl(enabled, (on) => { const t = GSUi.savedTheme(); if (!t) throw new Error("Nessun tema utente salvato"); persist({ ...t, enabled: on }); });
+  const list = $("#theme-list");
+  list.addEventListener("mouseover", (e) => { const c = e.target.closest(".theme-card"); if (c) uiThemeHover(c, true); });
+  list.addEventListener("focusin", (e) => { const c = e.target.closest(".theme-card"); if (c) uiThemeHover(c, true); });
+  list.addEventListener("mouseleave", uiHoverOff);
+  list.addEventListener("focusout", uiHoverOff);
 }
 
 function initSettingsLayout() {
@@ -762,6 +922,19 @@ async function loadSync(st) {
   $("#sync-last").textContent = st.busy ? "Sincronizzazione in corso…"
     : l.time ? `Ultima sincronizzazione: ${new Date(l.time * 1000).toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" })}${folder}`
     : "Non ancora sincronizzato";
+  const sv = st.saves || {};
+  if (!$("#sync-saves")) return;
+  $("#sync-saves").checked = !!sv.enabled;
+  if (!loadSync.games) {  // i giochi con salvataggi si chiedono una volta, quando la sezione si apre
+    try { loadSync.games = (await api("/api/sync/saves")).games || []; } catch (e) { loadSync.games = []; }
+  }
+  const inc = new Set(sv.games || []);
+  $("#sync-saves-list").innerHTML = loadSync.games.map((g) => `<label class="chk"><input type="checkbox" data-save-key="${esc(g.key)}"${inc.has(g.key) ? " checked" : ""}> ${esc(g.title)} `
+    + `<span class="muted small">${g.files} file · ${fmtSize(g.size) || "0 B"}</span></label>`).join("");
+  const conflicts = (st.last?.saves?.conflicts) || [];
+  $("#sync-saves-info").textContent = conflicts.length ? `Da controllare (conflitti): ${conflicts.join(" · ")}`
+    : loadSync.games.length ? `${loadSync.games.filter((g) => inc.has(g.key)).length} giochi scelti su ${loadSync.games.length} con salvataggi`
+      : "Nessun salvataggio trovato nei giochi della libreria.";
 }
 
 function bindSync() {
@@ -797,6 +970,12 @@ function bindSync() {
     $("#sync-last").textContent = "Sincronizzazione in corso…";
     try { await loadSync(await api("/api/sync/now", { body: {} })); await reload(true); } catch (e) { toast(e.message, true); } finally { btn.disabled = false; }
   };
+  if ($("#sync-saves")) {
+    $("#sync-saves").onchange = (e) => save({ saves: e.target.checked });
+    $("#sync-saves-list").onchange = () => save({
+      saves_games: [...document.querySelectorAll("[data-save-key]")].filter((x) => x.checked).map((x) => x.dataset.saveKey),
+    });
+  }
 }
 
 /** Cartella delle copie dei salvataggi dei giochi (formato Ludusavi). */

@@ -7,6 +7,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -52,3 +54,30 @@ jobs:
           PYTHONUTF8: "1"
           PYTHONUNBUFFERED: "1"
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
+
+  # Notturno/manuale, mai bloccante per push e PR: emulatore vero + ROM libera (tests/smoke).
+  smoke:
+    if: github.event_name != 'push' && github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: RetroArch e core gambatte
+        run: sudo apt-get update && sudo apt-get install -y retroarch libretro-gambatte xvfb
+
+      - name: Dipendenze Python
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Smoke test
+        env:
+          PYTHONUTF8: "1"
+          RETROARCH_EXE: /usr/bin/retroarch
+          RETROARCH_CORES_DIR: /usr/lib/x86_64-linux-gnu/libretro
+        run: xvfb-run -a python -m pytest -m smoke tests/smoke -q -rs

@@ -13,6 +13,8 @@ PLUGIN - cartella <config>/plugins/<id>/:
     backend.py      (facoltativo) def register(gs): ...   con gs = PluginAPI (vedi sotto)
     load = "lazy"   (facoltativo, in [plugin]) il backend si avvia al primo uso invece che all'avvio dell'app:
                     solo per plugin che usano soltanto gs.route (vedi LazyPlugin)
+    events = [...]  (facoltativo, con load = "lazy") eventi a cui il plugin si iscrive con gs.on: il backend si avvia al
+                    primo di quegli eventi (che gli viene consegnato) invece che all'avvio dell'app
 
 Un plugin backend puo': aggiungere endpoint (gs.route), fornitori di libreria/store (gs.add_store),
 fonti di metadati per lo scraping (gs.add_source), reagire agli eventi (gs.on), lavori periodici (gs.job) e salvare
@@ -287,6 +289,7 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
                     "settings": settings.get(d.name, {}), "error": (errors or {}).get(d.name),
                     "dir": str(d), "load_ms": LOAD_MS.get(d.name),
                     "load": "lazy" if m.get("load") == "lazy" else "eager", "first_use_ms": FIRST_USE_MS.get(d.name),
+                    "events": [str(e) for e in m.get("events", [])] if isinstance(m.get("events"), list) else [],
                     "eager_needed": sorted(EAGER_NEEDED.get(d.name, ())),
                     "jobs": [{"name": j.name, "every": j.every, "runs": j.runs, "error": j.last_error}
                              for j in JOBS if j.pid == d.name],
@@ -408,9 +411,9 @@ class _LazyAPI(PluginAPI):
     """gs di un plugin lazy: le route vanno nel router privato del plugin; gs.on/job/add_store/add_source
     funzionano ma, essendo chiamate solo al primo uso, vengono segnalate (il plugin va reso eager)."""
 
-    def __init__(self, sub: APIRouter, *a):
-        super().__init__(*a)
-        self.sub = sub
+    def __init__(self, sub: APIRouter, app, cfg, pid, events, log, handlers: dict, declared: set):
+        super().__init__(app, cfg, pid, events, log)
+        self.sub, self.handlers, self.declared = sub, handlers, declared
 
     def route(self, path: str, methods=("GET",)):
         def deco(fn):
@@ -424,6 +427,9 @@ class _LazyAPI(PluginAPI):
                  "Va reso eager (togli load dal plugin.toml)")
 
     def on(self, event, fn):
+        if event in self.declared:  # sottoscritto dallo stub del manifest: nessun evento perso
+            self.handlers.setdefault(event, []).append(fn)
+            return
         self._late("gs.on")
         super().on(event, fn)
 
@@ -448,11 +454,20 @@ class LazyPlugin:
     def __init__(self, app, cfg, p: dict, events, log, errors: dict):
         self.app, self.cfg, self.p, self.events, self.log, self.errors = app, cfg, p, events, log, errors
         self.sub, self.error, self.done = APIRouter(), None, False
+        self.handlers: dict[str, list] = {}  # gs.on del plugin per gli eventi dichiarati in events
         self.lock = threading.Lock()
         self.route = Route(f"/plugin-api/{p['id']}/{{path:path}}", self)
 
     def mount(self):
         self.app.router.routes.append(self.route)
+        for ev in self.p.get("events", []):
+            self.events.on(ev, lambda data, ev=ev: self._on_event(ev, data))
+
+    def _on_event(self, ev: str, data: dict):
+        """Primo evento dichiarato: avvia il backend (che registra i suoi gs.on) e consegna l'evento ai suoi handler."""
+        self._load()
+        for fn in list(self.handlers.get(ev, [])):
+            fn(data)
 
     def _load(self):
         pid = self.p["id"]
@@ -465,7 +480,8 @@ class LazyPlugin:
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
                 if hasattr(mod, "register"):
-                    mod.register(_LazyAPI(self.sub, self.app, self.cfg, pid, self.events, self.log))
+                    mod.register(_LazyAPI(self.sub, self.app, self.cfg, pid, self.events, self.log, self.handlers,
+                                          set(self.p.get("events", []))))
             except Exception as e:
                 self.error = f"{type(e).__name__}: {e}"
                 self.errors[pid] = self.error

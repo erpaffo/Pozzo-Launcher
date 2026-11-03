@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PIL import Image  # noqa: E402
+from PIL import Image, ImageDraw  # noqa: E402
 
 from pozzo import imgopt  # noqa: E402
 
@@ -131,10 +131,147 @@ def test_thumb_di_animata(tmp: Path):
     print("ok  thumb di un'animata: primo fotogramma")
 
 
+def _white_contrast(color: str) -> float:
+    rgb = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in rgb]
+    luminance = sum(w * v for w, v in zip((0.2126, 0.7152, 0.0722), linear))
+    return 1.05 / (luminance + 0.05)
+
+
+def test_accent_dominante_e_contrasto(tmp: Path):
+    red = Image.new("RGB", (64, 64), "#d82020")
+    ImageDraw.Draw(red).rectangle((48, 0, 63, 63), fill="#2040d8")
+    red_path = tmp / "red.png"
+    red.save(red_path)
+
+    blue = Image.new("RGB", (64, 64), "#2040d8")
+    ImageDraw.Draw(blue).rectangle((48, 0, 63, 63), fill="#d82020")
+    blue_path = tmp / "blue.png"
+    blue.save(blue_path)
+
+    red_accent, blue_accent = imgopt.accent_color(red_path), imgopt.accent_color(blue_path)
+    assert red_accent and int(red_accent[1:3], 16) > int(red_accent[5:7], 16) * 2, red_accent
+    assert blue_accent and int(blue_accent[5:7], 16) > int(blue_accent[1:3], 16) * 2, blue_accent
+    assert _white_contrast(red_accent) >= imgopt.ACCENT_TEXT_CONTRAST
+    assert _white_contrast(blue_accent) >= imgopt.ACCENT_TEXT_CONTRAST
+
+    gray = tmp / "gray.png"
+    Image.new("RGB", (32, 32), "#888888").save(gray)
+    assert imgopt.accent_color(gray) is None
+    print("ok  accent dominante rosso/blu e contrasto testo bianco 4.5:1; grigio senza accent")
+
+
+def test_accent_esclude_bianco_e_preferisce_saturazione(tmp: Path):
+    near_white = tmp / "near-white.png"
+    Image.new("RGB", (32, 32), "#fefdfc").save(near_white)
+    assert imgopt.accent_color(near_white) is None
+
+    # Counts are close; saturation takes precedence over frequency.
+    pixels = ([(119, 119, 160)] * 2040) + ([(224, 32, 32)] * 2000) + ([(255, 255, 255)] * 56)
+    cover = Image.new("RGB", (64, 64))
+    cover.putdata(pixels)
+    path = tmp / "saturation.png"
+    cover.save(path)
+    accent = imgopt.accent_color(path)
+    assert accent and int(accent[1:3], 16) > int(accent[5:7], 16) * 2, accent
+    assert _white_contrast(accent) >= imgopt.ACCENT_TEXT_CONTRAST
+    print("ok  near-white escluso; a frequenze simili prevale il colore piu' saturo")
+
+
+def test_accent_cache_disco_e_invalidazione(tmp: Path):
+    src = tmp / "cover.png"
+    Image.new("RGB", (32, 32), "#d82020").save(src)
+    cached = imgopt._accent_color_cached
+    cached.cache_clear()
+    red = imgopt.accent_color(src)
+    sidecar = src.with_name(src.name + ".accent")
+    assert red and sidecar.exists(), sidecar
+
+    cached.cache_clear()  # elimina la cache RAM: il risultato deve provenire dal sidecar
+    imgopt._accent_color_cached = lambda *args: (_ for _ in ()).throw(AssertionError("cache disco ignorata"))
+    try:
+        assert imgopt.accent_color(src) == red
+    finally:
+        imgopt._accent_color_cached = cached
+
+    old_mtime = src.stat().st_mtime_ns
+    Image.new("RGB", (32, 32), "#2040d8").save(src)
+    os.utime(src, ns=(old_mtime + 2_000_000_000, old_mtime + 2_000_000_000))
+    cached.cache_clear()
+    blue = imgopt.accent_color(src)
+    assert blue and blue != red and int(blue[5:7], 16) > int(blue[1:3], 16) * 2, blue
+    assert sidecar.read_text(encoding="ascii").startswith(f"{src.stat().st_mtime_ns} {src.stat().st_size} ")
+    print("ok  cache su disco riusata e invalidata su cambio mtime")
+
+
+def test_accent_file_mancante_o_illeggibile(tmp: Path):
+    assert imgopt.accent_color(tmp / "missing.png") is None
+    broken = tmp / "broken.png"
+    broken.write_bytes(b"not an image")
+    assert imgopt.accent_color(broken) is None
+    print("ok  accent nullo per file mancante o illeggibile")
+
+
+def test_api_cover_accent_override(tmp: Path):
+    import hashlib
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from pozzo.app.routes import images
+
+    base = tmp / "base.png"
+    override = tmp / "override.png"
+    Image.new("RGB", (32, 32), "#d82020").save(base)
+    Image.new("RGB", (32, 32), "#2040d8").save(override)
+    remote_url = "https://covers.test/game.png"
+    remote_path = tmp / "media" / "net" / f"{hashlib.sha1(remote_url.encode()).hexdigest()}.png"
+    remote_path.parent.mkdir(parents=True)
+    Image.new("RGB", (32, 32), "#2040d8").save(remote_path)
+    overrides = {"cover": "override.png"}
+    game = {"id": 1, "key": "test:1", "media": {"cover": "base.png"}}
+    ctx = SimpleNamespace(
+        cfg=SimpleNamespace(cache=tmp),
+        lib=SimpleNamespace(get=lambda gid: game),
+        state={},
+        thumbs_dir=tmp / "thumbs",
+        user=SimpleNamespace(media_overrides=lambda key: overrides),
+    )
+
+    class NoThread:
+        def __init__(self, **kwargs):
+            pass
+
+        def start(self):
+            pass
+
+    with patch.object(images.threading, "Thread", NoThread):
+        app = FastAPI()
+        app.include_router(images.build_router(ctx))
+    with TestClient(app) as client:
+        response = client.get("/api/game/1/cover-accent")
+        accent = response.json()["accent"]
+        assert response.status_code == 200 and accent
+        assert int(accent[5:7], 16) > int(accent[1:3], 16) * 2, accent
+        overrides["cover"] = f"url:{remote_url}"
+        remote = client.get("/api/game/1/cover-accent")
+        assert remote.status_code == 200 and remote.json()["accent"] == accent, remote.json()
+        overrides.clear()
+        game["media"].clear()
+        missing = client.get("/api/game/1/cover-accent")
+        assert missing.status_code == 200 and missing.json() == {"accent": None}, missing.json()
+    print("ok  endpoint onora override, cache remota esistente e cover mancante")
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         for fn in (test_optimize_risparmia, test_originale_se_non_conviene, test_trasparenza, test_animata_non_si_tocca,
-                   test_file_corrotto, test_thumb, test_thumb_dest_e_tall, test_thumb_mai_ingrandisce, test_thumb_di_animata):
+                   test_file_corrotto, test_thumb, test_thumb_dest_e_tall, test_thumb_mai_ingrandisce,
+                   test_thumb_di_animata, test_accent_dominante_e_contrasto,
+                   test_accent_esclude_bianco_e_preferisce_saturazione, test_accent_cache_disco_e_invalidazione,
+                   test_accent_file_mancante_o_illeggibile, test_api_cover_accent_override):
             sub = Path(t) / fn.__name__
             sub.mkdir()
             fn(sub)

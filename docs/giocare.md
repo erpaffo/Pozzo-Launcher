@@ -116,6 +116,19 @@ non si possono mostrare, perché Discord accetta solo asset caricati sull'applic
 
 ![Impostazioni › Integrazioni: avvisi di Windows e presenza su Discord](images/impostazioni-integrazioni.jpg)
 
+## Download mentre giochi
+
+In **Impostazioni › Download › Mentre giochi** si sceglie cosa fanno i download quando parte un gioco:
+**Continua normalmente** (predefinito), **Limita la banda** (il limite globale di download diventa quello indicato in
+KB/s, l'upload resta com'è) o **Metti in pausa i torrent** (con l'opzione accanto si fermano anche i download HTTP).
+
+Alla chiusura del gioco riprendono **solo** i download fermati da questa funzione: quelli messi in pausa a mano restano
+fermi. Il launcher sa da solo quando giochi, anche con un gioco PC avviato da Steam o Epic.
+
+Un singolo download può partire a un'ora precisa: nel menu **⋯** della riga, **⏰ Avvia alle…** chiede l'ora (`23:30`).
+Il download resta in coda — la riga mostra ⏰ con l'orario — e parte da solo, anche dopo un riavvio dell'app; la stessa
+voce diventa **⏰ Annulla pianificazione** per toglierla. C'è lo stesso campo facoltativo nel dialog **＋ Aggiungi**.
+
 ## Salvataggi
 
 Nel dettaglio, **💾 Salvataggi** tiene una **versione prima e una dopo ogni partita** (se i salvataggi non superano

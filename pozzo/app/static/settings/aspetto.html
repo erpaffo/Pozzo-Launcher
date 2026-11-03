@@ -3,3 +3,32 @@
 <div id="experience-list" class="experience-list"></div>
 <h3>Tema</h3>
 <div id="theme-list" class="theme-list"></div>
+<p class="muted small">Passa il mouse (o la tastiera) su un tema per vederne l'anteprima senza applicarlo.</p>
+<h3>Dimensione e densit?</h3>
+<div class="srow"><div class="srow-txt"><div class="srow-title">Zoom dell'interfaccia</div>
+  <div class="srow-desc">Da 90% a 125%, a passi del 5%. Vale anche per Big Picture; 100% lascia tutto com'?.</div></div>
+  <div class="row"><input id="ui-zoom" type="range" min="90" max="125" step="5" value="100" aria-label="Zoom dell'interfaccia"> <output id="ui-zoom-out" for="ui-zoom">100%</output></div></div>
+<div class="srow"><div class="srow-txt"><div class="srow-title">Densit?</div>
+  <div class="srow-desc">Compatta riduce gli spazi di barre ed elenchi per mostrare pi? contenuti.</div></div>
+  <select id="ui-density" aria-label="Densit? dell'interfaccia"></select></div>
+<div class="srow"><div class="srow-txt"><div class="srow-title">Colore della copertina</div>
+  <div class="srow-desc">Tinge la scheda del gioco e lo sfondo di Big Picture con il colore dominante della copertina. Non cambia il colore d'accento del tema.</div></div>
+  <label class="chk"><input id="ui-cover-accent" type="checkbox" checked> Attivo</label></div>
+<h3>Salvaschermo di Big Picture</h3>
+<div class="srow"><div class="srow-txt"><div class="srow-title">Mostra le copertine dopo un periodo di inattivit?</div>
+  <div class="srow-desc">Qualsiasi tasto, movimento o clic lo chiude senza eseguire il comando. Non parte durante un gioco; la musica non viene toccata.</div></div>
+  <select id="ui-idle" aria-label="Inattivit? prima del salvaschermo"></select></div>
+<h3>Editor del tema</h3>
+<p class="muted small">Regola colore (H), saturazione (S) e luminosit? (L) dei colori del tema. L'anteprima non ? salvata finch? non premi ?Salva come mio tema?.</p>
+<div class="row"><label class="srow-title" for="te-name">Nome</label><input id="te-name" type="text" maxlength="40" value="Il mio tema" autocomplete="off"></div>
+<div id="te-tokens"></div>
+<ul id="te-contrast" class="small" aria-live="polite"></ul>
+<div class="row">
+  <button type="button" class="btn" id="te-revert">Annulla anteprima</button>
+  <button type="button" class="btn primary" id="te-save">Salva come mio tema</button>
+  <button type="button" class="btn" id="te-export">Esporta (JSON)</button>
+  <label class="btn" for="te-import">Importa (JSON)</label><input id="te-import" type="file" accept="application/json,.json" hidden>
+  <button type="button" class="btn" id="te-remove">Rimuovi il mio tema</button>
+</div>
+<label class="chk"><input type="checkbox" id="te-enabled"> Usa il mio tema</label>
+<p id="te-msg" class="muted small" role="status" aria-live="polite"></p>

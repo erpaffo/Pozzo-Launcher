@@ -57,7 +57,7 @@
       "files": {
         "backend.py": "647d5b0f177f3de7f1b240298a591a65eb3db11cf3b37ba2849506a9833654e4",
         "frontend.js": "7b1b0b7dc24d1b66844d8a6e7263052820f51501d2aa0d2a11ca7bbf08aa8d80",
-        "plugin.toml": "44fa21a4637a241077b1aa045d6a607e3289e2db2733bc48567ab081aee3750c",
+        "plugin.toml": "071daf1db5800fa1779a8ceaa409200888c52ed41e05f630f54a5744948336b3",
         "style.css": "005928af354ef58b2fb99f2f4d3e09ccc470c99a91862e8b62a6f15753eba611"
       }
     },
@@ -161,7 +161,7 @@
       "files": {
         "backend.py": "cd50a833c89d9b61936590302c4e659dded6629ad8634c7fcd19e08796990d94",
         "frontend.js": "37ed36554079dd9f7c5d94d9c20ba35e8d9e403f3dc43f2d030320b850a11ff7",
-        "plugin.toml": "e1ff0ab0ac7028328b1ae26934144c9584e730dc047a8b313c03be3248c9c732",
+        "plugin.toml": "57f187468902b8e49c92db93c1ae280de39b471c90a9c321a136a8e3b67025da",
         "style.css": "5f206414809d5571487e96aa8a50bf763609f9939778a61004cc1ac5d3c9c595"
       }
     },
@@ -176,7 +176,7 @@
       "files": {
         "backend.py": "db709a541b6e5eba4ec0b3b572794583411bc5e105637af9d7298066527df3c0",
         "frontend.js": "b2db9476220602938fe6e094f857a004f345b9cd2f72cb31a11b62561507cdfc",
-        "plugin.toml": "2838970240237e807fd5875507e1990f83386874614db7d7281c2c5d034030d0"
+        "plugin.toml": "ba643fd447eeb6c2955dec21af2c0a205a896c217e0c64ab602880e4a69c69be"
       }
     }
   ]

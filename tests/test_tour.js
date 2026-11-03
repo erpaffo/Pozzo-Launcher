@@ -152,7 +152,7 @@ const nextBtn = (w) => w.card().children.find((c) => c.className === "gs-tour-ro
   w.doc.activeElement = next; assert.equal(w.key("Tab", { shiftKey: true }).pd, true); assert.equal(w.doc.activeElement, off);
   w.doc.activeElement = skip; assert.notEqual(w.key("Tab").pd, true);   // in mezzo: Tab normale
   w.doc.activeElement = { focus() {} }; w.key("Tab"); assert.equal(w.doc.activeElement, next);  // fuori dalla scheda: rientra
-  w.doc.activeElement = skip; w.key("Enter"); assert.equal(where(w), "Passo 1 di 10"); // Invio su un pulsante lascia il clic al pulsante
+  w.doc.activeElement = skip; w.key("Enter"); assert.equal(where(w), "Passo 1 di 11"); // Invio su un pulsante lascia il clic al pulsante
   assert.equal(w.key("/").pd !== true, true);       // non scrive, ma non e' nemmeno "mangiato" dal tour
 }
 
@@ -161,13 +161,13 @@ const nextBtn = (w) => w.card().children.find((c) => c.className === "gs-tour-ro
   const w = world({ sels: ALL });
   w.tour.start();
   for (let i = 0; i < 2; i++) w.key("ArrowRight");  // sulla ricerca
-  assert.equal(w.card().find("gs-tour-meta").children[0].textContent, "Passo 3 di 10");
+  assert.equal(w.card().find("gs-tour-meta").children[0].textContent, "Passo 3 di 11");
   assert.equal(textOf(w.card(), "gs-tour-meta").startsWith("Passo 3"), true);
   w.doc.targets["#search"].rect = box(-500, 0, 10, 10);   // fuori vista
   w.wl.resize.forEach((f) => f());
   assert.equal(w.tour.isActive(), true);
-  assert.equal(w.card().find("gs-tour-meta").children[0].textContent, "Passo 3 di 9");   // ora e' "Ordina e filtra"
-  assert.match(w.root().find("gs-tour-live").textContent, /Passo 3 di 10|Ordina/);
+  assert.equal(w.card().find("gs-tour-meta").children[0].textContent, "Passo 3 di 10");   // ora e' "Ordina e filtra"
+  assert.match(w.root().find("gs-tour-live").textContent, /Passo 3 di 11|Ordina/);
   w.win.innerWidth = 300; w.win.innerHeight = 400; w.wl.scroll.forEach((f) => f());
   assert.equal(w.tour.isActive(), true);
   w.doc.targets = {}; w.wl.resize.forEach((f) => f());  // restano solo benvenuto e fine

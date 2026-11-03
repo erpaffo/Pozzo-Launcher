@@ -142,6 +142,20 @@ def build_router(ctx) -> APIRouter:
             return dest.relative_to(cfg.cache).as_posix()
         return None
 
+    @router.get("/api/game/{gid}/cover-accent")
+    def api_cover_accent(gid: int):
+        """Colore accent della copertina risolta, o null se non disponibile."""
+        g = lib.get(gid)
+        rel = _media(g).get("cover")
+        if not rel:
+            return {"accent": None}
+        if rel.startswith("url:"):
+            rel = _fetch_remote(rel[4:])
+        if not rel:
+            return {"accent": None}
+        from ... import imgopt
+        return {"accent": imgopt.accent_color(Path(cfg.cache) / rel)}
+
     # copertine remote della griglia, scaricate in sottofondo: prima le ultime chieste (quelle sullo schermo).
     # Prima ogni richiesta restava appesa al download: con decine di copertine in coda si occupavano i thread del
     # server e i 6 collegamenti del browser, e si fermava tutta l'app (anche le pagine che non c'entrano)

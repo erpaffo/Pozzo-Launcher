@@ -19,3 +19,13 @@
   <label>Indirizzo per Moonlight <input class="field" id="ph-video" placeholder="100.101.102.103 (Tailscale)" autocomplete="off"></label>
 </div>
 <div id="guest-box"></div>
+
+<h3>Mappa i tasti negli emulatori</h3>
+<p class="muted small">Applica la mappa predefinita del controller 1 (Xbox, PlayStation o Switch Pro) a Dolphin, PCSX2, DuckStation, RPCS3 e RetroArch.
+  Chiudi prima l'emulatore: prima di scrivere si fa una copia del file (.pozzo-data). Alla prima installazione la mappa si applica da sola, ma solo se l'emulatore non ha ancora impostazioni.</p>
+<div class="row wrap" id="cp-box">
+  <label>Controller <select class="field" id="cp-type"></select></label>
+  <label>Emulatore <select class="field" id="cp-emu"></select></label>
+  <button class="btn" type="button" id="cp-apply">Applica</button>
+  <span class="muted small" id="cp-msg" role="status"></span>
+</div>

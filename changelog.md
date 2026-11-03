@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.14.1 (2026-11-03)
+
+### Aggiunto
+
+- Impostazioni › Emulatori › «Cerca emulatori già installati»: trova gli emulatori già sul PC (Program Files, Winget, Scoop, librerie Steam, registro di Windows) e li propone con «Usa questo»; non cambia nulla da solo. Se un emulatore è già presente, «Installa» non lo riscarica
+- Mappa dei tasti del controller per Dolphin, PCSX2, DuckStation, RPCS3 e RetroArch (Xbox, PlayStation DualSense o DualShock 4, Switch Pro): si applica da sola quando installi un emulatore che non ha ancora impostazioni, e a mano da Impostazioni › Controller › «Mappa i tasti negli emulatori». Non tocca mai le impostazioni che esistono già se non la chiedi tu; prima di scrivere si fa una copia del file
+- Impostazioni › Estensioni: accanto a ogni plugin il tempo di avvio (e, per quelli differiti, quello del primo uso)
+- Test di fumo con RetroArch e una ROM libera (`tests/smoke`): gira solo di notte o a richiesta in CI, mai su push e pull request
+
+### Cambiato
+
+- Le estensioni `limite-tempo` e `statistiche` partono al primo evento di gioco invece che all'avvio dell'app; nessun evento va perso. Nel `plugin.toml`, `load = "lazy"` accetta anche `events = [...]`. `steamgriddb` resta attiva dall'avvio perché deve registrare la sua fonte prima dello scraping
+
+### Migliorato
+
+- La ricerca degli emulatori installati richiede circa 4 secondi invece di 18: le cartelle dei programmi del registro si guardano solo se il nome è quello di un emulatore
+
 ## 0.14.0 (2026-11-03)
 
 ### Aggiunto

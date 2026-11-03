@@ -5,3 +5,5 @@ author = "Pozzo Launcher"
 description = "Fonte di copertine (verticali), sfondi (hero) e logo da SteamGridDB, per i giochi a cui le altre fonti non le hanno trovate. Serve una chiave gratuita di steamgriddb.com."
 api = 1
 min_app = "0.7.1"
+# Resta eager (nessun load = "lazy"): gs.add_source deve registrare la fonte prima del primo scraping; non e' una
+# route ne' un evento, quindi non si puo' avviare al primo uso senza perdere la fonte.

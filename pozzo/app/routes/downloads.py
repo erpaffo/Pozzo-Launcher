@@ -19,10 +19,27 @@ from ...downloads.manager import Manager
 from ..apiv1 import sse
 
 
+def _days(txt: str):
+    """Giorni della pianificazione da un campo Form («0,1,2», 0 = lunedi'): None se non indicati."""
+    if not (txt or "").strip():
+        return None
+    try:
+        return [int(x) for x in txt.replace(" ", ",").split(",") if x.strip()]
+    except ValueError:
+        raise HTTPException(400, "days: giorni da 0 (lunedi') a 6")
+
+
 def build_router(ctx) -> APIRouter:
     cfg = ctx.cfg
     router = APIRouter()
-    mgr = Manager(cfg, ctx.events)
+
+    def _playing() -> bool:
+        """C'e' un gioco in corso? Lo sa il launcher, che la coda non importa: la risposta arriva da qui."""
+        launcher = getattr(ctx, "launcher", None)
+        st = (launcher.running() if launcher else None) or {}
+        return st.get("status") in ("starting", "extracting", "running")
+
+    mgr = Manager(cfg, ctx.events, playing=_playing)
     ctx.downloads = mgr
 
     def _unshorten(url: str) -> str:  # accorciatori pubblicitari, come per il pulsante «Scarica» del dettaglio gioco
@@ -70,7 +87,8 @@ def build_router(ctx) -> APIRouter:
         for u in links:
             try:
                 out.append(mgr.add(u, body.get("save_path") or "", priority=body.get("priority") or 0,
-                                   category=body.get("category") or "").view())
+                                   category=body.get("category") or "", start_at=body.get("start_at"),
+                                   days=body.get("days")).view())
             except ValueError as e:
                 raise HTTPException(400, str(e))
         return {"ok": True, "tasks": out}
@@ -131,6 +149,11 @@ def build_router(ctx) -> APIRouter:
     def api_downloads_move(tid: str, body: dict = Body(...)):
         return _act(tid, mgr.move, body.get("to"))
 
+    @router.post("/api/downloads/{tid}/schedule")
+    def api_downloads_schedule(tid: str, body: dict = Body(...)):
+        """«Avvia alle»: il download resta in coda e parte da solo (start_at vuoto = pianificazione annullata)."""
+        return _act(tid, mgr.set_schedule, body.get("start_at"), body.get("days"))
+
     @router.post("/api/downloads/{tid}/limit")
     def api_downloads_limit(tid: str, body: dict = Body(...)):
         return _act(tid, mgr.set_limit, body.get("down") or 0, body.get("up") or 0)
@@ -171,7 +194,8 @@ def build_router(ctx) -> APIRouter:
         return _act(tid, mgr.set_sequential, bool(body.get("on")))
 
     @router.post("/api/downloads/torrent-file")
-    async def api_downloads_torrent_file(file: UploadFile = File(...), save_path: str = Form("")):
+    async def api_downloads_torrent_file(file: UploadFile = File(...), save_path: str = Form(""),
+                                         start_at: str = Form(""), days: str = Form("")):
         data = await file.read(10 * 1024 * 1024 + 1)
         if len(data) > 10 * 1024 * 1024:
             raise HTTPException(400, "File .torrent troppo grande")
@@ -186,7 +210,8 @@ def build_router(ctx) -> APIRouter:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
         try:
-            return {"ok": True, "tasks": [mgr.add(str(dest), save_path).view()]}
+            return {"ok": True, "tasks": [mgr.add(str(dest), save_path, start_at=start_at,
+                                                days=_days(days)).view()]}
         except ValueError as e:
             dest.unlink(missing_ok=True)
             raise HTTPException(400, str(e))

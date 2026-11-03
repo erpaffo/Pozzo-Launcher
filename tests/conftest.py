@@ -26,3 +26,16 @@ def pytest_pyfunc_call(pyfuncitem):
         args = {a: pyfuncitem.funcargs[a] for a in pyfuncitem._fixtureinfo.argnames}
         asyncio.run(pyfuncitem.obj(**args))
         return True
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "smoke: emulatore reale + rete (CI notturna); escluso salvo `-m smoke`")
+
+
+def pytest_collection_modifyitems(config, items):
+    if "smoke" in (config.getoption("markexpr") or ""):
+        return
+    skipped = [i for i in items if "smoke" in i.keywords]
+    if skipped:
+        config.hook.pytest_deselected(items=skipped)
+        items[:] = [i for i in items if i not in skipped]

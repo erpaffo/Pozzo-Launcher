@@ -100,3 +100,39 @@ def test_lazy_plugin_using_gs_on_is_flagged_but_works(tmp_path):
     assert X.EAGER_NEEDED == {"evento": {"gs.on"}}
     assert plug(cfg, "evento")["eager_needed"] == ["gs.on"]
     assert any("gs.on" in m and "eager" in m for m in log)
+
+
+EVENT_SRC = COUNTER + ("def register(gs):\n    gs.on('game_started', lambda d: __import__('builtins').LAZY_HITS.append('ev:' + d['title']))\n"
+                       "    @gs.route('ciao')\n    def ciao():\n        return {'ok': 1}\n")
+
+
+def test_lazy_with_declared_events_starts_on_first_event_without_losing_it(tmp_path):
+    app, cfg, errors, log = make(tmp_path, {"ev": ('load = "lazy"\nevents = ["game_started"]', EVENT_SRC)})
+    assert hits() == [] and X.EAGER_NEEDED == {}  # non importato prima del primo evento
+    # secondo giro con un bus nostro per poter emettere l'evento
+    app2, bus, log2 = FastAPI(), X.Events(), []
+    X.load_backends(app2, cfg, bus, log2.append)
+    hits_before = hits()
+    bus.emit("game_started", {"title": "Zelda"})
+    bus.emit("game_started", {"title": "Mario"})
+    assert hits()[len(hits_before):] == ["ev", "ev:Zelda", "ev:Mario"]  # importato una volta, nessun evento perso
+    assert X.EAGER_NEEDED == {} and not any("eager" in m for m in log2)
+    assert TestClient(app2).get("/plugin-api/ev/ciao").json() == {"ok": 1}  # route gia' pronte dopo l'evento
+
+
+def test_real_extensions_startup_budget_and_not_imported(tmp_path, monkeypatch):
+    ext = ROOT / "extensions"
+    for pid in ("limite-tempo", "statistiche", "diario", "steamgriddb"):
+        import shutil
+        shutil.copytree(ext / pid, tmp_path / "plugins" / pid, ignore=shutil.ignore_patterns("__pycache__"))
+    cfg = SimpleNamespace(config_path=tmp_path / "config.toml", app={})
+    monkeypatch.setattr(X, "plugin_dirs", lambda c: [tmp_path / "plugins"])
+    app, bus = FastAPI(), X.Events()
+    X.load_backends(app, cfg, bus, lambda m: None)
+    by = {p["id"]: p for p in X.list_plugins(cfg)}
+    assert [i for i, p in by.items() if p["load"] == "lazy"] == ["diario", "limite-tempo", "statistiche"]
+    assert by["steamgriddb"]["load"] == "eager"  # gs.add_source serve prima dello scraping
+    assert set(X.FIRST_USE_MS) == set()  # nessun backend lazy importato all'avvio
+    assert all(X.LOAD_MS[i] < 50 for i in ("diario", "limite-tempo", "statistiche")), X.LOAD_MS  # budget: solo il montaggio
+    assert X.LOAD_TOTAL_MS < 5000
+    assert len(bus.handlers["game_started"]) == 1 and len(bus.handlers["game_stopped"]) == 2  # stub iscritti all'avvio

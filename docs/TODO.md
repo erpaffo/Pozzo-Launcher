@@ -65,9 +65,9 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
   - Tabella console → emulatore migliore (fedeltà, prestazioni, controller) mostrata nell'onboarding
 - [ ] **[M]** Aggiornamento automatico degli emulatori in background — v0.13.0
   - Controllo periodico delle release, aggiornamento con ripristino in caso di errore
-- [ ] **[M]** Configurazione automatica dei controller per emulatore — v0.13.0
+- [x] **[M]** Configurazione automatica dei controller per emulatore — v0.13.0
   - Mapping predefinito per Xbox/PlayStation/Switch Pro applicato alla prima installazione
-- [ ] **[M]** Rilevamento emulatori già installati altrove — v0.13.0
+- [x] **[M]** Rilevamento emulatori già installati altrove — v0.13.0
   - Scansione di percorsi comuni, Scoop, Winget, Steam e registro per evitare reinstallazioni
 - [ ] **[M]** Diagnostica «perché non parte?» — v0.13.0
   - Procedura che controlla emulatore, BIOS, ROM e argomenti e indica la causa più probabile
@@ -169,13 +169,13 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
   - Disegnare solo le righe visibili in tutte le viste, non solo nelle copertine; con 160.000 voci
 - [ ] **[M]** Suddivisione di app.js e server.py in moduli — v0.13.0
   - File grandi da spezzare per area (libreria, store, impostazioni) per manutenzione e caricamento più rapido
-- [ ] **[M]** Caricamento differito delle estensioni non usate — v0.13.0
+- [x] **[M]** Caricamento differito delle estensioni non usate — v0.13.0
   - Avviare le estensioni solo quando servono, con misura del tempo di avvio per ognuna
 - [x] **[M]** Cache disco per le risposte delle fonti dati — v0.13.0
   - Evitare richieste ripetute a LaunchBox, RAWG, HLTB; scadenza e invalidazione chiare
 - [x] **[M]** Test end-to-end dell'interfaccia (browser headless) — v0.13.0
   - Provare avvio, ricerca, apertura dettaglio e Big Picture; coprire anche la mancanza del test reale su exe
-- [ ] **[M]** Test con gioco ed emulatore reali in CI — v0.13.0
+- [x] **[M]** Test con gioco ed emulatore reali in CI — v0.13.0
   - Smoke test con un emulatore e una ROM di prova libera
 - [x] **[M]** Compressione e formati moderni per le copertine (AVIF escluso) — v0.13.0
   - WebP/AVIF e miniature per griglia, per risparmiare disco, banda e RAM

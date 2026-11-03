@@ -113,6 +113,10 @@ def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
     if not src:
         raise ValueError(f"emulatore sconosciuto: {emu}")
     prev = installed(cfg).get(emu) or {}
+    cur = cfg.emulators.get(emu)
+    if not prev and cur and Path(cur).is_file():  # gia' presente (anche installato altrove): non scaricare
+        say(f"{emu} e' gia' installato: {cur}")
+        return cur
     say(f"Cerco l'ultima versione di {emu} ({src['repo']})…")
     tag, asset = _latest(cfg, src)
     if prev.get("version") == tag:
@@ -133,6 +137,11 @@ def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
     C.save_settings(cfg, emulators={emu: exe},
                     app={"emu_installed": {**(cfg.app.get("emu_installed") or {}), emu: {"version": tag, "dir": str(dest)}}})
     say(f"Installato {emu} {tag} in {dest}")
+    try:  # mapping del controller solo se l'emulatore non ha ancora impostazioni (mai quelle dell'utente)
+        from . import controllerprofiles
+        controllerprofiles.auto_apply(cfg.emulators, say, only=emu)
+    except Exception:  # noqa: BLE001 - non deve rovinare un'installazione riuscita
+        pass
     return exe
 
 

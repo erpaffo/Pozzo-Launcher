@@ -333,6 +333,7 @@ function dlRow(t) {
         <div class="dl-name"><b title="${esc(t.source)}">${esc(name)}</b><span class="dl-type">${tor ? "Torrent" : "HTTP"}</span>
           ${p ? `<span class="dl-type${p > 0 ? " hi" : ""}" title="Priorità">${p > 0 ? "↑" : "↓"} ${DLU.prio(p)}</span>` : ""}
           ${lim ? `<span class="dl-type" title="Limite di velocità di questo download">⏱ ${lim}</span>` : ""}
+          ${o.start_at ? `<span class="dl-type" title="Avvio pianificato: parte da solo">⏰ ${esc(o.start_at)}</span>` : ""}
           ${o.resolved_by ? `<span class="dl-type">via ${esc(DLU.debridName(o.resolved_by))}</span>` : ""}
           <span class="dl-st">${o.seeding ? "In condivisione" : esc(DLU.status(t.status))}</span></div>
         <div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${esc(name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
@@ -435,6 +436,26 @@ async function dlPriority(ids, priority) {
   dlApply(ids.map((id) => ({ id, priority })));
 }
 
+/* ---- «Avvia alle»: il download resta in coda e parte da solo (la pianificazione sopravvive a un riavvio) */
+async function dlSchedule(id, at = null) {
+  const t = dlTask(id);
+  if (!t) return;
+  let when = at;
+  if (when == null) {
+    when = prompt("A che ora deve partire? (HH:MM, per esempio 23:30)", (t.options || {}).start_at || "23:00");
+    if (when == null) return; // finestra chiusa: niente da fare
+    when = when.trim();
+    if (!when) return;
+  }
+  try {
+    await api(dlUrl(id) + "schedule", { body: { start_at: when } });
+  } catch (e) { return toast(e.message, true); }
+  const options = { ...(t.options || {}) };
+  if (when) options.start_at = when; else delete options.start_at;
+  dlApply([{ id, options }]);
+  toast(when ? `Avvio alle ${when}` : "Pianificazione annullata");
+}
+
 /* ---- menu della riga: vale per tutte le righe selezionate */
 function dlMenu(id, pt) {
   const t = dlTask(id);
@@ -458,6 +479,9 @@ function dlMenu(id, pt) {
     + it("⤒ Sposta in cima", () => dlEach([...ids].reverse(), "move", { to: "top" })) // al contrario: la prima resta in cima
     + it("⤓ Sposta in fondo", () => dlEach(ids, "move", { to: "bottom" }))
     + it("⏱ Limite di velocità…", () => dlLimit(ids))
+    + (many ? "" : (t.options || {}).start_at
+      ? it("⏰ Annulla pianificazione", () => dlSchedule(id, ""))
+      : it("⏰ Avvia alle…", () => dlSchedule(id)))
     + (many ? "" : it("📋 Registro…", () => dlLog(id)))
     + (many ? "" : it("📂 Apri cartella", () => api(dlUrl(id) + "open-folder", { body: {} })))
     + (many || !(t.options || {}).setup || t.status !== "completed" ? "" : it("📦 Installa il repack", () => api(dlUrl(id) + "install", { body: {} })))
@@ -715,6 +739,18 @@ async function dlMuList() {
   }
 }
 
+/* «Avvia alle» nel dialog di aggiunta: il campo non sta in index.html, si crea qui una volta sola */
+function dlAddStartField() {
+  const dlg = $("#dl-add-dlg");
+  if (!dlg || $("#dl-start", dlg)) return;
+  const html = `<label class="lbl-field">Avvia alle (facoltativo)
+    <input class="field" id="dl-start" type="time">
+    <span class="muted small">Resta in coda e parte da solo a quest'ora.</span></label>`;
+  const end = $(".dlg-body > .row.end", dlg);
+  if (end) end.insertAdjacentHTML("beforebegin", html);
+  else $(".dlg-body", dlg)?.insertAdjacentHTML("beforeend", html);
+}
+
 function dlOpenAdd() {
   dlMuDone.clear();
   $("#dl-mu-list").replaceChildren();
@@ -722,6 +758,8 @@ function dlOpenAdd() {
   $("#dl-links").value = "";
   $("#dl-file").value = "";
   $("#dl-dest").value = DL.settings.dir || "";
+  dlAddStartField();
+  $("#dl-start").value = "";
   $("#dl-add-dlg").showModal();
   $("#dl-links").focus();
 }
@@ -732,19 +770,21 @@ async function dlSubmit() {
   const links = $("#dl-links").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
     .flatMap((l) => (dlMuDone.has(l) ? picked.filter((i) => i.closest("fieldset").dataset.src === l).map((i) => i.value) : [l]));
   const file = $("#dl-file").files[0], save_path = $("#dl-dest").value.trim();
+  const start_at = ($("#dl-start")?.value || "").trim(); // facoltativo: il download parte da solo a quest'ora
   if (!links.length && !file) return toast("Incolla almeno un link o scegli un file .torrent", true);
   const go = $("#dl-add-go");
   go.disabled = true;
   const added = [];
   try {
     if (links.length) {
-      added.push(...((await api("/api/downloads", { body: { links, save_path } })).tasks || []));
+      added.push(...((await api("/api/downloads", { body: { links, save_path, start_at } })).tasks || []));
       $("#dl-links").value = ""; // se poi fallisce il .torrent, i link non si rimandano due volte
     }
     if (file) {
       const fd = new FormData();
       fd.append("file", file);
       if (save_path) fd.append("save_path", save_path);
+      if (start_at) fd.append("start_at", start_at);
       const r = await fetch("/api/downloads/torrent-file", { method: "POST", body: fd });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.detail || r.statusText);
@@ -765,6 +805,8 @@ const DLS_FIELDS = [
   ["#dls-alt-down", "alt_limit_down", "int"], ["#dls-alt-up", "alt_limit_up", "int"], ["#dls-alt-on", "alt_enabled", "bool"],
   ["#dls-port", "port", "int"], ["#dls-enc", "encryption", "str"],
   ["#dls-ratio", "seed_ratio", "num"], ["#dls-seed-min", "seed_minutes", "int"], ["#dls-trackers", "trackers", "lines"],
+  ["#dls-game-mode", "game_mode", "str"], ["#dls-game-limit", "game_limit_kbps", "int"],
+  ["#dls-game-http", "game_pause_http", "bool"],
 ];
 
 function dlsRead(el, kind) {

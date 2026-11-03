@@ -74,9 +74,26 @@ async function detail(id) {
   return BP.details.get(id);
 }
 
-let bgTimer = 0, bgFront = 0;
+/** "#rrggbb" oppure null: qualsiasi altro valore non diventa mai CSS. */
+const safeAccent = (v) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null);
+const accents = new Map(); // id -> promessa del colore (null se assente)
+const bpCoverAccentOn = () => GSUi.prefs(GSUi.saved()).coverAccent; // Aspetto > Colore della copertina, predefinito attivo
+async function setGlow(id) {
+  const bg = $("#bp-bg");
+  if (!id || !bpCoverAccentOn()) { bg.style.removeProperty("--game-accent"); return; }
+  if (!accents.has(id)) accents.set(id, api(`/api/game/${id}/cover-accent`).then((r) => safeAccent(r?.accent)).catch(() => null));
+  const c = await accents.get(id);
+  if (glowId !== id) return; // nel frattempo il fuoco e' passato altrove
+  if (c && bpCoverAccentOn()) bg.style.setProperty("--game-accent", c); else bg.style.removeProperty("--game-accent");
+}
+window.addEventListener("gs-ui-change", () => setGlow(glowId));
+window.addEventListener("storage", (e) => { if (e.key === "gs.ui") setGlow(glowId); }); // cambiata da un'altra finestra
+
+let bgTimer = 0, bgFront = 0, glowId = null;
 function setBackground(id) {
   clearTimeout(bgTimer);
+  glowId = id || null;
+  setGlow(glowId);
   bgTimer = setTimeout(async () => {
     const d = id ? await detail(id) : null;
     const m = d?.media || {};
@@ -476,6 +493,7 @@ async function playGame(d, body = {}) {
 }
 
 function showRunning(msg) {
+  idle.close();
   const o = $("#bp-running");
   o.hidden = false;
   o.innerHTML = `<div class="logo big" style="color:var(--accent);font-size:3rem">◆</div><h2>${esc(BP.running?.title || "")}</h2>`
@@ -557,6 +575,8 @@ function mediaChord(name) {
 }
 
 function input(action) {
+  if (idle.activity()) attractClosedAt = performance.now();
+  if (performance.now() - attractClosedAt < 350) return; // il tasto che chiude il salvaschermo non arriva alla schermata
   if (window.GSProfilePicker?.isOpen()) { window.GSProfilePicker.pad(action); return; } // «Chi gioca?» cattura tutto
   if (window.PozzoMedia?.handlePad?.(action)) return;
   const s = cur();
@@ -656,6 +676,75 @@ document.addEventListener("mousemove", () => { $("#bp").classList.add("mouse"); 
 window.addEventListener("gamepadconnected", (e) => toast(`Controller collegato: ${e.gamepad.id.split("(")[0].trim()}`));
 PozzoShortcuts.bind("bp", { help: openHelp, legend: toggleHints, profile: () => { if (BP.running) return false; GSProfilePicker.open({ toast }); }, bigPicture: () => { if (BP.running) return false; exitBigPicture(); } });
 
+/* ------------------------------------------------------------------ salvaschermo (attract mode)
+ * Dopo N minuti senza input (Impostazioni > Aspetto, 0 = mai) mostra a rotazione schermate o copertine, al massimo 60 giochi.
+ * Non parte con un gioco in esecuzione, il pannello comandi, ?Chi gioca?? o il pannello musica aperti; la musica non viene mai
+ * messa in pausa ne' ripresa da qui. Il primo input lo chiude e non viene inoltrato. Logica pura e testata: GSUi (core.js). */
+const attractEl = $("#bp-attract");
+let attractTimer = 0, attractIdx = 0, attractSlides = [], attractFront = 0, attractClosedAt = -1000;
+const ATTRACT_MS = 9000;
+const shotCache = new Map(); // id -> promessa dell'URL della prima schermata (null se non ce ne sono)
+const shotOf = (id) => {
+  if (!shotCache.has(id)) shotCache.set(id, api(`/api/game/${id}/shots`).then((r) => { const u = r?.shots?.[0]?.url; return typeof u === "string" && /^\/[^"'()\\\s]*$/.test(u) ? u : null; }).catch(() => null));
+  return shotCache.get(id);
+};
+async function attractNext() {
+  clearTimeout(attractTimer);
+  const g = attractSlides[attractIdx++ % attractSlides.length];
+  const d = g && await detail(g.id);
+  if (!g || !idle.isActive()) return;
+  const m = d?.media || {};
+  const shot = m.screenshot || m.hero || m.fanart || await shotOf(g.id); // poi la copertina
+  if (!idle.isActive()) return;
+  const layers = attractEl.querySelectorAll(".at-slide");
+  const next = layers[1 - attractFront];
+  next.classList.toggle("poster", !shot);
+  next.style.backgroundImage = `url("${shot ? shot + (shot.includes("?") ? "&" : "?") + "w=1280" : `/img/${g.id}/cover?w=640`}")`;
+  next.classList.add("on");
+  layers[attractFront].classList.remove("on");
+  attractFront = 1 - attractFront;
+  attractEl.querySelector(".at-info b").textContent = g.title;
+  attractEl.querySelector(".at-info span").textContent = platName(g.platform);
+  attractTimer = setTimeout(attractNext, ATTRACT_MS);
+}
+const idle = GSUi.createIdle({
+  minutes: () => GSUi.prefs(GSUi.saved()).idle,
+  canRun: () => !!BP.lib && !BP.running && !document.hidden && !helpOpen() && !window.GSProfilePicker?.isOpen?.()
+    && $("#bp-media-widget")?.hidden !== false && GSUi.pickSlides(visibleGames()).length > 0,
+  start() {
+    attractSlides = GSUi.pickSlides(visibleGames());
+    attractIdx = 0;
+    attractEl.dataset.fx = GSUi.attractMotion(document.documentElement.dataset.motion, !!matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+    attractEl.hidden = false;
+    attractNext();
+  },
+  stop() {
+    clearTimeout(attractTimer);
+    attractEl.hidden = true;
+    attractEl.querySelectorAll(".at-slide").forEach((l) => { l.classList.remove("on"); l.style.backgroundImage = ""; });
+  },
+  setT: (f, ms) => setTimeout(f, ms),
+  clearT: (t) => clearTimeout(t),
+});
+function attractWake(e) {
+  if (!idle.activity()) return;
+  attractClosedAt = performance.now();
+  e.preventDefault?.(); e.stopImmediatePropagation?.();
+}
+for (const t of ["keydown", "mousedown", "mouseup", "click", "wheel", "touchstart", "pointerdown", "contextmenu"]) {
+  window.addEventListener(t, attractWake, { capture: true, passive: false });
+}
+let attractX = -1, attractY = 0;
+window.addEventListener("mousemove", (e) => {
+  const far = attractX < 0 || Math.hypot(e.clientX - attractX, e.clientY - attractY) > 6; // il tremolio del mouse non conta
+  attractX = e.clientX; attractY = e.clientY;
+  if (far && attractX >= 0) attractWake(e);
+}, { capture: true });
+setInterval(() => { // pulsanti o stick non mappati dai comandi di Big Picture contano comunque come attivita'
+  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  if (pads.some((p) => p.buttons.some((b) => b.pressed) || p.axes.some((a) => Math.abs(a) > 0.6))) attractWake({});
+}, 400);
+
 /* ------------------------------------------------------------------ avvio */
 function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" }); }
 
@@ -677,6 +766,7 @@ function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("i
   show();
   Pad.start({ input, onKind: renderHints, onChord: mediaChord, combo: { when: () => !!BP.running,
     run: () => api("/api/running/stop", { body: {} }).then(() => toast("Chiusura del gioco…")) } });
+  idle.arm();
   // se un gioco e' gia' in esecuzione (es. avviato prima di entrare)
   const r = await api("/api/running").catch(() => ({}));
   if (["starting", "extracting", "running"].includes(r.status)) { BP.running = { title: r.title }; pollRunning(); }

@@ -29,6 +29,30 @@ function presentDetail() {
   detail.scrollTop = 0;
 }
 
+/** "#rrggbb" oppure null: qualsiasi altro valore del server non diventa mai CSS. */
+function safeAccent(v) { return typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null; }
+
+/** Colore del gioco sulla scheda (--game-accent, mai --accent del tema); nullo o non valido = lo toglie. */
+function paintGameAccent(color) {
+  const detail = $("#detail"), c = safeAccent(color);
+  if (c) { detail.style.setProperty("--game-accent", c); detail.dataset.gameAccent = "1"; }
+  else { detail.style.removeProperty("--game-accent"); delete detail.dataset.gameAccent; }
+}
+
+const gameAccents = new Map(); // id -> promessa del colore (null se assente o in errore)
+const coverAccentOn = () => GSUi.prefs(GSUi.saved()).coverAccent; // Aspetto > Colore della copertina, predefinito attivo
+function gameAccentOf(id) {
+  if (!gameAccents.has(id)) gameAccents.set(id, api(`/api/game/${id}/cover-accent`).then((r) => safeAccent(r?.accent)).catch(() => { gameAccents.delete(id); return null; }));
+  return gameAccents.get(id);
+}
+/** Applica (o toglie, se l'opzione e' spenta) il colore del gioco aperto; una risposta tardiva per un altro gioco si ignora. */
+async function syncGameAccent(id, my) {
+  if (!coverAccentOn()) return paintGameAccent(null);
+  const c = await gameAccentOf(id);
+  if (my === S.openSeq && coverAccentOn()) paintGameAccent(c);
+}
+if (typeof window !== "undefined") window.addEventListener("gs-ui-change", () => { if (S.detail) syncGameAccent(S.detail.id, S.openSeq); });
+
 async function openDetail(id) {
   const my = ++S.openSeq; // un fetch lento non deve sovrascrivere il gioco aperto dopo
   if (!S.detail) S.detailFocus = document.activeElement;
@@ -39,6 +63,8 @@ async function openDetail(id) {
   try { d = await api(`/api/game/${id}`); } catch (e) { if (my === S.openSeq) { syncLibrary(); toast(e.message, true); } return; }
   if (my !== S.openSeq) return; // nel frattempo e' stato aperto (o chiuso) un altro gioco
   S.detail = d;
+  paintGameAccent(null); // quello del gioco precedente non resta
+  syncGameAccent(id, my);
   const hero = d.media.hero || d.media.screenshot || d.media.title || d.media.header || d.media.cover;
   $("#detail .hero-bg").style.backgroundImage = hero ? `url("${hero}?w=1280")` : "none";
   const u = d.user;
@@ -576,6 +602,7 @@ function closeDetail() {
   detail.removeAttribute("aria-modal");
   detail.removeAttribute("aria-labelledby");
   delete document.documentElement.dataset.detailModal;
+  paintGameAccent(null);
   S.detail = null;
   if (S.detailFocus?.isConnected) S.detailFocus.focus();
   S.detailFocus = null;
@@ -607,7 +634,7 @@ function onGameDownloaded(ev) {
   toast(plan.toast);
   if (plan.open != null) openDetail(plan.open);
 }
-if (typeof module !== "undefined") module.exports = { downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
+if (typeof module !== "undefined") module.exports = { safeAccent, downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
 
 /* Tasto destro su un link di download (giochi di ogni console): copia l'indirizzo per aprirlo a mano nel browser.
    I magnet non c'entrano: si copiano dal torrent. Vale per i pulsanti con data-dl / data-dparts / data-mu / data-open / data-paste. */

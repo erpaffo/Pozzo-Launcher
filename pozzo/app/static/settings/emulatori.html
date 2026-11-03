@@ -9,6 +9,8 @@
   <button class="btn" id="emu-folder-pick">Sfoglia…</button>
   <button class="btn" id="emu-detect">🔍 Trova emulatori</button>
 </div>
+<div class="row"><button class="btn" id="emu-scan" onclick="(async (b) => { const box = $('#emu-found'); b.disabled = true; box.textContent = 'Cerco…'; try { const d = await api('/api/emulators/detected'); window._emuFound = d.found; const k = Object.keys(d.found); box.innerHTML = k.length ? k.map((e) => `<div class=&quot;row&quot;><span class=&quot;grow&quot;><b>${esc(e)}</b> <span class=&quot;muted small&quot;>${esc(d.found[e].path)} (${esc(d.found[e].source)})</span></span><button class=&quot;btn&quot; data-e=&quot;${esc(e)}&quot;>Usa questo</button></div>`).join('') : 'Nessun emulatore trovato'; } catch (e) { box.textContent = e.message; } b.disabled = false; })(this)">Cerca emulatori già installati</button></div>
+<div id="emu-found" class="small" onclick="const b = event.target.closest('[data-e]'); if (b) (async () => { const x = collectEmu(); x.emulators[b.dataset.e] = window._emuFound[b.dataset.e].path; await saveEmu(x); })()"></div>
 <h3>Programmi</h3>
 <p class="muted small">Un percorso per emulatore: vale per tutte le console che lo usano.</p>
 <div id="emu-paths"></div>

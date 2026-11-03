@@ -23,6 +23,142 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem("gs." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("gs." + k, JSON.stringify(v)); } catch { /* storage non disponibile */ } },
 };
+/* ui-prefs:start - aspetto (zoom, densita', tema utente, salvaschermo di Big Picture). Funzioni pure: tests/test_ui_prefs.js.
+ * Le preferenze stanno in localStorage "gs.ui" (valgono per il dispositivo, come gs.motion): il server non ha un campo
+ * di profilo per questi valori e /api/profile/settings rifiuta le chiavi che non conosce. */
+const GSUi = (() => {
+  const ZOOMS = [90, 95, 100, 105, 110, 115, 120, 125];
+  const DENSITIES = ["comfortable", "compact"];
+  const IDLE = [0, 1, 2, 3, 5, 10, 15, 30]; // minuti prima del salvaschermo; 0 = disattivato
+  const TOKENS = ["bg", "bg-2", "bg-3", "panel", "line", "text", "muted", "accent", "accent-2", "fav"];
+  const HEX = /^#[0-9a-f]{6}$/i;
+  const THEME_KEYS = ["format", "version", "name", "tokens"];
+  const MAX_SLIDES = 60;
+
+  const prefs = (raw) => {
+    const o = raw && typeof raw === "object" ? raw : {};
+    return { zoom: ZOOMS.includes(o.zoom) ? o.zoom : 100, density: DENSITIES.includes(o.density) ? o.density : "comfortable",
+      idle: IDLE.includes(o.idle) ? o.idle : 3, coverAccent: typeof o.coverAccent === "boolean" ? o.coverAccent : true };
+  };
+
+  /** Colore CSS ("#abc", "#aabbcc", "rgb(a, b, c)") -> "#aabbcc"; null se non e' un colore semplice. */
+  const toHex = (s) => {
+    s = String(s || "").trim().toLowerCase();
+    let m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(s);
+    if (m) return "#" + m[1] + m[1] + m[2] + m[2] + m[3] + m[3];
+    if (HEX.test(s)) return s;
+    m = /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})/.exec(s);
+    return m && m.slice(1, 4).every((v) => +v <= 255) ? "#" + m.slice(1, 4).map((v) => (+v).toString(16).padStart(2, "0")).join("") : null;
+  };
+  const hexToHsl = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, l = (max + min) / 2;
+    let h = 0;
+    if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [Math.round((h * 60 + 360) % 360), Math.round(d ? d / (1 - Math.abs(2 * l - 1)) * 100 : 0), Math.round(l * 100)];
+  };
+  const hslToHex = (h, s, l) => {
+    s /= 100; l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+    return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("");
+  };
+  /** Luminanza relativa WCAG 2.x. */
+  const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => { const c = parseInt(hex.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrastRatio = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  // testo normale AA = 4.5, elementi grafici/secondari = 3
+  const CHECKS = [["text", "bg", 4.5], ["text", "panel", 4.5], ["muted", "bg", 3], ["accent", "bg", 3]];
+  const contrastReport = (tokens) => CHECKS.map(([fg, bg, min]) => {
+    const ratio = Math.round(contrastRatio(tokens[fg], tokens[bg]) * 100) / 100;
+    return { fg, bg, min, ratio, ok: ratio >= min };
+  });
+
+  /** Valida un tema utente: solo token noti con colori #rrggbb, nessun URL o CSS libero. Lancia Error in italiano. */
+  const checkTheme = (o) => {
+    if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error("Tema non valido");
+    if (Object.keys(o).some((k) => !THEME_KEYS.includes(k))) throw new Error("Il tema contiene campi sconosciuti");
+    if (o.format !== "pozzo-theme" || o.version !== 1) throw new Error("Formato o versione del tema non supportati");
+    const name = typeof o.name === "string" ? o.name.trim() : "";
+    if (!name || name.length > 40 || /[\u0000-\u001f<>]/.test(name)) throw new Error("Nome del tema non valido");
+    const t = o.tokens;
+    if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("Colori mancanti");
+    if (Object.keys(t).some((k) => !TOKENS.includes(k))) throw new Error("Il tema contiene colori sconosciuti");
+    const tokens = {};
+    for (const k of TOKENS) {
+      if (typeof t[k] !== "string" || !HEX.test(t[k])) throw new Error(`Colore non valido: ${k}`);
+      tokens[k] = t[k].toLowerCase();
+    }
+    return { name, tokens };
+  };
+  const parseTheme = (text) => {
+    if (typeof text !== "string" || text.length > 4096) throw new Error("File non valido o troppo grande");
+    let o;
+    try { o = JSON.parse(text); } catch { throw new Error("Il file non e' JSON valido"); }
+    return checkTheme(o);
+  };
+  const serializeTheme = (name, tokens) => JSON.stringify({ format: "pozzo-theme", version: 1, name, tokens }, null, 2);
+  const themeCss = (tokens) => `html:root{${TOKENS.map((k) => `--${k}:${tokens[k]}`).join(";")}}`;
+
+  /** Stile con id fisso nell'<head>: css vuoto lo toglie. Ritorna l'elemento (o null). */
+  const setStyle = (doc, id, css) => {
+    const old = doc.getElementById(id);
+    if (old) old.remove();
+    if (!css) return null;
+    const el = doc.createElement("style");
+    el.id = id; el.textContent = css;
+    doc.head.appendChild(el);
+    return el;
+  };
+  const saved = () => store.get("ui", null);
+  const savedTheme = () => { // un valore rovinato o manomesso torna "nessun tema utente"
+    const o = store.get("userTheme", null);
+    if (!o || typeof o !== "object") return null;
+    try { return { enabled: o.enabled === true, ...checkTheme({ format: "pozzo-theme", version: 1, name: o.name, tokens: o.tokens }) }; } catch { return null; }
+  };
+  const applyPrefs = (doc, p) => {
+    const root = doc.documentElement;
+    p = prefs(p);
+    // 100% = nessun attributo: il layout in pixel resta identico a prima
+    if (p.zoom === 100) delete root.dataset.uiZoom; else root.dataset.uiZoom = String(p.zoom);
+    root.style.setProperty("--ui-zoom", String(p.zoom / 100));
+    root.dataset.uiDensity = p.density;
+    return p;
+  };
+  const applyTheme = (doc) => { const t = savedTheme(); return setStyle(doc, "gs-user-theme", t && t.enabled ? themeCss(t.tokens) : ""); };
+
+  /** Foto da mostrare nel salvaschermo: solo giochi con copertina, ordine casuale, al massimo MAX_SLIDES. */
+  const pickSlides = (games, rnd = Math.random, limit = MAX_SLIDES) => {
+    const a = games.filter((g) => g && g.cover);
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a.slice(0, Math.min(limit, MAX_SLIDES));
+  };
+  /** "full" = dissolvenza + zoom lento, "fade" = solo dissolvenza, "none" = cambio immediato (data-motion di motion.js). */
+  const attractMotion = (dataMotion, systemReduced) => (dataMotion === "off" ? "none" : dataMotion === "reduced" ? "fade"
+    : dataMotion === "normal" ? "full" : systemReduced ? "fade" : "full");
+
+  /** Inattivita': env = {minutes(), canRun(), start(), stop(), setT, clearT}. activity() torna true se ha chiuso il salvaschermo. */
+  const createIdle = (env) => {
+    let timer = null, active = false;
+    const arm = () => {
+      env.clearT(timer); timer = null;
+      const m = env.minutes();
+      if (m > 0) timer = env.setT(() => { timer = null; if (env.canRun()) { active = true; env.start(); } else arm(); }, m * 60000);
+    };
+    const close = () => { if (!active) return false; active = false; env.stop(); return true; };
+    return { arm, close, isActive: () => active, activity() { const was = close(); arm(); return was; } };
+  };
+  return { ZOOMS, DENSITIES, IDLE, TOKENS, CHECKS, prefs, toHex, hexToHsl, hslToHex, contrastRatio, contrastReport, parseTheme, checkTheme,
+    serializeTheme, themeCss, setStyle, saved, savedTheme, applyPrefs, applyTheme, pickSlides, attractMotion, createIdle };
+})();
+window.GSUi = GSUi;
+// applicati subito (core.js e' il primo script): zoom, densita' e tema utente prima che la pagina si disegni
+GSUi.applyPrefs(document, GSUi.saved());
+GSUi.applyTheme(document);
+/* ui-prefs:end */
+
 const SHORT = { megadrive: "MD", mastersystem: "SMS", gamegear: "GG", psx: "PS1", ps2: "PS2", ps3: "PS3", psp: "PSP",
   psvita: "VITA", gamecube: "GC", gc: "GC", wiiu: "WII U", switch: "SWITCH", xbox360: "X360", dreamcast: "DC",
   saturn: "SAT", segacd: "MCD", sega32x: "32X", pcengine: "PCE", nds: "DS", "3ds": "3DS", n64: "N64", windows: "PC" };
@@ -376,6 +512,7 @@ async function loadExtensions() {
     styles.push(l);
   };
   if (css) addStyle(css, "theme");
+  GSUi.applyTheme(document); // il tema utente va dopo quello scelto: a parita' di peso vince l'ultimo foglio
   if (mode === "desktop") {
     const selected = (ext.experiences || []).find((item) => item.id === GS.experience.id);
     if (selected && selected.style) addStyle(selected.style, "experience");
