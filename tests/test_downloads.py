@@ -176,9 +176,10 @@ def _wait(cond, timeout=20):
 def test_coda_priorita_e_limite(server, tmp):
     m = _mgr(tmp, max_active=1, limit_down=2048)  # lento: la coda resta visibile
     m.start()
-    a = m.add(server + "/a", name="a.bin")
-    b = m.add(server + "/b", name="b.bin")
-    c = m.add(server + "/c", name="c.bin", priority=5)
+    with m.lock:  # tutti e tre in coda prima del tick: altrimenti «a» puo' partire prima che arrivi «c»
+        a = m.add(server + "/a", name="a.bin")
+        b = m.add(server + "/b", name="b.bin")
+        c = m.add(server + "/c", name="c.bin", priority=5)
     assert _wait(lambda: any(t.status == T.RUNNING for t in m.tasks.values()))
     assert sum(t.status == T.RUNNING for t in m.tasks.values()) == 1
     assert c.status == T.RUNNING and a.status == b.status == T.QUEUED  # vince la priorita'

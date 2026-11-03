@@ -9,8 +9,12 @@ from pozzo.remote import emusetup
 
 
 @pytest.fixture(autouse=True)
-def _closed(monkeypatch):
+def _closed(monkeypatch, tmp_path):
     monkeypatch.setattr(emusetup, "_running", lambda names: False)
+    # su Linux e macOS RPCS3 tiene la config nella cartella utente: una home finta per ogni test
+    # (altrimenti il primo test la scrive nella home vera e i successivi la trovano gia' presente)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "home" / ".config"))
 
 
 def _emus(tmp):

@@ -174,7 +174,8 @@ def test_rotte(tmp):
         assert "log_n" in c.get("/api/downloads").json()["tasks"][0] and "logs" not in c.get("/api/downloads").json()["tasks"][0]
         assert c.get("/api/downloads/nessuno/log").status_code == 404 and c.post("/api/downloads/nessuno/log/clear").status_code == 404
         assert c.post(f"/api/downloads/{a}/log/clear").json() == {"ok": True}
-        assert c.get(f"/api/downloads/{a}/log").json()["lines"] == []
+        # il download e' ripartito (resume-all) e puo' scrivere righe nuove subito dopo: quelle vecchie pero' non ci sono piu'
+        assert not any(ln["msg"].startswith("Aggiunto (http)") for ln in c.get(f"/api/downloads/{a}/log").json()["lines"])
         for tid in (a, b):
             c.post(f"/api/downloads/{tid}/cancel", json={})
 
