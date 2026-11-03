@@ -23,7 +23,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import platforms as P
+from . import platforms as P, switchfiles as SF
 
 CHUNK = 8 * 1024 * 1024
 LIGHT_MAX = 32 * 1024 * 1024  # file sotto questa soglia (o ZIP) = lavoro "leggero"
@@ -228,18 +228,35 @@ def disk_kind(path: Path, setting: str = "auto") -> str:
     return kind
 
 
+def hash_args(cfg, g: Game) -> tuple:
+    """Argomenti di _hash_job per un gioco (max_bytes 0 = file che non si leggono: dischi, Switch...)."""
+    ext = g.path.suffix.lower().lstrip(".")
+    skip = (g.platform.cd and ext != "zip") or ext in ("7z", "m3u", "cue", "gdi", "chd", "cdi")
+    return (str(g.path), ext, cfg.full_hash, 0 if skip else cfg.max_hash_mb * 1024 * 1024, g.platform.headered)
+
+
+def hash_one(cfg, cache, g: Game):
+    """Come hash_games per un solo gioco, nel thread corrente (niente processi): serve a dare subito la stessa chiave
+    che avrebbe dopo una scansione. Costa quanto la lettura del file, al massimo max_hash_mb."""
+    if not g.needs_hash or g.is_dir:
+        return
+    res = _hash_job(hash_args(cfg, g))
+    res.pop("error", None)
+    g.apply_file_data(res)
+    g.needs_hash = False
+    cache.put_file(str(g.path), g.size, g.mtime, res)
+    cache.commit()
+
+
 def hash_games(cfg, cache, games: list[Game], progress=None, log=print):
     """Calcola gli hash dei giochi indicati, con strategia adatta al tipo di disco."""
     todo = [g for g in games if g.needs_hash and not g.is_dir]
     if not todo:
         return
-    max_bytes = cfg.max_hash_mb * 1024 * 1024
     light, heavy = [], []
     for g in todo:
-        ext = g.path.suffix.lower().lstrip(".")
-        skip = (g.platform.cd and ext != "zip") or ext in ("7z", "m3u", "cue", "gdi", "chd", "cdi")
-        job = (str(g.path), ext, cfg.full_hash, 0 if skip else max_bytes, g.platform.headered)
-        if skip or ext == "zip" or g.size <= LIGHT_MAX:
+        job = hash_args(cfg, g)
+        if job[3] == 0 or job[1] == "zip" or g.size <= LIGHT_MAX:  # job[3] = 0: file che non si legge
             light.append((g, job))
         else:
             heavy.append((g, job))
@@ -347,7 +364,7 @@ def list_entries(platform: P.Platform, folder: Path) -> list[tuple[Path, bool]]:
                     out.append((e, True))
             elif e.suffix.lower() in exts:
                 out.append((e, False))
-        return out
+        return SF.hide_companions(out) if platform.id == "switch" else out
     for dirpath, dirnames, filenames in os.walk(folder):
         dp = Path(dirpath)
         if dp != folder and _ignored(dp):
@@ -363,6 +380,22 @@ def list_entries(platform: P.Platform, folder: Path) -> list[tuple[Path, bool]]:
     return sorted(out)
 
 
+def game_at(cfg, cache, platform: P.Platform, path: Path, is_dir: bool) -> Game | None:
+    """Il gioco per una voce di list_entries, con gli hash gia' in cache (None se il file non si legge)."""
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    g = Game(path=path, platform=platform, size=0 if is_dir else st.st_size, mtime=st.st_mtime, is_dir=is_dir)
+    if not is_dir:
+        cached = cache.get_file(str(path), g.size, g.mtime)
+        if cached is not None and (cached.get("md5") if cfg.full_hash else cached.get("crc")):
+            g.apply_file_data(cached)
+        else:
+            g.needs_hash = True
+    return g
+
+
 def scan(cfg, cache, targets: list[tuple[P.Platform, Path]], progress=None) -> list[Game]:
     """Elenca i giochi e applica gli hash gia' in cache. NON legge il contenuto dei file:
     quelli ancora da hashare restano con needs_hash=True."""
@@ -370,19 +403,8 @@ def scan(cfg, cache, targets: list[tuple[P.Platform, Path]], progress=None) -> l
     task = progress.add_task("Scansione cartelle", total=len(targets)) if progress else None
     for platform, folder in targets:
         for path, is_dir in list_entries(platform, folder):
-            try:
-                st = path.stat()
-            except OSError:
-                continue
-            g = Game(path=path, platform=platform, size=0 if is_dir else st.st_size,
-                     mtime=st.st_mtime, is_dir=is_dir)
-            if not is_dir:
-                cached = cache.get_file(str(path), g.size, g.mtime)
-                if cached is not None and (cached.get("md5") if cfg.full_hash else cached.get("crc")):
-                    g.apply_file_data(cached)
-                else:
-                    g.needs_hash = True
-            games.append(g)
+            if g := game_at(cfg, cache, platform, path, is_dir):
+                games.append(g)
         if progress:
             progress.advance(task)
     return games

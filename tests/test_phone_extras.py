@@ -64,7 +64,8 @@ def paired_gate(cfg):
     hub = app.state.phone_hub
     gate = TestClient(PhoneGate(app, hub), base_url="https://testserver")
     token = gate.post("/m/api/pair", json={"code": hub.new_code(), "name": "Pixel"}).cookies.get("gs_phone")
-    return app, gate, {"gs_phone": token}
+    gate.cookies.set("gs_phone", token)  # come un browser: il cookie resta per le richieste successive
+    return app, gate
 
 
 def close(app, gate):
@@ -79,7 +80,7 @@ def close(app, gate):
 def test_pwa_installabile(tmp_path):
     """Service worker raggiungibile senza abbinamento (serve al browser prima del pairing) e manifest completo."""
     cfg = make_cfg(tmp_path)
-    app, gate, _ = paired_gate(cfg)
+    app, gate = paired_gate(cfg)
     try:
         r = gate.get("/m/sw.js")
         assert r.status_code == 200, r.text
@@ -203,10 +204,10 @@ def test_libreria_pronta_in_cache(tmp_path):
 
 def test_pad_salvato_sul_pc(tmp_path):
     cfg = make_cfg(tmp_path)
-    app, gate, ck = paired_gate(cfg)
+    app, gate = paired_gate(cfg)
     try:
-        assert gate.get("/m/api/pad", cookies=ck).json() == {}
-        r = gate.post("/m/api/pad", cookies=ck, json={
+        assert gate.get("/m/api/pad").json() == {}
+        r = gate.post("/m/api/pad", json={
             "layout": "ps", "sens": 99, "gyro": "boh", "invy": 1, "scale": 0.1,
             "pos": {"ps": {"ls": {"x": 200, "y": -5, "k": 9}}, "inventato": {"ls": {"x": 1, "y": 1}}, "gc": {"boh": {}}}})
         assert r.status_code == 200, r.text
@@ -214,11 +215,11 @@ def test_pad_salvato_sul_pc(tmp_path):
         assert pad["layout"] == "ps" and pad["sens"] == 3.0 and pad["scale"] == 0.8, pad
         assert "gyro" not in pad and pad["invy"] is True, pad          # valori non previsti: scartati
         assert pad["pos"] == {"ps": {"ls": {"x": 95.0, "y": 0.0, "k": 1.8}}}, pad["pos"]
-        assert gate.get("/m/api/pad", cookies=ck).json() == pad        # resta sul PC
+        assert gate.get("/m/api/pad").json() == pad        # resta sul PC
         saved = config.read_settings(cfg)["app"]["phone"]["pad"]
         assert saved["layout"] == "ps" and saved["pos"]["ps"]["ls"]["x"] == 95.0
         # corpo enorme: rifiutato invece di riempire le impostazioni
-        big = gate.post("/m/api/pad", cookies=ck, json={"pos": {f"x{i}": {} for i in range(2000)}})
+        big = gate.post("/m/api/pad", json={"pos": {f"x{i}": {} for i in range(2000)}})
         assert big.status_code == 400, big.text
     finally:
         close(app, gate)
@@ -272,10 +273,10 @@ def test_prova_controller(tmp_path):
     d = api.get("/api/phone/pads").json()
     assert d["pads"] == [] and "vigem" in d
     assert api.post("/api/phone/pads/rumble", json={"slot": 0}).status_code == 400  # nessun telefono collegato
-    app, gate, ck = paired_gate(cfg)
+    app, gate = paired_gate(cfg)
     try:
-        assert gate.get("/api/phone/pads", cookies=ck).status_code == 403
-        assert gate.post("/api/phone/pads/rumble", json={"slot": 0}, cookies=ck).status_code == 403
+        assert gate.get("/api/phone/pads").status_code == 403
+        assert gate.post("/api/phone/pads/rumble", json={"slot": 0}).status_code == 403
     finally:
         close(app, gate)
     print("ok  prova controller: leggibile dal PC, non dal telefono")

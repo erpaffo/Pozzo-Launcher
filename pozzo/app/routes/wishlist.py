@@ -155,12 +155,12 @@ def build_router(ctx) -> APIRouter:
                 "key_low": w["key_low"], "key_url": w["key_url"], "has_itad": bool(s["itad_key"]), "has_gg": bool(s["gg_key"])}
 
     def _wish_loop():
-        time.sleep(30)
-        while True:
+        delay = 30
+        while not ctx.stop.wait(delay):  # avviato con l'app, esce all'arresto (il database viene chiuso)
             if user.wishlist() and time.time() - wish_state["last"] > 12 * 3600:
                 _wish_check()
-            time.sleep(1800)
+            delay = 1800
 
-    threading.Thread(target=_wish_loop, daemon=True).start()
+    vars(ctx).update(_wish_loop=_wish_loop)
 
     return router

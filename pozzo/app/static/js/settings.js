@@ -108,7 +108,7 @@ function autosaveControl(element, save) {
 /* ------------------------------------------------------------------ impostazioni */
 const SETTINGS_CATS = [
   ["generale", "Generale", "sliders"], ["aspetto", "Aspetto", "palette"], ["libreria", "Libreria", "books"],
-  ["fonti", "Fonti dati", "database"], ["store", "Store e account", "store"], ["emulatori", "Emulatori e avvio", "gamepad"],
+  ["fonti", "Fonti dati", "database"], ["store", "Store e account", "store"], ["download", "Download", "download"], ["emulatori", "Emulatori e avvio", "gamepad"],
   ["controller", "Controller e telefono", "phone"], ["streaming", "Streaming", "wifi"],
   ["integrazioni", "Integrazioni", "link"], ["estensioni", "Estensioni", "puzzle"],
   ["dati", "Dati e backup", "backup"], ["sistema", "Sistema", "monitor"],
@@ -125,6 +125,7 @@ const SETTINGS_ICONS = {
   link: '<path d="M10 13.5 8.5 15a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0"/><path d="m14 10.5 1.5-1.5a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0"/><path d="m8.5 15 7-7"/>',
   puzzle: '<path d="M9 4a2.5 2.5 0 1 1 5 0v2h5v5h-2a2.5 2.5 0 1 0 0 5h2v4H8v-4H6a2.5 2.5 0 1 1 0-5h2V6h1V4Z"/>',
   backup: '<path d="M4 8h16v12H4zM7 8V5h10v3m-7 4h4"/><path d="m9 15 3 3 3-3m-3 3v-6"/>',
+  download: '<path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5"/><path d="M5 19h14"/>',
   monitor: '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/><circle cx="12" cy="10" r="3"/><path d="M12 8.5v2"/>',
 };
 
@@ -134,7 +135,7 @@ function settingsIcon(name) {
 const SETTINGS_ALIASES = {
   health: "sistema", about: "sistema", info: "sistema", scan: "libreria", src: "fonti",
   acc: "store", emu: "emulatori", remote: "controller", integ: "integrazioni",
-  look: "aspetto", lib: "dati",
+  look: "aspetto", lib: "dati", downloads: "download",
 };
 const SET = { tab: "generale", emu: null, preview: null, platforms: null, extraEmus: [], lastStatus: null };
 
@@ -223,11 +224,13 @@ function closeSettings() {
   $("#settings-page").hidden = true;
   document.body.classList.remove("settings-open");
   stopPadTest();
+  watchStatusStop();
   if (location.hash.startsWith("#settings")) history.replaceState(null, "", location.pathname + location.search);
 }
 
 function showTab(tab) {
   stopPadTest();
+  watchStatusStop();
   const id = settingsCategory(tab)?.[0] || (tab.startsWith("ext:") ? tab : "generale");
   renderSettingsNav();
   const page = $("#settings-page");
@@ -256,9 +259,10 @@ function showTab(tab) {
     ? (GS.ui.settingsTabs.find((x) => `ext:${x.id}` === id)?.label || "Estensione")
     : (settingsCategory(id)?.[1] || "Impostazioni");
   $("#settings-body").scrollTop = 0;
-  if (id === "generale") { loadPower(); loadNotify(); loadProfilesSettings(); loadHints(); }
+  if (id === "generale") { loadPower(); loadNotify(); loadProfilesSettings(); loadHints(); loadTour(); }
+  else if (id === "download") loadDownloadSettings();
   else if (id === "sistema") { loadHealth(); loadAbout(); }
-  else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); api("/api/status").then(showStatus); }
+  else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); watchStatusStart(); api("/api/status").then(showStatus); }
   else if (id === "fonti") { loadSources(); pollHltb(); pollCollart(); }
   else if (id === "store") { loadAccounts(); loadPcStores(); }
   else if (id === "emulatori") loadEmu();
@@ -378,6 +382,19 @@ function loadHints() {
   sel.dataset.bound = "1";
   sel.addEventListener("change", () => h.setMode(sel.value));
   $("#hint-reset").addEventListener("click", () => { h.resetSeen(); toast("I suggerimenti si rivedranno"); });
+}
+
+function loadTour() {
+  const auto = $("#tour-auto"), t = GS.tour;
+  if (!auto || !t) return;
+  auto.checked = t.settings.auto();
+  if (auto.dataset.bound) return;
+  auto.dataset.bound = "1";
+  auto.addEventListener("change", () => t.settings.setAuto(auto.checked));
+  $("#tour-start").addEventListener("click", () => {
+    if (settingsOpen()) closeSettings();
+    setTimeout(() => t.start({ manual: true }), 150);
+  });
 }
 
 async function loadNotify() {

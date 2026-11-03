@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "emulator": "rpcs3",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": { "Video": { "Resolution Scale": "200", "Anisotropic Filter Override": "16" } },
+      "sources": [
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_config.h",
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_utils.cpp"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": { "Video": { "Resolution Scale": "75", "Anisotropic Filter Override": "0" } },
+      "sources": [
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_config.h",
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_utils.cpp"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele",
+      "values": { "Video": { "Resolution Scale": "100", "Anisotropic Filter Override": "0" } },
+      "sources": [
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_config.h",
+        "https://raw.githubusercontent.com/RPCS3/rpcs3/master/rpcs3/Emu/system_utils.cpp"
+      ]
+    }
+  },
+  "games": {}
+}

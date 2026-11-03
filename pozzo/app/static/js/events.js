@@ -310,7 +310,7 @@ function bind() {
     if (t.id === "d-play") play(d.id);
     else if (t.id === "d-install") installGame(d.id);
     else if (t.id === "d-torrent") api(`/api/game/${d.id}/torrent`, { body: {} })
-      .then((r) => toast(r.single ? `Aperto nel client torrent: scarica solo «${r.file}» (se ti propone tutti i file, tieni solo questo)`
+      .then((r) => r.internal ? toast(`Download di «${r.file}» avviato in ${r.dest} (solo questo gioco)`) : toast(r.single ? `Aperto nel client torrent: scarica solo «${r.file}» (se ti propone tutti i file, tieni solo questo)`
         : `Aperto nel client torrent: è l'intero set, seleziona solo «${r.file}»`))
       .catch((err) => toast(err.message, true));
     else if (t.dataset.install) installGame(+t.dataset.install);
@@ -332,6 +332,11 @@ function bind() {
     }
     else if (t.dataset.open) { e.preventDefault(); api("/api/open", { body: { url: t.dataset.open } }); }
     else if (t.id === "d-download") downloadMain(d);
+    else if (t.id === "d-magnet") {
+      const mag = dlMagnetUrl();
+      if (mag) downloadLinks(d, [mag]);
+      else toast("Questa pagina non offre un torrent: usa le fonti dirette", true);
+    }
     else if (t.id === "d-hide") setFlag("hidden", !d.user.hidden);
     else if (t.id === "d-folder") api(`/api/game/${d.id}/open-folder`, { body: {} }).catch((err) => toast(err.message, true));
     else if (t.id === "d-emu-cfg") { e.preventDefault(); openSettings("emu"); }

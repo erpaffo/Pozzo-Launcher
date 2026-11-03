@@ -50,13 +50,31 @@ Nella stessa finestra:
   Switch, il Title ID distinguono DLC, aggiornamenti e giochi base. Il peso può confermare una DLC solo se il catalogo
   contiene anche il gioco base e la console supporta contenuti scaricabili; gli aggiornamenti vengono associati al
   gioco base. Nella pagina **🛒 Store**, **Escludi DLC** nasconde o mostra le DLC riconosciute.
-- **⬇ Scarica** apre direttamente i file elencati nella pagina del gioco, non la pagina dello store. La scheda
+- **⬇ Scarica** mette in coda i file elencati nella pagina del gioco, non la pagina dello store. La scheda
   mostra tutti i link disponibili, uno per provider, divisi per tipo: **gioco** (anche a parti: «Part 2», «Part 3»),
-  **aggiornamento**, **DLC/espansioni** e le eventuali **versioni in altre lingue**. Il pulsante grande apre un link
-  per tipo, tutti insieme e dalla stessa fonte; ogni provider si può aprire anche da solo.
-- **Pubblicità saltata**: molti provider nascondono il file dietro un accorciatore (ouo.io). L'app apre il link vero
-  al posto tuo, nella finestra nascosta dell'app, cliccando da sola i pulsanti del sito come farebbe lo userscript
-  `ouo_skipper`; il risultato resta in cache, quindi la seconda volta l'apertura è immediata.
+  **aggiornamento**, **DLC/espansioni** e le eventuali **versioni in altre lingue**. Il pulsante grande mette in coda
+  un link per tipo, tutti insieme e dalla stessa fonte; ogni provider si può mettere in coda anche da solo. I
+  download compaiono nella pagina **⬇ Download** come tutti gli altri.
+- **Pubblicità e pagine intermedie saltate**: molti provider nascondono il file dietro un accorciatore (ouo.io) che
+  porta alla pagina dell'host (DataNodes, FileKeeper, KrakenFiles, 1Fichier, MegaUp); il file vero è un passo più in là.
+  Il link si risolve **all'avvio del download**: con una richiesta normale quando l'host ha un modulo da compilare,
+  altrimenti nella finestra del browser dell'app, dove si clicca il pulsante che sblocca il download e si legge l'URL
+  del download che parte. Quella finestra resta nascosta, tranne per gli host col conto alla rovescia (FileKeeper):
+  lì compare per pochi secondi, perché Chromium ferma i timer delle finestre nascoste. Le pubblicità che aprono
+  finestre vengono chiuse lì: niente schede nel tuo browser. Il risultato resta in cache, quindi la seconda volta è
+  immediato.
+- **Si vede a che punto è**: nella pagina **⬇ Download** la riga dice il passaggio in corso prima che il file
+  cominci — «⏳ Salto la pubblicità (ouo.io)», «⏳ Cerco il file su datanodes.to», «⏳ Preparo il download (nome e
+  dimensione)» — e poi passa ad avanzamento e velocità. Se qualcosa si blocca, il passaggio resta scritto accanto
+  all'errore («⛔ fermo a: …»): si capisce subito se il problema è l'accorciatore, la pagina dell'host o il file.
+- **DataNodes e FileKeeper**: il file parte solo come download vero, dopo il conto alla rovescia, e il link non compare
+  mai nella pagina. L'app clicca i pulsanti nella finestra del browser e legge l'URL del download da lì, annullandolo:
+  il file lo scarica il manager, non il browser. Funziona su Windows (WebView2).
+- **MegaUp non si può completare**: il download passa da un popup con la sessione del sito, che non possiamo passare
+  al manager. Se un file è solo su MegaUp, scaricalo dal browser.
+- Se un host cambia pagina o mette un captcha che non passa, il download si ferma con un messaggio chiaro
+  («Il link è una pagina, non un file (host)»): non salva un file pieno di HTML, e la pagina dell'host resta apribile
+  dal pulsante del provider.
 - **Torrent**: si offre solo per i magnet che indicano il file (nome con estensione); quelli che scaricherebbero
   l'intero set non hanno il pulsante, e la scheda lo dice, così non si scaricano decine di giochi per sbaglio.
 - I giochi solo online **non contano come posseduti**: non entrano nel conteggio della console, in «Multigiocatore
@@ -171,6 +189,33 @@ da scaricare: compaiono nella sezione PC, nei filtri e nella scheda come gli alt
 categoria («📦 Repack (download corto, installazione lunga)» oppure «⬇ Download diretto») e un pulsante per ogni
 fonte. Lo stesso gioco su più siti è una scheda sola.
 
+### Le fonti di un repack
+
+Le pagine dei repack non linkano il file: elencano più fonti per lo stesso gioco. La scheda le mostra ognuna col
+suo pulsante, nell'ordine in cui funzionano meglio: prima il **torrent** (quasi sempre disponibile e senza pubblicità),
+poi **FuckingFast**, **DataNodes**, **FileKeeper** e infine le altre pagine.
+
+| Pulsante | Cosa fa |
+|---|---|
+| 🧲 **Torrent** | mette in coda il magnet: è il gioco intero, niente pubblicità e niente browser |
+| ↗ **sito** | apre la pagina del torrent (1337x, RuTor, Tapochek…) nel browser |
+| 📄 **Filehoster** | legge l'elenco nascosto nel paste (MultiUP, PixelDrain, DataNodes…) e propone i file |
+| ⬇ **Scarica le N parti** | mette in coda tutte le parti (`.part01.rar`, …): stessa cartella, e l'estrazione parte da sola quando ci sono tutte |
+
+Il pulsante **⬇ Scarica** in cima alla scheda usa da solo la prima fonte diretta disponibile (FuckingFast, poi
+DataNodes, FileKeeper e gli altri) e mette in coda tutte le sue parti; il **🧲 Torrent** gli sta accanto, quando la
+pagina ne elenca uno.
+
+Restano solo i link che scaricano davvero: sito dello sviluppatore, forum, screenshot e pagine di terzi vengono
+scartati, e il «.torrent file only» sparisce quando c'è già il magnet (è lo stesso torrent). Se la pagina elenca un
+**aggiornamento**, compare come riga «Aggiornamento» con le sue fonti: **⬇ Scarica** prende il gioco, mentre
+**⬇ Scarica gioco + aggiornamento** (quando c'è) mette in coda tutti e due.
+
+I paste dei filehoster sono elenchi incollati, a volte cifrati (PrivateBin): l'app li decifra e mostra solo i link ai
+file, con cache di 7 giorni. Se il formato cambia resta il pulsante **↗** per aprire la pagina a mano. I link diretti
+si risolvono all'avvio del download: FuckingFast e DataNodes passano dalla finestra nascosta (Cloudflare, conto alla
+rovescia e captcha), gli altri host dal loro modulo.
+
 Nella tabella degli elenchi c'è un filtro *Tutti / 📦 Repack / ⬇ Download diretto*, e per ogni riga si cambia
 la categoria o si rimuove l'elenco. In `settings.json` gli elenchi stanno in `pc_stores`:
 
@@ -178,6 +223,19 @@ la categoria o si rimuove l'elenco. In `settings.json` gli elenchi stanno in `pc
 { "pc_stores": [ { "url": "https://esempio.test/giochi/", "kind": "repack" },
                  { "url": "https://altro.test/a-z/", "kind": "direct" } ] }
 ```
+
+### Installare un repack
+
+Un repack non è un gioco pronto: è un archivio che contiene il **setup** dell'installazione. Quando il download è
+finito e le parti sono state estratte, la riga in **Download** mostra **📦 Installa**: il launcher avvia il `setup.exe`
+del repack (con la richiesta di amministratore, se serve) nella sua finestra, dove si sceglie la cartella e le opzioni.
+
+Quando la finestra del setup si chiude, il launcher cerca il gioco appena installato — nell'elenco delle app di
+Windows oppure nelle cartelle nuove di *Program Files* e dei dischi fissi — e lo aggiunge alla libreria come gioco PC,
+che compare subito senza dover lanciare una scansione. La voce *da scaricare* dello stesso gioco sparisce.
+
+In **Attività** l'installazione compare come **Installazione · *gioco*** con il tempo trascorso: l'avanzamento del
+setup non è leggibile da fuori, quindi la barra resta indeterminata finché non si chiude la finestra.
 
 ## Aggiornamento degli store
 

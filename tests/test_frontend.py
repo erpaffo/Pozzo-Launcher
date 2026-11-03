@@ -1086,6 +1086,15 @@ def test_feedback_button():
     print("ok  azioni in alto a destra, Impostazioni fisse, Idee/bug nel piede della barra laterale")
 
 
+def test_random_button_uses_dice_icon():
+    root = Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static"
+    html = (root / "index.html").read_text(encoding="utf-8")
+    icons = (root / "icons.js").read_text(encoding="utf-8")
+    button = html[html.index('id="random-btn"'):html.index("</button>", html.index('id="random-btn"'))]
+    assert 'aria-label="Gioco a caso"' in button and 'data-icon="dice"' in button
+    assert "dice:" in icons
+
+
 def test_hltb_on_demand(client, monkeypatch):
     from pozzo import hltb
 

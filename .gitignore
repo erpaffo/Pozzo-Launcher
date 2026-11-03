@@ -44,3 +44,7 @@ release.*
 .agent/
 docs/PARALLEL.md
 docs/changelog.d/
+*.csv
+data-csv/
+markdown/
+switch-bypass/

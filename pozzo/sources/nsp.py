@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from .. import switchmeta
+from .. import switchfiles as SF, switchmeta
 from ..scanner import Game
 from .base import Result, Source
 
@@ -48,8 +48,7 @@ class Nsp(Source):
         files = ([p] if p.suffix.lower() in PACKAGE_EXTS else []) if not game.is_dir else [
             f for pat in ("*", "*/*") for f in p.glob(pat) if f.is_file() and f.suffix.lower() in PACKAGE_EXTS
         ]
-        base = [f for f in files if "000]" in f.name.upper() or "000 " in f.name.upper()]
-        return max(base or files, key=lambda f: f.stat().st_size, default=None)
+        return SF.pick_base(files) or max(files, key=lambda f: f.stat().st_size, default=None)
 
     def _read(self, game: Game) -> Result | None:
         pkg = self._package(game)

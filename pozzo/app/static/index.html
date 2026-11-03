@@ -21,6 +21,7 @@
     <nav id="experience-nav" aria-label="Navigazione principale">
       <button type="button" data-view="home">Home</button>
       <button type="button" data-view="all">Libreria</button>
+      <button type="button" data-view="downloads">Download</button>
       <button type="button" data-view="favorites">Preferiti</button>
       <button type="button" data-view="shop">Store</button>
     </nav>
@@ -45,6 +46,7 @@
       <a class="nav-item" data-view="top" data-id="all"><span class="ico">🏆</span><span class="lbl">Migliori giochi</span></a>
       <a class="nav-item" data-view="stats"><span class="ico">📊</span><span class="lbl">Statistiche</span></a>
       <a class="nav-item" data-view="recent"><span class="ico">◷</span><span class="lbl">Giocati di recente</span><span class="cnt" id="cnt-recent"></span></a>
+      <a class="nav-item" data-view="downloads"><span class="ico">⬇</span><span class="lbl">Download</span><span class="cnt" id="cnt-dl"></span></a>
 
       <div class="nav-section">Stato</div>
       <div id="status-list"></div>
@@ -95,7 +97,7 @@
       </div>
       <div class="tb-actions" role="group" aria-label="Azioni">
         <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console">⟳ Nuovi giochi</button>
-        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso">🎲 A caso</button>
+        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso"><span data-icon="dice"></span> A caso</button>
         <button class="btn accent" id="bp-btn" title="Modalità a schermo intero per il controller">🎮 Big Picture</button>
         <button class="btn" id="settings-btn" title="Impostazioni">⚙ Impostazioni</button>
       </div>
@@ -338,6 +340,60 @@
     </div>
   </dialog>
 
+  <dialog id="dl-add-dlg" class="small-dlg">
+    <form method="dialog" class="dlg-head"><h2>Aggiungi download</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+    <div class="dlg-body">
+      <label class="lbl-field">Link, uno per riga (http, https, magnet o .torrent)
+        <textarea id="dl-links" class="field" rows="4" placeholder="https://…&#10;magnet:?xt=…"></textarea></label>
+      <button class="btn" id="dl-mu-go" type="button" hidden title="Per i link MultiUp: scegli tu da quale provider scaricare">Elenca provider</button>
+      <div id="dl-mu-list" aria-live="polite"></div>
+      <label class="lbl-field">Oppure un file .torrent (facoltativo)
+        <input id="dl-file" type="file" accept=".torrent,application/x-bittorrent"></label>
+      <label class="lbl-field">Cartella di destinazione
+        <span class="row tight"><input id="dl-dest" class="field grow">
+        <button class="btn" id="dl-dest-pick" type="button">Cambia…</button></span></label>
+      <div class="row end"><button class="btn primary" id="dl-add-go" type="button">⬇ Scarica</button></div>
+    </div>
+  </dialog>
+  <dialog id="dl-cancel-dlg" class="small-dlg">
+    <form method="dialog" class="dlg-head"><h2 id="dl-cancel-title">Annullare il download?</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
+    <form method="dialog" class="dlg-body">
+      <p id="dl-cancel-name"></p>
+      <label class="chk"><input type="checkbox" id="dl-cancel-del"> Elimina anche i file scaricati (anche quelli parziali)</label>
+      <div class="row end"><button class="btn" value="" id="dl-cancel-no">Continua a scaricare</button><button class="btn primary" value="ok" id="dl-cancel-ok">Annulla il download</button></div>
+    </form>
+  </dialog>
+  <dialog id="dl-log-dlg" class="log-dlg" aria-labelledby="dl-log-title">
+    <form method="dialog" class="dlg-head"><h2 id="dl-log-title">Registro</h2><span class="dl-st" id="dl-log-st"></span><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
+    <div class="dlg-body">
+      <div class="dl-log-sum" id="dl-log-sum"></div>
+      <div class="row wrap dl-log-bar">
+        <div class="chips" id="dl-log-filter" role="group" aria-label="Mostra righe">
+          <button class="chip" type="button" data-lf="all" aria-pressed="true">Tutto</button>
+          <button class="chip" type="button" data-lf="warn" aria-pressed="false">Avvisi ed errori</button>
+          <button class="chip" type="button" data-lf="error" aria-pressed="false">Errori</button></div>
+        <label class="chk"><input type="checkbox" id="dl-log-abs"> Ora esatta</label>
+        <label class="chk"><input type="checkbox" id="dl-log-follow" checked> Segui</label>
+        <button class="btn" type="button" id="dl-log-refresh">Aggiorna</button>
+        <button class="btn" type="button" id="dl-log-copy">Copia</button>
+        <button class="btn" type="button" id="dl-log-clear">Svuota</button>
+      </div>
+      <div id="dl-log-box" class="dl-logbox" role="log" aria-live="polite" aria-label="Registro del download" tabindex="0"></div>
+    </div>
+  </dialog>
+  <dialog id="dl-limit-dlg" class="small-dlg">
+    <form method="dialog" class="dlg-head"><h2>Limite di velocità</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
+    <form method="dialog" class="dlg-body">
+      <p id="dl-limit-name"></p>
+      <p class="muted small">Solo per questo download, in KB/s: 0 = segue i limiti generali.</p>
+      <div class="row wrap">
+        <label>Download (KB/s) <input class="field" id="dl-lim-down" type="number" min="0"></label>
+        <label>Upload (KB/s) <input class="field" id="dl-lim-up" type="number" min="0"></label>
+      </div>
+      <div class="row end"><button class="btn primary" value="ok">Applica</button></div>
+    </form>
+  </dialog>
+
   <div id="setup" hidden></div>
   <div id="splash" hidden>
     <div class="splash-box">
@@ -366,6 +422,8 @@
 <script src="/static/js/settings.js?v={{v}}"></script>
 <script src="/static/js/emulators.js?v={{v}}"></script>
 <script src="/static/js/events.js?v={{v}}"></script>
+<script src="/static/js/downloads.js?v={{v}}"></script>
+<script src="/static/js/watch.js?v={{v}}"></script>
 <script src="/static/app.js?v={{v}}"></script>
 <script src="/static/menubar.js?v={{v}}"></script>
 <script src="/static/shortcuts.js?v={{v}}"></script>
@@ -377,9 +435,12 @@
 <script src="/static/palette.js?v={{v}}"></script>
 <script src="/static/onboarding.js?v={{v}}"></script>
 <script src="/static/settings/emulatori-extra.js?v={{v}}"></script>
+<script src="/static/anchor.js?v={{v}}"></script>
 <script src="/static/hints.js?v={{v}}"></script>
+<script src="/static/tour.js?v={{v}}"></script>
 <script src="/static/js/detail-mods.js?v={{v}}"></script>
 <script src="/static/js/detail-verify.js?v={{v}}"></script>
+<script src="/static/js/detail-emucfg.js?v={{v}}"></script>
 <script src="/static/js/profiles-exp.js?v={{v}}"></script>
 <script src="/static/i18n.js?v={{v}}"></script>
 </body>

@@ -39,6 +39,7 @@ from ..library import launcher as L
 from . import extensions as X
 from ..boot import BOOT
 from . import jobs as J
+from . import browserdl
 from .. import stores as STORES
 
 STORE_NAMES = {p.id: p.name for p in STORES.PROVIDERS}
@@ -64,22 +65,6 @@ def _asset_version() -> str:
         digest.update(path.name.encode("utf-8"))
         digest.update(path.read_bytes())
     return f"{__version__}.{digest.hexdigest()[:12]}"
-
-
-# Clicca da soli i pulsanti degli accorciatori con pubblicita' (stessa logica dello userscript ouo_skipper):
-# "I'm a human" sblocca il conteggio, "Get Link" porta al file. Un pulsante disattivato ignora il clic.
-SKIPPER_JS = """
-(function () {
-  const press = (needle) => {
-    const el = Array.from(document.querySelectorAll('button, a, input[type=submit]'))
-      .find((b) => ((b.innerText || b.value || '').trim().toLowerCase().includes(needle)));
-    if (el && !el.disabled) el.click();
-  };
-  press("i'm a human");
-  press("get link");
-  press("continue");
-})();
-"""
 
 
 class _ActiveUser:
@@ -173,6 +158,41 @@ class Library:
             self.patches, self.patch_base, self._url_keys = [], self.meta_rev, None
         if online:
             self.full.set()
+
+    def add_games(self, keys: list[str], drop_key: str | None = None):
+        """Giochi appena messi in library.db da library.incremental: entrano in memoria senza ricaricare tutto.
+        `drop_key`: la voce online che sostituiscono. Le pagine aperte si accorgono del cambio da built_at."""
+        db = sqlite3.connect(self.path)
+        db.row_factory = sqlite3.Row
+        try:
+            cols = ", ".join(self.DETAIL_SQL.get(c, c) for c in (r[1] for r in db.execute("PRAGMA table_info(games)")))
+            new = [dict(r) for k in keys if (r := db.execute(f"SELECT {cols} FROM games WHERE key=?", (k,)).fetchone())]
+            for g in new:
+                g["genres"], g["files"] = json.loads(g["genres"] or "[]"), json.loads(g["files"] or "[]")
+                g["media"] = json.loads(g["media"] or "{}")
+            has_owners = OW.apply(db, new)
+            built = db.execute("SELECT v FROM meta WHERE k='built_at'").fetchone()
+        finally:
+            db.close()
+        with self.lock:
+            old = self.by_key.pop(drop_key, None) if drop_key else None
+            if old:
+                self.games.remove(old)
+                self.by_id.pop(old["id"], None)
+                self.groups[old["grp"]].remove(old)
+                if not self.groups[old["grp"]]:
+                    del self.groups[old["grp"]]  # un gruppo vuoto romperebbe i conteggi per console
+                self._url_keys = None
+            for g in new:
+                if cur := self.by_key.get(g["key"]):  # gia' presente: solo i file sono cambiati
+                    cur["files"] = g["files"]
+                    continue
+                self.games.append(g)
+                self.by_id[g["id"]] = g
+                self.by_key[g["key"]] = g
+                self.groups[g["grp"]].append(g)
+            self.has_owners = self.has_owners or has_owners
+            self.built_at = float(built[0]) if built else time.time()
 
     def touch(self, ids: list[int]):
         """Segna dei giochi come cambiati: le pagine aperte li ridisegnano al prossimo controllo (ogni 3 s)."""
@@ -303,6 +323,7 @@ ERROR_CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "
 def create_app(cfg) -> FastAPI:
     BOOT.reset()  # fasi dell'avvio (schermata di caricamento, GET /api/boot): ripartono da capo ad ogni app
     BOOT.start("server")
+    stop = threading.Event()  # segnalato all'arresto: i thread in background escono prima che si chiudano i database
     app = FastAPI(
         title="Pozzo Launcher", version="1",
         description="API locale dell'app. Gli endpoint **/api/v1** sono stabili e vogliono il token "
@@ -490,6 +511,20 @@ def create_app(cfg) -> FastAPI:
             job[name] = j
             return True
 
+    # ------------------------------------------------------------ watcher delle cartelle ROM
+    from .. import applog as _applog
+    from ..library import watchhook as _watchhook, watcher as _watcher_mod
+
+    hook = _watchhook.Hook(
+        cfg, lib, events, lambda body: ctx.api_scan_start(body),  # ctx esiste piu' sotto: si risolve alla chiamata
+        busy=lambda: bool(state["building"]) or job["current"].status == "running",
+        playing=lambda: launcher.running().get("status") in ("starting", "extracting", "running"),
+        log=lambda msg: _applog.write("watcher", msg))
+    # acceso/spento (e tempi) si rileggono a ogni passaggio da cfg.app["watch_roms"]: nessun riavvio
+    watcher = _watcher_mod.RomWatcher(
+        lambda: cfg, hook.on_new, known=hook.known, busy=hook.busy, low=hook.playing,
+        log=lambda msg: _applog.write("watcher", msg))
+
     # ------------------------------------------------------------ vista unita (gruppi + utente)
     def view(only=None) -> dict:
         """Calcola gruppi, versione principale, dati utente e collezioni (modifiche incluse).
@@ -544,23 +579,25 @@ def create_app(cfg) -> FastAPI:
         app=app, cfg=cfg, lib=lib, user=user, users=users, user_of=user_of, sync=sync, events=events,
         launcher=launcher, shots=shots, phone_hub=phone_hub, ds=ds, view=view, job=job, state=state,
         activity_hidden=activity_hidden, lib_payloads=lib_payloads, thumbs_dir=thumbs_dir,
-        plugin_errors=plugin_errors, _claim=_claim, discord=discord, spotify=spotify, discord_voice=discord_voice,
-        SpotifyError=SpotifyError, DiscordVoiceError=DiscordVoiceError, SY=SY, SC=SC, PH=PH)
+        plugin_errors=plugin_errors, _claim=_claim, watcher=watcher, discord=discord, spotify=spotify, discord_voice=discord_voice,
+        SpotifyError=SpotifyError, DiscordVoiceError=DiscordVoiceError, SY=SY, SC=SC, PH=PH, stop=stop)
     for mod in routes.ORDER:
         app.include_router(getattr(routes, mod).build_router(ctx))
 
-    @app.on_event("startup")
     def _phone_startup():
         # il server HTTPS serve anche ai PC abbinati per la sincronizzazione in rete
         if phone_hub.conf.get("enabled") or any(d.get("kind") == "pc" for d in phone_hub.conf["devices"]):
             threading.Thread(target=phone_hub.start, args=(app,), daemon=True).start()
         threading.Thread(target=ctx._sync_loop, daemon=True).start()
+        threading.Thread(target=ctx._wish_loop, daemon=True).start()
+        watcher.start()
 
-    @app.on_event("shutdown")
     def _phone_shutdown():
+        stop.set()
         phone_hub.stop()
         # chiude i database aperti dall'app: su Windows un file ancora aperto impedisce di spostare
         # o cancellare la cartella dati (e nei test il file temporaneo resterebbe bloccato)
+        watcher.stop()
         for closer in (getattr(user, "close", None), getattr(shots, "close", None)):
             try:
                 if callable(closer):
@@ -568,7 +605,6 @@ def create_app(cfg) -> FastAPI:
             except Exception:
                 pass
 
-    @app.on_event("startup")
     def _startup():
         if not lib.games and lib.path.exists():
             lib.full.wait()  # nessun gioco posseduto: prima di ricreare la libreria si guarda anche il catalogo
@@ -578,6 +614,11 @@ def create_app(cfg) -> FastAPI:
             threading.Thread(target=ctx._rebuild, daemon=True).start()
         else:
             threading.Thread(target=ctx._pregen_thumbs, daemon=True).start()
+
+    # add_event_handler invece di @app.on_event (deprecato): stessi eventi, nessun avviso
+    app.router.add_event_handler("startup", _phone_startup)
+    app.router.add_event_handler("shutdown", _phone_shutdown)
+    app.router.add_event_handler("startup", _startup)
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -859,35 +900,9 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                 return True
 
             def resolve_link(self, link):
-                """Link vero dietro un accorciatore pubblicitario (ouo): la pagina chiede un browser, quindi
-                si apre in una finestra nascosta e si cliccano da soli i pulsanti del sito, come lo userscript
-                ouo_skipper. None se non si arriva al file."""
-                import time as _time
-                from urllib.parse import urlparse as _urlparse
-                win = webview.create_window("Pozzo", link, width=420, height=360, hidden=True, focus=False)
-                if win is None:
-                    return None
-                end = _time.time() + 45
-                try:
-                    while _time.time() < end:
-                        _time.sleep(0.5)
-                        try:
-                            cur = win.get_current_url() or ""
-                        except Exception:
-                            return None
-                        if cur.startswith("http") and (_urlparse(cur).hostname or "").replace("www.", "") not in \
-                                ("ouo.io", "ouo.press", "hikarinoakari.com"):
-                            return cur
-                        try:
-                            win.evaluate_js(SKIPPER_JS)
-                        except Exception:
-                            pass  # pagina non ancora pronta: si riprova al giro dopo
-                    return None
-                finally:
-                    try:
-                        win.destroy()
-                    except Exception:
-                        pass
+                """Link vero dietro un accorciatore (ouo) o dietro la pagina di un host di file: finestra
+                nascosta, clic da soli, URL del download letto da WebView2. None se non si arriva al file."""
+                return browserdl.resolve(link)
 
             def pick_folder(self):
                 win = webview.windows[0]
@@ -901,7 +916,8 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
         # la finestra principale nasce nascosta e si mostra quando il frontend ha applicato tema e interfaccia
         shown = threading.Event()
         WINDOW_FOCUS["fn"] = api.focus_window
-        SL.set_resolver(api.resolve_link)  # link veri dietro gli accorciatori pubblicitari (ouo)
+        SL.set_resolver(api.resolve_link, browserdl.reason)  # accorciatori (ouo) e host (DataNodes)
+        browserdl.install()  # l'URL del download del WebView si legge solo con questo aggancio (Windows)
         from .. import notify
         ico = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2])) / "packaging" / "icon.ico"
         def on_notification_click(action):

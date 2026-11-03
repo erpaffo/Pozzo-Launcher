@@ -1,9 +1,26 @@
 "use strict";
 
+/* titoli famosi: link ai siti di mod (tabella curata sul server), per qualsiasi gioco della libreria */
+async function loadModSites(d) {
+  const body = document.querySelector("#detail-body");
+  if (!body || !d?.id) return;
+  body.querySelector("#d-mod-sites")?.remove();
+  let sites = [];
+  try { sites = (await api(`/api/game/${d.id}/mod-sites`)).sites || []; } catch { return; }
+  if (!sites.length || (typeof S !== "undefined" && S.detail !== d)) return;
+  const section = document.createElement("section");
+  section.id = "d-mod-sites";
+  section.innerHTML = `<div class="d-h">🧩 Mod</div><div class="d-mod-sources">${sites.map((s) =>
+    `<a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.name)} ↗</a>`).join("")}</div>
+    <p class="muted small">Cerca le mod di questo gioco sui siti che le ospitano.</p>`;
+  body.append(section);
+}
+
 async function loadDetailMods(d) {
   const body = document.querySelector("#detail-body");
   if (!body || !d) return;
   body.querySelector("#d-mods")?.remove();
+  loadModSites(d);
 
   const slugs = [];
   if (d.store === "ports") slugs.push((d.key || "").split(":").slice(1).join(":"));

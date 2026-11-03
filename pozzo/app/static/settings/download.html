@@ -1,0 +1,74 @@
+<h3>Generale</h3>
+<p class="muted small">Coda della pagina «Download»: link http, magnet, file .torrent e link dei siti di hosting.</p>
+<label class="lbl-field">Cartella dei download
+  <span class="row tight"><input class="field grow" id="dls-dir">
+  <button class="btn" id="dls-dir-pick" type="button">Cambia…</button></span></label>
+<div class="row wrap">
+  <label>Download simultanei <input class="field" id="dls-max" type="number" min="1" max="10"></label>
+  <label>di cui HTTP <input class="field" id="dls-max-http" type="number" min="0" max="10"></label>
+  <label>di cui torrent <input class="field" id="dls-max-tor" type="number" min="0" max="10"></label>
+  <label>Segmenti per file HTTP <input class="field" id="dls-seg" type="number" min="1" max="8"></label>
+</div>
+<p class="muted small">HTTP e torrent: 0 = vale solo il limite totale. Più segmenti scaricano lo stesso file a pezzi in parallelo
+  (alcuni siti li rifiutano: in quel caso si torna a uno).</p>
+<label class="chk"><input type="checkbox" id="dls-extract"> Estrai automaticamente gli archivi a download finito</label>
+<label class="chk"><input type="checkbox" id="dls-showbrowser"> Mostra il browser mentre risolve i link (per vedere la pagina e superare i controlli anti-bot a mano)</label>
+<label class="chk"><input type="checkbox" id="dls-clip"> Monitora gli appunti: proponi i link da scaricare che copi</label>
+
+<h3>Velocità</h3>
+<p class="muted small">Limiti in KB/s per tutti i download insieme: 0 = nessun limite.</p>
+<div class="row wrap">
+  <label>Limite download (KB/s) <input class="field" id="dls-down" type="number" min="0"></label>
+  <label>Limite upload (KB/s) <input class="field" id="dls-up" type="number" min="0"></label>
+</div>
+<h4>🐢 Modalità lenta</h4>
+<p class="muted small">Limiti alternativi per quando giochi o ti serve la rete: si accende qui, dal pulsante nella pagina
+  «Download» o da sola agli orari programmati.</p>
+<div class="row wrap">
+  <label>Download (KB/s) <input class="field" id="dls-alt-down" type="number" min="0"></label>
+  <label>Upload (KB/s) <input class="field" id="dls-alt-up" type="number" min="0"></label>
+</div>
+<label class="chk"><input type="checkbox" id="dls-alt-on"> Attiva ora</label>
+<label class="chk"><input type="checkbox" id="dls-sch-on"> Attiva da sola a orari programmati</label>
+<div class="row wrap">
+  <label>Dalle <input class="field" id="dls-sch-from" type="time"></label>
+  <label>Alle <input class="field" id="dls-sch-to" type="time"></label>
+</div>
+<div class="row" id="dls-sch-days" role="group" aria-label="Giorni della programmazione">
+  <label class="chk"><input type="checkbox" data-day="0"> Lun</label>
+  <label class="chk"><input type="checkbox" data-day="1"> Mar</label>
+  <label class="chk"><input type="checkbox" data-day="2"> Mer</label>
+  <label class="chk"><input type="checkbox" data-day="3"> Gio</label>
+  <label class="chk"><input type="checkbox" data-day="4"> Ven</label>
+  <label class="chk"><input type="checkbox" data-day="5"> Sab</label>
+  <label class="chk"><input type="checkbox" data-day="6"> Dom</label>
+</div>
+<p class="small" id="dls-alt-state" role="status"></p>
+
+<h3>BitTorrent</h3>
+<div class="row wrap">
+  <label>Porta (0 = casuale) <input class="field" id="dls-port" type="number" min="0" max="65535"></label>
+  <label>Cifratura <select class="field" id="dls-enc">
+    <option value="prefer">Preferita</option><option value="require">Obbligatoria</option><option value="disable">Disattivata</option></select></label>
+</div>
+<div class="row" role="group" aria-label="Ricerca dei peer">
+  <label class="chk"><input type="checkbox" data-disc="dht"> DHT</label>
+  <label class="chk"><input type="checkbox" data-disc="pex"> PeX</label>
+  <label class="chk"><input type="checkbox" data-disc="lsd"> LSD</label>
+  <label class="chk"><input type="checkbox" data-disc="upnp"> UPnP</label>
+</div>
+<p class="muted small">DHT, PeX e LSD trovano altri peer anche senza tracker (LSD nella rete di casa); UPnP apre da solo la porta sul router.
+  Con la cifratura obbligatoria ci si collega solo ai peer che la usano.</p>
+<h4>Condivisione</h4>
+<div class="row wrap">
+  <label>Fermati al rapporto <input class="field" id="dls-ratio" type="number" min="0" step="0.1"></label>
+  <label>oppure dopo (minuti) <input class="field" id="dls-seed-min" type="number" min="0"></label>
+</div>
+<p class="muted small">Rapporto = dati inviati ÷ dimensione del torrent. 0 = non condividere: il torrent si ferma appena finito.</p>
+<label class="lbl-field">Tracker aggiuntivi, uno per riga (aggiunti a ogni torrent)
+  <textarea class="field" id="dls-trackers" rows="4" spellcheck="false" placeholder="udp://tracker.example.org:1337/announce"></textarea></label>
+
+<h3>Estensioni / Debrid</h3>
+<p class="muted small">Con un servizio debrid i link dei siti di hosting (Mega, 1fichier, Rapidgator…) scaricano alla massima velocità.
+  I link passano dal primo servizio attivo, nell'ordine qui sotto. La chiave resta su questo PC e non viene più mostrata.</p>
+<div id="dls-debrid"></div>

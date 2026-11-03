@@ -66,7 +66,7 @@ async function openDetail(id) {
   const storePages = pages.filter((s) => !s.update);
   // una fonte sola: pulsante unico; due o piu' (es. NXBrew e Ziperto): un pulsante per sito
   const mainBtn = online
-    ? (minerva ? "" : `<button class="btn primary" id="d-download" title="Apre i link del gioco, dell'aggiornamento e dei DLC già pronti per il download, saltando le pagine pubblicitarie">⬇ Scarica</button>`)
+    ? (minerva ? "" : `<button class="btn primary" id="d-download" title="Scarica i file dalle fonti dirette (prima FuckingFast, poi DataNodes), saltando la pubblicità e le pagine degli host">⬇ Scarica</button>`)
       // Minerva: la pagina web offre solo il torrent del set intero, il download vero e' il torrent del singolo file
       + (oneFile ? `<button class="btn${minerva && dlBase.length <= 1 ? " primary" : ""}" id="d-torrent" title="Apre il link nel client torrent: scarica solo questo gioco, non tutto il set">`
         + `${minerva && dlBase.length <= 1 ? "⬇ Scarica" : "🧲 Torrent"} (solo questo gioco)</button>` : "")
@@ -213,20 +213,91 @@ async function loadSwitchContents(d) {
 /* ---- link di download elencati nella pagina dello store (nxbrew, ziperto): gioco, update, DLC, provider, parti */
 let DL_STATE = null; // ultimi link letti per il gioco aperto: { id, rows, kinds, labels, order }
 
-/** Un link per tipo (gioco, aggiornamento, DLC), dalla stessa fonte: quella che ne ha di più. */
-function dlPick(state) {
-  const one = {};
-  for (const row of state.rows) if (!one[row.kind]) one[row.kind] = row.items;
-  const count = {};
-  Object.values(one).forEach((items) => items.forEach((x) => { count[x.provider] = (count[x.provider] || 0) + 1; }));
-  const best = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
-  const prov = best ? best[0] : "";
-  return Object.values(one).map((items) => (items.find((x) => x.provider === prov) || items[0]).url);
+/** Un link per tipo (gioco, aggiornamento, DLC), dalla stessa fonte possibile.
+ *  Per i repack PC prende le parti dirette della fonte più affidabile (FuckingFast, poi DataNodes…);
+ *  il torrent non c'entra: ha il suo pulsante accanto a «Scarica». */
+const DL_HOST_RANK = { "krakenfiles.com": 0, "megaup.net": 0, "1fichier.com": 1, "datanodes.to": 3 };
+function dlPick(state, only = null) {
+  const out = [];
+  for (const kind of [...new Set(state.rows.map((r) => r.kind))].filter((k) => !only || k === only)) {
+    const items = state.rows.filter((r) => r.kind === kind).flatMap((r) => r.items);
+    const directRows = state.rows.filter((r) => r.kind === kind && r.items.some((x) => x.role === "direct"));
+    if (directRows.length) { // la riga della fonte migliore: le parti si estraggono da sole quando ci sono tutte
+      const row = directRows.reduce((a, b) => (dlRowRank(a) <= dlRowRank(b) ? a : b));
+      const files = row.items.filter((x) => x.role === "direct");
+      const best = Math.min(...files.map(dlRank));
+      out.push(...files.filter((x) => dlRank(x) === best).map((x) => x.url));
+      continue;
+    }
+    // MultiUp mai in automatico: si sceglie il provider a mano (tipi con solo MultiUp restano fuori)
+    const it = items.filter((x) => (x.role || "download") === "download" && !DLU.isMultiup(x));
+    if (!it.length) continue;
+    const count = {}, hostOf = {};
+    for (const x of it) {
+      count[x.provider] = (count[x.provider] || 0) + 1;
+      hostOf[x.provider] = hostOf[x.provider] || x.host;
+    }
+    const rank = (p) => (DL_HOST_RANK[hostOf[p]] ?? 2);
+    const best = Object.entries(count).sort((a, b) => (rank(a[0]) - rank(b[0])) || (b[1] - a[1]))[0][0];
+    out.push((it.find((x) => x.provider === best) || it[0]).url);
+  }
+  if (!out.length && !only) { // solo il torrent: allora è quello
+    const mag = dlMagnetOf(state.rows);
+    if (mag) out.push(mag);
+  }
+  return out;
+}
+
+/** il magnet elencato nella pagina del gioco ("" se non c'è) */
+function dlMagnetOf(rows) {
+  const mag = (rows || []).flatMap((r) => r.items).find((x) => (x.role || "download") === "magnet");
+  return mag ? mag.url : "";
+}
+
+function dlMagnetUrl() {
+  if (!DL_STATE || !S.detail || DL_STATE.id !== S.detail.id) return "";
+  const game = DL_STATE.rows.filter((r) => r.kind === "game");
+  return dlMagnetOf(game) || dlMagnetOf(DL_STATE.rows);
+}
+
+/* I paste dei filehoster (fitgirl e simili) si leggono al clic: un paste contiene decine di link */
+const DL_PASTE = new Map(); // url del paste -> { links: [url], magnet }
+const DL_PARTS = []; // elenchi di file da mettere in coda assieme (le parti di un archivio)
+const dlParts = (urls) => { DL_PARTS.push(urls); return `data-dparts="${DL_PARTS.length - 1}"`; };
+
+/** righe del pannello link: un gruppo per tipo+etichetta (le parti restano nella loro riga), ruolo normalizzato */
+function dlRows(links) {
+  const rows = [];
+  for (const x of links || []) {
+    const key = `${x.kind}|${x.label}`;
+    let row = rows.find((y) => y.key === key);
+    if (!row) rows.push(row = { key, kind: x.kind, label: x.label, items: [] });
+    row.items.push({ ...x, role: x.role || "download" });
+  }
+  return rows;
+}
+
+/* Ordine delle fonti di un repack: il torrent per primo (è l'unica che funziona quasi sempre), poi FuckingFast,
+ * DataNodes, FileKeeper e infine le pagine da aprire. */
+const DL_HOST_ORDER = ["fuckingfast.co", "datanodes.to", "filekeeper.net"];
+function dlRank(x) {
+  if ((x.role || "download") === "magnet") return 0;
+  const h = (x.host || "").toLowerCase(), p = (x.provider || "").toLowerCase().split(".")[0];
+  // un paste ha l'host del paste: l'ordine lo dice il nome del servizio («FileKeeper», «DataNodes»)
+  const i = DL_HOST_ORDER.findIndex((k) => k === h || (p && k.startsWith(p)));
+  return i < 0 ? 9 : i + 1;
+}
+const dlRowRank = (row) => Math.min(...row.items.map(dlRank));
+
+/** righe nell'ordine delle fonti (prima la più affidabile), poi per tipo di file */
+function dlSortRows(rows, kinds) {
+  return [...rows].sort((a, b) => (dlRowRank(a) - dlRowRank(b)) || (kinds.indexOf(a.kind) - kinds.indexOf(b.kind)));
 }
 
 async function loadGameLinks(d, force = false) {
   const box = $("#d-links");
   if (!box) return;
+  if (!DL_STATE || DL_STATE.id !== d.id) { DL_PASTE.clear(); DL_PARTS.length = 0; }
   box.innerHTML = `<p class="muted small">Cerco i link di download…</p>`;
   let r;
   try { r = await api(`/api/game/${d.id}/links${force ? "?refresh=1" : ""}`); }
@@ -238,57 +309,161 @@ async function loadGameLinks(d, force = false) {
     return;
   }
   const KL = r.kind_labels || {}, KO = r.kind_order || [];
-  const rows = []; // una riga per tipo di file: le parti e le versioni in altre lingue restano righe separate
-  for (const x of links) {
-    const key = `${x.kind}|${x.label}`;
-    let row = rows.find((y) => y.key === key);
-    if (!row) rows.push(row = { key, kind: x.kind, label: x.label, items: [] });
-    row.items.push(x);
-  }
-  rows.sort((a, b) => KO.indexOf(a.kind) - KO.indexOf(b.kind));
+  const rows = dlSortRows(dlRows(links), KO); // una riga per tipo di file: le parti e le versioni in altre lingue restano righe separate
   const kinds = [...new Set(rows.map((x) => x.kind))];
   DL_STATE = { id: d.id, rows, kinds, labels: KL, order: KO };
-  const btn = (x) => `<button class="btn" data-dl="${esc(x.url)}"
+  // un solo gruppo «MultiUp» per riga (più accorciatori verso lo stesso file non servono): i provider si caricano al clic
+  const group = (x) => `<span class="mu-grp"><button class="btn" data-mu="${esc(x.url)}" aria-expanded="false"
+      title="Elenca i provider (1fichier, krakenfiles…): scarichi da quello che scegli">${esc(DLU.muTitle())}</button>
+      <span class="mu-list" role="group" aria-label="Provider MultiUp" hidden></span></span>`;
+  const btn = (x) => DLU.isMultiup(x) ? "" : `<button class="btn" data-dl="${esc(x.url)}"
     title="${esc(x.provider)} → ${esc(x.host)}${x.short ? " (la pubblicità viene saltata)" : ""}">${esc(x.provider)}</button>`;
+  /* I ruoli: magnet = torrent, page = una pagina da aprire, paste = un elenco da leggere, direct = i file veri.
+   * Il primo pulsante (in ordine di affidabilità) è quello consigliato: pieno, gli altri secondari. */
+  const rowButtons = (row, primaryRow) => {
+    const out = [];
+    for (const x of row.items) {
+      if (x.role === "download") {
+        const h = btn(x) || group(x);
+        if (h) out.push({ rank: dlRank(x), make: () => h });
+      } else if (x.role === "magnet") {
+        out.push({ rank: 0, make: (p) => `<button class="btn${p}" data-dl="${esc(x.url)}"
+          title="Torrent: si scarica solo questo gioco">🧲 Torrent</button>` });
+      } else if (x.role === "page") {
+        out.push({ rank: 9, make: () => `<button class="btn" data-open="${esc(x.url)}"
+          title="Apre la pagina nel browser: ${esc(x.host)}">↗ ${esc(x.provider || x.host)}</button>` });
+      } else if (x.role === "paste") {
+        out.push({ rank: dlRank(x), make: () => `<span class="pst-grp"><button class="btn" data-paste="${esc(x.url)}"
+          aria-expanded="false" title="Legge l'elenco dei file (${esc(x.host)})">📄 ${esc(x.provider || x.host)}</button>
+          <span class="pst-list" role="group" aria-label="File del paste" hidden></span></span>` });
+      }
+    }
+    const byHost = new Map(); // le parti dello stesso host sono un pulsante solo
+    for (const x of row.items) if (x.role === "direct") byHost.set(x.host, [...(byHost.get(x.host) || []), x]);
+    for (const [h, files] of byHost) {
+      out.push({ rank: dlRank(files[0]), make: (p) => `<button class="btn${p}" ${dlParts(files.map((x) => x.url))}
+        title="Mette in coda tutte le parti: si estraggono da sole quando ci sono tutte">⬇ Scarica ${files.length === 1 ? "il file" : `le ${files.length} parti`}${byHost.size > 1 ? ` · ${esc(h)}` : ""}</button>` });
+    }
+    out.sort((a, b) => a.rank - b.rank);
+    const first = primaryRow ? out.findIndex((x) => x.rank < 9) : -1; // la fonte consigliata: la migliore della prima riga
+    return out.map((x, i) => x.make(i === first ? " primary" : "")).join("");
+  };
   box.innerHTML = `<div class="d-h">⬇ Link di download <span class="muted small">${esc([...new Set(links.map((x) => x.site))].join(" · "))}</span>
       <a href="#" id="dl-refresh" class="muted small" title="Rileggi la pagina dello store">↻</a></div>
     ${kinds.length > 1 ? `<div class="d-emu muted" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn primary" id="dl-all" title="Apre un link per tipo, dalla stessa fonte">⬇ Scarica ${esc(kinds.map((k) => (KL[k] || k).toLowerCase()).join(" + "))}</button>
-      <span>niente pagine dello store: si aprono i file, la pubblicità si salta da sola</span></div>` : ""}
-    ${rows.map((row) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0">
+      <button class="btn primary" id="dl-all" title="Mette in coda un link per tipo, dalla stessa fonte">⬇ Scarica ${esc(kinds.map((k) => (KL[k] || k).toLowerCase()).join(" + "))}</button>
+      <span>niente pagine dello store: si scaricano i file, la pubblicità si salta da sola</span></div>` : ""}
+    ${rows.map((row, i) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0">
       <span class="muted small" style="min-width:180px">${esc(KL[row.kind] || row.kind)}${row.label ? " · " + esc(row.label) : ""}</span>
-      ${row.items.map(btn).join("")}</div>`).join("")}`;
+      ${rowButtons(row, i === 0)}</div>`).join("")}`;
+  dlMagnetButton(d);
   box.onclick = async (e) => {
     e.preventDefault();
     if (e.target.id === "dl-refresh") return loadGameLinks(d, true);
+    const mu = e.target.closest("[data-mu]"), retry = e.target.closest("[data-mu-retry]");
+    if (mu || retry) return muToggle((mu || retry).closest(".mu-grp"), !!retry);
+    const open = e.target.closest("[data-open]");
+    if (open) return api("/api/open", { body: { url: open.dataset.open } }).catch((err) => toast(err.message, true));
+    const pst = e.target.closest("[data-paste]");
+    if (pst) return pasteToggle(d, pst.closest(".pst-grp"), pst.dataset.paste);
+    const direct = e.target.closest("[data-dparts]");
+    if (direct) return downloadLinks(d, DL_PARTS[Number(direct.dataset.dparts)] || [], box);
     const one = e.target.closest("[data-dl]");
     if (one) return downloadLinks(d, [one.dataset.dl], box);
     if (e.target.id === "dl-all") return downloadLinks(d, dlPick(DL_STATE), box);
   };
 }
 
+/** il torrent accanto a «Scarica»: la pagina lo elenca tra i link, quindi il pulsante compare dopo la lettura */
+function dlMagnetButton(d) {
+  const acts = $("#detail .d-actions"), mag = dlMagnetUrl();
+  if (!acts || !mag || d.platform !== "pc" || $("#d-magnet") || !$("#d-download")) return;
+  const b = document.createElement("button");
+  b.className = "btn";
+  b.id = "d-magnet";
+  b.textContent = "🧲 Torrent";
+  b.title = "Scarica questo gioco dal torrent: niente pubblicità, niente browser";
+  $("#d-download").after(b);
+}
+
+/** apre l'elenco dei file di un paste dei filehoster; la seconda volta resta in memoria */
+async function pasteToggle(d, grp, url) {
+  const btn = grp.querySelector("[data-paste]"), list = grp.querySelector(".pst-list");
+  const open = btn.getAttribute("aria-expanded") === "true";
+  if (open) { btn.setAttribute("aria-expanded", "false"); list.hidden = true; return; }
+  btn.setAttribute("aria-expanded", "true");
+  list.hidden = false;
+  const data = DL_PASTE.get(url);
+  const show = (x) => {
+    const files = x.links || [];
+    const parts = files.length > 1 ? ` <span class="muted small">(${files.length} parti)</span>` : "";
+    list.innerHTML = (x.magnet ? `<button class="btn primary" data-dl="${esc(x.magnet)}">🧲 Torrent</button>` : "")
+      + (files.length ? `<button class="btn primary" ${dlParts(files.map((f) => f.url))}>⬇ Scarica ${files.length === 1 ? "il file" : `le ${files.length} parti`}</button>${parts}` : "")
+      + (!x.magnet && !files.length ? `<span class="muted small">Nessun link leggibile in questo paste: apri la pagina nel browser.</span>` : "");
+  };
+  if (data) { show(data); return; }
+  list.innerHTML = `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Leggo l'elenco…</span>`;
+  try {
+    const r = await api(`/api/game/${d.id}/paste?url=${encodeURIComponent(url)}`);
+    if (!grp.isConnected) return;
+    DL_PASTE.set(url, r);
+    show(r);
+  } catch (e) {
+    if (!grp.isConnected) return;
+    list.innerHTML = `<span class="small err" role="alert">${esc(e.message)}</span>
+      <button class="btn" data-open="${esc(url)}">↗ Apri il paste</button>`;
+  }
+}
+
+/** apre o chiude l'elenco dei provider di un link MultiUp; `fresh` (Riprova) rilegge dal server invece che dalla memoria */
+async function muToggle(grp, fresh = false) {
+  const btn = grp.querySelector("[data-mu]"), list = grp.querySelector(".mu-list");
+  const open = btn.getAttribute("aria-expanded") === "true";
+  if (open && !fresh) { btn.setAttribute("aria-expanded", "false"); list.hidden = true; return; }
+  btn.setAttribute("aria-expanded", "true");
+  list.hidden = false;
+  list.setAttribute("aria-busy", "true");
+  list.innerHTML = `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Cerco i provider… (può volerci un minuto)</span>`;
+  try {
+    const r = await muFetch(btn.dataset.mu, fresh);
+    if (!grp.isConnected) return;
+    btn.textContent = DLU.muTitle(r.mirrors.length);
+    list.innerHTML = r.mirrors.map((m) => {
+      const v = DLU.mirrorView(m);
+      return `<button class="btn" ${v.dead ? "disabled data-dead=\"1\"" : `data-dl="${esc(m.url)}"`} title="${esc(v.title)}">${esc(v.label)}${v.note ? ` <span class="muted small">${esc(v.note)}</span>` : ""}</button>`;
+    }).join("");
+  } catch (e) {
+    if (!grp.isConnected) return;
+    list.innerHTML = `<span class="small err" role="alert">${esc(e.message)}</span> <button class="btn" data-mu-retry="1">Riprova</button>`;
+  } finally { list.removeAttribute("aria-busy"); }
+  if (grp.isConnected && document.activeElement === document.body) btn.focus(); // il clic su Riprova ha tolto il pulsante: il focus non si perde
+}
+
 async function downloadLinks(d, urls, box) {
+  if (!urls.length) return toast("In questa pagina non ci sono file diretti: apri l'elenco dei filehoster o usa il torrent", true);
   const btns = box ? [...box.querySelectorAll("button")] : [];
   btns.forEach((b) => { b.disabled = true; });
-  box?.insertAdjacentHTML("afterbegin", `<p class="muted small" id="dl-state">Preparo i link: la prima volta la pagina con pubblicità si apre una volta sola…</p>`);
+  box?.insertAdjacentHTML("afterbegin", `<p class="muted small" id="dl-state">Aggiungo i link alla coda: la pubblicità e la pagina dell'host si saltano all'avvio del download…</p>`);
   try {
     const r = await api(`/api/game/${d.id}/download`, { body: { links: urls } });
-    const skipped = r.opened.filter((x) => x.shortened).length;
-    toast(`${r.opened.length} link apert${r.opened.length === 1 ? "o" : "i"}${skipped ? `, ${skipped} senza pubblicità` : ""}`
+    const n = r.tasks.length;
+    toast(`${n} download aggiunt${n === 1 ? "o" : "i"} alla coda`
       + (r.failed.length ? ` · ${r.failed.length} non riusciti` : ""), r.failed.length > 0);
   } catch (e) { toast(e.message, true); }
   finally {
     $("#dl-state")?.remove();
-    btns.forEach((b) => { b.disabled = false; });
+    btns.forEach((b) => { b.disabled = b.dataset.dead === "1"; }); // i mirror offline restano spenti
   }
 }
 
 async function downloadMain(d) {
   if (!DL_STATE || DL_STATE.id !== d.id) {
     await loadGameLinks(d);
-    if (!DL_STATE || DL_STATE.id !== d.id) return toast("Nessun link da aprire in questa pagina: usa «🌐 Pagina dello store»", true);
+    if (!DL_STATE || DL_STATE.id !== d.id) return toast("Nessun link da scaricare in questa pagina: usa «🌐 Pagina dello store»", true);
   }
-  return downloadLinks(d, dlPick(DL_STATE), $("#d-links"));
+  // «Scarica» prende il gioco; gli aggiornamenti hanno la loro riga (e il pulsante «gioco + aggiornamento»)
+  const game = dlPick(DL_STATE, "game");
+  return downloadLinks(d, game.length ? game : dlPick(DL_STATE), $("#d-links"));
 }
 
 /* ---- salvataggi del gioco: versioni prima e dopo ogni partita, rollback, percorsi manuali e rilevati */
@@ -415,3 +590,74 @@ async function setFlag(field, value) {
   refreshGrid(true);
   if (S.detail?.id === d.id) openDetail(d.id); // solo se il pannello mostra ancora questo gioco
 }
+
+/* ------------------------------------------------------------------ gioco scaricato ed estratto
+   /api/status porta l'ultimo evento game_downloaded {seq, game_id, from_id, title}. Dopo il ricaricamento della libreria:
+   avviso e, se la scheda aperta era la voce online (from_id; i numeri cambiano a ogni ricostruzione), si apre il gioco posseduto. */
+function downloadedPlan(ev, seen, openId) {
+  if (!ev || !(ev.seq > (seen || 0))) return null;
+  return { seq: ev.seq, toast: `«${ev.title}» scaricato ed estratto: pronto da giocare`,
+    open: ev.game_id != null && openId != null && openId === ev.from_id ? ev.game_id : null };
+}
+function onGameDownloaded(ev) {
+  if (S.dlSeen === undefined) { S.dlSeen = ev?.seq || 0; return; } // primo controllo: gli eventi vecchi non si annunciano
+  const plan = downloadedPlan(ev, S.dlSeen, S.detail?.id);
+  if (!plan) return;
+  S.dlSeen = plan.seq;
+  toast(plan.toast);
+  if (plan.open != null) openDetail(plan.open);
+}
+if (typeof module !== "undefined") module.exports = { downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
+
+/* Tasto destro su un link di download (giochi di ogni console): copia l'indirizzo per aprirlo a mano nel browser.
+   I magnet non c'entrano: si copiano dal torrent. Vale per i pulsanti con data-dl / data-dparts / data-mu / data-open / data-paste. */
+function linkUrlsOf(el) {
+  const d = el.dataset;
+  return DLU.copyable(d.dparts != null ? DL_PARTS[Number(d.dparts)] : [d.dl || d.mu || d.open || d.paste]);
+}
+
+function openLinkMenu(e) {
+  const el = e.target.closest("[data-dl], [data-dparts], [data-mu], [data-open], [data-paste]");
+  const urls = el ? linkUrlsOf(el) : [];
+  if (!urls.length) return false;
+  closeCtx();
+  const many = urls.length > 1, r = el.getBoundingClientRect();
+  const pt = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : { x: r.left, y: r.bottom }; // tasto Menu: sotto il pulsante
+  const acts = [
+    [many ? `📋 Copia i ${urls.length} link` : "📋 Copia link", () => navigator.clipboard.writeText(urls.join("\n"))
+      .then(() => toast(many ? "Link copiati" : "Link copiato"), () => toast("Non riesco a copiare negli appunti", true))],
+    [many ? "↗ Apri il primo nel browser" : "↗ Apri nel browser", () => api("/api/open", { body: { url: urls[0] } })],
+  ];
+  const m = document.createElement("div");
+  m.id = "ctxmenu";
+  m.setAttribute("role", "menu");
+  m.setAttribute("aria-label", "Link di download");
+  m.innerHTML = acts.map(([l], i) => `<div class="ci" role="menuitem" tabindex="-1" data-i="${i}">${esc(l)}</div>`).join("")
+    + (many ? "" : `<div class="ch" style="text-transform:none;letter-spacing:0;white-space:normal;word-break:break-all">${esc(urls[0].length > 90 ? urls[0].slice(0, 90) + "…" : urls[0])}</div>`);
+  document.body.appendChild(m);
+  m.style.left = Math.max(6, Math.min(pt.x, innerWidth - m.offsetWidth - 8)) + "px";
+  m.style.top = Math.max(6, Math.min(pt.y, innerHeight - m.offsetHeight - 8)) + "px";
+  const items = [...m.querySelectorAll(".ci")];
+  items[0].focus();
+  m.addEventListener("keydown", (ev) => {
+    const i = items.indexOf(document.activeElement);
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") items[(i + (ev.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+    else if (ev.key === "Enter" || ev.key === " ") document.activeElement.click();
+    else if (ev.key === "Escape" || ev.key === "Tab") { closeCtx(); el.focus(); }
+    else return;
+    ev.preventDefault();
+    ev.stopPropagation();
+  });
+  m.onclick = async (ev) => {
+    const it = ev.target.closest(".ci");
+    if (!it) return;
+    closeCtx();
+    try { await acts[+it.dataset.i][1](); } catch (err) { toast(err.message, true); }
+  };
+  return true;
+}
+
+// in cattura: i gestori della griglia (menu del gioco) non devono rubare il clic destro su un link
+if (typeof document !== "undefined") document.addEventListener("contextmenu", (e) => {
+  if (e.target instanceof Element && openLinkMenu(e)) { e.preventDefault(); e.stopPropagation(); }
+}, true);

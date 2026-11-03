@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.14.0 (2026-11-03)
+
+### Aggiunto
+
+**Gestore dei download**
+
+- Gestore dei download integrato: una coda unica per file HTTP e torrent, nella pagina Download (voce tra Libreria e Preferiti, anche vicino al logo) e nelle Attività. La coda si salva e riprende dopo la chiusura del launcher; la cartella di destinazione la scegli tu
+- Coda: priorità per download, sposta in cima o in fondo, pausa e riprendi tutto, limite di velocità globale e per singolo download, modalità lenta a mano o a orario, selezione multipla, ricerca e filtri. Menu col tasto destro sulle righe e tasto Menu da tastiera
+- Download HTTP a segmenti con ripresa, nuovi tentativi con attesa crescente e controllo che il link sia un file e non una pagina; i link monouso (1fichier) usano un solo flusso
+- Torrent integrati (magnet e file .torrent): scelta dei file con priorità, download sequenziale, tracker, DHT/PEX/LSD/UPnP, cifratura, condivisione fino a un rapporto o a un tempo, ricontrollo dei file e riannuncio ai tracker. Se il torrent viene da un gioco il titolo è il nome del gioco e gli altri file del magnet non si vedono né si scaricano
+- Impostazioni › Download: cartella, download contemporanei, segmenti, limiti, modalità lenta e orario, porta, cifratura, rapporto di condivisione, tracker e servizi debrid
+- Servizi debrid per sbloccare i link: Real-Debrid, AllDebrid, Premiumize, TorBox e Debrid-Link, con prova della chiave. La chiave resta nelle impostazioni e non viene mai mostrata né scritta nei registri
+- MultiUp: la scheda del gioco elenca i provider (1fichier, KrakenFiles…) con un pulsante per ciascuno, anche per i link dietro accorciatori; scarichi da quello che scegli
+- Registro dettagliato di ogni download (doppio clic sulla riga): cronologia con tempi dall'inizio, filtri per avvisi ed errori, riepilogo, copia e svuota. Mostra ogni passaggio dei risolutori con i secondi che richiede e, nel browser nascosto, indirizzo, pulsanti, testo, richieste di rete, errori della pagina e controlli anti-bot
+- Impostazioni › Download › «Mostra il browser mentre risolve i link»: la finestra diventa visibile per vedere la pagina e superare a mano un captcha
+- «Pulisci completati» e «Pulisci falliti» (questi eliminano anche i file parziali)
+- Tasto destro su un link di download di un gioco (ogni console): «Copia link» e «Apri nel browser», anche per l'insieme delle parti. I magnet non c'entrano
+
+**Dopo il download**
+
+- Estrazione automatica degli archivi .zip, .7z e .rar, anche a più parti: parte quando ci sono tutti i volumi, con controlli contro percorsi fuori cartella, collegamenti, archivi bomba e disco pieno. Il .rar richiede 7-Zip o UnRAR installato. L'archivio si elimina a gioco messo a posto
+- Il gioco estratto va nella cartella giusta tra le ROM e compare subito in libreria con l'aggiunta rapida (da 0,1 a 0,4 secondi, indipendente dalla dimensione della libreria), poi parte la ricerca di dati e copertina. La scheda del gioco online passa al gioco scaricato
+- Se il link è incollato a mano e non è legato a un gioco, la console si ricava dai file arrivati e il titolo dal nome; se non è chiara il gioco resta dov'è e il registro lo spiega
+- Switch: ogni gioco va in una cartella col suo nome con base, aggiornamenti e DLC dentro, e un aggiornamento scaricato dopo entra nella cartella del suo gioco. Base, aggiornamento e DLC si riconoscono dal Title ID (anche con nomi storti o fatti solo dall'ID)
+- Rilevamento automatico delle ROM copiate nelle cartelle delle console: il gioco entra in libreria da solo dopo circa 10 secondi di calma, una cartella alla volta. Durante una partita lavora piano (priorità di fondo, solo file leggeri, ricerca dei dati a gioco finito). Impostazioni › Libreria, con avviso «N nuovi giochi»
+
+**Download dei giochi**
+
+- Download dei giochi Switch: dalla scheda del gioco i link di gioco, aggiornamento e DLC entrano nella coda dei download, non si apre più il browser. Accorciatori (ouo.io) e pagine degli host si saltano da soli: KrakenFiles e 1Fichier compilando il loro modulo, DataNodes, FileKeeper e FuckingFast cliccando nel browser nascosto e leggendo l'URL del download da WebView2 (Windows)
+- Download: la riga della coda mostra i passaggi che l'app compie prima di scaricare — «Salto la pubblicità (ouo.io)», «Cerco il file su datanodes.to», «Preparo il download» — e se qualcosa si blocca resta scritto dove si è fermato accanto all'errore
+- Giochi PC dei repack: la scheda mostra magnet, pagina del torrent, elenco dei filehoster (paste anche cifrati) e le parti dirette, con un pulsante che le mette in coda tutte nella cartella del gioco
+- Giochi PC dei repack: se la pagina elenca un aggiornamento compare come riga sua con le sue fonti, e «Scarica gioco + aggiornamento» li mette in coda assieme
+- Download: il pulsante Installa avvia il setup dei repack appena scaricati e il gioco installato compare subito in libreria
+- Test di budget per tempo e RAM dell'avvio e della costruzione della libreria (`tests/perf/test_perf_budget.py`): fallisce se superano le soglie misurate, con fixture locali e nessuna rete
+
+### Cambiato
+
+- Switch: l'aggiornamento non è più una seconda versione del gioco nella libreria. Si avvia sempre il gioco base; con Ryujinx l'aggiornamento più nuovo si collega da solo all'avvio. Con Eden gli aggiornamenti vanno installati una volta dal suo menu, perché non c'è un comando per farlo da fuori
+- I giochi che possiedi non compaiono più come scaricabili negli store online: vale per i file con lo stesso nome, per il Title ID della Switch, per i titoli in altre lingue e per i nomi con ™ ® ©
+- Giochi PC dei repack: il pulsante «Scarica» della scheda prende da solo la prima fonte diretta (FuckingFast, poi DataNodes, FileKeeper) e il torrent gli sta accanto quando la pagina lo elenca
+- Il browser nascosto lavora su un host alla volta: due download che passano dal browser insieme non si rubano più il link
+
+### Corretto
+
+- Download: se il file è stato rimosso dall'host (DataNodes «File Not Found», 1Fichier che rimanda alla home, MultiUp «Fichier non trouvé») l'app lo dice in pochi secondi con il motivo, invece di aspettare il browser per oltre un minuto
+- Download: le pubblicità e i popup delle pagine degli host non aprono più schede o finestre (prima ogni popup diventava una scheda del browser) e permessi e dialoghi si chiudono da soli
+- Giochi PC dei repack: i link diretti (FuckingFast e simili) non vengono più scambiati per un elenco da leggere, quindi niente errore 403
+- Giochi PC dei repack: la scheda scarta i link che non scaricano (sito dello sviluppatore, forum, screenshot), tiene le fonti vere e non ripete il «.torrent file only» quando c'è il magnet
+- Download: un archivio scaricato da un link incollato a mano ora viene anche messo in libreria, non solo estratto accanto al file
+
+### Migliorato
+
+- Pagina Download: riepilogo con attivi e velocità, righe con una barra colorata per lo stato (blu in corso, giallo in pausa, verde completato, rosso errore), il passaggio in corso sotto la barra, azioni secondarie che compaiono al passaggio del mouse o con la tastiera, pulsanti raggruppati e stato vuoto con il pulsante per aggiungere
+- Registro del download in forma di cronologia, con le tappe in evidenza e i sotto-passi rientrati
+
+### Dipendenze
+
+- Nuove: `py7zr` (archivi 7z) e `rarfile` (archivi rar)
+
 ## 0.13.0 (2026-11-02)
 ### Aggiunto
 
@@ -26,9 +85,12 @@
 - Palette comandi con `Ctrl/Cmd+K`: cerca giochi, console, sezioni delle Impostazioni e azioni, con frecce, Invio ed Esc
 - Errori d'avvio con il pulsante che li risolve: emulatore mancante apre Impostazioni › Emulatori, file o cartella non trovati aprono le cartelle ROM. L'avviso resta finché non lo chiudi
 - Verifica dei dump: confronto della ROM con i DAT No-Intro/Redump per hash (prima dell'abbinamento per nome), badge «ROM verificata / sconosciuta» nel dettaglio e rapporto per console (`GET /api/verify/report`). Lo stato si calcola alla costruzione della libreria
+- Impostazioni consigliate dell'emulatore: nella scheda del gioco (e per console in Impostazioni › Emulatori) scegli «Qualità», «Prestazioni» o «Fedele», oppure «Non toccare» (predefinito). All'avvio il launcher scrive solo il file di configurazione di quel gioco, dopo averne fatto una copia, e «Ripristina impostazioni originali» lo rimette com'era; un errore non impedisce mai l'avvio. Funziona per RetroArch, Dolphin (GameCube e Wii), DuckStation (PS1) e Cemu; per PCSX2 solo se il gioco ha già un suo file di impostazioni. Non sono ancora disponibili RPCS3 (manca il serial PS3), Ryujinx ed Eden. Valori e percorsi provengono dai sorgenti degli emulatori, non da una fonte che pubblichi le "impostazioni migliori per gioco": i preset valgono per tutti i giochi di un emulatore
+- Mod per i titoli famosi della libreria: nella scheda del gioco compaiono i link ai siti di mod giusti (es. Super Smash Bros. Ultimate → GameBanana, Skyrim → Nexus Mods, Minecraft → Modrinth e CurseForge, ROM hack → RomHacking.net), scelti da una tabella curata per titolo e console (`pozzo/data/mod_sites.json`), senza cercare uno per uno i giochi della libreria. Per ora sono link alla ricerca del sito, senza installazione dal launcher
 - Mod dei port nella scheda del gioco: Thunderstore con installazione, attivazione e disattivazione (i file sostituiti vanno in un backup e tornano al loro posto), GameBanana e ModDB come link alla pagina; Nexus non è letto senza chiave API. Patch IPS e BPS applicate solo su una copia della ROM
 - Preset di esperienza (esperienza, tema e animazioni insieme) in Impostazioni › Aspetto: Classico, Cinema serata, Console TV e Leggero, più quelli salvati da te, per profilo
-- Suggerimenti al primo uso: fumetti con «Ho capito» e «Più tardi», uno alla volta, sul pulsante Big Picture, sulla ricerca, su Impostazioni e sul clic destro dei giochi. In Impostazioni › Generale › Suggerimenti puoi disattivarli per 7 giorni o per sempre e rivederli tutti
+- Suggerimenti sulle funzioni da scoprire: ogni suggerimento si mostra una sola volta (si segna visto appena compare), al massimo 2 a sessione, scelti tra 15 funzioni diverse (ricerca, palette comandi, Big Picture, clic destro, scorciatoie, profilo, temi, impostazioni dell'emulatore, mod...). Sono posizionati accanto all'elemento con una freccia, si ricalcolano allo scorrimento e al ridimensionamento e non compaiono sopra finestre o procedure aperte. Sotto il fumetto: «Silenzia per 1 giorno» e «Non mostrare più»; in Impostazioni › Generale › Suggerimenti anche 7 giorni e «Rivedi tutti»
+- Tour guidato di primo avvio: dopo la procedura di configurazione, 10 passi al massimo con velo e riquadro evidenziato (barra laterale, ricerca, filtri, un gioco, Big Picture, Impostazioni, profilo, scorciatoie). Si guida con mouse, frecce, Invio ed Esc, annuncia il passo ai lettori di schermo e si può saltare o disattivare con «Non mostrare più il tour». Si riapre da Impostazioni › Generale › «Rivedi il tour» e dal menu Impostazioni. Mentre è aperto i suggerimenti restano sospesi
 - Test: nessun errore JavaScript in desktop, Impostazioni › Emulatori e Big Picture, e risposta 200 delle API nuove (`tests/e2e/test_console_errors.py`, con Playwright)
 
 ### Cambiato

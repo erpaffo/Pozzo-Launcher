@@ -28,7 +28,8 @@ _TAGS = re.compile(r"[\(\[][^\)\]]*[\)\]]")
 
 @lru_cache(maxsize=500_000)  # chiamata milioni di volte sugli stessi titoli (libreria + store online)
 def normalize(title: str) -> str:
-    t = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
+    # ™ ® © prima di NFKD: altrimenti diventano "TM"/"(R)" attaccati alla parola ("Pokemontm Scarlet")
+    t = unicodedata.normalize("NFKD", title.replace("™", " ").replace("®", " ").replace("©", " ")).encode("ascii", "ignore").decode().lower()
     t = _TAGS.sub(" ", t)
     t = t.replace("&", " and ").replace("'", "")
     t = re.sub(r"[^a-z0-9]+", " ", t)

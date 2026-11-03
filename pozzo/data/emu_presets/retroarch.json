@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "emulator": "retroarch",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": {
+        "": {
+          "video_vsync": "true",
+          "video_smooth": "true",
+          "audio_sync": "true",
+          "video_threaded": "false",
+          "rewind_enable": "false"
+        }
+      },
+      "sources": [
+        "https://docs.libretro.com/guides/overrides/",
+        "https://github.com/libretro/RetroArch/blob/master/retroarch.cfg"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": {
+        "": {
+          "video_threaded": "true",
+          "video_hard_sync": "false",
+          "video_frame_delay": "0",
+          "rewind_enable": "false",
+          "video_shader_enable": "false"
+        }
+      },
+      "sources": [
+        "https://docs.libretro.com/guides/overrides/",
+        "https://github.com/libretro/RetroArch/blob/master/retroarch.cfg"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele all'originale",
+      "values": {
+        "": {
+          "video_smooth": "false",
+          "video_scale_integer": "true",
+          "video_force_aspect": "true",
+          "video_shader_enable": "false",
+          "video_vsync": "true",
+          "audio_sync": "true"
+        }
+      },
+      "sources": [
+        "https://docs.libretro.com/guides/overrides/",
+        "https://github.com/libretro/RetroArch/blob/master/retroarch.cfg"
+      ]
+    }
+  },
+  "games": {}
+}

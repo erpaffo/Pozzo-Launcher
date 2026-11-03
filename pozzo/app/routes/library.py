@@ -14,6 +14,8 @@ from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, Response
 
 from ... import config as C, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
+from ...downloads.engines import torrent as TOR
+from ...downloads.engines.http import safe_name as _safe_name
 from ...library import launcher as L
 from ..icons import CREDIT
 from ..server import STORE_NAMES, _hltb_main, _json, _players, _players_label
@@ -36,6 +38,10 @@ def build_router(ctx) -> APIRouter:
     _media, _start_store_job, app, cfg, launcher, lib = ctx._media, ctx._start_store_job, ctx.app, ctx.cfg, ctx.launcher, ctx.lib
     lib_payloads, shots, user, view = ctx.lib_payloads, ctx.shots, ctx.user, ctx.view
     router = APIRouter()
+
+    def _downloaded(ev):  # la pagina lo legge da /api/status (sincronizzazione ogni 3 s): avviso e scheda aggiornata
+        ctx.state["downloaded"] = {**ev, "seq": (ctx.state.get("downloaded") or {}).get("seq", 0) + 1}
+    ctx.events.on("game_downloaded", _downloaded)
 
     @app.exception_handler(ApiError)
     async def _api_error(request, exc: ApiError):
@@ -263,12 +269,39 @@ def build_router(ctx) -> APIRouter:
         if not mag:
             raise HTTPException(400, "Nessun link magnet per questo gioco")
         single = _single_magnet(g)
+        file = g.get("canonical") or g["title"]
+        mgr = getattr(ctx, "downloads", None)  # costruito dopo questo modulo (ultimo in ORDER)
+        if mgr and TOR.available():
+            t = _game_task(gid)
+            if t and t.status in ("paused", "error"):  # errore (es. nessun peer): si riprende, non un doppione
+                mgr.resume(t.id)
+            elif not t or t.status == "completed":
+                dest = Path(mgr.settings()["dir"]) / re.sub(r'[<>:"/\\|?*]', "_", g.get("platform_name") or "Giochi")
+                try:
+                    t = mgr.add(single or mag, str(dest), name=file, wanted=g.get("file_name") or file, category="game", game_id=gid)
+                except ValueError as e:
+                    raise HTTPException(400, str(e))
+            return {"ok": True, "single": True, "file": file, "internal": True, "dest": t.save_path, "task_id": t.id}
         try:
             L.open_uri(single or mag)
         except L.LaunchError:
             raise HTTPException(409, "Nessun client torrent installato per aprire i link magnet")
         return {"ok": True, "single": bool(single) or "&so=" in mag or bool(re.search(r"dn=[^&]*\.", mag)),
                 "file": g.get("canonical") or g["title"]}
+
+    @router.get("/api/game/{gid}/torrent")
+    def api_torrent_status(gid: int):
+        t = _game_task(gid)
+        if not t:
+            return {"state": "idle"}
+        state = {"completed": "done", "error": "error", "paused": "paused"}.get(t.status) or \
+            ("downloading" if t.options.get("metadata") else "metadata")
+        return {"state": state, "progress": t.progress, "error": t.error or None, "dest": t.save_path, "task_id": t.id}
+
+    def _game_task(gid: int):
+        mgr = getattr(ctx, "downloads", None)
+        tasks = [t for t in (mgr.tasks.values() if mgr else []) if t.type == "torrent" and t.options.get("game_id") == gid]
+        return max(tasks, key=lambda t: t.created, default=None)
 
     @router.post("/api/game/{gid}/store-page")
     def api_store_page(gid: int):
@@ -321,29 +354,49 @@ def build_router(ctx) -> APIRouter:
         finally:
             c.close()
 
-    @router.post("/api/game/{gid}/download")
-    def api_game_download(gid: int, body: dict = Body(default={})):
-        """Apre i link scelti (anche più assieme), passando prima dagli accorciatori pubblicitari."""
-        lib.game(gid)
-        urls = [str(u) for u in body.get("links") or [] if str(u).startswith("http")][:12]
-        if not urls:
-            raise HTTPException(400, "Nessun link da aprire")
+    @router.get("/api/game/{gid}/paste")
+    def api_game_paste(gid: int, url: str, refresh: int = 0):
+        """Link contenuti in un paste dei filehoster (lo store linka il paste al posto dei file): si legge al clic."""
+        if not url.startswith(("http://", "https://")):
+            raise HTTPException(400, "Link non valido")
         from ...cache import Cache
         c = Cache(cfg.cache)
-        opened, failed = [], []
         try:
-            for u in urls:
-                try:
-                    final = SL.resolve(c, u)
-                    L.open_uri(final)
-                    opened.append({"link": u, "opened": final, "shortened": final != u})
-                except (L.LaunchError, OSError) as e:
-                    failed.append({"link": u, "error": str(e)})
+            data = None if refresh else SL.cached_paste(c, url)
+            return data or SL.put_paste(c, url, SL.paste(url))
+        except (httpx.HTTPError, ValueError, RuntimeError) as e:
+            raise HTTPException(409, f"{SL.host(url)}: {e}" if str(e) else f"{SL.host(url)}: {type(e).__name__}")
         finally:
             c.close()
-        if not opened:
-            raise HTTPException(409, "Nessun link aperto" + (f": {failed[0]['error']}" if failed else ""))
-        return {"ok": True, "opened": opened, "failed": failed}
+
+    @router.post("/api/game/{gid}/download")
+    def api_game_download(gid: int, body: dict = Body(default={})):
+        """Mette in coda i link scelti (anche più assieme). Accorciatore e pagina dell'host si risolvono
+        all'avvio del download, quando c'è il browser nascosto dell'app a disposizione."""
+        g = lib.game(gid)
+        urls = [str(u) for u in body.get("links") or [] if str(u).startswith(("http", "magnet:"))][:80]
+        if not urls:
+            raise HTTPException(400, "Nessun link da scaricare")
+        mgr = getattr(ctx, "downloads", None)
+        if not mgr:  # solo scansione da terminale: niente coda, si apre il browser
+            try:
+                for u in urls:
+                    if u.startswith("http"):
+                        L.open_uri(u)
+            except (L.LaunchError, OSError) as e:
+                raise HTTPException(409, str(e))
+            return {"ok": True, "tasks": [], "failed": []}
+        tasks, failed = [], []
+        # più file (le parti di un archivio) in una cartella sola: l'estrazione parte quando ci sono tutte
+        folder = str(Path(mgr.settings()["dir"]).expanduser() / _safe_name(g["title"])) if len(urls) > 1 else ""
+        for u in urls:
+            try:
+                tasks.append(mgr.add(u, save_path=folder, category=g.get("platform") or "", game_id=gid).view())
+            except ValueError as e:
+                failed.append({"link": u, "error": str(e)})
+        if not tasks:
+            raise HTTPException(409, failed[0]["error"] if failed else "Nessun link aggiunto")
+        return {"ok": True, "tasks": tasks, "failed": failed}
 
     @router.post("/api/game/{gid}/play")
     def api_play(gid: int, body: dict = Body(default={})):
@@ -430,13 +483,15 @@ def build_router(ctx) -> APIRouter:
     def api_profile_save(gid: int, body: dict = Body(...)):
         g = lib.get(gid)
         fields = (*L.SCRIPT_KEYS, *L.COMPANION_KEYS) if g.get("store") else \
-            ("emulator", "core", "exe", "args", "extra", *L.SCRIPT_KEYS, *L.COMPANION_KEYS)
+            ("emulator", "core", "exe", "args", "extra", L.PRESET_KEY, *L.SCRIPT_KEYS, *L.COMPANION_KEYS)
         data = {k: str(body.get(k) or "").strip() for k in fields}
         if data.get("companion"):
             data["companion"] = data["companion"].strip('"')
             if not Path(data["companion"]).is_file():
                 raise HTTPException(400, "Applicazione abbinata non trovata")
         data = {k: v for k, v in data.items() if v}
+        if data.get("preset") not in (None, "inherit", "leave", "quality", "performance", "faithful"):
+            raise HTTPException(400, "Preset non valido")
         if data.get("emulator") and data["emulator"] not in L.EMULATOR_NAMES:
             raise HTTPException(400, "Emulatore sconosciuto")
         if data.get("exe") and not Path(data["exe"].strip('"')).is_file():

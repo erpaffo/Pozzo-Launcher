@@ -1,0 +1,192 @@
+"""Download HTTP(S): segmenti paralleli con Range, ripresa dopo interruzione, ritentativi con attesa crescente."""
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import re
+import time
+from pathlib import Path
+from urllib.parse import unquote, urlparse, urlsplit
+
+import httpx
+
+from ..task import mb
+
+RETRIES = 5
+CHUNK = 256 * 1024
+RESOLVE_TIMEOUT = 240  # secondi: tetto a tutta la catena dei risolutori (due passaggi dal browser nascosto stanno dentro)
+MIN_SEGMENT = 2 * 1024 * 1024  # sotto questa dimensione un solo flusso basta
+# link che valgono una richiesta sola: ogni richiesta in piu' (anche il controllo) dà 410 Gone
+ONE_TIME = ('1fichier.com',)
+
+
+class Bucket:
+    """Limite di banda condiviso tra tutti i flussi (byte/s, 0 = illimitato)."""
+
+    def __init__(self):
+        self.rate = 0
+        self._t = time.monotonic()
+
+    async def take(self, n: int):
+        if self.rate <= 0:
+            return
+        self._t = max(self._t, time.monotonic()) + n / self.rate
+        wait = self._t - time.monotonic()
+        if wait > 0:
+            await asyncio.sleep(wait)
+
+
+def safe_name(name: str) -> str:
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", unquote(name)).strip(" .")
+    return name or "download"
+
+
+def _filename(r: httpx.Response, url: str) -> str:
+    m = re.search(r"filename\*=(?:UTF-8\x27\x27)?([^;]+)|filename=\"?([^\";]+)", r.headers.get("content-disposition", ""), re.I)
+    raw = (m.group(1) or m.group(2)) if m else Path(urlparse(str(r.url) or url).path).name
+    return safe_name(raw)
+
+
+def _meta(r: httpx.Response, url: str) -> tuple[str, int, bool, str]:
+    """(nome, dimensione, accetta Range, etag) dalla risposta del primo flusso; errore se e' una pagina HTML."""
+    r.raise_for_status()
+    if (r.headers.get("content-type") or "").lower().startswith("text/html"):
+        host = urlparse(str(r.url) or url).hostname or ""
+        raise ValueError(f"Il link è una pagina, non un file ({host}): scegli un altro provider"
+                         " o apri la pagina nel browser")
+    if r.status_code == 206:
+        m = re.search(r"/(\d+)$", r.headers.get("content-range", ""))
+        total = int(m.group(1)) if m else 0
+    else:
+        total = int(r.headers.get("content-length") or 0)
+    return _filename(r, url), total, r.status_code == 206 and total > 0,         r.headers.get("etag") or r.headers.get("last-modified") or ""
+
+
+async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve) -> None:
+    """Scarica `task` fino alla fine. Lo stato per riprendere sta in task.options (segs, tag): il manager lo salva."""
+    task.log("Risolvo il link")
+    t0 = time.time()
+    try:  # il thread del risolutore non si ferma, ma il suo risultato tardivo non serve piu' a nessuno
+        url = await asyncio.wait_for(asyncio.to_thread(resolve, task.source), RESOLVE_TIMEOUT)
+    except asyncio.TimeoutError:
+        raise ValueError(f"Non sono riuscito a ottenere il link in {RESOLVE_TIMEOUT:g} s") from None
+    task.log(f"Link risolto in {time.time() - t0:.1f} s")
+    task.phase = "Preparo il download (nome e dimensione)"  # resta scritto se qualcosa va storto qui
+    headers = task.options.get("headers") or {}
+    # la prima richiesta e' anche il primo flusso: un link monouso non sopporta un controllo in piu'
+    async with client.stream("GET", url, headers={**headers, "Range": "bytes=0-"}) as first:
+        meta = _meta(first, url)
+        host = urlsplit(url).hostname or ""
+        if any(host == h or host.endswith("." + h) for h in ONE_TIME):
+            meta = (meta[0], meta[1], False, meta[3])  # un solo flusso: niente richieste parallele allo stesso link
+            task.log("Link monouso: un solo flusso")
+        task.log(f"Il server ha risposto dopo {time.time() - t0:.1f} s in tutto")
+        task.log(f"Controllo: {meta[0]}, {mb(meta[1]) if meta[1] else 'dimensione ignota'}, "
+                 f"Range {'sì' if meta[2] else 'no'} (HTTP {first.status_code})")
+        task.phase = ""  # da qui è il download vero: la riga mostra avanzamento e velocità
+        await _download(task, client, bucket, segments, url, headers, first, meta)
+
+
+async def _download(task, client, bucket, segments, url, headers, first, meta):
+    name, total, ranged, tag = meta
+    dest = Path(task.save_path).resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+    task.name = task.name or name
+    final = (dest / safe_name(task.name)).resolve()
+    if final.parent != dest:  # path traversal
+        raise ValueError("Nome file non valido")
+    part = final.with_name(final.name + ".part")
+    if task.options.get("part") != str(part):  # primo avvio: non si tocca un file esistente ne' il .part di un altro task
+        stem, ext, i = final.stem, final.suffix, 1
+        while final.exists() or part.exists():
+            final = dest / f"{stem} ({i}){ext}"
+            part, i = final.with_name(final.name + ".part"), i + 1
+        task.name = final.name
+    task.size = total
+    task.options["part"] = str(part)
+
+    old = task.options.get("segs") or []
+    if not (part.exists() and task.options.get("tag") == tag and old and (ranged or len(old) == 1)):
+        n = max(1, min(segments, total // MIN_SEGMENT)) if ranged else 1
+        step = -(-total // n) if ranged else 0
+        task.options["segs"] = [[i * step, min((i + 1) * step, total) - 1, i * step] for i in range(n)] if ranged \
+            else [[0, total - 1 if total else -1, 0]]  # -1: dimensione ignota, si legge fino alla fine
+        task.options["tag"] = tag
+        with open(part, "wb") as f:
+            if total:
+                f.truncate(total)
+        task.log(f"Nuovo download: {n} segment{'o' if n == 1 else 'i'}")
+    else:
+        task.log(f"Ripresa: {mb(sum(s[2] - s[0] for s in old))} già scaricati, {len(old)} segment{'o' if len(old) == 1 else 'i'}")
+    segs = task.options["segs"]
+    if not ranged:
+        if segs[0][2]:
+            task.log("Il server non supporta Range: riparto dall'inizio", "warn")
+        segs[0][2] = 0  # senza Range non si riprende: si riparte dall'inizio
+
+    mile = [None]  # ultima decina di percento scritta nel registro (la prima chiamata parte da dove si e' ripreso)
+
+    def sync_done():
+        task.done = sum(s[2] - s[0] for s in segs)
+        m = task.done * 10 // task.size if task.size else 0
+        if mile[0] is None or m < mile[0]:
+            mile[0] = m
+        elif m > mile[0]:
+            mile[0] = m
+            task.log(f"Avanzamento {m * 10}% ({mb(task.done)} di {mb(task.size)})")
+
+    async def worker(i, first_resp=None):
+        seg, fails, why = segs[i], 0, ""
+        with open(part, "r+b") as f:
+            while seg[1] < 0 or seg[2] <= seg[1]:
+                if not ranged:
+                    seg[2] = 0  # senza Range il server rimanda dall'inizio: anche dopo un errore a meta'
+                h = dict(headers)
+                if ranged:
+                    h["Range"] = f"bytes={seg[2]}-{seg[1]}"
+                src = first_resp  # la risposta gia' aperta si usa una volta sola
+                first_resp = None
+                cm = contextlib.nullcontext(src) if src is not None else client.stream("GET", url, headers=h)
+                try:
+                    async with cm as resp:
+                        resp.raise_for_status()
+                        if ranged and resp.status_code != 206:
+                            raise httpx.TransportError("il server ignora Range")
+                        f.seek(seg[2])
+                        async for chunk in resp.aiter_bytes(CHUNK):
+                            if seg[1] >= 0:
+                                chunk = chunk[: seg[1] - seg[2] + 1]
+                            await bucket.take(len(chunk))
+                            f.write(chunk)
+                            seg[2] += len(chunk)
+                            fails = 0
+                            sync_done()
+                            if seg[1] >= 0 and seg[2] > seg[1]:
+                                break
+                    if seg[1] < 0:
+                        seg[1] = seg[2] - 1  # dimensione ignota: fine del flusso
+                        task.size = seg[2]
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code < 500 and e.response.status_code != 429:
+                        raise
+                    fails, why = fails + 1, f"HTTP {e.response.status_code}"
+                except httpx.TransportError as e:
+                    fails, why = fails + 1, f"{type(e).__name__}: {e}"
+                if fails > RETRIES:
+                    task.log(f"Segmento {i + 1}: {why}; tentativi esauriti", "error")
+                    raise httpx.TransportError("troppi tentativi falliti")
+                if fails:
+                    wait = min(2 ** fails, 30)
+                    task.log(f"Segmento {i + 1}: {why}; tentativo {fails}/{RETRIES}, riprovo tra {wait} s", "warn")
+                    await asyncio.sleep(wait)
+
+    sync_done()
+    # il primo flusso riusa la risposta del controllo solo se parte dall'inizio (download nuovo)
+    reuse = first if segs[0][2] == 0 else None
+    await asyncio.gather(worker(0, reuse), *(worker(i) for i in range(1, len(segs))))
+    sync_done()
+    final.unlink(missing_ok=True)
+    part.replace(final)
+    task.options.pop("segs", None)
+    task.name = final.name
+    task.size = task.size or task.done

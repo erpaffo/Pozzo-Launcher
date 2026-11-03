@@ -89,6 +89,17 @@ finisce la quota o cade la rete, basta rilanciare.
 
 I file `[BIOS]` non entrano mai in libreria (a meno di `show_bios`) e non vengono contati come nuovi.
 
+### Giochi aggiunti da soli
+
+Se copi una ROM in una cartella di console, compare in libreria **senza premere niente**. L'app controlla le
+cartelle ogni pochi secondi e aspetta circa **10 secondi dopo la fine della copia** (così non legge file a metà);
+poi aggiunge i giochi e mostra un avviso, per esempio «2 nuovi giochi in SNES: …». Lavora **una cartella alla volta**
+e, mentre c'è una partita in corso, va più piano per non rallentare il gioco.
+
+- Copertine e descrizioni arrivano **un po' più tardi**: prima compare il gioco, poi i dati.
+- I giochi che **cancelli dal disco non spariscono** da soli: per toglierli dalla libreria usa **↻ Ricontrolla cartelle**.
+- Per spegnerlo: **Impostazioni → Libreria → Giochi nuovi**, togli la spunta a «Aggiungi da solo i giochi che copio nelle cartelle ROM». Lì vedi anche lo stato (in ascolto, ultima verifica, copia in attesa).
+
 ### Stima prima di partire
 
 **📊 Stima** mostra, per ogni fonte, quanti giochi interrogherà, quante richieste servono, quanto tempo e quanti

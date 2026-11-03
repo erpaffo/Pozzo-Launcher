@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "emulator": "dolphin",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": {
+        "Video_Settings": {"InternalResolution": "2"},
+        "Video_Enhancements": {"MaxAnisotropy": "2"}
+      },
+      "sources": [
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/Config/GraphicsSettings.cpp",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/VideoCommon/VideoConfig.h",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/ConfigLoaders/GameConfigLoader.cpp"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": {
+        "Video_Settings": {"InternalResolution": "1", "MSAA": "1", "ShaderCompilationMode": "2"}
+      },
+      "sources": [
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/Config/GraphicsSettings.cpp",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/VideoCommon/VideoConfig.h",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/ConfigLoaders/GameConfigLoader.cpp"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele all'originale",
+      "values": {
+        "Video_Settings": {"InternalResolution": "1", "MSAA": "1"},
+        "Video_Enhancements": {"MaxAnisotropy": "0", "ForceTextureFiltering": "0"}
+      },
+      "sources": [
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/Config/GraphicsSettings.cpp",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/VideoCommon/VideoConfig.h",
+        "https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/ConfigLoaders/GameConfigLoader.cpp"
+      ]
+    }
+  },
+  "games": {}
+}

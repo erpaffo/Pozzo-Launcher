@@ -46,6 +46,29 @@
 
     const q = (c) => "?console=" + encodeURIComponent(c);
 
+    // «Impostazioni consigliate» per console: legge /api/emu-presets, salva al cambio
+    const SCELTE = [["leave", "Non toccare"], ["quality", "Qualità"], ["performance", "Prestazioni"], ["faithful", "Fedele"]];
+    let presetCorrenti = null;
+    function rigaPreset(consoleId, nome) {
+      const riga = el("div", "xe-preset");
+      const sel = el("select", "field xe-preset-sel");
+      sel.id = "xe-preset-" + consoleId;
+      SCELTE.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.appendChild(o); });
+      const lab = el("label", "small", "Impostazioni consigliate ");
+      lab.setAttribute("for", sel.id);
+      riga.appendChild(lab); riga.appendChild(sel);
+      presetCorrenti = presetCorrenti || json("/api/emu-presets");
+      presetCorrenti.then((m) => { sel.value = (m && m[consoleId]) || "leave"; }, () => { presetCorrenti = null; });
+      sel.addEventListener("change", async () => {
+        try {
+          await json("/api/emu-presets/console", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ platform: consoleId, preset: sel.value }) });
+          if (global.toast) global.toast(`Impostazioni consigliate salvate per ${nome}`);
+        } catch (e) { if (global.toast) global.toast(e.message, true); }
+      });
+      return riga;
+    }
+
     function costruisci(riga) {
       const consoleId = riga.getAttribute("data-p");
       const cella = riga.querySelector("td");
@@ -67,6 +90,7 @@
       const fill = el("div", "xe-fill");
       barra.appendChild(fill);
       box.appendChild(rec); box.appendChild(bios); box.appendChild(barra); box.appendChild(stato);
+      box.appendChild(rigaPreset(consoleId, nome));
       td.appendChild(box); tr.appendChild(td);
       riga.parentNode.insertBefore(tr, riga.nextSibling);
       const v = { consoleId, nome, rec, bios, stato, barra, fill, tr };

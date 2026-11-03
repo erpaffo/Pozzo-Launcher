@@ -283,7 +283,7 @@ def build_router(ctx) -> APIRouter:
         return {k: state[k] for k in ("building", "build_stats", "thumbs_total", "thumbs_done")} | {
             "build_log": state["build_log"][-8:], "has_library": bool(lib.games) or lib.built_at > 0,
             "built_at": lib.built_at, "user_rev": user.rev, "meta_rev": lib.meta_rev,
-            "running": launcher.running().get("status") or ""}
+            "running": launcher.running().get("status") or "", "downloaded": state.get("downloaded")}
 
     @router.post("/api/focus")
     def api_focus():

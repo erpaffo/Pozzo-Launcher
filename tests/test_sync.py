@@ -139,13 +139,14 @@ def test_server_profiles_and_lan_gate():
         assert bad.status_code == 403
         code = hub.new_code()
         r = gate.post("/api/sync/pair", json={"code": code, "name": "Portatile"}).json()
-        pc_cookie = {"gs_phone": r["token"]}
+        gate.cookies.set("gs_phone", r["token"])  # come un browser: il cookie resta per le richieste successive
         assert r["pc"]["pc_id"]
-        ex = gate.post("/api/sync/exchange", json={"bundles": {}}, cookies=pc_cookie)
+        ex = gate.post("/api/sync/exchange", json={"bundles": {}})
         assert ex.status_code == 200 and "default" in ex.json()["bundles"], ex.text
-        assert gate.get("/api/library", cookies=pc_cookie).status_code == 403, "un PC abbinato vede solo lo scambio"
+        assert gate.get("/api/library").status_code == 403, "un PC abbinato vede solo lo scambio"
         phone = hub.pair(hub.new_code(), "Telefono")
-        assert gate.post("/api/sync/exchange", json={"bundles": {}}, cookies={"gs_phone": phone}).status_code == 403
+        gate.cookies.set("gs_phone", phone)
+        assert gate.post("/api/sync/exchange", json={"bundles": {}}).status_code == 403
         assert c.post("/api/sync/exchange", json={"bundles": {}}).status_code == 403, "senza abbinamento niente dati"
         st = c.get("/api/sync").json()
         assert [p["name"] for p in st["pcs"]] == ["Portatile"]

@@ -34,7 +34,7 @@
   }
 
   /** Ritarda fn di almeno 120 ms; .cancel() annulla la chiamata in attesa. */
-  function debounce(fn, ms = 140, timers = { set: setTimeout, clear: clearTimeout }) {
+  function debounce(fn, ms = 140, timers = { set: (...a) => setTimeout(...a), clear: (id) => clearTimeout(id) }) {
     let id = null;
     const wrapped = (...args) => { timers.clear(id); id = timers.set(() => { id = null; fn(...args); }, Math.max(MIN_DEBOUNCE, ms)); };
     wrapped.cancel = () => { timers.clear(id); id = null; };

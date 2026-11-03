@@ -165,6 +165,7 @@ async function syncLibrary() {
     // libreria ricostruita altrove, oppure dati utente cambiati da un altro dispositivo (partita avviata dal telefono...)
     if (!st.building && ((st.built_at && st.built_at !== S.builtAt) || (st.user_rev != null && st.user_rev !== S.userRev))) await reload(true);
     else if (st.meta_rev != null && st.meta_rev !== S.metaRev) await applyPatches();
+    if (!st.building) onGameDownloaded(st.downloaded); // dopo il ricaricamento: i numeri dei giochi sono quelli nuovi
     if (["starting", "extracting", "running"].includes(st.running) && $("#running").hidden) pollRunning();
   } catch { /* server non raggiungibile: si riprova al prossimo controllo */ } finally { syncBusy = false; }
 }

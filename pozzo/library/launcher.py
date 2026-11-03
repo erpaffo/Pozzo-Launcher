@@ -19,6 +19,7 @@ eseguibile diverso (es. un'altra versione di PCSX2), argomenti e argomenti aggiu
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -28,7 +29,7 @@ import time
 import zipfile
 from pathlib import Path
 
-from .. import platforms as P
+from .. import platforms as P, switchfiles as SF
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -211,7 +212,7 @@ def plan(cfg, platform: P.Platform, profile: dict | None = None) -> dict | None:
     """Emulatore scelto per una console (o per un gioco con un profilo proprio):
     {emulator, exe, core, args, profile} oppure None."""
     over = dict(cfg.launch.get(platform.id, {}))
-    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS}
+    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY,)}
     if prof:
         emu = prof.get("emulator") or over.get("emulator")
         if emu:
@@ -283,17 +284,41 @@ def resolve_target(platform: P.Platform, path: Path) -> Path:
     exts = {"." + e for e in platform.exts}
     cands = [f for f in files if f.suffix.lower() in exts]
     if platform.id == "switch":  # il gioco base, non update/DLC
-        base = [f for f in cands if "000]" in f.name.upper() or "000 " in f.name.upper()] or [
-            f for f in cands
-            if not any(w in f.relative_to(path).as_posix().lower() for w in ("update", "upd", "dlc", "patch"))
-            and ("[v0]" in f.name.lower() or "[v" not in f.name.lower())
-        ]
-        cands = base or cands
+        base = SF.pick_base(cands)
+        cands = [base] if base else cands
     if cands:
         return max(cands, key=lambda f: f.stat().st_size)
     if files:
         return max(files, key=lambda f: f.stat().st_size)
     raise LaunchError(f"Nessun file avviabile nella cartella {path}", "rom_folder_missing", {"path": str(path)})
+
+
+def ryujinx_data_dir(exe: str | Path) -> Path:
+    """Cartella dati di Ryujinx: «portable» accanto all'exe se c'e', altrimenti %APPDATA%/Ryujinx."""
+    portable = Path(exe).parent / "portable"
+    return portable if portable.is_dir() else Path(os.environ.get("APPDATA", str(Path.home()))) / "Ryujinx"
+
+
+def register_switch_update(exe: str | Path, base: Path, siblings: list[Path]) -> Path | None:
+    """Ryujinx: l'aggiornamento piu' nuovo del gioco (stesso Title ID, accanto al base) va in games/<id>/updates.json,
+    che e' quello che l'emulatore carica: il gioco parte gia' aggiornato, senza installare nulla. Ritorna il file scelto.
+    Gli altri aggiornamenti gia' elencati restano; si riscrive solo se cambia qualcosa."""
+    ups, _ = SF.companions(base, siblings)
+    fam = SF.family(base.name)
+    if not ups or fam is None:
+        return None
+    f = ryujinx_data_dir(exe) / "games" / f"{fam:016x}" / "updates.json"
+    try:
+        cur = json.loads(f.read_text("utf-8"))
+    except (OSError, ValueError):
+        cur = {}
+    paths = [p for p in cur.get("paths") or [] if isinstance(p, str)]
+    paths += [str(u) for u in ups if str(u) not in paths]
+    new = {"selected": str(ups[0]), "paths": paths}
+    if cur != new:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(new, indent=2), "utf-8")
+    return ups[0]
 
 
 def _needs_extract(pl: dict, platform: P.Platform, target: Path) -> bool:
@@ -366,6 +391,7 @@ XINPUT_BACK, XINPUT_START, XINPUT_RB = 0x0020, 0x0010, 0x0200
 
 # applicazione da avviare insieme al gioco (es. il deck tracker di Hearthstone): programma, argomenti, "1" = chiudila a fine partita
 COMPANION_KEYS = ("companion", "companion_args", "companion_close")
+PRESET_KEY = "preset"  # preset impostazioni emulatore: non e' un profilo di emulatore personalizzato
 SCRIPT_KEYS = ("before", "after")  # script prima/dopo il gioco: in cfg.app["launch"] (tutti i giochi) e nel profilo del gioco
 # processo del launcher di ogni store, chiuso a fine partita se l'aveva aperto il gioco (cfg.app["launch"]["close_launcher"])
 STORE_LAUNCHERS = {"steam": "steam.exe", "epic": "epicgameslauncher.exe", "gog": "galaxyclient.exe",
@@ -882,6 +908,24 @@ class Launcher:
                     st = dict(self.state)
             self.on_event("game_stopped", st)
 
+    def _apply_preset(self, key: str, platform: P.Platform, path: Path, pl: dict):
+        """Scrive il preset delle impostazioni dell'emulatore nel file per-gioco. Un errore (anche emulatore
+        aperto) non blocca il gioco: finisce nel messaggio di stato."""
+        try:
+            gsel = (self.profile_of(key) or {}).get(PRESET_KEY) or None
+            csel = (self.cfg.app.get("emu_preset") or {}).get(platform.id)
+            sel = csel if gsel in (None, "inherit") else gsel
+            if sel in (None, "", "inherit", "leave"):
+                return  # niente da fare: non si legge nemmeno la ROM
+            from .. import emucfg
+            from .gamekey import game_key
+            gid = game_key(platform.id, path)
+            if not gid:
+                return
+            emucfg.apply_for_game(pl["emulator"], pl["exe"], gid, gsel, csel, core=pl["core"], game_name=Path(path).stem)
+        except Exception as e:  # noqa: BLE001 - le impostazioni non devono impedire di giocare
+            self._set(message=f"Preset impostazioni non applicato: {e}")
+
     def _run(self, key: str, platform: P.Platform, path: Path, pl: dict):
         try:
             target = resolve_target(platform, path)
@@ -889,8 +933,16 @@ class Launcher:
                 self._set(status="extracting")
                 target = _extract(self.cfg, target, key.replace("/", "_").replace(":", "_"),
                                   lambda m: self._set(message=m))
+            if platform.id == "switch" and pl["emulator"] == "ryujinx":
+                try:  # il gioco base parte con il suo aggiornamento piu' nuovo
+                    sib = SF.package_files(path) if path.is_dir() else [f for f in path.parent.iterdir() if f.suffix.lower() in SF.PACKAGE_EXTS]
+                    if (up := register_switch_update(pl["exe"], target, sib)):
+                        self._set(message=f"Aggiornamento collegato: {up.name}")
+                except OSError:  # nessun aggiornamento collegato non impedisce di giocare
+                    pass
             core = str(_core_path(self.cfg, pl["core"])) if pl["core"] else ""
             args = [a.replace("{rom}", str(target)).replace("{core}", core) for a in pl["args"]]
+            self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
             comp = self._companion(key)
             cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *args]

@@ -247,7 +247,7 @@ function viewTitle() {
   const v = S.view;
   if (v.type === "favorites" && v.plat) return `★ Preferiti · ${platName(v.plat)}`;
   if (v.type === "apps") return "🧩 Applicazioni";
-  return { shots: "Schermate", free: "Giochi gratis", ports: "Port e app", wishlist: "Lista desideri", stats: "Statistiche",
+  return { shots: "Schermate", free: "Giochi gratis", ports: "Port e app", wishlist: "Lista desideri", stats: "Statistiche", downloads: "Download",
     top: !v.id || v.id === "all" ? "🏆 Migliori giochi" : `🏆 Top 100 · ${platName(v.id)}`,
     status: `${STATUS[v.id]?.icon || ""} ${STATUS[v.id]?.label || ""}`,
     smart: `${S.smart.find((x) => x.id === v.id)?.icon || "⚡"} ${S.smart.find((x) => x.id === v.id)?.name || "Collezione"}`,
@@ -308,7 +308,7 @@ function setView(v) {
   const pv = $("#plugin-view");
   if (v.type === "home") pv.className = "experience-home";
   else if (wasHome) pv.className = "";
-  document.body.classList.toggle("foryou-mode", ["foryou", "free", "ports", "wishlist", "stats", "shots", "top"].includes(v.type));
+  document.body.classList.toggle("foryou-mode", ["foryou", "free", "ports", "wishlist", "stats", "shots", "top", "downloads"].includes(v.type));
   if (v.type !== "collection") $("#coll-banner").hidden = true;
   if (!same) queueMicrotask(() => window.GSMotion?.enter(pv.hidden ? $("#grid-scroll") : pv));
   if (v.type === "home") {
@@ -320,13 +320,13 @@ function setView(v) {
     renderExperienceHome(pv);
     return;
   }
-  if (["free", "ports", "wishlist", "stats", "shots", "top"].includes(v.type)) {
+  if (["free", "ports", "wishlist", "stats", "shots", "top", "downloads"].includes(v.type)) {
     $("#grid-scroll").hidden = true;
     pv.hidden = false;
     markActive();
     updateHeader();
     $("#view-count").textContent = "";
-    ({ free: renderFree, ports: renderPorts, wishlist: renderWishlist, stats: renderStats, shots: renderShots, top: renderTop })[v.type](pv);
+    ({ free: renderFree, ports: renderPorts, wishlist: renderWishlist, stats: renderStats, shots: renderShots, top: renderTop, downloads: renderDownloads })[v.type](pv);
     return;
   }
   if (v.type === "foryou") {

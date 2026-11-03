@@ -5,6 +5,7 @@ Esegui: PYTHONUTF8=1 python tests/catalog/test_pc_stores.py
 
 import json
 import os
+import sqlite3
 import sys
 import tempfile
 import time
@@ -122,6 +123,34 @@ def test_api_pc_stores(tmp_path: Path):
     print("ok  API: elenco vuoto, aggiunta salvata in settings.json, indirizzi non http scartati")
 
 
+def test_gioco_installato_nasconde_la_voce_da_scaricare(tmp_path: Path):
+    """Il repack installato è un gioco PC a mano: la sua voce «da scaricare» non resta in libreria."""
+    cfg = make_env(tmp_path)
+    cfg.pc_stores = [{"url": URL, "kind": "repack"}]
+    cache = Cache(cfg.cache)
+    cache.kv_set("catalog:type_b:" + URL,
+                 {"url": URL, "index_url": URL, "pid": "windows", "time": time.time(),
+                  "entries": [{"name": "Same Game", "size": None, "url": "https://repack.example.test/same/",
+                               "magnet": None, "group": "S"}]})
+    assert [e["title"] for e in B._catalog_entries(cfg, cache, {})[0]] == ["Same Game"]
+    cache.kv_set("store:manual", [])
+    B.build(cfg, log=lambda m: None)
+
+    exe = tmp_path / "Same Game" / "samegame.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"x")
+    cache.kv_set("store:manual", [{"id": "1", "store": "manual", "title": "Same Game", "installed": True,
+                                   "install_dir": str(exe.parent), "launch": {"type": "exe", "target": str(exe)}}])
+    entries, pages = B._catalog_entries(cfg, cache, {}, B._store_entries(cfg, cache))
+    assert entries == [] and pages.get("windows/manual:1"), (entries, pages)
+    assert B.update_manual(cfg)
+    db = sqlite3.connect(cfg.cache / "library.db")
+    rows = db.execute("SELECT store FROM games WHERE title='Same Game'").fetchall()
+    db.close()
+    cache.close()
+    assert rows == [("manual",)], rows
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_config_pc_stores(Path(t))
@@ -129,4 +158,6 @@ if __name__ == "__main__":
         test_build_pc_entries(Path(t))
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_api_pc_stores(Path(t))
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        test_gioco_installato_nasconde_la_voce_da_scaricare(Path(t))
     print("TUTTI I TEST OK")

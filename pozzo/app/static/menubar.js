@@ -57,6 +57,7 @@
     Impostazioni: () => [
       { l: "⚙ Tutte le impostazioni…", a: "settings", f: () => openSettings() },
       { l: "⌨ Scorciatoie da tastiera…", a: "help", f: () => window.PozzoShortcuts?.openPanel() },
+      { l: "🧭 Tour guidato", f: () => window.GS?.tour?.start({ manual: true }) },
       "-",
       { l: "Cartelle da scansionare…", f: () => openSettings("scan") },
       { l: "Account e store…", f: () => openSettings("acc") },

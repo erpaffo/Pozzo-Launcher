@@ -7,13 +7,22 @@ import zipfile
 import httpx
 from fastapi import APIRouter, Body, HTTPException
 
+from ... import modsites as MS
 from ... import ports as PT
 from ...cache import Cache
 
 
 def build_router(ctx) -> APIRouter:
-    cfg = ctx.cfg
+    cfg, lib = ctx.cfg, ctx.lib
     router = APIRouter()
+
+    @router.get("/api/game/{gid}/mod-sites")
+    def api_game_mod_sites(gid: int):
+        """Siti di mod per un titolo famoso della libreria (tabella curata, nessuna ricerca per gioco)."""
+        g = lib.by_id.get(gid)
+        if not g:
+            raise HTTPException(404, "Gioco non trovato")
+        return {"sites": MS.sites_for(g["title"], g.get("canonical") or "", platform=g["platform"])}
 
     def _port(slug: str) -> dict:
         mod = PT.all_installed(cfg).get(slug)

@@ -32,6 +32,8 @@ Scegli l'argomento su cui desideri ricevere supporto:
 4. In alternativa, puoi aggiungere una cartella dedicata a una singola console associandola direttamente dal menu a tendina.
 5. Clicca su **⟳ Cerca nuovi giochi** in alto: i nuovi giochi compariranno istantaneamente nella barra laterale della console corrispondente!
 
+Se copi una ROM in una cartella di console mentre l'app è aperta, compare da sola dopo una decina di secondi (si spegne in **Impostazioni › Libreria › Giochi nuovi**; i giochi cancellati dal disco si tolgono con **↻ Ricontrolla cartelle**).
+
 ---
 
 ### Perché una ROM non viene riconosciuta o non trova la copertina?

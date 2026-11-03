@@ -64,7 +64,41 @@ def build_router(ctx) -> APIRouter:
                          "phase": f"{state['thumbs_done']:,} / {state['thumbs_total']:,}",
                          "progress": round(state["thumbs_done"] / state["thumbs_total"], 3),
                          "started": state["thumbs_started"], "finished": 0, "stoppable": False, "last": ""})
+        rows += _download_rows()
+        rows += _install_rows()
         return [r for r in rows if r]
+
+    def _download_rows() -> list[dict]:
+        """Un download per riga; la coda nasce dopo questo modulo (routes.ORDER): si legge al momento."""
+        mgr = getattr(ctx, "downloads", None)
+        out = []
+        for t in mgr.list() if mgr else []:
+            jid = "dl:" + t["id"]
+            if jid in activity_hidden:
+                continue
+            status = {"completed": "done", "error": "error", "paused": "cancelled"}.get(t["status"], "running")
+            speed = f" · {t['speed'] / 1048576:.1f} MB/s" if t["status"] == "running" and t["speed"] else ""
+            seeding = bool(t["options"].get("seeding"))
+            phase = {"queued": "In coda", "paused": "In pausa", "completed": "Completato · in condivisione" if seeding else "Completato",
+                     "error": t["error"] or "Errore"}.get(t["status"], f"{t['progress']:.0%}{speed}")
+            out.append({"id": jid, "name": f"Download · {t['name'] or t['source'][:60]}", "kind": "download",
+                        "status": status, "phase": phase, "progress": round(t["progress"], 3),
+                        "started": t["created"], "finished": t["finished"],
+                        "stoppable": t["status"] in ("queued", "running") or seeding, "last": t["save_path"]})
+        return out
+
+    def _install_rows() -> list[dict]:
+        """Installazioni di repack: l'avanzamento del setup non si legge da fuori, si mostra il tempo trascorso."""
+        from ...downloads import install
+        out = []
+        for r in install.rows():
+            jid = "inst:" + r["id"]
+            if jid in activity_hidden:
+                continue
+            out.append({"id": jid, "name": f"Installazione · {r['name']}", "kind": "install", "status": r["status"],
+                        "phase": r["phase"], "progress": r["progress"], "started": r["started"],
+                        "finished": r["finished"], "stoppable": False, "last": r["last"]})
+        return out
 
     def _stop_flag(name):
         return lambda: setattr(job[name], "stop", True)
@@ -80,6 +114,12 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/activity/{jid}/stop")
     def api_activity_stop(jid: str):
+        if jid.startswith("dl:") and getattr(ctx, "downloads", None):  # «Ferma» su un download = pausa
+            try:
+                ctx.downloads.pause(jid[3:])
+            except KeyError:
+                raise HTTPException(404, "Download non trovato")
+            return api_activity()
         if jid.startswith("netmeta:") and jid in job:  # un lavoro per console, creato al primo avvio
             _stop_flag(jid)()
             return api_activity()

@@ -279,6 +279,9 @@ html[data-detail-modal="true"] #app::after {
 #ctxmenu { position: fixed; z-index: 60; min-width: 220px; max-width: 320px; max-height: 80vh; overflow-y: auto; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.6); padding: 6px; font-size: 13px; }
 #ctxmenu .ci { padding: 6px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #ctxmenu .ci:hover { background: var(--bg-3); }
+#ctxmenu .ci:focus { background: var(--bg-3); outline: none; }
+#ctxmenu .ci:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+#ctxmenu .ck { display: inline-block; width: 1.2em; }
 #ctxmenu .ci.hl { color: #ff8a80; }
 #ctxmenu .ch { padding: 6px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; }
 #ctxmenu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; }
@@ -1500,3 +1503,129 @@ html[data-mode="desktop"][data-experience-nav="top"] .profile-btn .ico { width: 
 @keyframes pal-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 html[data-motion="off"] .pal, html[data-motion="reduced"] .pal { animation: none; }
 @media (prefers-reduced-motion: reduce) { html:not([data-motion]) .pal { animation: none; } }
+
+/* Impostazioni emulatore (scheda gioco e Impostazioni) */
+.emucfg-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.emucfg-select:focus-visible, .emucfg-restore:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.emucfg-h { margin-top: 8px; font-weight: 600; }
+.emucfg-list { margin: 4px 0 8px; padding-left: 18px; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.emucfg-src { display: inline-block; overflow-wrap: anywhere; }
+
+/* pagina Download */
+.dl-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.dl-row { --st: var(--line); background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--st); border-radius: var(--radius); padding: 10px 12px; }
+.dl-row[data-status="running"] { --st: var(--accent); }
+.dl-row[data-status="paused"] { --st: var(--warn); }
+.dl-row[data-status="completed"] { --st: var(--good); }
+.dl-row[data-status="error"] { --st: var(--bad); }
+.dl-main { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.dl-name { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.dl-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.dl-type { font-size: var(--type-xs); color: var(--muted); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0 6px; }
+.dl-st { margin-left: auto; font-size: var(--type-xs); color: var(--muted); white-space: nowrap; }
+.dl-row[data-status="running"] .dl-st { color: var(--accent); }
+.dl-row[data-status="paused"] .dl-st { color: var(--warn); }
+.dl-row[data-status="completed"] .dl-st { color: var(--good); }
+.dl-row[data-status="error"] .dl-st, .dl-err { color: var(--bad); }
+.dl-bar { height: 8px; margin: 6px 0 4px; background: var(--bg-3); border-radius: var(--radius-pill); overflow: hidden; }
+.dl-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .4s; }
+.dl-row[data-status="queued"] .dl-bar i { opacity: .55; }
+.dl-row[data-status="paused"] .dl-bar i { background: var(--warn); }
+.dl-row[data-status="completed"] .dl-bar i { background: var(--good); }
+.dl-row[data-seed="1"] .dl-bar i { background: var(--good); animation: dl-seed 1.8s ease-in-out infinite; }
+@keyframes dl-seed { 50% { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .dl-row[data-seed="1"] .dl-bar i { animation: none; } }
+/* cifre a larghezza fissa: la riga non balla mentre il download avanza */
+.dl-meta { font-variant-numeric: tabular-nums; }
+.dl-fpct { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dl-fbar { display: inline-block; width: 70px; height: 5px; margin-right: 6px; vertical-align: middle; background: var(--bg-3); border-radius: var(--radius-pill); overflow: hidden; }
+.dl-fbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+/* riepilogo in cima: quattro numeri che si leggono da lontano */
+.dl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+.dl-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: var(--bg-2);
+           border: 1px solid var(--line); border-radius: var(--radius); }
+.dl-stat .k { font-size: var(--type-xs); color: var(--muted); }
+.dl-stat .v { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.dl-stat.bad .v { color: var(--bad); }
+/* righe compatte: più download a schermo, stessi dati */
+.dl-page.dense .dl-row { padding: 6px 10px; }
+.dl-page.dense .dl-bar { height: 6px; }
+.dl-page.dense .dl-meta { font-size: var(--type-xs); }
+.dl-empty-ico { font-size: 2rem; margin-bottom: var(--space-2); }
+.dl-acts { display: flex; gap: 2px; align-items: center; }
+/* «Installa» del repack: un pulsante con il testo, ma delle stesse dimensioni delle icone accanto */
+.dl-acts .btn { padding: 3px 10px; font-size: var(--type-xs); border-radius: var(--radius-sm); }
+.dl-now { margin: 2px 0 4px; font-size: var(--type-xs); color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-now.bad { color: var(--bad); }
+.dl-row[data-status="error"] .dl-bar i { background: var(--bad); }
+/* priorita', cartella e annulla compaiono sulla riga che si sta usando (e sempre con il tocco): meno rumore, nessuna azione persa */
+.dl-more { display: inline-flex; gap: 2px; opacity: 0; transition: opacity var(--motion-fast); }
+.dl-row:hover .dl-more, .dl-row:focus-within .dl-more, .dl-row.sel .dl-more { opacity: 1; }
+@media (hover: none) { .dl-more { opacity: 1; } }
+.dl-seg { display: inline-flex; }
+.dl-seg .btn { border-radius: 0; }
+.dl-seg .btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.dl-seg .btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-left: -1px; }
+.dl-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.dl-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.dl-chips .chip { padding: 3px 11px; }
+.dl-chips .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+#dl-q { margin-left: auto; min-width: 200px; }
+.dl-row.sel { border-color: var(--accent); background: var(--bg-3); }
+.dl-type.hi { color: var(--accent); border-color: var(--accent); }
+.dl-type.dl-phase { color: var(--accent); border-color: var(--accent); }
+.dl-row[data-status="error"] .dl-type.dl-phase { color: var(--bad); border-color: var(--bad); }
+.dls-deb { border-top: 1px solid var(--line); padding-top: var(--space-2); margin-top: var(--space-2); }
+.dl-x { margin: 10px 0 0 38px; display: flex; flex-direction: column; gap: var(--space-2); }
+.dl-files { width: 100%; border-collapse: collapse; font-size: var(--type-sm); }
+.dl-files th { text-align: left; color: var(--muted); font-weight: 500; }
+.dl-files th, .dl-files td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.dl-files td:first-child { word-break: break-all; }
+.dl-empty { padding: var(--space-6); text-align: center; border: 1px dashed var(--line); border-radius: var(--radius-lg); }
+.dl-empty p { margin: 0 0 var(--space-2); }
+.dl-empty .btn { margin-top: var(--space-2); }
+@media (max-width: 640px) { .dl-main { grid-template-columns: 28px minmax(0, 1fr); } .dl-acts { grid-column: 2; } .dl-x { margin-left: 0; } }
+
+/* registro del download */
+.log-dlg { width: min(860px, 94vw); }
+.log-dlg .dlg-head { gap: var(--space-3); }
+.log-dlg .dlg-head h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-dlg[data-status="running"] .dl-st { color: var(--accent); }
+.log-dlg[data-status="paused"] .dl-st { color: var(--warn); }
+.log-dlg[data-status="completed"] .dl-st { color: var(--good); }
+.log-dlg[data-status="error"] .dl-st { color: var(--bad); }
+.dl-log-bar { align-items: center; margin: var(--space-2) 0; }
+.dl-logbox { height: min(55vh, 460px); overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 6px 10px; font: 12px/1.5 ui-monospace, Consolas, monospace; }
+/* registro come cronologia: una guida a sinistra, i sotto-passi dei risolutori rientrati, le tappe in evidenza */
+.dl-log-sum { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-2) 0; font-size: var(--type-sm); color: var(--muted); }
+.dl-log-sum b { color: var(--text); font-weight: 600; }
+.dl-log-sum .warn { color: var(--warn); }
+.dl-log-sum .error { color: var(--bad); }
+.dl-logbox { border-left: 2px solid var(--line); padding-left: 18px; }
+.dl-ll { display: grid; grid-template-columns: 10ch 9ch minmax(0, 1fr); gap: 0 10px; position: relative; padding: 1px 0; }
+.dl-ll.step > span { padding-left: 16px; color: var(--muted); }
+.dl-ll.key > span { color: var(--text); font-weight: 600; }
+.dl-ll.key::before, .dl-ll.warn::before, .dl-ll.error::before { content: ""; position: absolute; left: -15px; top: .55em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.dl-ll.warn::before { background: var(--warn); }
+.dl-ll.error::before { background: var(--bad); }
+.dl-ll time { font-variant-numeric: tabular-nums; }
+.log-dlg.abs .dl-ll time { font-size: 0; }
+.log-dlg.abs .dl-ll time::after { content: attr(data-abs); font-size: 12px; }
+.dl-logbox[data-f="warn"] .dl-ll:not(.warn):not(.error), .dl-logbox[data-f="error"] .dl-ll:not(.error) { display: none; }
+@media (prefers-reduced-motion: reduce) { .dl-more { transition: none; } }
+.dl-ll > span { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dl-ll time, .dl-ll b { color: var(--muted); font-weight: 400; }
+.dl-ll.warn b, .dl-ll.warn > span { color: var(--warn); }
+.dl-ll.error b, .dl-ll.error > span { color: var(--bad); }
+.dl-ll.warn b, .dl-ll.error b { font-weight: 700; }
+
+/* MultiUp: elenco dei provider (mirror) di un link, nel dettaglio del gioco e nella finestra «Aggiungi» dei download */
+.mu-grp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mu-list { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mu-list[hidden] { display: none; }
+.err.small { color: var(--bad); }
+.mu-spin { display: inline-block; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: mu-spin .8s linear infinite; vertical-align: -1px; }
+@keyframes mu-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mu-spin { animation: pulse 1.2s infinite; } }
+#dl-mu-list fieldset { border: 1px solid var(--line, rgba(128,128,128,.3)); border-radius: 6px; margin: 6px 0 0; padding: 4px 10px 6px; }

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "emulator": "duckstation",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": {"GPU": {"ResolutionScale": "3", "TextureFilter": "Bilinear"}},
+      "sources": [
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.cpp",
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.h"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": {"GPU": {"ResolutionScale": "1", "TextureFilter": "Nearest"}},
+      "sources": [
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.cpp",
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.h"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele",
+      "values": {"GPU": {"ResolutionScale": "1", "TextureFilter": "Nearest"}},
+      "sources": [
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.cpp",
+        "https://github.com/stenzek/duckstation/blob/master/src/core/settings.h"
+      ]
+    }
+  },
+  "games": {}
+}

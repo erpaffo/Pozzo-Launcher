@@ -273,7 +273,7 @@
   }
 
   function close() {
-    if (root) { root.remove(); root = null; }
+    if (root) { root.remove(); root = null; window.dispatchEvent(new CustomEvent("pozzo:onboarding-done")); }
     document.removeEventListener("keydown", onKey, true);
     if (opener && opener.isConnected) opener.focus();
     const f = resolveOpen; resolveOpen = running = null;

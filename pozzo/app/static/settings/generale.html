@@ -19,12 +19,18 @@
 <button class="btn" type="button" data-sc-open>⌨ Mostra e personalizza le scorciatoie…</button>
 
 <h3>Suggerimenti</h3>
-<p class="muted small">Piccoli fumetti che spiegano le funzioni la prima volta che le incontri.</p>
+<p class="muted small">Piccoli fumetti (al massimo due a ogni avvio, mai ripetuti) che ti fanno scoprire le funzioni.</p>
 <div class="row wrap">
   <select class="field" id="hint-mode"><option value="on">Attivi</option>
-    <option value="snooze">Disattiva per 7 giorni</option><option value="off">Disattiva per sempre</option></select>
+    <option value="day">Silenzia per 1 giorno</option>
+    <option value="week">Silenzia per 7 giorni</option><option value="off">Disattiva per sempre</option></select>
   <button class="btn" id="hint-reset" type="button">Rivedi tutti i suggerimenti</button>
 </div>
+
+<h3>Tour guidato</h3>
+<p class="muted small">Un breve percorso che mostra dove si trovano le funzioni principali.</p>
+<div class="row wrap"><button class="btn" id="tour-start" type="button">Rivedi il tour</button></div>
+<label class="chk"><input type="checkbox" id="tour-auto"> Avvia il tour al primo avvio</label>
 
 <h3>Notifiche di Windows</h3>
 <p class="muted small">Un avviso quando un gioco scende sotto la soglia di prezzo, esce un gioco gratis,

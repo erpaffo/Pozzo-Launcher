@@ -102,6 +102,20 @@ def build_router(ctx) -> APIRouter:
         cfg.app["launch"] = conf
         return conf
 
+    @router.get("/api/library/watch")
+    def api_watch_get():
+        """Stato del rilevamento automatico delle cartelle ROM (impostazioni › Libreria)."""
+        return ctx.watcher.status()
+
+    @router.post("/api/app/watch-roms")
+    def api_watch_set(body: dict = Body(...)):
+        """Acceso/spento a caldo: il watcher rilegge l'impostazione a ogni passaggio."""
+        on = bool(body.get("enabled"))
+        conf = {**(cfg.app.get("watch_roms") if isinstance(cfg.app.get("watch_roms"), dict) else {}), "enabled": on}
+        C.save_settings(cfg, app={"watch_roms": conf})
+        cfg.app["watch_roms"] = conf
+        return ctx.watcher.status()
+
     @router.get("/api/app/notify")
     def api_notify_get():
         return {"enabled": cfg.app.get("notify") is not False, "available": sys.platform == "win32"}

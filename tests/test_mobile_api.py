@@ -143,28 +143,28 @@ def test_cancello_del_telefono(tmp_path):
     try:
         code = hub.new_code()
         token = gate.post("/m/api/pair", json={"code": code, "name": "Pixel"}).cookies.get("gs_phone")
-        ck = {"gs_phone": token}
+        gate.cookies.set("gs_phone", token)  # come un browser: il cookie resta per le richieste successive
 
-        lib = gate.get("/api/library?part=owned", cookies=ck)
+        lib = gate.get("/api/library?part=owned")
         assert lib.status_code == 200, lib.text
         cols = lib.json()["games"]["cols"]
         row = lib.json()["games"]["rows"][0]
         gid = row[cols.index("id")]
         assert row[cols.index("cover")] == 1, row     # la pagina sa che c'e' la copertina da mostrare
 
-        img = gate.get(f"/img/{gid}/cover?w=260", cookies=ck)
+        img = gate.get(f"/img/{gid}/cover?w=260")
         assert img.status_code == 200 and img.headers["content-type"].startswith("image/"), \
             f"copertine non raggiungibili dal telefono: {img.status_code}"
 
-        st = gate.get("/api/mobile/state", cookies=ck)
+        st = gate.get("/api/mobile/state")
         assert st.status_code == 200, f"Attivita' non raggiungibile dal telefono: {st.status_code} {st.text}"
         assert set(st.json()) == {"running", "jobs", "counts"}
 
-        act = gate.post("/api/mobile/action", json={"action": "stop-game"}, cookies=ck)
+        act = gate.post("/api/mobile/action", json={"action": "stop-game"})
         assert act.status_code == 200 and "state" in act.json(), act.text
 
         # il cancello continua a fermare tutto il resto, e senza abbinamento non si passa
-        assert gate.get("/api/settings", cookies=ck).status_code == 403
+        assert gate.get("/api/settings").status_code == 403
         gate.cookies.clear()  # come un browser che non ha il cookie di abbinamento
         assert gate.get("/api/mobile/state").status_code == 401
     finally:

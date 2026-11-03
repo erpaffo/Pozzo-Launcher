@@ -72,6 +72,7 @@ Priorità: **H** alta, **M** media, **L** bassa. Dentro ogni gruppo le voci sono
 - [ ] **[M]** Diagnostica «perché non parte?» — v0.13.0
   - Procedura che controlla emulatore, BIOS, ROM e argomenti e indica la causa più probabile
 - [ ] **[L]** Profili grafici per emulatore (risoluzione, shader) — v0.16.0
+  - Fatti: nucleo, interfaccia e adattatori RetroArch, Dolphin, DuckStation, Cemu; PCSX2 solo con file per gioco già presente. Mancano RPCS3 (serial PS3 in gamekey), Ryujinx, Eden e gli override per singolo gioco
   - Preset «Qualità / Prestazioni / Fedele» per ogni emulatore supportato
 - [ ] **[L]** Disinstallazione e pulizia emulatori dall'app — v0.16.0
   - Rimozione con scelta di conservare o cancellare config e salvataggi

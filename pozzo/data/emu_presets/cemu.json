@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "emulator": "cemu",
+  "presets": {
+    "quality": {"name": "Qualità", "values": {"Graphics": {"accurateShaderMul": "true"}}, "sources": ["https://raw.githubusercontent.com/cemu-project/Cemu/main/src/Cafe/GameProfile/GameProfile.cpp", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/config/CemuConfig.h", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/gui/wxgui/CemuApp.cpp"]},
+    "performance": {"name": "Prestazioni", "values": {"Graphics": {"accurateShaderMul": "false"}}, "sources": ["https://raw.githubusercontent.com/cemu-project/Cemu/main/src/Cafe/GameProfile/GameProfile.cpp", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/config/CemuConfig.h", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/gui/wxgui/CemuApp.cpp"]},
+    "faithful": {"name": "Fedele", "values": {"Graphics": {"accurateShaderMul": "true"}}, "sources": ["https://raw.githubusercontent.com/cemu-project/Cemu/main/src/Cafe/GameProfile/GameProfile.cpp", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/config/CemuConfig.h", "https://raw.githubusercontent.com/cemu-project/Cemu/main/src/gui/wxgui/CemuApp.cpp"]}
+  },
+  "games": {}
+}
