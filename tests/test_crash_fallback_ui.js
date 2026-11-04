@@ -2,7 +2,7 @@
 // Estrae launchErrorToast da js/actions.js e la esegue con un DOM finto minimo.
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
 const src = fs.readFileSync(path.join(__dirname, "..", "pozzo", "app", "static", "js", "actions.js"), "utf8");
-const fn = src.match(/function launchErrorToast[\s\S]*?\n\}\n/);
+const fn = src.match(/function launchErrorToast[\s\S]*?\r?\n\}\r?\n/);
 assert(fn, "launchErrorToast non trovata");
 
 class El {
