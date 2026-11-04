@@ -2,8 +2,14 @@
 name = "Statistiche di gioco"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Pagina con tempo di gioco per console e store, giochi piu' giocati e completezza della libreria. Aggiunge anche «Video su YouTube» nel dettaglio dei giochi."
+icon = "📈"
+screenshot = "screenshot.png"
+description = "Dashboard avanzata con grafici di tempo di gioco per console e store, classifiche dei titoli più amati e pulsante «Video su YouTube» nel dettaglio."
+long_description = "Esplora a fondo le tue abitudini videoludiche. Offre una panoramica statistica approfondita sulla tua collezione: ore suddivise per console, quota percentuale tra giochi PC e retro, indice di completamento della libreria e grafici di attività settimanale. Nel dettaglio di ogni gioco aggiunge inoltre il pulsante rapido per aprire recensioni o video gameplay su YouTube."
+how_it_works = "1. Installa l'estensione e aprila dalla voce «Statistiche» nella barra laterale.\n2. Consulta i grafici interattivi con la ripartizione del tempo per console, store e generi.\n3. Scopri la percentuale di titoli avviati rispetto alla collezione totale.\n4. Aprendo la scheda di qualsiasi gioco in libreria, troverai il pulsante «▶ Video su YouTube» per aprire istantaneamente gameplay e walkthrough."
+features = ["Grafici dettagliati su ore di gioco per piattaforma e store (Steam, Epic, ROM)", "Ripartizione percentuale e contatori di giochi posseduti vs giocati", "Scorciatoia integrata per la ricerca di video gameplay su YouTube", "Caricamento differito per non appesantire l'avvio del launcher"]
 api = 1
-load = "lazy"
-events = ["game_stopped"]  # il backend parte al primo evento, che gli viene consegnato
 min_app = "0.7.1"
+permissions = ["libreria:lettura"]
+load = "lazy"
+events = ["game_stopped"]

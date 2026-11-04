@@ -64,6 +64,15 @@ global.localStorage = {
   setItem: (k, v) => { store.set(k, String(v)); },
 };
 global.matchMedia = () => ({ get matches() { return systemReduced; }, addEventListener() {} });
+// /api/profile/settings: il profilo attivo ha exp_animations = profileAnimations (null = nessuna scelta salvata)
+let profileAnimations = null;
+const posts = [];
+global.fetch = (url, opts = {}) => {
+  if (opts.method === "POST") { posts.push(JSON.parse(opts.body)); return Promise.resolve({ ok: true }); }
+  const value = profileAnimations; // letto al momento della richiesta
+  return Promise.resolve({ ok: true, json: async () => ({ exp_animations: value }) });
+};
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 eval(code);
 
@@ -81,6 +90,11 @@ out.saved = localStorage.getItem("gs.motion");
 out.dataset = document.documentElement.dataset.motion;
 window.GSMotionSettings.set("boh");
 out.savedAfterInvalid = localStorage.getItem("gs.motion");
+out.postsAfterInvalid = posts.length;
+out.lastPost = posts[posts.length - 1];
+window.GSMotionSettings.set("reduced");
+out.lastPostAfterReduced = posts[posts.length - 1];
+
 
 const host = makeEl("div");
 const layer = window.GSSkeleton.show(host, 4);
@@ -93,7 +107,19 @@ out.itemsAfterShow = host.children[0].children.length;
 window.GSSkeleton.hide(host);
 out.layersAfterHide = host.children.length;
 out.noContainer = window.GSSkeleton.show(null);
-console.log(JSON.stringify(out));
+
+// ricarica con una scelta del profilo: il profilo vince e finisce anche in localStorage
+profileAnimations = "normal";
+localStorage.setItem("gs.motion", JSON.stringify("off"));
+const postsBeforeReload = posts.length;
+eval(code);
+(async () => {
+  await tick();
+  out.profileWins = localStorage.getItem("gs.motion");
+  out.profileDataset = document.documentElement.dataset.motion;
+  out.reloadPosts = posts.length - postsBeforeReload; // caricare non deve scrivere sul server
+  console.log(JSON.stringify(out));
+})();
 """
 
 
@@ -143,6 +169,14 @@ def main() -> None:
         assert result["layersAfterShow"] == 1 and result["itemsAfterShow"] == 3, "show non duplica il livello"
         assert result["layersAfterHide"] == 0, result
         assert result["noContainer"] is None, result
+        assert result["postsAfterInvalid"] == 1, "un valore sconosciuto non va nemmeno al server"
+        assert result["lastPost"] == {"exp_animations": "off"}, result
+        assert result["lastPostAfterReduced"] == {"exp_animations": "reduced"}, result
+        assert result["profileWins"] == '"normal"' and result["profileDataset"] == "normal", \
+            "al caricamento il valore del profilo vince su localStorage"
+        assert result["reloadPosts"] == 0, "caricare la pagina non scrive sul server"
+        route = (ROOT / "pozzo" / "app" / "routes" / "profile_settings.py").read_text(encoding="utf-8")
+        assert '"exp_animations")' in route, "exp_animations deve essere tra le chiavi consentite"
         print("ok  animazioni: scelta salvata e rispettata, sistema come predefinito, segnaposto delle griglie")
     else:
         print("ok  animazioni: file e collegamenti a posto (Node assente: logica non eseguita)")

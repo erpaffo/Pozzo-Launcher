@@ -2,8 +2,14 @@
 name = "Limite di tempo"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Avvisa con una notifica quando superi X ore di gioco al giorno o alla settimana (del profilo attivo): utile per te o per i figli. È un avviso, non chiude il gioco."
+icon = "⏳"
+screenshot = "screenshot.png"
+description = "Monitora il tempo di gioco quotidiano o settimanale e invia notifiche discrete a schermo quando superi le ore impostate per il profilo attivo."
+long_description = "Uno strumento dedicato al benessere digitale per te o per i più piccoli. Ti permette di stabilire un tetto massimo di ore di gioco giornaliere o settimanali. Quando la soglia viene raggiunta, Pozzo Launcher mostra una notifica non invasiva sul desktop per avvisarti, senza interrompere bruscamente la partita o forzare la chiusura."
+how_it_works = "1. Installa l'estensione e vai in Impostazioni › Estensioni › Limite di tempo.\n2. Imposta il numero massimo di ore al giorno (es. 2 ore) o alla settimana (es. 10 ore) per il profilo utente corrente.\n3. Mentre giochi, l'estensione calcola il tempo trascorso in background.\n4. Al superamento del limite riceverai un messaggio discreto che ti invita a fare una pausa o a salvare la partita."
+features = ["Limiti personalizzabili separatamente per giorno e settimana", "Gestione indipendente per ogni profilo utente creato nell'app", "Notifiche gentili che non chiudono il gioco né causano perdite di salvataggi", "Azzeramento automatico a mezzanotte e a inizio settimana"]
 api = 1
-load = "lazy"
-events = ["game_started", "game_stopped"]  # il backend parte al primo evento, che gli viene consegnato
 min_app = "0.7.1"
+permissions = ["libreria:lettura", "impostazioni", "notifiche"]
+load = "lazy"
+events = ["game_started", "game_stopped"]

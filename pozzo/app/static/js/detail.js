@@ -9,6 +9,22 @@ function fmtTime(sec) {
 }
 function fmtDate(ts) { return ts ? new Date(ts * 1000).toLocaleString("it", { dateStyle: "medium", timeStyle: "short" }) : "—"; }
 
+/** Copertina condivisa tessera <-> scheda via View Transitions (solo motion "normal"); altrimenti, o su qualsiasi errore, esegue update() come prima. Un solo elemento alla volta porta il nome. */
+async function coverTransition(from, update, to) {
+  const root = document.documentElement;
+  if (!from?.isConnected || !document.startViewTransition || root.dataset.motion !== "normal") return update();
+  const tile = from.closest?.(".tile") || to()?.closest?.(".tile");
+  const clear = () => { from.style.viewTransitionName = ""; const t = to(); if (t) t.style.viewTransitionName = ""; root.classList.remove("vt-cover"); tile?.classList.remove("vt-hold"); };
+  let tr;
+  try {
+    from.style.viewTransitionName = "cover"; root.classList.add("vt-cover"); tile?.classList.add("vt-hold");
+    tr = document.startViewTransition(() => { from.style.viewTransitionName = ""; update(); const t = to(); if (t) t.style.viewTransitionName = "cover"; });
+  } catch { clear(); return update(); }
+  tr.finished.then(clear, clear);
+  await tr.updateCallbackDone;
+}
+const tileCover = (id) => S.nodes.get(id)?.querySelector(".cover");
+
 function presentDetail() {
   const detail = $("#detail");
   const mode = ["panel", "page", "modal"].includes(GS.experience?.detail) ? GS.experience.detail : "panel";
@@ -21,7 +37,7 @@ function presentDetail() {
     detail.setAttribute("aria-modal", "true");
     document.documentElement.dataset.detailModal = "true";
   } else {
-    detail.setAttribute("role", "region");
+    detail.setAttribute("role", mode === "panel" ? "complementary" : "region"); // panel non e' modale: nessun dialog
     detail.removeAttribute("aria-modal");
     delete document.documentElement.dataset.detailModal;
   }
@@ -99,9 +115,12 @@ async function openDetail(id) {
     : pc && !d.installed
     ? `<button class="btn primary" id="d-install" ${d.can_install ? "" : "disabled"}>⬇ Installa</button>`
     : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ Gioca</button>`
-      + (d.emulator ? `<button class="btn" id="d-party" title="Partita in rete con un amico (netplay)">👥 Gioca con un amico</button>` : "");
+      // stesse condizioni di d-play: copia su SSD, avvio e cancellazione della copia lato backend (flag fast)
+      + `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="Copia il gioco su un disco veloce (SSD) e lo avvia da li': caricamenti piu' rapidi. A fine partita la copia si elimina, salvo diversa scelta nelle impostazioni.">⚡ Gioca da disco veloce</button>`
+      + `<button class="btn" id="d-diagnose" title="Controlla perché il gioco non parte e cosa fare">❔ Perché non parte?</button>`
+      + (d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? "Partita con un amico: crea un invito per un amico" : "Partita con un amico: solo RetroArch ed Eden. Per gli altri giochi usa Discord o lo store."}">👥 Partita con un amico</button>` : "");
   const actions = GS.ui.gameActions.filter((a) => { try { return !a.when || a.when(d); } catch { return false; } });
-  $("#detail-body").innerHTML = `
+  const bodyHtml = `
     <div class="d-top">
       <div class="d-cover">${d.media.cover ? `<img src="${d.media.cover}?w=450" alt="">` : ""}</div>
       <div class="d-title"><h2 id="detail-title">${esc(d.title)}</h2><div class="muted">${esc(d.platform_name)}${d.year ? " · " + d.year : ""}</div></div>
@@ -148,11 +167,11 @@ async function openDetail(id) {
     ${online ? "" : `<div class="d-status">${Object.entries(STATUS).map(([k, s]) =>
       `<button class="btn st-btn${u.status === k ? " on st-" + k : ""}" data-status="${k}">${s.icon} ${s.label}</button>`).join("")}</div>`}
     <div class="d-mine"><span class="muted small">Il mio voto</span><span class="d-stars">${[1, 2, 3, 4, 5].map((n) =>
-      `<button class="star${n <= (u.my_rating || 0) ? " on" : ""}" data-myrate="${n}" title="${n}/5">★</button>`).join("")}</span></div>
+      `<button class="star${n <= (u.my_rating || 0) ? " on" : ""}" data-myrate="${n}" title="${n}/5" aria-label="Valuta ${n} stelle" aria-pressed="${n <= (u.my_rating || 0)}">★</button>`).join("")}</span></div>
     <textarea class="field d-note" id="d-note" rows="2" placeholder="Note personali (trucchi, a che punto sei, con chi giocarlo…)">${esc(u.note || "")}</textarea>
     ${GS.experience.detail === "modal" && !online ? `<div class="d-hltb" id="d-hltb" title="Tempi medi dei giocatori su HowLongToBeat">${hltbBlock(d.hltb)}</div>` : ""}
     <div class="d-h">Collezioni</div>
-    <div class="chips">${d.collections.map((c) => `<span class="chip" data-slug="${esc(c.slug)}">${esc(c.name)}<button class="x" title="Togli da questa collezione">✕</button></span>`).join("")}
+    <div class="chips">${d.collections.map((c) => `<span class="chip" data-slug="${esc(c.slug)}">${esc(c.name)}<button class="x" title="Togli da questa collezione" aria-label="Rimuovi ${esc(c.name)}">✕</button></span>`).join("")}
       <span class="chip add" id="d-add-coll">＋ Aggiungi</span></div>
     <dl class="d-grid">${dl.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     ${d.description ? `<div class="d-h">Descrizione</div><div class="d-desc">${esc(d.description)}</div>` : ""}
@@ -170,7 +189,9 @@ async function openDetail(id) {
     <div class="d-h">File</div>
     <div class="files">${d.files.map(esc).join("<br>")}${d.crc ? `<br>CRC ${esc(d.crc)}` : ""}
       ${Object.keys(d.sources).length ? `<br>Fonti: ${esc([...new Set(Object.values(d.sources))].join(", "))}` : ""}</div>`;
-  presentDetail();
+  const wasOpen = $("#detail").classList.contains("open"); // già aperta (cambio gioco/riapertura): niente volo
+  await coverTransition(wasOpen ? null : tileCover(id), () => { $("#detail-body").innerHTML = bodyHtml; presentDetail(); }, () => $("#detail .d-cover"));
+  if (my !== S.openSeq) return;
   window.dispatchEvent(new CustomEvent("pozzo:detail-open", { detail: d }));
   renderDetailSections(d);
   if (typeof loadDetailMods === "function") loadDetailMods(d);
@@ -430,7 +451,7 @@ async function pasteToggle(d, grp, url) {
       + (!x.magnet && !files.length ? `<span class="muted small">Nessun link leggibile in questo paste: apri la pagina nel browser.</span>` : "");
   };
   if (data) { show(data); return; }
-  list.innerHTML = `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Leggo l'elenco…</span>`;
+  skelInline(list, 2, `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Leggo l'elenco…</span>`);
   try {
     const r = await api(`/api/game/${d.id}/paste?url=${encodeURIComponent(url)}`);
     if (!grp.isConnected) return;
@@ -451,7 +472,7 @@ async function muToggle(grp, fresh = false) {
   btn.setAttribute("aria-expanded", "true");
   list.hidden = false;
   list.setAttribute("aria-busy", "true");
-  list.innerHTML = `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Cerco i provider… (può volerci un minuto)</span>`;
+  skelInline(list, 2, `<span class="muted small"><span class="mu-spin" aria-hidden="true"></span> Cerco i provider… (può volerci un minuto)</span>`);
   try {
     const r = await muFetch(btn.dataset.mu, fresh);
     if (!grp.isConnected) return;
@@ -598,12 +619,17 @@ async function renderDetailSections(d) {
 
 function closeDetail() {
   S.openSeq++; // una risposta in arrivo non deve riaprire il pannello
-  const detail = $("#detail");
-  detail.classList.remove("open");
-  detail.setAttribute("aria-hidden", "true");
-  detail.removeAttribute("aria-modal");
-  detail.removeAttribute("aria-labelledby");
-  delete document.documentElement.dataset.detailModal;
+  const detail = $("#detail"), gid = S.detail?.id, seq = S.openSeq;
+  const hide = () => {
+    if (seq !== S.openSeq && S.detail) return; // la transizione chiude in ritardo: nel frattempo e' stato aperto un altro gioco
+    detail.classList.remove("open");
+    detail.setAttribute("aria-hidden", "true");
+    detail.removeAttribute("aria-modal");
+    detail.removeAttribute("aria-labelledby");
+    delete document.documentElement.dataset.detailModal;
+  };
+  const dc = detail.classList.contains("open") ? detail.querySelector(".d-cover") : null;
+  if (dc && gid != null) coverTransition(dc, hide, () => tileCover(gid)).catch(hide); else hide();
   paintGameAccent(null);
   S.detail = null;
   if (S.detailFocus?.isConnected) S.detailFocus.focus();
@@ -636,7 +662,7 @@ function onGameDownloaded(ev) {
   toast(plan.toast);
   if (plan.open != null) openDetail(plan.open);
 }
-if (typeof module !== "undefined") module.exports = { safeAccent, downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
+if (typeof module !== "undefined") module.exports = { coverTransition, safeAccent, downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
 
 /* Tasto destro su un link di download (giochi di ogni console): copia l'indirizzo per aprirlo a mano nel browser.
    I magnet non c'entrano: si copiano dal torrent. Vale per i pulsanti con data-dl / data-dparts / data-mu / data-open / data-paste. */
@@ -699,8 +725,13 @@ async function partyApi(path, body) {
   if (!r.ok) { const dt = j && j.detail; const e = new Error(typeof dt === "string" ? dt : (dt && dt.error) || r.statusText); e.detail = dt; throw e; }
   return j;
 }
-const PARTY_ERR = { "core-mismatch": "Il core di RetroArch è diverso da quello dell'amico" };
-const partyMsg = (e) => PARTY_ERR[e.detail && e.detail.error] || e.message;
+const PARTY_ERR = { "core-mismatch": "Il core di RetroArch è diverso da quello dell'amico", "emulator-mismatch": "L'amico usa Eden: per questo gioco anche tu devi avere Eden come emulatore" };
+const partyMsg = (e) => {
+  const d = e.detail;
+  if (d && typeof d === "object" && d.error === "core-mismatch" && "local" in d && "remote" in d)
+    return `Il tuo RetroArch usa il core «${d.local || "(nessuno)"}», l'amico «${d.remote}»: devi usare lo stesso core per giocare insieme.`;
+  return PARTY_ERR[d && d.error] || e.message;
+};
 
 async function openParty(d) {
   const dlg = $("#party-dlg"), body = $("#party-body");
@@ -711,23 +742,46 @@ async function openParty(d) {
   const hosts = cfg.hosts || [];
   body.innerHTML = `
     <label class="lbl-field">Il tuo nome<input id="pt-nick" class="field" value="${esc(cfg.nick || "")}"></label>
-    <label class="lbl-field">Il tuo indirizzo (IP)<input id="pt-host" class="field" list="pt-hosts" value="${esc(cfg.host || hosts[0] || "")}"></label>
-    <datalist id="pt-hosts">${hosts.map((h) => `<option value="${esc(h)}">`).join("")}</datalist>
-    <label class="lbl-field">Porta<input id="pt-port" class="field" type="number" value="${esc(cfg.port || 55435)}"></label>
+    <fieldset class="lbl-field"><legend>Dove giocate?</legend>
+      <label><input type="radio" name="pt-where" value="lan"> Stessa rete (Wi-Fi o cavo di casa)</label>
+      <label><input type="radio" name="pt-where" value="internet"> Su internet: la porta va aperta sul router</label>
+      <label><input type="radio" name="pt-where" value="vpn"> Con una VPN, come Tailscale o ZeroTier</label>
+    </fieldset>
+    <details><summary>Avanzate</summary>
+      <label class="lbl-field">Il tuo indirizzo (IP)<input id="pt-host" class="field" list="pt-hosts" value="${esc(cfg.host || hosts[0] || "")}"></label>
+      <datalist id="pt-hosts">${hosts.map((h) => `<option value="${esc(h)}">`).join("")}</datalist>
+      <button class="btn" id="pt-detect" type="button">Rileva il mio IP pubblico</button> <span id="pt-ipmsg" class="muted small" aria-live="polite"></span>
+    </details>
+    <label class="lbl-field">Porta<input id="pt-port" class="field" type="number" value="${esc(d.emulator === "eden" ? (cfg.eden_port || 24872) : (cfg.port || 55435))}"></label>
     <p id="pt-out" aria-live="polite"></p>
     <div class="row end"><button class="btn primary" id="pt-go" type="button">Crea invito</button></div>`;
+  const ipOfKind = (k) => Object.keys(cfg.kinds || {}).find((ip) => cfg.kinds[ip] && cfg.kinds[ip].kind === k);
+  body.querySelectorAll('input[name="pt-where"]').forEach((radio) => radio.onchange = () => {
+    const ip = radio.value === "lan" ? ipOfKind("lan") : radio.value === "vpn" ? ipOfKind("shared") : null;
+    if (ip) $("#pt-host").value = ip;
+  });
+  $("#pt-detect").onclick = async () => {
+    try {
+      const r = await partyApi("/api/party/public-ip", {});
+      if (r.ip) $("#pt-host").value = r.ip;
+      $("#pt-ipmsg").textContent = r.ip ? (r.tip || "") : (r.error || "");
+    } catch (e) { toast(e.message, true); }
+  };
   $("#pt-go").onclick = async () => {
     const out = $("#pt-out"), port = +$("#pt-port").value;
     try {
       const r = await partyApi("/api/party/invite", { key: d.key, nick: $("#pt-nick").value.trim(), host: $("#pt-host").value.trim(), port });
       out.innerHTML = `<label class="lbl-field">Codice da mandare all'amico
-        <span class="row tight"><input id="pt-code" class="field grow" readonly value="${esc(r.code)}"><button class="btn" id="pt-copy" type="button">Copia</button></span></label>
-        <span class="muted small">L'amico deve avere la stessa ROM e lo stesso core. Fuori dalla tua rete serve aprire la porta ${esc(r.port || port)} sul router, oppure usare una VPN gratuita come Tailscale e scegliere il suo IP.</span>`;
+        <span class="row tight"><input id="pt-code" class="field grow" readonly value="${esc(r.code)}"><button class="btn" id="pt-copy" type="button">Copia</button><button class="btn" id="pt-copymsg" type="button">Copia invito</button></span></label>
+        <span class="muted small">${r.emulator === "eden" ? "L'amico deve avere lo stesso gioco e la stessa versione di Eden. La stanza è avviata da Pozzo (privata, con password nel codice). Fuori dalla tua rete serve aprire la porta UDP" : "L'amico deve avere la stessa ROM e lo stesso core. Fuori dalla tua rete serve aprire la porta"} ${esc(r.port || port)} sul router, oppure usare una VPN gratuita come Tailscale e scegliere il suo IP.</span>
+        ${r.steps ? `<p class="muted small" id="pt-steps">${esc(r.steps)}</p><button class="btn" id="pt-close" type="button">Chiudi la stanza</button>` : ""}`;
+      if (r.steps) $("#pt-close").onclick = async () => { try { await partyApi("/api/party/close", {}); $("#pt-close").remove(); toast("Stanza chiusa"); } catch (e) { toast(e.message, true); } };
       $("#pt-copy").onclick = () => navigator.clipboard.writeText(r.code).then(() => toast("Codice copiato"), () => { $("#pt-code").select(); toast("Non riesco a copiare: copialo a mano", true); });
+      $("#pt-copymsg").onclick = () => navigator.clipboard.writeText(r.message).then(() => toast("Invito copiato: incollalo in una chat"), () => toast("Non riesco a copiare", true));
       $("#pt-code").select();
     } catch (e) {
       out.textContent = e.detail && e.detail.error === "no-netplay"
-        ? `Questo emulatore (${(e.detail.emulator || d.emulator || "")}) non supporta il gioco in rete: usa Share Play (streaming)`
+        ? `Pozzo sa creare partite in rete solo con RetroArch ed Eden (${(e.detail.emulator || d.emulator || "questo emulatore")} no): per gli altri puoi usare Share Play (streaming)`
         : partyMsg(e);
     }
   };
@@ -738,6 +792,12 @@ function openJoin() {
   const go = $("#join-go"); go.textContent = "Controlla invito"; go.onclick = joinPreview;
   $("#join-dlg").showModal(); $("#join-code").focus();
 }
+function openJoinWith(code) {
+  openJoin();
+  $("#join-code").value = String(code).trim();
+  joinPreview();
+}
+if (typeof window !== "undefined") window.openJoinWith = openJoinWith;
 async function joinPreview() {
   const code = $("#join-code").value.trim(), msg = $("#join-msg"), go = $("#join-go");
   if (!code) return;
@@ -747,16 +807,70 @@ async function joinPreview() {
     msg.textContent = `Entrare nella partita di ${p.nick} a ${p.title}?`;
     go.textContent = "Entra";
     go.onclick = async () => {
-      try { await partyApi("/api/party/join", { code }); $("#join-dlg").close(); toast("Partita avviata"); }
+      try {
+        const r = await partyApi("/api/party/join", { code });
+        if (r.prefilled === false) { msg.textContent = "Apri Eden: il nickname e l'indirizzo non sono stati compilati in automatico (Eden era già aperto). Compila Multiplayer › Direct Connect a mano."; return; }
+        $("#join-dlg").close(); toast(r.steps ? "Partita avviata · " + r.steps : "Partita avviata");
+      }
       catch (e) { msg.textContent = partyMsg(e); }
     };
   } catch (e) { msg.textContent = partyMsg(e); }
 }
 
+/* ------------------------------------------------------------------ perché non parte? */
+/** riga segnaposto al posto dello spinner: GSSkeleton se caricato, altrimenti il testo di fallback */
+function skelInline(el, count, fallbackHtml) {
+  el.innerHTML = "";
+  const layer = typeof window !== "undefined" && window.GSSkeleton && window.GSSkeleton.show(el, count);
+  if (layer) layer.classList.add("dg-skel-line");
+  else el.innerHTML = fallbackHtml;
+}
+
+/** HTML del pannello: la causa più probabile in cima, poi la checklist (✓ ok, ✗ con causa e rimedio); tutti i testi escapati */
+function diagHtml(r) {
+  const checks = Array.isArray(r.checks) ? r.checks : [];
+  const p = Number.isInteger(r.probabile) && checks[r.probabile] ? checks[r.probabile] : null;
+  const detail = (c) => `<div class="dg-causa">${esc(c.causa || "")}</div>${c.rimedio ? `<div class="dg-rimedio"><b>Come risolvere:</b> ${esc(c.rimedio)}</div>` : ""}`;
+  return (p ? `<section class="dg-probable"><h3>Causa più probabile</h3><b>${esc(p.nome)}</b>${detail(p)}</section>` : "")
+    + (r.ok ? `<p class="dg-ok">Nessun problema trovato.</p>` : "")
+    + `<ul class="dg-checks">${checks.map((c) => `<li class="dg-check ${c.ok ? "ok" : "ko"}">`
+      + `<span class="dg-mark" aria-hidden="true">${c.ok ? "✓" : "✗"}</span>`
+      + `<div><b>${esc(c.nome)}</b><span class="dg-sr">${c.ok ? " (OK)" : " (problema)"}</span>${c.ok ? "" : detail(c)}</div></li>`).join("")}</ul>`;
+}
+
+let diagSeq = 0;
+/** apre il pannello «Perché non parte?» per il gioco `id` e ne carica la diagnosi */
+async function openDiagnose(id) {
+  let dlg = document.getElementById("diag-dlg");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "diag-dlg";
+    dlg.className = "small-dlg";
+    dlg.setAttribute("aria-labelledby", "diag-title");
+    dlg.innerHTML = `<form method="dialog" class="dlg-head"><h2 id="diag-title">Perché non parte?</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form><div class="dlg-body" id="diag-body" aria-live="polite"></div>`;
+    document.body.appendChild(dlg);
+  }
+  const body = dlg.querySelector("#diag-body"), seq = ++diagSeq;
+  if (!dlg.open) dlg.showModal();
+  skelInline(body, 4, `<span class="muted small">Controllo…</span>`);
+  try {
+    const r = await api(`/api/game/${id}/diagnose`);
+    if (seq === diagSeq) body.innerHTML = diagHtml(r);
+  } catch (e) {
+    if (seq === diagSeq) body.innerHTML = `<p class="err" role="alert">${esc(e.message)}</p>`;
+  }
+}
+if (typeof window !== "undefined") window.openDiagnose = openDiagnose;
+
 // in node (test) il file si carica senza DOM
 if (typeof document !== "undefined") document.addEventListener("click", (e) => {
-  const t = e.target.closest && e.target.closest("#d-party, #join-btn");
+  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose");
   if (!t) return;
   if (t.id === "join-btn") openJoin();
+  else if (t.id === "d-play-fast") { if (S.detail) play(S.detail.id, { fast: true }); } // stesso flusso di d-play (events.js)
+  else if (t.id === "d-diagnose") { if (S.detail) openDiagnose(S.detail.id); }
   else if (S.detail) openParty(S.detail);
 });
+
+// all'apertura: se c'e' un invito in sospeso (incoming), propone di entrare
+if (typeof document !== "undefined") { const pending = () => partyApi("/api/party").then((c) => { const code = c && c.incoming && c.incoming.code; if (code && typeof window.openJoinWith === "function") window.openJoinWith(code); }).catch(() => {}); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", pending); else pending(); }

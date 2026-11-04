@@ -2,7 +2,13 @@
 name = "Calendario uscite"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Le prossime uscite: prima i giochi della tua lista dei desideri che devono ancora uscire, poi i titoli più attesi dei generi che giochi di più. Usa la chiave RAWG già impostata nell'app."
+icon = "📅"
+screenshot = "screenshot.png"
+description = "Calendario delle prossime uscite videoludiche con priorità ai titoli della tua lista desideri e ai generi che giochi più spesso, alimentato da RAWG."
+long_description = "Non perdere mai il lancio di un gioco atteso. Questa estensione interroga il database RAWG per creare una panoramica ordinata delle uscite dei prossimi mesi. Mostra prima i giochi che hai già aggiunto alla tua lista dei desideri di Pozzo Launcher, seguiti dai titoli di maggiore rilievo appartenenti ai generi con cui trascorri più tempo."
+how_it_works = "1. Installa l'estensione e assicurati di avere una chiave API gratuita di RAWG configurata in Impostazioni › Fonti › RAWG (l'app ne fornisce già una predefinita).\n2. Nella barra laterale si attiva la voce «Calendario uscite».\n3. La vista è divisa per mese: in cima trovi i titoli della tua lista dei desideri con il countdown dei giorni mancanti.\n4. Più in basso trovi i giochi consigliati per te in base alle statistiche dei tuoi generi preferiti."
+features = ["Riconoscimento automatico dei titoli in lista desideri", "Suggerimenti personalizzati basati sui tuoi generi più giocati", "Data di uscita precisa, piattaforme previste e sinossi per ogni gioco", "Cache intelligente delle chiamate di rete per evitare consumi di quota"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["rete:api.rawg.io", "rete:media.rawg.io", "libreria:lettura", "impostazioni"]
+load = "lazy"

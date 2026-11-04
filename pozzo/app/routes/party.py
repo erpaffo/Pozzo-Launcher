@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import getpass
+import os
 import secrets
 import time
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, netplay as NP, platforms as P
+from ... import config as C, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR
 from ...library import launcher as L
 from ...remote.certs import lan_ips
 
@@ -17,6 +18,14 @@ def build_router(ctx) -> APIRouter:
     api_play, cfg, launcher, lib, user = ctx.api_play, ctx.cfg, ctx.launcher, ctx.lib, ctx.user
     router = APIRouter()
     active: dict = {}  # partita ospitata adesso (vuoto = nessuna)
+    room: dict = {}  # stanza di Eden avviata da Pozzo: {"proc": Popen}
+    incoming: dict = {}  # ultimo invito ricevuto (da link o incolla): {"code": ...}
+    try:  # invito arrivato con il link quando l'app era chiusa (variabile impostata al lancio)
+        codice = PR.parse_url(os.environ.pop("POZZO_PENDING_JOIN", "") or "")
+        if codice is not None:
+            incoming.update(code=codice)
+    except Exception:
+        pass
 
     def _conf() -> dict:
         return dict(cfg.app.get("netplay") or {})
@@ -48,7 +57,9 @@ def build_router(ctx) -> APIRouter:
     def api_party():
         conf, hosts = _conf(), lan_ips()
         return {"nick": _nick(conf), "host": conf.get("host") or (hosts[0] if hosts else ""), "hosts": hosts,
-                "port": int(conf.get("port") or NP.PORT), "active": active or None}
+                "port": int(conf.get("port") or NP.PORT), "eden_port": int(conf.get("eden_port") or NP.EDEN_PORT),
+                "active": active or None, "incoming": dict(incoming) or None, "kinds": {ip: NA.address_kind(ip) for ip in hosts},
+                "register_protocol": bool(conf.get("register_protocol", True))}
 
     @router.post("/api/party/invite")
     def api_party_invite(body: dict = Body(...)):
@@ -59,30 +70,110 @@ def build_router(ctx) -> APIRouter:
         emu = (plan or {}).get("emulator", "")
         if not plan or not NP.supported(emu):
             raise HTTPException(409, {"error": "no-netplay", "emulator": emu, "suggest": "stream"})
+        eden = emu == "eden"
         conf, hosts = _conf(), lan_ips()
         nick = str(body.get("nick") or _nick(conf)).strip() or "Giocatore"
         host = str(body.get("host") or conf.get("host") or (hosts[0] if hosts else "")).strip()
+        pw = secrets.token_urlsafe(6) if eden else ""  # solo [A-Za-z0-9_-]: Eden separa nick:password@host:porta
         try:
-            port = int(body.get("port") or conf.get("port") or NP.PORT)
-            code = NP.encode({"v": 1, "k": g["key"], "e": emu, "c": plan.get("core") or "", "h": host, "p": port,
-                              "n": nick, "x": int(time.time()) + NP.TTL})
+            port = int(body.get("port") or (conf.get("eden_port") or NP.EDEN_PORT if eden else conf.get("port") or NP.PORT))
+            info = {"v": 1, "k": g["key"], "e": emu, "c": "" if eden else plan.get("core") or "", "h": host, "p": port,
+                    "n": nick, "x": int(time.time()) + NP.TTL}
+            if pw:
+                info["w"] = pw
+            code = NP.encode(info)
             NP.decode(code)  # IP o porta sbagliati: errore qui, non dall'amico
         except (ValueError, TypeError) as e:
             raise HTTPException(400, str(e))
-        conf.update(nick=nick, host=host, port=port)
+        conf.update(nick=nick, host=host)
+        conf["eden_port" if eden else "port"] = port
         C.save_settings(cfg, app={"netplay": conf})
         cfg.app["netplay"] = conf
-        _play(g, NP.args("host", port=port, nick=nick))
+        proc = None
+        if eden:  # la stanza e' un processo a parte; anche l'ospite entra da "ospite" su questo PC
+            EDR.stop(room.pop("proc", None))
+            try:
+                proc = EDR.start(EDR.room_cmd(plan["exe"], g["title"], port, pw, g["title"]))
+            except OSError as e:
+                raise HTTPException(409, f"Non riesco ad avviare la stanza di Eden: {e}")
+            if not EDR.alive(proc):
+                EDR.stop(proc)
+                raise HTTPException(409, "La stanza di Eden si è chiusa subito: controlla che questa versione abbia eden-room")
+            EDR.prefill(plan["exe"], NP.eden_nick(nick), "127.0.0.1", port)
+        try:
+            _play(g, NP.args("join" if eden else "host", host="127.0.0.1", port=port, nick=nick, emulator=emu, password=pw))
+        except Exception:
+            EDR.stop(proc)
+            raise
+        if proc:
+            room["proc"] = proc
         ctx.discord.set_party({"id": "poz-" + secrets.token_hex(3), "size": [1, 2]})
         active.clear()
-        active.update(key=g["key"], title=g["title"], host=host, port=port, code=code)
-        return {"ok": True, "code": code, "title": g["title"], "host": host, "port": port}
+        active.update(key=g["key"], title=g["title"], host=host, port=port, code=code, emulator=emu)
+        return {"ok": True, "code": code, "title": g["title"], "host": host, "port": port, "emulator": emu,
+                "steps": EDR.STEPS if eden else "", "link": NP.link(code),
+                "message": NP.invite_message(code, g["title"], emu)}
+
+    @router.post("/api/party/settings")
+    def api_party_settings(body: dict = Body(...)):
+        conf = _conf()
+        if "register_protocol" in body:
+            v = body["register_protocol"]
+            if not isinstance(v, bool):
+                raise HTTPException(400, "register_protocol deve essere true o false")
+            conf["register_protocol"] = v
+            C.save_settings(cfg, app={"netplay": conf})
+            cfg.app["netplay"] = conf
+            try:  # la registrazione del link non deve far fallire la rotta
+                if v:
+                    PR.register()
+                else:
+                    PR.unregister()
+            except Exception:
+                pass
+        return {"register_protocol": bool(conf.get("register_protocol", True))}
+
+    @router.post("/api/party/close")
+    def api_party_close():
+        """Chiude la stanza di Eden avviata da Pozzo (il gioco resta aperto)."""
+        EDR.stop(room.pop("proc", None))
+        active.clear()
+        return {"ok": True}
 
     def _decode(body: dict) -> dict:
         try:
-            return NP.decode(str(body.get("code") or "").strip())
+            return NP.decode(NP.extract_code(str(body.get("code") or "")))
         except ValueError as e:
             raise HTTPException(400, str(e))
+
+    @router.post("/api/party/incoming")
+    def api_party_incoming(body: dict = Body(...)):
+        # Solo registra l'invito: non avvia nessun gioco (lo fa l'utente dalla UI).
+        if body.get("url"):
+            code = PR.parse_url(str(body.get("url")))
+            if code is None:
+                raise HTTPException(400, "Link non valido")
+        else:
+            code = str(body.get("code") or "")
+        try:
+            NP.decode(code)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        incoming.clear()
+        incoming.update(code=code)
+        try:
+            ctx.events.emit("party_invite", {"code": code})
+        except Exception:
+            pass  # il SSE non deve far fallire la rotta
+        return {"ok": True}
+
+    @router.post("/api/party/public-ip")
+    def api_party_public_ip():
+        ip = NA.public_ip()
+        if not ip:
+            return {"ip": "", "kind": "", "tip": "", "error": "Non riesco a rilevare il tuo IP pubblico: controlla la connessione"}
+        k = NA.address_kind(ip)
+        return {"ip": ip, "kind": k["kind"], "tip": k["tip"], "error": ""}
 
     @router.post("/api/party/preview")
     def api_party_preview(body: dict = Body(...)):
@@ -96,10 +187,24 @@ def build_router(ctx) -> APIRouter:
         g = lib.by_key.get(t["k"])
         if not g:
             raise HTTPException(404, "Gioco non presente nella tua libreria")
+        if t.get("e") == "eden":
+            plan = _plan(g) or {}
+            if plan.get("emulator") != "eden":
+                raise HTTPException(409, {"error": "emulator-mismatch", "local": plan.get("emulator") or "", "remote": "eden"})
+            nick = NP.eden_nick(_nick(_conf()))
+            pre = EDR.prefill(plan.get("exe"), nick, t["h"], t["p"])
+            _play(g, NP.args("join", host=t["h"], port=t["p"], nick=nick, emulator="eden", password=t.get("w") or ""))
+            return {"ok": True, "title": g["title"], "steps": EDR.STEPS, "prefilled": bool(pre)}
         local = (_plan(g) or {}).get("core") or ""
         if t.get("c") and local != t["c"]:
             raise HTTPException(409, {"error": "core-mismatch", "local": local, "remote": t["c"]})
         _play(g, NP.args("join", host=t["h"], port=t["p"], nick=_nick(_conf())))
         return {"ok": True, "title": g["title"]}
+
+    try:  # link pozzo:// registrato ad ogni avvio, salvo disattivazione in impostazioni
+        if _conf().get("register_protocol", True):
+            PR.register()
+    except Exception:
+        pass
 
     return router

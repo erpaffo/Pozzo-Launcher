@@ -61,3 +61,24 @@
   <button class="btn" id="save-dir-pick" type="button">Sfoglia…</button>
   <button class="btn primary" id="save-dir-save" type="button">Salva</button>
 </div>
+<h3>Manutenzione programmata</h3>
+<p class="muted small">Una volta alla settimana, a giorno e ora scelti, Pozzo controlla la libreria (ROM, BIOS, copertine,
+  spazio liberabile) e scrive un rapporto. Confronta ogni rapporto con il precedente.</p>
+<div id="mt-box">
+  <div class="row wrap maint-row">
+    <label class="chk"><input type="checkbox" id="mt-on"> Attiva</label>
+    <label class="lbl-field">Giorno
+      <select class="field" id="mt-day"><option value="0">Lunedì</option><option value="1">Martedì</option><option value="2">Mercoledì</option><option value="3">Giovedì</option><option value="4">Venerdì</option><option value="5">Sabato</option><option value="6">Domenica</option></select>
+    </label>
+    <label class="lbl-field">Ora
+      <input class="field" type="time" id="mt-time" value="03:00">
+    </label>
+    <button class="btn" id="mt-run" type="button">Esegui ora</button>
+  </div>
+  <p class="small" id="mt-state" role="status"></p>
+  <p class="small muted" id="mt-last"></p>
+  <details class="maint-panel">
+    <summary>Rapporto</summary>
+    <div id="mt-detail"></div>
+  </details>
+</div>

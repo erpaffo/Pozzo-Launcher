@@ -43,6 +43,7 @@ ALLOWED = [
     ("GET", r"/img/\d+/[a-z0-9_]+"), ("GET", r"/icons/(platform|store)/[^/]+"), ("GET", r"/coll-img/[^/]+/(icon|cover)"),
     ("GET", r"/shots/\d+"), ("GET", r"/m/api/me"), ("POST", r"/m/api/logout"), ("WS", r"/m/ws"), ("WS", r"/m/mic"),
     ("WS", r"/m/screen"), ("GET", r"/m/api/pad"), ("POST", r"/m/api/pad"),
+    ("POST", r"/m/api/downloads"),  # link condivisi al telefono: vanno in coda sul PC
 ]
 PLAYER_COLORS = ["#4aa3ff", "#ff5f5f", "#3ddc84", "#f5c518"]  # giocatore 1..4 (come i LED dei controller)
 PUBLIC = [("GET", r"/m/?"), ("GET", r"/m/static/[\w.-]+"), ("GET", r"/m/manifest\.webmanifest"), ("POST", r"/m/api/pair"),
@@ -610,6 +611,8 @@ def register(app, hub: PhoneHub, static_dir: Path):
                              "short_name": "Pozzo Launcher", "description": "La tua libreria di giochi e il PC come controller",
                              "lang": "it", "dir": "ltr", "display": "standalone",
                              "background_color": "#0f1117", "theme_color": "#0f1117",
+                             "share_target": {"action": "/m/?share=1", "method": "GET",
+                                              "params": {"title": "title", "text": "text", "url": "url"}},
                              "icons": [{"src": "/m/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
                                        {"src": "/m/static/icon.png", "sizes": "512x512", "type": "image/png"}]},
                             media_type="application/manifest+json")
@@ -625,6 +628,27 @@ def register(app, hub: PhoneHub, static_dir: Path):
             return hub.set_pad_settings(body)
         except ValueError as e:
             raise HTTPException(400, str(e))
+
+    def _downloads_add(links: list[str]):
+        """La stessa funzione di POST /api/downloads (routes/downloads.py la mette in app.state)."""
+        add = getattr(app.state, "downloads_add", None)
+        if add is None:
+            raise HTTPException(503, "Download non disponibili")
+        return add(body={"links": links})  # solo i link: il telefono non sceglie cartelle o priorita'
+
+    @app.post("/m/api/downloads")
+    def m_downloads(body: dict = Body(...)):
+        """Il telefono accoda link (http, https o magnet) sul PC: il gate lo lascia passare solo ai telefoni abbinati."""
+        links = body.get("links")
+        if not isinstance(links, list) or not 1 <= len(links) <= 20:
+            raise HTTPException(400, "Servono da 1 a 20 link")
+        clean = []
+        for x in links:
+            u = x.strip() if isinstance(x, str) else ""
+            if not u or len(u) > 4000 or not u.lower().startswith(("http://", "https://", "magnet:")):
+                raise HTTPException(400, "Link non valido: sono ammessi solo http, https o magnet")
+            clean.append(u)
+        return _downloads_add(clean)
 
     @app.get("/m/api/hello")
     def m_hello(request: Request):

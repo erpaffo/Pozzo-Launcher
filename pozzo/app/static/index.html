@@ -11,14 +11,20 @@
 <link rel="stylesheet" href="/static/skeleton.css?v={{v}}">
 <link rel="stylesheet" href="/static/profile-picker.css?v={{v}}">
 <link rel="stylesheet" href="/static/settings/emulatori-extra.css?v={{v}}">
+<link rel="stylesheet" href="/static/downloads-extra.css?v={{v}}">
+<link rel="stylesheet" href="/static/diagnose.css?v={{v}}">
+<link rel="stylesheet" href="/static/maintenance.css?v={{v}}">
+<link rel="stylesheet" href="/static/resume.css?v={{v}}">
+<link rel="stylesheet" href="/static/a11y.css?v={{v}}">
 </head>
 <body>
+<a class="skip-link" href="#main">Vai al contenuto</a>
 <div id="app">
   <header id="experience-bar">
     <button class="experience-drawer-toggle" id="drawer-toggle" type="button" title="Esplora" aria-label="Esplora" aria-expanded="false" aria-controls="sidebar">
       <span aria-hidden="true">☰</span> <span class="lbl">Esplora</span>
     </button>
-    <div class="brand"><span class="logo">◆</span> Pozzo Launcher</div>
+    <div class="brand"><span class="logo" aria-hidden="true">◆</span> Pozzo Launcher</div>
     <nav id="experience-nav" aria-label="Navigazione principale">
       <button type="button" data-view="home">Home</button>
       <button type="button" data-view="all">Libreria</button>
@@ -29,25 +35,25 @@
   </header>
   <button id="drawer-scrim" type="button" aria-label="Chiudi il cassetto di navigazione" hidden></button>
   <aside id="sidebar">
-    <div class="brand"><span class="logo">◆</span> Pozzo Launcher</div>
+    <div class="brand"><span class="logo" aria-hidden="true">◆</span> Pozzo Launcher</div>
     <button class="profile-btn" id="profile-btn" type="button" title="Profilo utente: preferiti, tempo di gioco e collezioni di chi gioca">
-      <span class="ico" id="profile-ico">👤</span><span id="profile-name">Principale</span><span class="muted">▾</span></button>
-    <nav id="nav">
+      <span class="ico" id="profile-ico" aria-hidden="true">👤</span><span id="profile-name">Principale</span><span class="muted">▾</span></button>
+    <nav id="nav" aria-label="Navigazione laterale">
       <div class="nav-section">Libreria</div>
-      <a class="nav-item" data-view="foryou"><span class="ico">✨</span><span class="lbl">Per te</span></a>
-      <a class="nav-item" data-view="all"><span class="ico">▦</span><span class="lbl">Tutti i giochi</span><span class="cnt" id="cnt-all"></span></a>
-      <a class="nav-item" data-view="favorites"><span class="ico">★</span><span class="lbl">Preferiti</span><span class="cnt" id="cnt-fav"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="foryou"><span class="ico" aria-hidden="true">✨</span><span class="lbl">Per te</span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="all"><span class="ico" aria-hidden="true">▦</span><span class="lbl">Tutti i giochi</span><span class="cnt" id="cnt-all"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="favorites"><span class="ico" aria-hidden="true">★</span><span class="lbl">Preferiti</span><span class="cnt" id="cnt-fav"></span></a>
       <div id="fav-plat-list"></div>
-      <a class="nav-item" data-view="shop"><span class="ico">🛒</span><span class="lbl">Store</span><span class="cnt" id="cnt-shop"></span></a>
-      <a class="nav-item" data-view="multi"><span class="ico">👥</span><span class="lbl">Multigiocatore locale</span><span class="cnt" id="cnt-multi"></span></a>
-      <a class="nav-item" data-view="free"><span class="ico">🎁</span><span class="lbl">Giochi gratis</span><span class="cnt" id="cnt-free"></span></a>
-      <a class="nav-item" data-view="ports"><span class="ico">🕹</span><span class="lbl">Port e app</span><span class="cnt" id="cnt-ports"></span></a>
-      <a class="nav-item" data-view="wishlist"><span class="ico">♡</span><span class="lbl">Lista desideri</span><span class="cnt" id="cnt-wish"></span></a>
-      <a class="nav-item" data-view="shots"><span class="ico">📷</span><span class="lbl">Schermate</span><span class="cnt" id="cnt-shots"></span></a>
-      <a class="nav-item" data-view="top" data-id="all"><span class="ico">🏆</span><span class="lbl">Migliori giochi</span></a>
-      <a class="nav-item" data-view="stats"><span class="ico">📊</span><span class="lbl">Statistiche</span></a>
-      <a class="nav-item" data-view="recent"><span class="ico">◷</span><span class="lbl">Giocati di recente</span><span class="cnt" id="cnt-recent"></span></a>
-      <a class="nav-item" data-view="downloads"><span class="ico">⬇</span><span class="lbl">Download</span><span class="cnt" id="cnt-dl"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="shop"><span class="ico" aria-hidden="true">🛒</span><span class="lbl">Store</span><span class="cnt" id="cnt-shop"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="multi"><span class="ico" aria-hidden="true">👥</span><span class="lbl">Multigiocatore locale</span><span class="cnt" id="cnt-multi"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="free"><span class="ico" aria-hidden="true">🎁</span><span class="lbl">Giochi gratis</span><span class="cnt" id="cnt-free"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="ports"><span class="ico" aria-hidden="true">🕹</span><span class="lbl">Port e app</span><span class="cnt" id="cnt-ports"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="wishlist"><span class="ico" aria-hidden="true">♡</span><span class="lbl">Lista desideri</span><span class="cnt" id="cnt-wish"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="shots"><span class="ico" aria-hidden="true">📷</span><span class="lbl">Schermate</span><span class="cnt" id="cnt-shots"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="top" data-id="all"><span class="ico" aria-hidden="true">🏆</span><span class="lbl">Migliori giochi</span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="stats"><span class="ico" aria-hidden="true">📊</span><span class="lbl">Statistiche</span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="recent"><span class="ico" aria-hidden="true">◷</span><span class="lbl">Giocati di recente</span><span class="cnt" id="cnt-recent"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="downloads"><span class="ico" aria-hidden="true">⬇</span><span class="lbl">Download</span><span class="cnt" id="cnt-dl" aria-live="polite"></span></a>
 
       <div class="nav-section">Stato</div>
       <div id="status-list"></div>
@@ -59,7 +65,7 @@
 
       <div class="nav-section with-action">
         <span>PC</span>
-        <span class="section-tools"><button class="icon-btn" id="pc-add" title="Aggiungi un gioco PC (.exe)">＋</button></span>
+        <span class="section-tools"><button class="icon-btn" id="pc-add" aria-label="Aggiungi un gioco PC (.exe)" title="Aggiungi un gioco PC (.exe)">＋</button></span>
       </div>
       <div id="store-list"></div>
 
@@ -69,27 +75,27 @@
       <div class="nav-section with-action">
         <span>Collezioni</span>
         <span class="section-tools">
-          <button class="icon-btn" id="coll-sort" title="Ordina collezioni">⇅</button>
-          <button class="icon-btn" id="coll-new" title="Nuova collezione">＋</button>
+          <button class="icon-btn" id="coll-sort" aria-label="Ordina collezioni" title="Ordina collezioni">⇅</button>
+          <button class="icon-btn" id="coll-new" aria-label="Nuova collezione" title="Nuova collezione">＋</button>
         </span>
       </div>
-      <div class="smart-head"><span>Intelligenti</span><button class="icon-btn" id="smart-new" title="Nuova collezione intelligente (regole)">＋⚡</button></div>
+      <div class="smart-head"><span>Intelligenti</span><button class="icon-btn" id="smart-new" aria-label="Nuova collezione intelligente" title="Nuova collezione intelligente (regole)">＋⚡</button></div>
       <div id="smart-list"></div>
       <input id="coll-filter" class="side-input" placeholder="Filtra collezioni…" autocomplete="off">
       <div id="coll-list"></div>
 
       <div class="nav-section">Altro</div>
-      <a class="nav-item" data-view="apps" hidden><span class="ico">🧩</span><span class="lbl">Applicazioni</span><span class="cnt" id="cnt-apps"></span></a>
-      <a class="nav-item" data-view="missing"><span class="ico" data-icon="help">?</span><span class="lbl">Senza dati</span><span class="cnt" id="cnt-missing"></span></a>
-      <a class="nav-item" data-view="dups"><span class="ico">⧉</span><span class="lbl">Duplicati</span><span class="cnt" id="cnt-dups"></span></a>
-      <a class="nav-item" data-view="hidden"><span class="ico">⊘</span><span class="lbl">Nascosti</span><span class="cnt" id="cnt-hidden"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="apps" hidden><span class="ico" aria-hidden="true">🧩</span><span class="lbl">Applicazioni</span><span class="cnt" id="cnt-apps"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="missing"><span class="ico" data-icon="help" aria-hidden="true">?</span><span class="lbl">Senza dati</span><span class="cnt" id="cnt-missing"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="dups"><span class="ico" aria-hidden="true">⧉</span><span class="lbl">Duplicati</span><span class="cnt" id="cnt-dups"></span></a>
+      <a class="nav-item" role="button" tabindex="0" data-view="hidden"><span class="ico" aria-hidden="true">⊘</span><span class="lbl">Nascosti</span><span class="cnt" id="cnt-hidden"></span></a>
     </nav>
     <div class="side-foot">
-      <button class="side-link" id="feedback-btn" title="Suggerisci un'idea o segnala un bug">💡 Idee / bug</button>
+      <button class="side-link" id="feedback-btn" title="Suggerisci un'idea o segnala un bug"><span aria-hidden="true">💡</span> Idee / bug</button>
     </div>
   </aside>
 
-  <main id="main">
+  <main id="main" tabindex="-1">
     <header id="toolbar">
       <div class="view-head">
         <h1 id="view-title">Tutti i giochi</h1>
@@ -97,11 +103,11 @@
         <span id="view-actions"></span>
       </div>
       <div class="tb-actions" role="group" aria-label="Azioni">
-        <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console">⟳ Nuovi giochi</button>
-        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso"><span data-icon="dice"></span> A caso</button>
-        <button class="btn" id="join-btn" title="Entra in una partita in rete con il codice di un amico">👥 Unisciti a un amico</button>
-        <button class="btn accent" id="bp-btn" title="Modalità a schermo intero per il controller">🎮 Big Picture</button>
-        <button class="btn" id="settings-btn" title="Impostazioni">⚙ Impostazioni</button>
+        <button class="btn" id="scan-btn" title="Cerca nuovi giochi e console"><span aria-hidden="true">⟳</span> Nuovi giochi</button>
+        <button class="btn" id="random-btn" title="Un gioco a caso tra quelli mostrati (filtri e ricerca compresi)" aria-label="Gioco a caso"><span data-icon="dice" aria-hidden="true"></span> A caso</button>
+        <button class="btn" id="join-btn" title="Incolla il codice, il link o l'intero messaggio di un amico per entrare nella sua partita"><span aria-hidden="true">👥</span> Ho un invito</button>
+        <button class="btn accent" id="bp-btn" title="Modalità a schermo intero per il controller"><span aria-hidden="true">🎮</span> Big Picture</button>
+        <button class="btn" id="settings-btn" title="Impostazioni"><span aria-hidden="true">⚙</span> Impostazioni</button>
       </div>
       <div class="tools">
         <input id="search" type="search" placeholder="Cerca titolo, sviluppatore…  ( / )" autocomplete="off" aria-label="Cerca">
@@ -111,7 +117,7 @@
           <select id="disc-genre" title="Genere" aria-label="Genere"></select>
           <select id="disc-decade" title="Decennio" aria-label="Decennio"></select>
           <select id="language-filter" title="Lingua del gioco" aria-label="Lingua"></select>
-          <button type="button" class="tb-reset" id="disc-reset" title="Azzera i filtri Scopri" hidden>✕ Azzera</button>
+          <button type="button" class="tb-reset" id="disc-reset" title="Azzera i filtri Scopri" hidden><span aria-hidden="true">✕</span> Azzera</button>
         </div>
         <div class="tb-group" role="group" aria-label="Ordinamento">
           <span class="tb-lbl">Ordina</span>
@@ -152,7 +158,7 @@
       </div>
     </header>
     <div id="coll-banner" hidden></div>
-    <div id="loadbar" role="status" hidden><span id="loadbar-text"></span><div class="loadbar-track"><i></i></div></div>
+    <div id="loadbar" role="progressbar" aria-label="Caricamento in corso" hidden><span id="loadbar-text" aria-live="polite"></span><div class="loadbar-track"><i></i></div></div>
     <div id="grid-scroll" tabindex="-1">
       <div id="grid-sizer"></div>
       <div id="grid-layer"></div>
@@ -161,16 +167,16 @@
     <div id="plugin-view" hidden></div>
   </main>
 
-  <section id="detail" aria-hidden="true">
+  <section id="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true">
     <div class="detail-hero"><div class="hero-bg"></div></div>
-    <button class="icon-btn close" id="detail-close" title="Chiudi (Esc)">✕</button>
+    <button class="icon-btn close" id="detail-close" aria-label="Chiudi il dettaglio (Esc)" title="Chiudi (Esc)">✕</button>
     <div class="detail-body" id="detail-body"></div>
   </section>
 
   <div id="running" hidden></div>
   <div id="lightbox" hidden></div>
-  <dialog id="prof-dlg">
-    <h3>Profilo di avvio <span class="muted small" id="pf-game"></span></h3>
+  <dialog id="prof-dlg" role="dialog" aria-modal="true" aria-labelledby="pf-title">
+    <h3 id="pf-title">Profilo di avvio <span class="muted small" id="pf-game"></span></h3>
     <p class="muted small">Vale solo per questo gioco (tutte le sue versioni). I campi vuoti usano le impostazioni della console.</p>
     <div id="pf-emu-box">
     <div class="pf-grid">
@@ -200,15 +206,15 @@
     <div class="row end"><button class="btn" id="pf-reset">Ripristina predefinito</button><span class="grow"></span>
       <button class="btn" id="pf-cancel">Annulla</button><button class="btn primary" id="pf-save">Salva</button></div>
   </dialog>
-  <dialog id="media-dlg" class="small-dlg md-dlg">
-    <form method="dialog" class="dlg-head"><h2>Immagini del gioco <span class="muted small" id="md-game"></span></h2><button class="icon-btn">✕</button></form>
+  <dialog id="media-dlg" class="small-dlg md-dlg" role="dialog" aria-modal="true" aria-labelledby="md-title">
+    <form method="dialog" class="dlg-head"><h2 id="md-title">Immagini del gioco <span class="muted small" id="md-game"></span></h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <p class="muted small" style="margin:0 0 8px">Scegli un tipo, poi carica un file dal PC (anche trascinandolo qui), incolla un indirizzo o torna all'immagine delle fonti.</p>
       <div id="md-tiles" class="md-tiles" role="group" aria-label="Tipi di immagine"></div>
       <div class="row wrap" style="margin-top:10px">
         <label>Tipo <select id="md-kind" class="field"></select></label>
-        <button class="btn primary" id="md-upload" type="button">📁 Carica dal PC</button>
-        <button class="btn" id="md-reset" type="button" hidden>↺ Torna all'originale</button>
+        <button class="btn primary" id="md-upload" type="button"><span aria-hidden="true">📁</span> Carica dal PC</button>
+        <button class="btn" id="md-reset" type="button" hidden><span aria-hidden="true">↺</span> Torna all'originale</button>
         <input type="file" id="md-file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
       </div>
       <div id="md-sgdb" hidden><div class="muted small" id="md-sgdb-msg" style="margin:10px 0 6px"></div><div class="md-cands" id="md-cands"></div></div>
@@ -222,26 +228,27 @@
       </ol>
       <label class="lbl-field">Indirizzo dell'immagine
         <span class="row tight"><input id="md-url" class="field grow" placeholder="https://…jpg">
-        <button class="btn" id="md-paste" type="button" title="Incolla dagli appunti e salva">📋 Incolla e usa</button>
+        <button class="btn" id="md-paste" type="button" title="Incolla dagli appunti e salva"><span aria-hidden="true">📋</span> Incolla e usa</button>
         <button class="btn primary" id="md-use" type="button">Usa</button></span></label>
     </div>
   </dialog>
-  <dialog id="win-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Come aprire il gioco?</h2><button class="icon-btn" value="">✕</button></form>
+  <dialog id="win-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <form method="dialog" class="dlg-head"><h2 id="win-title">Come aprire il gioco?</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
     <form method="dialog" class="dlg-body">
-      <div class="row wrap"><button class="btn primary" value="windowed">🗗 Finestra</button>
-        <button class="btn primary" value="borderless">▭ Senza bordi</button>
-        <button class="btn primary" value="fullscreen">⛶ Schermo intero</button></div>
+      <div class="row wrap"><button class="btn primary" value="windowed"><span aria-hidden="true">🗗</span> Finestra</button>
+        <button class="btn primary" value="borderless"><span aria-hidden="true">▭</span> Senza bordi</button>
+        <button class="btn primary" value="fullscreen"><span aria-hidden="true">⛶</span> Schermo intero</button></div>
       <label class="muted small"><input type="checkbox" id="win-remember"> Ricorda la scelta (si cambia nella pagina del port)</label>
     </form>
   </dialog>
-  <dialog id="wl-dlg"><div class="dlg-body" id="wl-dlg-body"></div></dialog>
+  <dialog id="wl-dlg" role="dialog" aria-modal="true" aria-label="Lista dei desideri"><div class="dlg-body" id="wl-dlg-body"></div></dialog>
   <div id="toast" hidden></div>
+  <div id="toast-live" class="sr-only" role="status" aria-live="polite"></div>
   <div id="popover" hidden></div>
 
   <section id="settings-page" aria-labelledby="settings-title" hidden>
     <header id="settings-head">
-      <button class="icon-btn" id="settings-back" type="button" title="Chiudi le impostazioni (Esc)">←</button>
+      <button class="icon-btn" id="settings-back" type="button" aria-label="Chiudi le impostazioni" title="Chiudi le impostazioni (Esc)">←</button>
       <h1 id="settings-title">Impostazioni</h1>
       <input id="settings-search" type="search" placeholder="Cerca un'impostazione…" autocomplete="off" aria-label="Cerca fra le impostazioni">
     </header>
@@ -252,8 +259,8 @@
     </div>
   </section>
 
-  <dialog id="catalog-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2 id="cat-title">Store online</h2><button class="icon-btn">✕</button></form>
+  <dialog id="catalog-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="cat-title">
+    <form method="dialog" class="dlg-head"><h2 id="cat-title">Store online</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <p class="muted small">Incolla uno o più indirizzi di pagine che elencano i giochi di questa console (uno per riga).
         Da ogni pagina vengono letti <b>nome</b>, <b>peso</b>, link di download e link magnet: i giochi che non hai
@@ -262,18 +269,18 @@
       <div id="cat-pages" class="small"></div>
       <pre class="log" id="cat-log"></pre>
       <div class="row spread" style="gap:8px;align-items:center">
-        <button class="btn" id="cat-meta-btn" type="button" title="Legge copertina e descrizione di ogni gioco dalla pagina dello store (e dal database offline GameTDB)">🖼 Copertine e descrizioni</button>
+        <button class="btn" id="cat-meta-btn" type="button" title="Legge copertina e descrizione di ogni gioco dalla pagina dello store (e dal database offline GameTDB)"><span aria-hidden="true">🖼</span> Copertine e descrizioni</button>
         <span class="muted small grow" id="cat-meta-info"></span>
       </div>
       <p class="muted small">Scarica solo ciò che hai il diritto di scaricare (giochi che possiedi dove la copia di backup è
         consentita, homebrew, titoli liberi): il download di giochi protetti senza licenza è illegale.</p>
-      <div class="row end"><button class="btn" id="cat-refresh" type="button">↻ Rileggi</button>
+      <div class="row end"><button class="btn" id="cat-refresh" type="button"><span aria-hidden="true">↻</span> Rileggi</button>
         <button class="btn primary" id="cat-save" type="button">Salva e leggi</button></div>
     </div>
   </dialog>
 
-  <dialog id="console-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Aggiungi una console</h2><button class="icon-btn">✕</button></form>
+  <dialog id="console-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="cn-title">
+    <form method="dialog" class="dlg-head"><h2 id="cn-title">Aggiungi una console</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <label class="lbl-field">Nome <input id="cn-name" class="field" placeholder="es. NEC PC-8801"></label>
       <label class="lbl-field">Identificativo (breve, senza spazi) <input id="cn-id" class="field" placeholder="es. pc8801"></label>
@@ -287,10 +294,10 @@
     </div>
   </dialog>
 
-  <dialog id="quiz">
+  <dialog id="quiz" role="dialog" aria-modal="true" aria-label="Quiz">
     <div id="quiz-body"></div>
   </dialog>
-  <dialog id="smart-dlg">
+  <dialog id="smart-dlg" role="dialog" aria-modal="true" aria-labelledby="sm-title">
     <h3 id="sm-title">Collezione intelligente</h3>
     <div class="sm-grid">
       <label>Nome <input class="field" id="sm-name" placeholder="es. Brevi da finire"></label>
@@ -310,11 +317,11 @@
       <label class="chk"><input type="checkbox" id="sm-unplayed"> Solo mai giocati</label>
     </div>
     <div class="row end"><span class="muted grow" id="sm-count"></span>
-      <button class="btn" id="sm-delete" hidden>🗑 Elimina</button>
+      <button class="btn" id="sm-delete" hidden><span aria-hidden="true">🗑</span> Elimina</button>
       <button class="btn" id="sm-cancel">Annulla</button><button class="btn primary" id="sm-save">Salva</button></div>
   </dialog>
-  <dialog id="smeta" class="small-dlg">
-    <h3>📚 Metadati dei giochi degli store</h3>
+  <dialog id="smeta" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="smeta-title">
+    <h3 id="smeta-title">📚 Metadati dei giochi degli store</h3>
     <p class="muted small">Descrizioni, sviluppatori, generi, date e valutazioni dei giochi PC (Steam, Epic, GOG…) vengono cercati
       <b>solo nei database offline</b> già scaricati (LaunchBox, TheGamesDB): nessuna richiesta online, nessun limite consumato.
       È separato dallo scraping dei giochi delle console.</p>
@@ -322,12 +329,12 @@
     <div class="row end">
       <button class="btn" id="smeta-missing">Solo quelli senza metadati</button>
       <button class="btn primary" id="smeta-all">Cerca per tutti</button>
-      <button class="btn" id="smeta-stop" hidden>■ Interrompi</button>
+      <button class="btn" id="smeta-stop" hidden><span aria-hidden="true">■</span> Interrompi</button>
       <button class="btn" id="smeta-close">Chiudi</button>
     </div>
   </dialog>
-  <dialog id="add-game" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Aggiungi un gioco o un'applicazione</h2><button class="icon-btn">✕</button></form>
+  <dialog id="add-game" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="ag-dlg-title">
+    <form method="dialog" class="dlg-head"><h2 id="ag-dlg-title">Aggiungi un gioco o un'applicazione</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <label class="lbl-field"><span id="ag-exe-lbl">Eseguibile</span>
         <span class="row tight"><input id="ag-exe" class="field grow" placeholder="C:\Giochi\MioGioco\gioco.exe">
@@ -345,21 +352,21 @@
     </div>
   </dialog>
 
-  <dialog id="party-dlg" class="small-dlg" aria-labelledby="party-title">
-    <form method="dialog" class="dlg-head"><h2 id="party-title">Gioca con un amico</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+  <dialog id="party-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="party-title">
+    <form method="dialog" class="dlg-head"><h2 id="party-title">Partita con un amico</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body" id="party-body"></div>
   </dialog>
-  <dialog id="join-dlg" class="small-dlg" aria-labelledby="join-title">
-    <form method="dialog" class="dlg-head"><h2 id="join-title">Unisciti a un amico</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+  <dialog id="join-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="join-title">
+    <form method="dialog" class="dlg-head"><h2 id="join-title">Ho un invito</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
-      <label class="lbl-field">Incolla il codice dell'invito
+      <label class="lbl-field">Incolla il codice, il link o l'intero messaggio
         <textarea id="join-code" class="field" rows="3" autocomplete="off"></textarea></label>
       <p id="join-msg" aria-live="polite"></p>
       <div class="row end"><button class="btn primary" id="join-go" type="button">Controlla invito</button></div>
     </div>
   </dialog>
-  <dialog id="dl-add-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Aggiungi download</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
+  <dialog id="dl-add-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="dl-add-title">
+    <form method="dialog" class="dlg-head"><h2 id="dl-add-title">Aggiungi download</h2><button class="icon-btn" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <label class="lbl-field">Link, uno per riga (http, https, magnet o .torrent)
         <textarea id="dl-links" class="field" rows="4" placeholder="https://…&#10;magnet:?xt=…"></textarea></label>
@@ -370,10 +377,10 @@
       <label class="lbl-field">Cartella di destinazione
         <span class="row tight"><input id="dl-dest" class="field grow">
         <button class="btn" id="dl-dest-pick" type="button">Cambia…</button></span></label>
-      <div class="row end"><button class="btn primary" id="dl-add-go" type="button">⬇ Scarica</button></div>
+      <div class="row end"><button class="btn primary" id="dl-add-go" type="button"><span aria-hidden="true">⬇</span> Scarica</button></div>
     </div>
   </dialog>
-  <dialog id="dl-cancel-dlg" class="small-dlg">
+  <dialog id="dl-cancel-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="dl-cancel-title">
     <form method="dialog" class="dlg-head"><h2 id="dl-cancel-title">Annullare il download?</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
     <form method="dialog" class="dlg-body">
       <p id="dl-cancel-name"></p>
@@ -381,7 +388,7 @@
       <div class="row end"><button class="btn" value="" id="dl-cancel-no">Continua a scaricare</button><button class="btn primary" value="ok" id="dl-cancel-ok">Annulla il download</button></div>
     </form>
   </dialog>
-  <dialog id="dl-log-dlg" class="log-dlg" aria-labelledby="dl-log-title">
+  <dialog id="dl-log-dlg" class="log-dlg" role="dialog" aria-modal="true" aria-labelledby="dl-log-title">
     <form method="dialog" class="dlg-head"><h2 id="dl-log-title">Registro</h2><span class="dl-st" id="dl-log-st"></span><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
     <div class="dlg-body">
       <div class="dl-log-sum" id="dl-log-sum"></div>
@@ -399,8 +406,8 @@
       <div id="dl-log-box" class="dl-logbox" role="log" aria-live="polite" aria-label="Registro del download" tabindex="0"></div>
     </div>
   </dialog>
-  <dialog id="dl-limit-dlg" class="small-dlg">
-    <form method="dialog" class="dlg-head"><h2>Limite di velocità</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
+  <dialog id="dl-limit-dlg" class="small-dlg" role="dialog" aria-modal="true" aria-labelledby="dl-limit-title">
+    <form method="dialog" class="dlg-head"><h2 id="dl-limit-title">Limite di velocità</h2><button class="icon-btn" value="" aria-label="Chiudi">✕</button></form>
     <form method="dialog" class="dlg-body">
       <p id="dl-limit-name"></p>
       <p class="muted small">Solo per questo download, in KB/s: 0 = segue i limiti generali.</p>

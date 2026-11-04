@@ -2,7 +2,7 @@
 /* Pozzo Launcher - service worker della pagina del telefono.
    Serve a due cose: rendere l'app installabile (Chrome vuole un service worker con un gestore di fetch) e
    lasciare la libreria consultabile quando il Wi-Fi va e viene. Non tocca il controller (WebSocket) ne' i POST. */
-const V = "gs-m-2";                       // cambiare qui per forzare il rinnovo della cache
+const V = "gs-m-3";                       // cambiare qui per forzare il rinnovo della cache
 const SHELL = ["/m/", "/m/static/m.css", "/m/static/m.js", "/m/static/icon.png", "/m/static/icon-192.png",
   "/m/static/apple-touch-icon.png", "/m/manifest.webmanifest"];
 const MAX_IMG = 400;                      // copertine tenute: oltre, le nuove non si salvano (niente cache infinita)

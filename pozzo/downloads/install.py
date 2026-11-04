@@ -76,6 +76,7 @@ def _run(t, mgr, ctx, setup: Path) -> None:
         if not found:
             _state(t.id, status="error", finished=time.time(),
                    phase="Installazione finita, ma non ho riconosciuto il gioco")
+            t.set_stage("library", "error")
             t.log("Non trovo il gioco installato: aggiungilo con «＋ Aggiungi» o con la cartella PC in Impostazioni", "warn")
             return
         title = _title(t, ctx) or found["title"]
@@ -85,12 +86,16 @@ def _run(t, mgr, ctx, setup: Path) -> None:
         if refresh:
             refresh(mid)  # libreria aggiornata subito: il gioco compare senza aspettare una scansione
         t.options["setup"]["installed"] = True
+        t.set_stage("library", "done")
+        t.set_stage("data", "done")
         _state(t.id, status="done", finished=time.time(), phase=f"In libreria: {title}")
         t.log(f"Repack installato: {title} → {exe}")
     except Exception as e:  # noqa: BLE001 - l'errore si vede nell'attivita' e nel registro del download
         _state(t.id, status="error", finished=time.time(), phase=f"{type(e).__name__}: {e}")
+        t.set_stage("library", "error")
         t.log(f"Installazione non riuscita: {type(e).__name__}: {e}", "error")
     finally:
+        mgr.store.save([t])
         mgr._poke()
 
 

@@ -65,7 +65,7 @@ function pickCollection(anchor, gameId, current) {
 async function play(id, body = {}) {
   let r;
   try { r = await api(`/api/game/${id}/play`, { body }); } catch (e) { return toastError(e); }
-  if (r.ask) { const w = await askWindow(); return w && play(id, w); }
+  if (r.ask) { const w = await askWindow(); return w && play(id, { ...body, ...w }); } // «disco veloce» resta anche dopo la scelta della finestra
   const btn = S.detail?.id === id && $("#d-play");
   if (btn) { btn.classList.add("mo-launch"); btn.addEventListener("animationend", () => btn.classList.remove("mo-launch"), { once: true }); }
   pollRunning();
@@ -326,6 +326,46 @@ async function pasteFolder(platform) {
   loadScan();
 }
 
+/** Errore di avvio. Con un crash (emulatore chiuso subito) mostra codice, durata e ultimo log; con un fallback il bottone per riprovare con quello. */
+function launchErrorToast(r) {
+  if (!r.crash && !r.fallback) return toast(r.message, true);
+  const t = $("#toast"), c = r.crash;
+  if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
+  t.className = "err";
+  t.setAttribute("role", "alert");
+  const body = document.createElement("div");
+  body.style.cssText = "display:grid;gap:6px;max-width:min(560px,90vw)";
+  const text = document.createElement("div");
+  text.textContent = c ? `L'emulatore si è chiuso subito (codice ${c.code}, dopo ${Math.round(c.duration * 10) / 10} s)` : r.message;
+  body.appendChild(text);
+  if (c && c.log) {
+    const det = document.createElement("details"), sum = document.createElement("summary"), pre = document.createElement("pre");
+    sum.textContent = "Ultimo log";
+    pre.textContent = c.log;  // textContent: il log dell'emulatore non e' HTML
+    pre.style.cssText = "max-height:40vh;overflow:auto;white-space:pre-wrap;margin:6px 0 0;font-size:12px";
+    det.append(sum, pre);
+    body.appendChild(det);
+  }
+  const bar = document.createElement("div");
+  bar.style.cssText = "display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap";
+  const add = (label, onclick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "toast-undo";
+    b.textContent = label;
+    b.onclick = onclick;
+    bar.appendChild(b);
+  };
+  const g = [...S.byId.values()].find((x) => x.key === r.key);
+  if (g && r.fallback) add(`Prova con ${r.fallback.label}`, () => { t.hidden = true; play(g.id, { fallback: r.fallback.id }); });
+  // «Perché?» apre il pannello di detail.js (window.openDiagnose): solo se caricato
+  if (g && typeof openDiagnose === "function") add("Perché?", () => { t.hidden = true; openDiagnose(g.id); });
+  add("Chiudi", () => { t.hidden = true; });
+  t.replaceChildren(body, bar);
+  t.hidden = false;
+  clearTimeout(toastTimer);
+}
+
 let pollTimer = 0;
 async function pollRunning() {
   clearTimeout(pollTimer);
@@ -344,7 +384,7 @@ async function pollRunning() {
   } else {
     bar.hidden = true;
     if (S.running && S.running.started === r.started) {
-      if (r.status === "error") toast(r.message, true);
+      if (r.status === "error") launchErrorToast(r);
       if (r.status === "finished") {
         toast(`Sessione terminata: ${fmtTime(r.played)}${r.shots ? ` · ${r.shots} ${r.shots === 1 ? "schermata" : "schermate"}` : ""}`);
         reload(true);

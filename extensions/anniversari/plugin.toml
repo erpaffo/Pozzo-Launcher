@@ -2,7 +2,13 @@
 name = "Anniversari retro"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Un badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi, di qualche anno fa, e la pagina «Oggi nel…» con l'elenco."
+icon = "🎂"
+screenshot = "screenshot.png"
+description = "Mostra un badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi e apre la vista speciale «Oggi nel…» con la cronologia storica della tua collezione."
+long_description = "Trasforma la tua libreria in un viaggio nella storia del videogioco. Ogni giorno, Pozzo Launcher confronta la data odierna con le date di uscita complete dei tuoi titoli e mette in risalto i giochi che compiono cifre tonde (10, 20, 25, 30 o 40 anni). Dalla barra laterale puoi accedere alla vista speciale «Oggi nel…», che raccoglie tutti i compleanni videoludici del giorno organizzati per anno."
+how_it_works = "1. Installa l'estensione dallo Store estensioni e riavvia Pozzo Launcher.\n2. Se i tuoi giochi hanno date di uscita complete (giorno, mese, anno scaricate da ScreenScraper o IGDB), le copertine dei giochi festeggiati mostrano automaticamente un badge dorato (es. «30 ANNI», «25 ANNI»).\n3. Nella barra laterale sinistra compare la voce «Oggi nel…»: cliccaci per sfogliare tutti i titoli usciti in questa precisa data nel corso dei decenni.\n4. Cliccando su un titolo puoi visualizzarne la scheda e avviarlo subito per celebrare il suo anniversario!"
+features = ["Badge dorati dinamici sulle copertine dei giochi in libreria", "Pagina dedicata «Oggi nel…» nella barra laterale", "Calcolo automatico delle ricorrenze su decenni e lustri", "Supporto a tutte le console e a tutti i cataloghi PC"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["libreria:lettura"]
+load = "lazy"

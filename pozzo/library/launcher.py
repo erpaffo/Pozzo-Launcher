@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +31,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
+from . import fastcopy
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -208,9 +210,55 @@ def default_core(platform_id: str, emulator: str) -> str | None:
     return next((c for e, c in PRESETS.get(platform_id, []) if e == emulator and c), None)
 
 
-def plan(cfg, platform: P.Platform, profile: dict | None = None) -> dict | None:
+QUICK_CRASH_S = 10  # un'uscita con codice != 0 prima di tanti secondi e' un crash all'avvio
+_crash_lock = threading.Lock()
+
+
+def _crash_file(cfg) -> Path:
+    return Path(cfg.cache) / "crashes.json"
+
+
+def _crash_load(cfg) -> dict:
+    try:
+        d = json.loads(_crash_file(cfg).read_text("utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _crash_update(cfg, key: str, fn):
+    """Applica fn(voce_del_gioco) alla voce {runs: [...ultimi 5], fallback: id} e la salva."""
+    with _crash_lock:
+        data = _crash_load(cfg)
+        ent = data.setdefault(key, {"runs": []})
+        fn(ent)
+        ent["runs"] = ent["runs"][-5:]
+        try:
+            _crash_file(cfg).parent.mkdir(parents=True, exist_ok=True)
+            _crash_file(cfg).write_text(json.dumps(data), "utf-8")
+        except OSError:  # la diagnostica non deve impedire di giocare
+            pass
+        return ent
+
+
+def _quick(r: dict) -> bool:
+    return r.get("code") not in (0, None) and r.get("duration", 99) < QUICK_CRASH_S
+
+
+def last_crash(cfg, game_key: str) -> dict | None:
+    """Ultimo crash all'avvio registrato per il gioco ({time, code, duration, log}) o None."""
+    runs = _crash_load(cfg).get(game_key, {}).get("runs", [])
+    return next((r for r in reversed(runs) if _quick(r)), None)
+
+
+def cand_id(pl: dict) -> str:
+    return pl["emulator"] + (f":{pl['core']}" if pl.get("core") else "")
+
+
+def plan(cfg, platform: P.Platform, profile: dict | None = None, prefer: str | None = None, skip: str | None = None) -> dict | None:
     """Emulatore scelto per una console (o per un gioco con un profilo proprio):
-    {emulator, exe, core, args, profile} oppure None."""
+    {emulator, exe, core, args, profile} oppure None. prefer/skip: id candidato (emulatore[:core]) da
+    preferire o da saltare (alternativa dopo un crash)."""
     over = dict(cfg.launch.get(platform.id, {}))
     prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY,)}
     if prof:
@@ -245,7 +293,10 @@ def plan(cfg, platform: P.Platform, profile: dict | None = None) -> dict | None:
             if i > 0 and args[i - 1] in ("-g", "--game", "-e", "-dvd_path"):
                 i -= 1
             args = [*args[:i], *extra, *args[i:]]
-        return {"emulator": emu, "exe": exe, "core": core, "args": list(args), "profile": bool(prof)}
+        res = {"emulator": emu, "exe": exe, "core": core, "args": list(args), "profile": bool(prof)}
+        if skip and cand_id(res) == skip or prefer and cand_id(res) != prefer:
+            continue
+        return res
     return None
 
 
@@ -607,6 +658,11 @@ class Launcher:
         self.next_args: list[str] = []  # argomenti in piu' per il solo prossimo avvio (es. netplay)
         self.lock = threading.Lock()
         self._hotkey = None
+        try:  # copie «disco veloce» rimaste da un crash (tenute se l'utente le vuole riusare)
+            if (cfg.app.get("fastcopy") or {}).get("delete_after", True):
+                fastcopy.purge_stale(cfg)
+        except Exception:
+            pass
 
     def screenshot(self) -> bool:
         """Cattura la finestra del gioco e la salva nell'app."""
@@ -688,6 +744,9 @@ class Launcher:
         Se non trova nessun processo da chiudere (gioco avviato da un launcher, cartella sconosciuta...) interrompe
         comunque l'attesa: il launcher smette di mostrarlo «in esecuzione». False solo se non c'era nessun gioco."""
         self.stop_found = False
+        if self.state.get("status") == "extracting":  # copia/estrazione in corso: nessun processo, si annulla soltanto
+            self._stop_evt.set()
+            return True
         if self.state.get("status") != "running":
             return False
         try:
@@ -727,11 +786,18 @@ class Launcher:
     def running(self) -> dict:
         return dict(self.state)
 
-    def launch(self, key: str, title: str, platform: P.Platform, path: Path):
+    def launch(self, key: str, title: str, platform: P.Platform, path: Path, fast: bool = False, fallback: str | None = None):
         with self.lock:
             if self.state.get("status") in ("starting", "extracting", "running"):
                 raise LaunchError(f"E' gia' in esecuzione: {self.state.get('title')}")
-            pl = plan(self.cfg, platform, self.profile_of(key))
+            remembered = _crash_load(self.cfg).get(key, {}).get("fallback")
+            pl = None
+            for want in (fallback, remembered):  # candidato scelto dopo un crash, poi quello ricordato, poi il solito
+                pl = want and plan(self.cfg, platform, self.profile_of(key), prefer=want)
+                if pl:
+                    pl["trial"] = want == fallback
+                    break
+            pl = pl or plan(self.cfg, platform, self.profile_of(key))
             if not pl:
                 cands = ", ".join(e + (f" (core {c})" if c else "") for e, c in PRESETS.get(platform.id, [])) or "nessun preset"
                 raise LaunchError(f"Nessun emulatore configurato per {platform.name}. Aggiungi in config.toml, "
@@ -741,12 +807,14 @@ class Launcher:
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],
                           "emulator_id": pl["emulator"], "exe": pl["exe"], "profile": pl.get("profile", False),
                           "started": time.time(), "shots": 0}
-        threading.Thread(target=self._run, args=(key, platform, path, pl), daemon=True).start()
+        threading.Thread(target=self._run, args=(key, platform, path, pl, fast), daemon=True).start()
 
     # ------------------------------------------------------------ giochi PC (store e manuali)
     LAUNCHER_EXES = {"explorer.exe", "battle.net launcher.exe", "battle.net.exe", "riotclientservices.exe"}
 
-    def launch_pc(self, key: str, title: str, launch: dict, install_dir: str, store: str, store_id: str = ""):
+    def launch_pc(self, key: str, title: str, launch: dict, install_dir: str, store: str, store_id: str = "", fast: bool = False):
+        if fast:  # controllo subito (prima della copia): la rotta risponde con l'errore
+            self._fast_rels(launch, install_dir, store_id)
         with self.lock:
             if self.state.get("status") in ("starting", "extracting", "running"):
                 raise LaunchError(f"E' gia' in esecuzione: {self.state.get('title')}")
@@ -756,7 +824,70 @@ class Launcher:
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": store,
                           "emulator_id": "", "exe": launch.get("target") if launch.get("type") != "uri" else None,
                           "started": time.time(), "shots": 0}
-        threading.Thread(target=self._run_pc, args=(key, launch, install_dir, store_id), daemon=True).start()
+        threading.Thread(target=self._run_pc, args=(key, launch, install_dir, store_id, fast), daemon=True).start()
+
+    # ------------------------------------------------------------ «gioca da disco veloce»
+    def _fast_copy(self, key: str, src: Path, fc: dict) -> Path:
+        """Copia src nella cartella temporanea su disco veloce e ritorna il percorso della copia.
+        fc["dir"] viene impostato PRIMA di copiare: una copia a meta' si cancella sempre."""
+        src = Path(src)
+        self._set(status="extracting", message="Copia su disco veloce…")
+        d = fastcopy.ensure_root(self.cfg) / (re.sub(r"[^\w.-]+", "_", key).strip(".") or "_")  # mai fuori dalla radice
+        dst = d / src.name
+        fc["dir"] = d
+        if dst.exists() and fastcopy.same(dst, src):
+            return dst  # copia rimasta (delete_after = false), completa e aggiornata: niente da ricopiare
+        if d.exists():
+            fastcopy.remove(d, self.cfg)
+        out = fastcopy.copy(src, d, on_progress=lambda f, t: self._set(message=f"Copia su disco veloce… {int(f * 100)}%"),
+                            cancel=self._stop_evt)
+        if self._stop_evt.is_set():
+            raise fastcopy.FastCopyError("Copia annullata")
+        return out
+
+    def _fast_done(self, fc: dict):
+        """Fine partita (prima di «finished»): toglie la copia se previsto. Mai in errore, mai con il gioco vivo."""
+        d, fc["dir"] = fc.get("dir"), None
+        if d and (self.cfg.app.get("fastcopy") or {}).get("delete_after", True):
+            self._fast_remove(d)
+
+    def _fast_remove(self, d: Path):
+        try:
+            proc = getattr(self, "_proc", None)
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.wait(5)
+                except Exception:
+                    return  # ancora vivo: non si cancella sotto i piedi del gioco (lo ripulisce purge_stale)
+            track = getattr(self, "_track", None)
+            if track and Path(track).is_dir() and self._game_procs(str(track)):
+                return
+            fastcopy.remove(d, self.cfg)
+        except Exception:
+            pass
+
+    def _fast_fail(self, e: Exception):
+        known = isinstance(e, (LaunchError, fastcopy.FastCopyError))
+        msg = "Copia annullata" if self._stop_evt.is_set() else (str(e) if known else f"{type(e).__name__}: {e}")
+        self._set(status="error", message=msg)
+
+    @staticmethod
+    def _fast_rels(launch: dict, install_dir: str, store_id: str) -> dict:
+        """Percorsi relativi a install_dir di target/cwd/track_dir; LaunchError se il gioco non e' copiabile."""
+        err = "Questo gioco non puo' essere copiato su disco veloce"
+        target = launch.get("target") or ""
+        if (launch.get("type") == "uri" or store_id in STORE_LAUNCHERS or Path(target).name.lower() in Launcher.LAUNCHER_EXES
+                or not install_dir or not Path(install_dir).is_dir()):
+            raise LaunchError(err)
+        root = os.path.normcase(os.path.abspath(install_dir))
+        out = {}
+        for k in ("target", "cwd", "track_dir"):
+            if launch.get(k):
+                a = os.path.abspath(launch[k])
+                if os.path.normcase(a) != root and not os.path.normcase(a).startswith(root + os.sep):
+                    raise LaunchError(err)
+                out[k] = os.path.relpath(a, os.path.abspath(install_dir))
+        return out
 
     def _scripts(self, key: str, when: str):
         """Script dell'utente prima o dopo il gioco: prima quello di tutti i giochi, poi quello del gioco
@@ -812,7 +943,23 @@ class Launcher:
                 out.append(p)
         return out
 
-    def _run_pc(self, key: str, launch: dict, install_dir: str, store_id: str = ""):
+    def _run_pc(self, key: str, launch: dict, install_dir: str, store_id: str = "", fast: bool = False):
+        fc = {"dir": None}
+        try:
+            if fast:
+                rels = self._fast_rels(launch, install_dir, store_id)
+                # shortcut: i salvataggi scritti dentro la cartella copiata vanno persi alla cancellazione (nessuna copia indietro), sincronizzarli quando serve
+                root = self._fast_copy(key, Path(install_dir), fc)
+                launch = {**launch, **{k: str(root / r) for k, r in rels.items()}}
+                install_dir = str(root)
+            self._run_pc_body(key, launch, install_dir, store_id, fc)
+        except Exception as e:  # solo la fase di copia: il resto gestisce i propri errori
+            self._fast_fail(e)
+        finally:
+            if fc["dir"]:  # errore o arresto: la copia non serve piu'
+                self._fast_remove(fc["dir"])
+
+    def _run_pc_body(self, key: str, launch: dict, install_dir: str, store_id: str, fc: dict):
         launcher = STORE_LAUNCHERS.get(store_id) if (self.cfg.app.get("launch") or {}).get("close_launcher") else None
         launcher_was_open = bool(launcher and _procs_named(launcher))
         # launcher dello store aperto dal gioco: finestra ridotta a icona (disattivabile: launch.hide_launcher = false)
@@ -877,6 +1024,7 @@ class Launcher:
             self.user.record_play(key, played)
             self._end_companion(comp, key)
             self._scripts(key, "after")
+            self._fast_done(fc)
             self._set(status="finished", played=played, code=proc.returncode if proc else 0)
             if launcher and not launcher_was_open:  # solo se l'ha aperto il gioco: un launcher gia' aperto resta
                 time.sleep(LAUNCHER_GRACE)
@@ -927,9 +1075,21 @@ class Launcher:
         except Exception as e:  # noqa: BLE001 - le impostazioni non devono impedire di giocare
             self._set(message=f"Preset impostazioni non applicato: {e}")
 
-    def _run(self, key: str, platform: P.Platform, path: Path, pl: dict):
+    def _run(self, key: str, platform: P.Platform, path: Path, pl: dict, fast: bool = False):
+        fc = {"dir": None}
         try:
-            target = resolve_target(platform, path)
+            # il gioco si identifica sempre con `path` (originale); la copia serve solo per avviarlo
+            src = self._fast_copy(key, path, fc) if fast else path
+            self._run_emu(key, platform, path, pl, src, fc)
+        except Exception as e:  # solo la fase di copia: il resto gestisce i propri errori
+            self._fast_fail(e)
+        finally:
+            if fc["dir"]:
+                self._fast_remove(fc["dir"])
+
+    def _run_emu(self, key: str, platform: P.Platform, path: Path, pl: dict, src: Path, fc: dict, retry: bool = False):
+        try:
+            target = resolve_target(platform, src)
             if _needs_extract(pl, platform, target):
                 self._set(status="extracting")
                 target = _extract(self.cfg, target, key.replace("/", "_").replace(":", "_"),
@@ -937,12 +1097,15 @@ class Launcher:
             if platform.id == "switch" and pl["emulator"] == "ryujinx":
                 try:  # il gioco base parte con il suo aggiornamento piu' nuovo
                     sib = SF.package_files(path) if path.is_dir() else [f for f in path.parent.iterdir() if f.suffix.lower() in SF.PACKAGE_EXTS]
-                    if (up := register_switch_update(pl["exe"], target, sib)):
+                    base = resolve_target(platform, path) if src != path else target  # aggiornamenti: sempre quelli originali
+                    if (up := register_switch_update(pl["exe"], base, sib)):
                         self._set(message=f"Aggiornamento collegato: {up.name}")
                 except OSError:  # nessun aggiornamento collegato non impedisce di giocare
                     pass
             core = str(_core_path(self.cfg, pl["core"])) if pl["core"] else ""
             args = [a.replace("{rom}", str(target)).replace("{core}", core) for a in pl["args"]]
+            if self._stop_evt.is_set():  # «Chiudi gioco» durante copia/estrazione
+                raise LaunchError("Avvio annullato")
             self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
             comp = self._companion(key)
@@ -951,14 +1114,48 @@ class Launcher:
             self.on_event("game_launching", dict(self.state))
             self._set(status="running", message=" ".join(f'"{c}"' if " " in c else c for c in cmd))
             t0 = time.time()
-            proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent))
-            self._proc, self._track = proc, None
-            self._wait_proc(proc)
-            played = time.time() - t0
+            import tempfile  # stderr su file temporaneo (non in memoria): serve per l'ultimo log in caso di crash
+            with tempfile.TemporaryFile() as errf:  # chiuso anche se Popen o l'attesa falliscono
+                proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf)
+                self._proc, self._track = proc, None
+                self._wait_proc(proc)
+                played = time.time() - t0
+                code = proc.returncode
+                stopped = self._stop_evt.is_set()  # «Chiudi gioco»: non e' un crash, qualunque sia il codice
+                log = ""
+                if code not in (0, None) and played < QUICK_CRASH_S and not stopped:
+                    errf.seek(0)
+                    log = "\n".join(errf.read().decode("utf-8", "replace").splitlines()[-50:])
             self.user.record_play(key, played)
             self._end_companion(comp, key)
             self._scripts(key, "after")
-            self._set(status="finished", played=played, code=proc.returncode)
+            run = {"time": time.time(), "code": None if stopped else code, "duration": round(played, 2), "log": log}
+            # un'uscita normale di un gioco senza storico non scrive nulla
+            ent = _crash_update(self.cfg, key, lambda e: e["runs"].append(run)) if _quick(run) or key in _crash_load(self.cfg) else {"runs": [run]}
+            streak = 0
+            for r in reversed(ent["runs"]):
+                if not _quick(r):
+                    break
+                streak += 1
+            if _quick(run) and streak >= 2:
+                alt = plan(self.cfg, platform, self.profile_of(key), skip=cand_id(pl))
+                fb = None
+                if alt and cand_id(alt) != cand_id(pl):
+                    fb = {"kind": "core" if alt["core"] else "preset", "id": cand_id(alt),
+                          "label": f"core {alt['core']}" if alt["core"] else f"emulatore {alt['emulator']}"}
+                if fb and not retry and self.cfg.app.get("crash_fallback", "propose") == "apply":
+                    self._set(message=f"Crash all'avvio: riprovo con {fb['label']}")
+                    self._set(emulator=alt["emulator"], emulator_id=alt["emulator"], exe=alt["exe"])
+                    alt["trial"] = True
+                    return self._run_emu(key, platform, path, alt, src, fc, retry=True)
+                self._fast_done(fc)  # dopo la scelta: il ritentativo qui sopra riusa la copia veloce
+                self._set(status="error", played=played, code=code, message=f"{pl['emulator']} si e' chiuso subito (codice {code})",
+                          crash={"code": code, "duration": run["duration"], "log": log}, fallback=fb)
+                return
+            if pl.get("trial") and not _quick(run):  # l'alternativa funziona: si ricorda per questo gioco
+                _crash_update(self.cfg, key, lambda e: e.update(fallback=cand_id(pl)))
+            self._fast_done(fc)
+            self._set(status="finished", played=played, code=code, crash=None, fallback=None)
         except LaunchError as e:
             self._set(status="error", message=str(e))
         except Exception as e:

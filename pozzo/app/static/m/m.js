@@ -1070,6 +1070,47 @@ $("#v-act").onclick = async (e) => {
   loadActivity();
 };
 
+/* ------------------------------------------------------------------ scarica sul PC: link incollati o condivisi */
+/** Link (http, https, magnet) trovati in un testo: senza doppioni, senza il punto o la parentesi finale. */
+function extractLinks(text) {
+  const found = String(text || "").match(/https?:\/\/\S+|magnet:\?\S+/gi) || [];
+  return [...new Set(found.map((s) => s.replace(/[.,;:!?)\]»"']+$/, "")))];
+}
+async function sendLinks() {
+  const links = extractLinks($("#paste-links").value);
+  if (!links.length) return toast("Nessun link trovato: serve un indirizzo http(s):// o magnet:?", true);
+  $("#paste-go").disabled = true;
+  try {
+    const r = await api("/m/api/downloads", { body: { links } });
+    const n = r?.tasks?.length ?? links.length;  // risposta di POST /api/downloads: {ok, tasks}
+    $("#paste-links").value = "";
+    toast(`${n} ${n === 1 ? "download aggiunto" : "download aggiunti"} alla coda del PC`);
+  } catch (e) { toast(e.message, true); }
+  $("#paste-go").disabled = false;
+}
+$("#paste-go").onclick = sendLinks;
+$("#paste-clip").hidden = !navigator.clipboard?.readText;  // il browser non sempre lo permette
+$("#paste-clip").onclick = async () => {
+  try {
+    const t = (await navigator.clipboard.readText()).trim();
+    if (!t) return toast("Negli appunti non c'è nulla", true);
+    const ta = $("#paste-links");
+    ta.value = [ta.value.trim(), t].filter(Boolean).join("\n");
+  } catch { toast("Il browser non dà accesso agli appunti: incolla nel campo", true); }
+};
+// Web Share Target: «Condividi» da un'altra app apre /m/?share=1&title=&text=&url= (letto una volta, poi l'URL si ripulisce)
+let SHARE = (() => {
+  const p = new URLSearchParams(location.search);
+  if (p.get("share") !== "1") return "";
+  history.replaceState(null, "", location.pathname + location.hash);
+  return [p.get("title"), p.get("text"), p.get("url")].filter(Boolean).join("\n");
+})();
+function openShare(text) {
+  tab("act");
+  $("#paste-links").value = text;
+  $("#paste-box").scrollIntoView({ block: "start" });
+}
+
 
 /* ------------------------------------------------------------------ navigazione */
 function tab(name) {
@@ -1125,6 +1166,7 @@ async function start() {
     renderHome();
   } else $("#v-home").innerHTML = skeleton();
   tab("home");
+  if (SHARE) { openShare(SHARE); SHARE = ""; }
   try { decode(await api("/api/library?part=owned")); }
   catch (e) {  // senza rete e senza cache: la Home lo dice, invece di restare vuota
     if (!$("#pair").hidden) return;

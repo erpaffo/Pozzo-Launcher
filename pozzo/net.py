@@ -94,9 +94,9 @@ class Stop(Exception):
     """La sorgente non puo' piu' rispondere (quota esaurita, blacklist, credenziali errate)."""
 
 
-def make_client() -> httpx.AsyncClient:
+def make_client(http2: bool = True) -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        http2=True,
+        http2=http2,
         timeout=httpx.Timeout(30, connect=15),
         limits=httpx.Limits(max_connections=128, max_keepalive_connections=64),
         headers={"User-Agent": UA},

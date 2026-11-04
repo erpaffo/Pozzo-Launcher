@@ -51,10 +51,14 @@ def manifest(d: Path) -> dict:
 
 def entry(d: Path, base: str) -> dict:
     m = manifest(d)
-    return {"id": d.name, "name": m.get("name", d.name), "version": str(m.get("version", "")),
-            "author": m.get("author", ""), "description": m.get("description", ""),
-            "min_app": str(m.get("min_app", "0")), "base": base,
-            "files": {f.name: sha(f) for f in files_of(d)}}
+    out = {"id": d.name, "name": m.get("name", d.name), "version": str(m.get("version", "")),
+           "author": m.get("author", ""), "description": m.get("description", ""),
+           "min_app": str(m.get("min_app", "0")), "base": base,
+           "files": {f.name: sha(f) for f in files_of(d)}}
+    for k in ("icon", "screenshot", "long_description", "how_it_works", "features", "permissions", "featured"):
+        if k in m:
+            out[k] = m[k]
+    return out
 
 
 def extension_dirs(parent: Path) -> list[Path]:

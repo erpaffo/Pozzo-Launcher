@@ -22,12 +22,27 @@ function layout() {
   S.rows = rows;
   S.total = y + 60;
   sizer.style.height = S.total + "px";
-  $("#empty").hidden = S.items.length > 0;
+  $("#empty").hidden = S.items.length > 0 || skeletonWanted();
   $("#empty").innerHTML = S.search ? esc(`Nessun gioco trovato per «${S.search}».`)
     : !$("#loadbar").hidden ? ""
     : !S.games.length ? `<div class="empty-lib"><b>La libreria è vuota.</b><p class="muted">Scegli la cartella delle ROM o importa i giochi degli store.</p>
         <button class="btn primary" onclick="SETUP.open(true).then(() => reload(true))">🧭 Configurazione guidata</button></div>`
     : "Nessun gioco in questa vista.";
+  skeletonSync();
+}
+
+/* Segnaposto mentre la libreria carica e non c'e' ancora nulla da mostrare (GSSkeleton in motion-settings.js). */
+function skeletonWanted() {
+  return !!window.GSSkeleton && !!$("#grid-scroll") && !$("#loadbar").hidden && !S.items.length;
+}
+
+function skeletonSync() {
+  const box = $("#grid-scroll"), want = skeletonWanted(), has = !!box?.querySelector("[data-gs-skel]");
+  if (want && !has) {
+    // quante tessere stanno nel viewport: colonne x righe visibili, tra 12 e 24
+    const rows = Math.ceil(scroller.clientHeight / ((S.th || 260) + S.gap));
+    window.GSSkeleton.show(box, Math.min(24, Math.max(12, (S.cols || 1) * rows)));
+  } else if (!want && has) window.GSSkeleton.hide(box);
 }
 
 function firstRow(top) {
@@ -69,6 +84,7 @@ function render() {
     });
   }
   for (const [k, el] of S.nodes) if (!keep.has(k)) { stopCover(el); el.remove(); S.nodes.delete(k); }
+  setRoving();
   // copertine solo a scorrimento fermo: uno scorrimento veloce non deve riempire la coda del browser
   clearTimeout(S.coverT);
   S.coverT = setTimeout(loadCovers, 120);
@@ -107,7 +123,7 @@ function tileEl(g) {
   const el = document.createElement("div");
   el.className = "tile" + (S.selected === g.id ? " selected" : "") + (g.store && !g.installed ? " notinst" : "");
   el.dataset.id = g.id;
-  el.tabIndex = 0;
+  el.tabIndex = -1; // setRoving() (a fine render) lascia tabulabile solo la tessera corrente
   el.setAttribute("role", "button");
   el.setAttribute("aria-label", `Apri ${g.title}, ${platName(g.platform)}`);
   const pn = platName(g.platform);
@@ -252,3 +268,89 @@ function refreshGrid(keepScroll = false) {
   render();
   updateHeader();
 }
+
+/* ------------------------------------------------------------------ navigazione da tastiera nella griglia
+   Roving tabindex: Tab entra nella griglia sulla tessera corrente ed esce con un solo Tab. */
+let kbIdx = 0; // tessera corrente nell'ordine visivo (le righe di sezione non contano)
+const NAV_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"];
+
+/**
+ * Indice (nell'ordine visivo) della tessera dopo un tasto di navigazione; null se il tasto non e' di navigazione.
+ * cols: tessere per riga; rowsPerPage: righe di una schermata; ctrl: Ctrl+Home/Ctrl+End vanno a inizio/fine di tutto.
+ * rowStarts (facoltativo): indice del primo elemento di ogni riga, quando le righe non sono tutte da cols (sezioni).
+ */
+function nextIndex(key, idx, cols, total, rowsPerPage, ctrl, rowStarts) {
+  if (!NAV_KEYS.includes(key) || total <= 0) return null;
+  const last = total - 1, cur = Math.min(Math.max(0, idx), last);
+  const starts = rowStarts || Array.from({ length: Math.ceil(total / Math.max(1, cols)) }, (_, r) => r * cols);
+  let r = 0;
+  while (r + 1 < starts.length && starts[r + 1] <= cur) r++;
+  const end = (k) => (k + 1 < starts.length ? starts[k + 1] : total) - 1; // ultimo elemento della riga k
+  // stessa colonna nella riga t (o l'ultima della riga, se questa e' piu' corta)
+  const moveRows = (d) => { const t = Math.min(starts.length - 1, Math.max(0, r + d)); return Math.min(starts[t] + cur - starts[r], end(t)); };
+  switch (key) {
+    case "ArrowLeft": return Math.max(0, cur - 1);
+    case "ArrowRight": return Math.min(last, cur + 1);
+    case "ArrowUp": return moveRows(-1);
+    case "ArrowDown": return moveRows(1);
+    case "PageUp": return moveRows(-Math.max(1, rowsPerPage));
+    case "PageDown": return moveRows(Math.max(1, rowsPerPage));
+    case "Home": return ctrl ? 0 : starts[r];
+    case "End": return ctrl ? last : end(r);
+  }
+  return null;
+}
+
+/** Tessere nell'ordine in cui si vedono, inizio di ogni riga e riga (per la posizione verticale). */
+function gridOrder() {
+  const list = [], starts = [], trows = [];
+  for (const row of S.rows) {
+    if (row.type !== "t") continue;
+    trows.push(row); starts.push(list.length); list.push(...row.items);
+  }
+  return { list, starts, trows };
+}
+
+/** Solo la tessera corrente e' nel tab order; se non e' disegnata (fuori finestra), la prima disegnata. */
+function setRoving() {
+  const { list } = gridOrder();
+  kbIdx = Math.min(kbIdx, Math.max(0, list.length - 1)); // dopo un filtro la lista puo' essere piu' corta
+  let roving = list[kbIdx] && S.nodes.get(list[kbIdx].id);
+  for (const el of S.nodes.values()) if (el.dataset.id !== undefined && !roving) roving = el;
+  for (const el of S.nodes.values()) if (el.dataset.id !== undefined) el.tabIndex = el === roving ? 0 : -1;
+}
+
+/** Sposta il fuoco: scorre se la riga di destinazione non e' visibile, disegna e mette il fuoco sulla tessera. */
+function moveFocus(key, ctrl) {
+  const { list, starts, trows } = gridOrder();
+  if (!list.length) return;
+  kbIdx = Math.min(kbIdx, list.length - 1);
+  const per = Math.max(1, Math.floor(scroller.clientHeight / ((S.th || 260) + S.gap)));
+  const n = nextIndex(key, kbIdx, S.cols, list.length, per, ctrl, starts);
+  if (n == null) return;
+  kbIdx = n;
+  let r = 0;
+  while (r + 1 < starts.length && starts[r + 1] <= n) r++;
+  const row = trows[r], top = scroller.scrollTop, h = scroller.clientHeight;
+  if (row.y < top) scroller.scrollTop = row.y;
+  else if (row.y + row.h > top + h) scroller.scrollTop = row.y + row.h - h;
+  render(); // sincrono: la tessera di destinazione deve esistere prima di darle il fuoco
+  S.nodes.get(list[n].id)?.focus({ preventScroll: true });
+}
+
+layer.addEventListener("keydown", (e) => {
+  if (!NAV_KEYS.includes(e.key) || e.defaultPrevented || e.altKey || e.metaKey || e.shiftKey) return; // Alt+frecce e Mod+Alt sono scorciatoie
+  if (e.ctrlKey && !["Home", "End"].includes(e.key)) return;
+  const tile = e.target.closest?.(".tile[data-id]");
+  // solo con il fuoco sulla tessera stessa: campi e pulsanti dentro la scheda tengono le loro frecce
+  if (!tile || e.target !== tile || S.detail || document.querySelector("dialog[open]") || $("#popover")?.hidden === false) return;
+  e.preventDefault();
+  moveFocus(e.key, e.ctrlKey);
+});
+// il clic o il Tab su una tessera la rende quella corrente
+layer.addEventListener("focusin", (e) => {
+  const tile = e.target.closest?.(".tile[data-id]");
+  if (!tile || e.target !== tile) return;
+  const i = gridOrder().list.findIndex((g) => String(g.id) === tile.dataset.id);
+  if (i >= 0) { kbIdx = i; setRoving(); }
+});

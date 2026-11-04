@@ -1,8 +1,27 @@
 "use strict";
 /* Pozzo Launcher - frontend: pagine: lista dei desideri, statistiche, top, schermate, profilo di avvio. Script classico: ambito globale condiviso con gli altri file di js/ (ordine in index.html). */
 
+/* Segnaposto mentre la pagina aspetta i dati (GSSkeleton, motion-settings.js): forma e numero per pagina.
+   Se la pagina e' gia' a schermo (refresh dopo un'azione) il contenuto resta finche' arrivano i dati, senza sfarfallio. */
+const PAGE_SKEL = {
+  wishlist: { n: 6, cols: "1fr", gap: 6, h: "84px" },
+  stats: { n: 6, cols: "repeat(auto-fill, minmax(180px, 1fr))", h: "78px" },
+  top: { n: 10, cols: "1fr", gap: 4, h: "44px" },
+  shots: { n: 12, cols: "repeat(auto-fill, minmax(240px, 1fr))", ratio: "16 / 9" },
+};
+function pageSkeleton(pv, key) {
+  if (!window.GSSkeleton || pv.firstElementChild?.dataset.view === key) return;
+  const c = PAGE_SKEL[key];
+  pv.innerHTML = `<div class="page" data-view="${key}" style="position:relative;min-height:60vh"></div>`;
+  const layer = window.GSSkeleton.show(pv.firstElementChild, c.n);
+  layer.style.gridTemplateColumns = c.cols;
+  if (c.gap) layer.style.gap = c.gap + "px";
+  for (const it of layer.children) { it.style.aspectRatio = c.ratio || "auto"; if (c.h) it.style.height = c.h; }
+}
+
 /* ---- pagina: lista dei desideri */
 async function renderWishlist(pv) {
+  pageSkeleton(pv, "wishlist");
   let d;
   try { d = await api("/api/wishlist"); } catch (e) { pv.innerHTML = `<div class="page"><p>${esc(e.message)}</p></div>`; return; }
   const money = (v, cur = "EUR") => (v == null ? "—" : v === 0 ? "Gratis" : v.toLocaleString("it", { style: "currency", currency: cur || "EUR" }));
@@ -10,7 +29,7 @@ async function renderWishlist(pv) {
   const steamImg = (w) => remoteImg(w.steam_appid ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${w.steam_appid}/header.jpg` : w.cover);
   const imgTag = (w) => (steamImg(w) ? `<img src="${steamImg(w)}" alt="" data-fb="${w.steam_appid && w.cover ? remoteImg(w.cover) : ""}" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=''}else this.remove()">` : "");
   const s = d.settings;
-  pv.innerHTML = `<div class="page">
+  pv.innerHTML = `<div class="page" data-view="wishlist">
     <div class="page-head"><div><h2>♡ Lista desideri</h2>
       <p class="muted small">Prezzi degli store ufficiali${s.has_key ? " (IsThereAnyDeal: Steam, GOG, Epic, Humble e altri)" : " (Steam; aggiungi la chiave IsThereAnyDeal per confrontare tutti gli store)"}.
         Negozi di key: GG.deals.
@@ -172,6 +191,7 @@ async function openWishPrices(wid) {
 /* ---- pagina: statistiche */
 const STATS_Y = { y: new Date().getFullYear() };
 async function renderStats(pv) {
+  pageSkeleton(pv, "stats");
   let d;
   try { d = await api(`/api/stats?year=${STATS_Y.y}`); } catch (e) { pv.innerHTML = `<div class="page"><p>${esc(e.message)}</p></div>`; return; }
   const prim = S.games.filter((g) => g.id === g.grp.primary && !g.grp.hidden && g.store !== "online");
@@ -200,7 +220,7 @@ async function renderStats(pv) {
   const MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
   const years = Object.keys(d.years).map(Number);
   if (!years.includes(STATS_Y.y)) years.push(STATS_Y.y);
-  pv.innerHTML = `<div class="page stats">
+  pv.innerHTML = `<div class="page stats" data-view="stats">
     <div class="tiles">
       <div class="tile-s"><b>${prim.length.toLocaleString("it")}</b><span>giochi in libreria</span></div>
       <div class="tile-s"><b>${played.length.toLocaleString("it")}</b><span>giocati almeno una volta</span></div>
@@ -233,6 +253,7 @@ const TOP_F = { limit: +store.get("topLimit", 100) || 100, own: "", plat: "" };
 let topTimer = 0;
 async function renderTop(pv) {
   clearTimeout(topTimer);
+  pageSkeleton(pv, "top");
   const pid = S.view.id || "all", glob = pid === "all";
   let d;
   try { d = await api(`/api/top?pid=${encodeURIComponent(pid)}&limit=${glob ? TOP_F.limit : 100}`); }
@@ -251,7 +272,7 @@ async function renderTop(pv) {
         <span class="muted small">${[t.critics != null ? `Critica ${pct(t.critics)}` : "", t.rating != null ? `Giocatori ${pct(t.rating)}%${t.votes ? ` (${t.votes.toLocaleString("it")} voti)` : ""}` : "", t.sources.join(", ")].filter(Boolean).map(esc).join(" · ")}</span></span>
       <span class="badge ${t.owned ? "inst" : ""}">${t.owned ? "✓ Posseduto" : "⬇ Scaricabile"}</span>
       <span class="top-s" title="Punteggio fra critica e giocatori">${pct(glob ? t.best ?? t.score : t.score)}</span></div>`;
-  pv.innerHTML = `<div class="page top">
+  pv.innerHTML = `<div class="page top" data-view="top">
     <p class="muted small">Solo giochi con voti affidabili (almeno 2 fonti, un voto della critica o 50 voti dei giocatori).
       Punteggio = media fra critica (Metacritic / IGDB) e giocatori. ${glob ? "Lo stesso gioco su più console conta una volta." : "Le versioni regionali contano una volta."}</p>
     <div class="top-tools">
@@ -336,6 +357,7 @@ function openLightbox(list, i) {
 }
 
 async function renderShots(pv) {
+  pageSkeleton(pv, "shots");
   let d;
   try { d = await api("/api/shots"); } catch (e) { pv.innerHTML = `<div class="page"><p>${esc(e.message)}</p></div>`; return; }
   SHOTS.page = d.shots;
@@ -344,7 +366,7 @@ async function renderShots(pv) {
   $("#cnt-shots").textContent = d.shots.length || "";
   const groups = new Map();
   d.shots.forEach((s, i) => { const k = s.game ?? s.key; if (!groups.has(k)) groups.set(k, { s, items: [] }); groups.get(k).items.push(i); });
-  pv.innerHTML = `<div class="page">
+  pv.innerHTML = `<div class="page" data-view="shots">
     <div class="page-head"><div><h2>📷 Le tue schermate</h2>
       <p class="muted small">Mentre giochi premi <kbd>${esc(SHOTS.hotkey)}</kbd> o <kbd>Select</kbd>+<kbd>R1</kbd> sul controller (View+RB su Xbox):
         l'app salva la finestra del gioco. Le schermate fatte con il tasto dell'emulatore vengono importate a fine partita.</p></div>
@@ -384,7 +406,10 @@ async function renderShots(pv) {
 /* ---- profilo di avvio per gioco */
 let PF = null;
 async function openProfile(d) {
-  try { PF = await api(`/api/game/${d.id}/profile`); } catch (e) { return toast(e.message, true); }
+  PF = null; // se la richiesta fallisce non si riusa il profilo del gioco aperto prima
+  let data;
+  try { data = await api(`/api/game/${d.id}/profile`); } catch (e) { return toast(e.message, true); }
+  PF = data;
   PF.id = d.id;
   const p = PF.profile, def = PF.default;
   $("#pf-game").textContent = `— ${d.title} (${PF.platform})`;
@@ -394,7 +419,13 @@ async function openProfile(d) {
   $("#pf-comp-args").value = p.companion_args || "";
   $("#pf-comp-kill").checked = p.companion_close === "1";
   $("#pf-emu-box").hidden = !!PF.pc; // giochi PC: solo gli script
-  if (PF.pc) return $("#prof-dlg").showModal();
+  if (PF.pc) {  // niente emulatore: si azzerano i campi rimasti dal gioco aperto prima
+    $("#pf-emu").innerHTML = ""; $("#pf-core").innerHTML = "";
+    $("#pf-exe").value = ""; $("#pf-args").value = ""; $("#pf-extra").value = "";
+    $("#pf-cmd").textContent = ""; $(".pf-preview").hidden = true;
+    return $("#prof-dlg").showModal();
+  }
+  $(".pf-preview").hidden = false;
   const emus = PF.emulators.filter((e) => e.configured || e.id === p.emulator).sort((a, b) => (b.preset - a.preset) || a.id.localeCompare(b.id));
   $("#pf-emu").innerHTML = `<option value="">Predefinito della console${def ? ` (${esc(def.emulator)}${def.core ? " · " + esc(def.core) : ""})` : ""}</option>`
     + emus.map((e) => `<option value="${esc(e.id)}"${p.emulator === e.id ? " selected" : ""}>${esc(e.id)}${e.preset ? "" : " (non previsto per questa console)"}</option>`).join("");
@@ -406,6 +437,7 @@ async function openProfile(d) {
   $("#prof-dlg").showModal();
 }
 function pfRefresh() {
+  if (!PF || PF.pc) return; // giochi PC: nessun emulatore, l'anteprima del comando non serve
   const emu = $("#pf-emu").value || PF.default?.emulator || "";
   $("#pf-core-row").hidden = emu !== "retroarch";
   const sel = PF.emulators.find((e) => e.id === $("#pf-emu").value);
@@ -418,6 +450,7 @@ function pfRefresh() {
   $("#pf-cmd").textContent = `"${exe}" ${extra && args.includes("{rom}") ? args.replace("{rom}", extra + " {rom}") : args + (extra ? " " + extra : "")}`;
 }
 async function saveProfile(reset = false) {
+  if (!PF) return toast("Profilo non caricato: chiudi e riapri la finestra", true);
   // app da avviare insieme al gioco (facoltativa), per giochi PC e console: tre campi nel profilo
   const comp = { companion: $("#pf-comp-exe").value.trim(), companion_args: $("#pf-comp-args").value.trim(),
     companion_close: $("#pf-comp-kill").checked ? "1" : "" };

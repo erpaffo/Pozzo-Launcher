@@ -38,7 +38,7 @@ def _mock(monkeypatch, status, body):
                 {"domains": ["1fichier.com"], "status": 1}]})
         return httpx.Response(status, json=body)
 
-    monkeypatch.setattr(D, "_client", lambda: httpx.Client(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(D, "_client", lambda timeout=None: httpx.Client(transport=httpx.MockTransport(handler)))
     D._cache.clear()
     D._hosts_cache.clear()
 
@@ -65,7 +65,7 @@ def test_chiave_sbagliata_e_testo_sconosciuto(monkeypatch):
 def test_chiave_coperta(monkeypatch):
     def boom(req):
         raise httpx.ConnectError(f"fallito {req.url}", request=req)
-    monkeypatch.setattr(D, "_client", lambda: httpx.Client(transport=httpx.MockTransport(boom)))
+    monkeypatch.setattr(D, "_client", lambda timeout=None: httpx.Client(transport=httpx.MockTransport(boom)))
     D._cache.clear()
     why = D.attempt("premiumize", KEY, URL)[1]
     assert why == "servizio non raggiungibile" and KEY not in why
@@ -147,19 +147,21 @@ def _wait(cond, timeout=10):
     return False
 
 
-def test_scadenza_risoluzione_errore_chiaro(tmp, monkeypatch):
-    monkeypatch.setattr(H, "RESOLVE_TIMEOUT", 0.4)
+def test_risoluzione_lenta_non_scade(tmp, monkeypatch):
+    # niente tetto esterno: l'attesa del browser nascosto (lock) puo' durare, l'errore e' solo quello vero
     gate = threading.Event()
     monkeypatch.setattr(resolvers, "_FNS", [])
-    resolvers.register(lambda u: (resolvers.note("Debrid-Link: host non supportato"), gate.wait(5), "https://x/late.bin")[2], "Lento")
+    resolvers.register(lambda u: (resolvers.note("Debrid-Link: host non supportato"), gate.wait(5),
+                                  "http://127.0.0.1:9/late.bin")[2], "Lento")
     m = _mgr(tmp)
     m.start()
     t = m.add(URL, name="r.bin")
+    assert _wait(lambda: t.phase)  # la nota del risolutore e' gia' la fase: sta risolvendo
+    time.sleep(1)
+    assert t.status == T.RUNNING and t.id in m._jobs
+    gate.set()
     assert _wait(lambda: t.status == T.ERROR)
-    assert t.error.startswith("Non sono riuscito a ottenere il link in 0.4 s") and t.error.endswith("(Debrid-Link: host non supportato)")
-    gate.set()  # il thread tardivo finisce: non deve toccare il task
-    time.sleep(0.4)
-    assert t.status == T.ERROR and "resolved_by" not in t.options and t.id not in m._jobs
+    assert t.error.endswith("(Debrid-Link: host non supportato)") and t.id not in m._jobs
     m.stop()
 
 

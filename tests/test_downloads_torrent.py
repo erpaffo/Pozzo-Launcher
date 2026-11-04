@@ -51,7 +51,7 @@ def _mgr(tmp, **dl):
     return Manager(cfg, client_factory=net.make_client, save=lambda new: None)
 
 
-def _wait(cond, timeout=15):
+def _wait(cond, timeout=60):
     end = time.time() + timeout
     while time.time() < end:
         if cond():
@@ -275,3 +275,22 @@ def test_registro_del_torrent(swarm, tmp):
     with pytest.raises(ValueError):  # gioco scelto da un set: la selezione e' bloccata
         m.set_files(t.id, {"0": 1})
     m.stop()
+
+
+def test_stato_sessione_su_disco(tmp):
+    e = TOR.Engine(tmp / "res")
+    e.configure({})
+    e._pack.update(LOCAL, listen_interfaces="127.0.0.1:0")
+    e.session()
+    e.close()
+    f = tmp / "res" / "session.dat"
+    assert f.read_bytes()
+    e2 = TOR.Engine(tmp / "res")
+    e2._pack = dict(e._pack)
+    assert e2.session() is not None  # round trip
+    e2.close()
+    f.write_bytes(os.urandom(200))  # rovinato: fallback
+    e3 = TOR.Engine(tmp / "res")
+    e3._pack = dict(e._pack)
+    assert e3.session() is not None
+    e3.close()

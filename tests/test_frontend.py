@@ -122,7 +122,7 @@ def test_experience_hooks_and_detail_modes():
     assert "function presentDetail()" in app
     assert '["panel", "page", "modal"].includes(GS.experience?.detail)' in app
     assert 'detail.setAttribute("role", "dialog")' in app and 'detail.setAttribute("aria-modal", "true")' in app
-    assert 'detail.setAttribute("role", "region")' in app and 'detail.setAttribute("aria-labelledby", "detail-title")' in app
+    assert 'mode === "panel" ? "complementary" : "region"' in app and 'detail.setAttribute("aria-labelledby", "detail-title")' in app
     assert 'if (mode === "modal")' in app and 'if (mode !== "panel") $("#detail-close").focus()' in app and 'id="detail-title"' in app
     assert 'dataset.presentation === "modal"' in app and 'focusable[focusable.length - 1].focus()' in app
     assert '#detail[data-presentation="page"].open' in (root / "app.css").read_text(encoding="utf-8")

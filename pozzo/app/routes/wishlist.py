@@ -45,6 +45,11 @@ def build_router(ctx) -> APIRouter:
             wish_state["last"] = time.time()
             if r["alerts"]:
                 events.emit("wishlist_alerts", r)
+                by_title = {w["title"]: w for w in user.wishlist()}
+                for t in r["alerts"]:  # per i webhook: prezzo, negozio e link del gioco
+                    w = by_title.get(t, {})
+                    events.emit("price_dropped", {"title": t, "price": w.get("price"), "store": w.get("shop"),
+                                                  "url": w.get("url")})
                 _notify(f"💸 {len(r['alerts'])} giochi sotto la soglia di prezzo",
                         "\n".join(f"• {t}" for t in r["alerts"][:4]))
         except Exception as e:

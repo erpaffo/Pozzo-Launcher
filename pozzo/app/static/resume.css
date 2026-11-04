@@ -1,0 +1,20 @@
+/* Riprendi (home desktop): card grande per l'ultimo gioco e righe piccole. Solo transform/opacity; data-motion spegne le transizioni. */
+.resume-host:empty { display: none; }
+.resume-host { margin-bottom: 8px; }
+.resume-hero { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 22px; align-items: center; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
+.resume-cover { position: relative; aspect-ratio: 3 / 4; overflow: hidden; border-radius: var(--radius); background: linear-gradient(145deg, hsl(var(--h) 38% 34%), hsl(var(--h) 42% 14%)); }
+.resume-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s var(--motion-ease); }
+.resume-hero:hover .resume-cover img { transform: scale(1.04); }
+.resume-body h3 { margin: 8px 0 6px; font-size: clamp(22px, 3vw, 34px); line-height: 1.1; letter-spacing: -.02em; }
+.resume-body p { margin: 4px 0; }
+.resume-body .btn { margin-top: 14px; transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease); }
+.resume-body .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -8px var(--accent); }
+.resume-body .btn:active { transform: scale(.97); }
+.resume-mini { display: flex; flex-direction: column; min-width: 0; }
+.resume-mini .shelf-game { flex: 1; }
+.resume-mini .btn { margin: 0 10px 10px; }
+@media (max-width: 640px) {
+  .resume-hero { grid-template-columns: 1fr; }
+  .resume-cover { max-width: 180px; }
+}
+html[data-motion="off"] .resume-host * { transition: none !important; }

@@ -117,6 +117,17 @@
       if (d.installed) t.appendChild(el("span", "xe-tag xe-ok", " ✓ installato"));
       v.rec.appendChild(t);
       if (d.reason) v.rec.appendChild(el("div", "muted small", d.reason));
+      if (d.reasons) {  // fedeltà / prestazioni / controller: chip con il testo nel tooltip
+        const chips = el("div", "xe-chips");
+        [["fedelta", "Fedeltà"], ["prestazioni", "Prestazioni"], ["controller", "Controller"]].forEach(([k, t]) => {
+          if (!d.reasons[k]) return;
+          const c = el("span", "xe-chip small", t);
+          c.tabIndex = 0;
+          c.title = d.reasons[k];
+          chips.appendChild(c);
+        });
+        v.rec.appendChild(chips);
+      }
       if (d.supported === false) {
         v.rec.appendChild(el("div", "xe-warn small", "Pozzo non sa installare questo emulatore: scegline uno a mano."));
         return;
@@ -227,4 +238,127 @@
     if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", parti);
     else parti();
   }
+})(typeof window !== "undefined" ? window : globalThis);
+/* Disco veloce (copia del gioco su SSD): carica le impostazioni quando si apre la scheda Emulatori e Avvio,
+   e salva/sfoglia con delegazione, perche' la scheda viene inserita con innerHTML dopo il caricamento. */
+(function (global) {
+  "use strict";
+  const doc = global.document;
+  if (!doc) return; // test in node: niente DOM
+  const campo = (id) => doc.getElementById(id);
+
+  function mostra(d) {
+    campo("fc-dir").value = d.dir || "";
+    campo("fc-dir").placeholder = d.default_dir || "";
+    campo("fc-del").checked = !!d.delete_after;
+    campo("fc-free").textContent = d.free_gb == null ? "" : `Spazio libero: ${Number(d.free_gb).toFixed(1)} GB`;
+  }
+
+  async function carica() {
+    try { mostra(await global.api("/api/app/fastcopy")); } catch (e) { global.toast(e.message, true); }
+    try { campo("pl-proto").checked = !!(await global.api("/api/party")).register_protocol; } catch (e) { global.toast(e.message, true); }
+  }
+
+  // registrazione del link pozzo:// (scheda Avvio); in caso di errore ripristina il valore precedente
+  doc.addEventListener("change", async (ev) => {
+    if (!ev.target || ev.target.id !== "pl-proto") return;
+    const el = ev.target;
+    const prima = !el.checked;
+    try {
+      const r = await global.api("/api/party/settings", { body: { register_protocol: el.checked } });
+      el.checked = !!r.register_protocol;
+    } catch (e) { el.checked = prima; global.toast(e.message, true); }
+  });
+
+  async function salva() {
+    const body = { dir: campo("fc-dir").value.trim(), delete_after: campo("fc-del").checked };
+    try {
+      mostra(await global.api("/api/app/fastcopy", { body }));
+      global.toast("Impostazioni del disco veloce salvate");
+    } catch (e) { global.toast(e.message, true); }  // il server dice il motivo (es. cartella non valida)
+  }
+
+  doc.addEventListener("click", async (ev) => {
+    const b = ev.target.closest && ev.target.closest("#fc-save, #fc-pick");
+    if (!b || !campo("fc-dir")) return;
+    if (b.id === "fc-save") return salva();
+    const p = await global.pickPath("folder");
+    if (p) campo("fc-dir").value = p;
+  });
+
+  // la scheda diventa visibile (showTab toglie hidden al pannello data-pane="emulatori")
+  const corpo = doc.getElementById("settings-body") || doc.body;
+  new global.MutationObserver((mutazioni) => {
+    if (mutazioni.some((m) => m.target.dataset && m.target.dataset.pane === "emulatori" && !m.target.hidden)) carica();
+  }).observe(corpo, { attributes: true, attributeFilter: ["hidden"], subtree: true });
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Aggiornamenti degli emulatori (scheda Emulatori): modalità del controllo automatico e lista di quelli disponibili. */
+(function (global) {
+  "use strict";
+  const doc = global.document;
+  if (!doc) return; // test in node: niente DOM
+  const campo = (id) => doc.getElementById(id);
+  const MODI = ["off", "notify", "install"];
+
+  function mostra(d) {
+    campo("emu-au-mode").value = MODI.includes(d.mode) ? d.mode : "off";
+    const box = campo("emu-upd");
+    box.textContent = "";
+    if (!d.updates || !d.updates.length) { box.textContent = "Nessun aggiornamento disponibile."; return; }
+    d.updates.filter((u) => u.update).forEach((u) => {
+      const riga = doc.createElement("div");
+      riga.className = "row";
+      const testo = doc.createElement("span");
+      testo.className = "grow";
+      testo.textContent = `${u.name}: ${u.current || "?"} → ${u.latest}`;
+      const btn = doc.createElement("button");
+      btn.className = "btn";
+      btn.type = "button";
+      btn.dataset.upd = u.id;
+      btn.textContent = "Aggiorna";
+      btn.setAttribute("aria-label", `Aggiorna ${u.name} a ${u.latest}`);
+      riga.appendChild(testo); riga.appendChild(btn);
+      box.appendChild(riga);
+    });
+  }
+
+  async function carica() {
+    if (!campo("emu-upd")) return;
+    campo("emu-upd").textContent = "Controllo gli aggiornamenti…";
+    try { mostra(await global.api("/api/emulators/updates")); }
+    catch (e) { campo("emu-upd").textContent = e.message; }
+  }
+
+  doc.addEventListener("change", async (ev) => {
+    if (!ev.target || ev.target.id !== "emu-au-mode") return;
+    try {
+      await global.api("/api/emulators/autoupdate", { body: { mode: ev.target.value } });
+      global.toast("Aggiornamento automatico degli emulatori salvato");
+    } catch (e) { global.toast(e.message, true); }
+    carica();
+  });
+
+  doc.addEventListener("click", async (ev) => {
+    if (ev.target.closest && ev.target.closest("#emu-upd-check")) return carica();
+    const btn = ev.target.closest && ev.target.closest("[data-upd]");
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = "Aggiorno…";
+    try {
+      const r = await global.api("/api/emulators/update/" + encodeURIComponent(btn.dataset.upd), { method: "POST" });
+      global.toast(`Aggiornato ${btn.dataset.upd} (${r.path})`);
+      carica();
+    } catch (e) {
+      global.toast(e.message, true);
+      btn.disabled = false;
+      btn.textContent = "Aggiorna";
+    }
+  });
+
+  // la scheda diventa visibile: si controlla la modalità e gli aggiornamenti
+  const corpo = doc.getElementById("settings-body") || doc.body;
+  new global.MutationObserver((mutazioni) => {
+    if (mutazioni.some((m) => m.target.dataset && m.target.dataset.pane === "emulatori" && !m.target.hidden)) carica();
+  }).observe(corpo, { attributes: true, attributeFilter: ["hidden"], subtree: true });
 })(typeof window !== "undefined" ? window : globalThis);

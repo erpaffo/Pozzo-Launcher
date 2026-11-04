@@ -20,6 +20,8 @@ NAMES = {"realdebrid": "Real-Debrid", "alldebrid": "AllDebrid", "premiumize": "P
 AGENT = "Pozzo"  # AllDebrid chiede il nome dell'app
 TTL = 600  # secondi: un «riprendi» subito dopo non richiede di nuovo il link
 _HOSTS_TTL = 600
+_HOSTS_FAIL_TTL = 600  # un fallimento della lista host non rifa' la rete per 10 minuti
+_HOSTS_TIMEOUT = httpx.Timeout(10, connect=5)  # solo per la lista host
 TB_TRIES, TB_WAIT = 10, 3  # TorBox scarica prima il file sui suoi server: si aspetta un po', poi si lascia perdere
 RD, AD, PM, TB = ("https://api.real-debrid.com/rest/1.0", "https://api.alldebrid.com/v4",
                   "https://www.premiumize.me/api", "https://api.torbox.app/v1/api")
@@ -59,10 +61,11 @@ def _obj(r) -> dict:
 
 _cache: dict[tuple[str, str], tuple[float, str]] = {}
 _hosts_cache: dict[str, tuple[float, set[str]]] = {}
+_hosts_fail: dict[str, tuple[float, str]] = {}  # motivo dell'ultimo errore della lista host, per servizio
 
 
-def _client() -> httpx.Client:
-    return httpx.Client(timeout=httpx.Timeout(30, connect=10), headers={"User-Agent": UA}, follow_redirects=True)
+def _client(timeout=None) -> httpx.Client:
+    return httpx.Client(timeout=timeout or httpx.Timeout(30, connect=10), headers={"User-Agent": UA}, follow_redirects=True)
 
 
 def _domains(values) -> set[str]:
@@ -128,8 +131,16 @@ def _supports(svc: str, url: str) -> bool:
     now = time.time()
     cached = _hosts_cache.get(svc)
     if cached is None or now - cached[0] >= _HOSTS_TTL:
-        with _client() as c:
-            cached = (now, _provider_hosts(c, svc))
+        failed = _hosts_fail.get(svc)
+        if failed and now - failed[0] < _HOSTS_FAIL_TTL:  # fallito da poco: stesso motivo, senza rete
+            raise _Fail(failed[1])
+        try:
+            with _client(_HOSTS_TIMEOUT) as c:
+                cached = (now, _provider_hosts(c, svc))
+        except ERRORS as e:
+            _hosts_fail[svc] = (now, _why(e, ""))  # la chiave la copre il chiamante
+            raise
+        _hosts_fail.pop(svc, None)
         _hosts_cache[svc] = cached
     return any(host == domain or host.endswith("." + domain) for domain in cached[1])
 

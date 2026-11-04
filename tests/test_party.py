@@ -1,4 +1,5 @@
 """Endpoint /api/party: invito, anteprima, unione. Launcher, api_play e Discord finti: non parte nulla."""
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -82,3 +83,145 @@ def test_join_errors(env):
     assert env.c.post("/api/party/join", json={"code": _code(k="n/a")}).status_code == 404
     assert env.c.post("/api/party/preview", json={"code": _code(k="n/a")}).json()["have"] is False
     assert env.played == []
+
+
+class _Proc:
+    def __init__(self):
+        self.stopped = False
+
+
+def _eden(env, monkeypatch, alive=True):
+    env.plan.update(emulator="eden", exe="C:/Eden/eden.exe", core="")
+    calls = {"start": [], "prefill": [], "stop": []}
+    monkeypatch.setattr(party.EDR, "start", lambda cmd: calls["start"].append(cmd) or _Proc())
+    monkeypatch.setattr(party.EDR, "alive", lambda p, wait=0.7: alive)
+    monkeypatch.setattr(party.EDR, "prefill", lambda exe, nick, host, port: calls["prefill"].append((nick, host, port)) or "ini")
+    monkeypatch.setattr(party.EDR, "stop", lambda p: calls["stop"].append(p))
+    return calls
+
+
+def test_invite_eden_avvia_stanza_e_entra_da_ospite(env, monkeypatch):
+    calls = _eden(env, monkeypatch)
+    r = env.c.post("/api/party/invite", json={"key": G["key"], "nick": "Alessandro", "host": "192.168.1.5"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    t = NP.decode(d["code"])
+    assert t["e"] == "eden" and t["p"] == NP.EDEN_PORT and t["w"] and t["c"] == ""
+    cmd = calls["start"][0]
+    assert "--room" in cmd and "--password" in cmd and cmd[cmd.index("--password") + 1] == t["w"]
+    assert calls["prefill"] == [("Alessandro", "127.0.0.1", NP.EDEN_PORT)]
+    assert env.ctx.launcher.next_args == ["-m", f"Alessandro:{t['w']}@127.0.0.1:{NP.EDEN_PORT}"]
+    assert d["steps"] and env.played == [7]
+    assert env.c.post("/api/party/close").json() == {"ok": True}
+    assert calls["stop"]  # la stanza viene fermata
+    assert env.c.get("/api/party").json()["active"] is None
+
+
+def test_invite_eden_stanza_che_non_parte(env, monkeypatch):
+    _eden(env, monkeypatch, alive=False)
+    r = env.c.post("/api/party/invite", json={"key": G["key"], "host": "192.168.1.5"})
+    assert r.status_code == 409 and "eden-room" in r.json()["detail"] and env.played == []
+
+
+def test_join_eden(env, monkeypatch):
+    calls = _eden(env, monkeypatch)
+    r = env.c.post("/api/party/join", json={"code": _code(e="eden", w="pw-1", p=24872, c="")})
+    assert r.status_code == 200 and r.json()["prefilled"] is True and env.played == [7]
+    assert calls["prefill"][0][1:] == ("10.0.0.2", 24872) and calls["start"] == []
+    assert env.ctx.launcher.next_args[0] == "-m" and env.ctx.launcher.next_args[1].endswith("@10.0.0.2:24872")
+    env.plan["emulator"] = "retroarch"
+    r = env.c.post("/api/party/join", json={"code": _code(e="eden", w="pw-1", p=24872, c="")})
+    assert r.status_code == 409 and r.json()["detail"]["error"] == "emulator-mismatch"
+
+
+def test_preview_accetta_messaggio_intero(env):
+    msg = NP.invite_message(_code(), G["title"], "retroarch")
+    p = env.c.post("/api/party/preview", json={"code": msg}).json()
+    assert p["host"] == "10.0.0.2" and p["have"] is True
+
+
+def test_get_party_kinds_lan(env, monkeypatch):
+    monkeypatch.setattr(party, "lan_ips", lambda: ["192.168.1.5"])
+    d = env.c.get("/api/party").json()
+    assert d["kinds"]["192.168.1.5"]["kind"] == "lan" and d["register_protocol"] is True
+
+
+def test_invite_risposta_ha_link_e_messaggio(env):
+    d = env.c.post("/api/party/invite", json={"key": G["key"], "host": "192.168.1.5"}).json()
+    assert d["link"].startswith("pozzo://join/") and d["code"] in d["message"]
+
+
+def test_public_ip(env, monkeypatch):
+    monkeypatch.setattr(party.NA, "public_ip", lambda: "8.8.8.8")
+    d = env.c.post("/api/party/public-ip").json()
+    assert d == {"ip": "8.8.8.8", "kind": "public", "tip": party.NA.address_kind("8.8.8.8")["tip"], "error": ""}
+    monkeypatch.setattr(party.NA, "public_ip", lambda: "")
+    r = env.c.post("/api/party/public-ip")
+    assert r.status_code == 200 and r.json()["ip"] == "" and r.json()["error"].startswith("Non riesco")
+
+
+def _invite_code():
+    return NP.encode({"v": 1, "k": G["key"], "c": "snes9x", "h": "10.0.0.2", "p": 55435, "n": "Bob"})
+
+
+def test_incoming_codice_valido_e_get(env):
+    code = _invite_code()
+    r = env.c.post("/api/party/incoming", json={"code": code})
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert env.c.get("/api/party").json()["incoming"] == {"code": code}
+    assert env.played == [] and env.ctx.launcher.next_args == []  # nessun avvio del gioco
+
+
+def test_incoming_codice_falso_400(env):
+    r = env.c.post("/api/party/incoming", json={"code": "POZZO-non-valido"})
+    assert r.status_code == 400 and r.json()["detail"]
+    assert env.c.get("/api/party").json()["incoming"] is None
+
+
+def test_incoming_link_pozzo(env):
+    code = _invite_code()
+    r = env.c.post("/api/party/incoming", json={"url": f"pozzo://join/{code}"})
+    assert r.status_code == 200
+    assert env.c.get("/api/party").json()["incoming"] == {"code": code}
+    assert env.played == []
+
+
+def test_incoming_link_non_valido_400(env):
+    r = env.c.post("/api/party/incoming", json={"url": "https://example.com/x"})
+    assert r.status_code == 400 and r.json()["detail"] == "Link non valido"
+
+
+def test_incoming_emette_evento(env):
+    emitted = []
+    env.ctx.events = SimpleNamespace(emit=lambda name, data: emitted.append((name, data)))
+    code = _invite_code()
+    r = env.c.post("/api/party/incoming", json={"code": code})
+    assert r.status_code == 200
+    assert emitted == [("party_invite", {"code": code})]
+
+
+def test_incoming_evento_che_fallisce_non_rompe_la_rotta(env):
+    def boom(name, data):
+        raise RuntimeError("sse down")
+    env.ctx.events = SimpleNamespace(emit=boom)
+    r = env.c.post("/api/party/incoming", json={"code": _invite_code()})
+    assert r.status_code == 200 and r.json() == {"ok": True}
+
+
+def test_pending_join_da_variabile_ambiente(env, monkeypatch):
+    code = _invite_code()
+    monkeypatch.setenv("POZZO_PENDING_JOIN", f"pozzo://join/{code}")
+    c = TestClient(FastAPI(routes=party.build_router(env.ctx).routes))
+    assert c.get("/api/party").json()["incoming"] == {"code": code}
+    assert "POZZO_PENDING_JOIN" not in os.environ
+
+
+def test_settings_register_protocol(env):
+    r = env.c.post("/api/party/settings", json={"register_protocol": False})
+    assert r.status_code == 200 and r.json() == {"register_protocol": False}
+    assert env.c.get("/api/party").json()["register_protocol"] is False
+
+
+def test_settings_register_protocol_non_bool_400(env):
+    r = env.c.post("/api/party/settings", json={"register_protocol": "abc"})
+    assert r.status_code == 400 and r.json()["detail"] == "register_protocol deve essere true o false"

@@ -19,7 +19,7 @@
 
   function applyAnimations(value) {
     if (!animations.has(value)) return;
-    if (window.GSMotionSettings && window.GSMotionSettings.set) window.GSMotionSettings.set(value);
+    if (window.GSMotionSettings && window.GSMotionSettings.apply) window.GSMotionSettings.apply(value);
     else if (window.GSMotion && window.GSMotion.set) window.GSMotion.set(value);
   }
 

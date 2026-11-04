@@ -12,7 +12,7 @@ button, input, select { font: inherit; color: inherit; }
 .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
 .btn.big { width: 100%; padding: 15px; font-size: 17px; }
 .logo { color: var(--accent); }
-input, select { background: var(--bg2); border: 1px solid #2c3142; border-radius: 12px; padding: 11px 13px; width: 100%; }
+input, select, textarea { background: var(--bg2); border: 1px solid #2c3142; border-radius: 12px; padding: 11px 13px; width: 100%; }
 
 /* abbinamento */
 #pair { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -328,6 +328,11 @@ body.pad-on { overflow: hidden; height: 100%; touch-action: none; }
 .act-st { font-size: 15px; opacity: .85; }
 .act-bar { height: 5px; background: #23273a; border-radius: 99px; overflow: hidden; margin-top: 4px; }
 .act-bar i { display: block; height: 100%; background: var(--accent, #5b8cff); transition: width .3s ease; }
+/* scarica sul PC: link incollati o condivisi */
+.paste { display: flex; flex-direction: column; gap: 8px; padding: 0 14px; }
+.paste textarea { min-height: 84px; resize: vertical; }
+.paste-btns { display: flex; gap: 8px; }
+.paste-btns .btn { flex: 1; padding: 12px 10px; font-size: 14px; }
 .act-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px; }
 .act-btns .btn { padding: 12px 10px; font-size: 14px; }
 /* telecomando del PC: tasti e tasti multimediali (un tocco = un tasto) */

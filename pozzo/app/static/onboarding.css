@@ -22,3 +22,7 @@
 @keyframes onb-in { from { opacity: 0; transform: translateY(8px); } }
 html[data-motion="off"] .onb-card, html[data-motion="reduced"] .onb-card { animation: none; }
 @media (prefers-reduced-motion: reduce) { html:not([data-motion="normal"]) .onb-card { animation: none; } }
+/* motivazioni del consiglio emulatore */
+.onb-motivi{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:.85em;color:var(--muted,#9aa)}
+.onb-chip{padding:2px 10px;border:1px solid var(--line,#3a3f4a);border-radius:999px;cursor:help}
+.onb-chip:focus-visible{outline:var(--focus-ring-width,3px) solid var(--accent,#6aa9ff);outline-offset:2px}

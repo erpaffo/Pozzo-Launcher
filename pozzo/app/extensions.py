@@ -251,6 +251,32 @@ def plugin_dirs(cfg) -> list[Path]:
     return [user_dir(cfg, "plugins"), BUILTIN_PLUGINS]
 
 
+# permessi dichiarati in plugin.toml ("permissions = [...]"): chiave -> etichetta. "rete:<host>" e "rete:*" a parte.
+PERMISSION_LABELS = {
+    "libreria:lettura": "Legge la libreria", "libreria:scrittura": "Modifica la libreria",
+    "file:lettura": "Legge file sul disco", "file:scrittura": "Modifica o elimina file sul disco",
+    "impostazioni": "Legge e salva impostazioni", "notifiche": "Mostra notifiche",
+    "avvio": "Avvia giochi o programmi",
+}
+
+
+def describe_permissions(perms) -> list[dict]:
+    """[{"id", "label"}] in italiano. Un permesso non riconosciuto resta nell'elenco, con etichetta di avviso."""
+    out = []
+    for p in perms or []:
+        if not isinstance(p, str):
+            continue
+        if p == "rete:*":  # estensioni che contattano siti scelti dall'utente (es. feed o store personalizzati)
+            label = "Accesso a internet: qualsiasi sito, scelto dall'utente"
+        elif p.startswith("rete:") and len(p) > 5:
+            label = f"Accesso a internet: {p[5:]}"
+        else:
+            base = next((k for k in PERMISSION_LABELS if p == k or p.startswith(k + ":")), None)
+            label = PERMISSION_LABELS[base] if base else f"Permesso non riconosciuto: {p}"
+        out.append({"id": p, "label": label})
+    return out
+
+
 def _manifest(d: Path) -> dict | None:
     mf = d / "plugin.toml"
     if not mf.exists():
@@ -290,6 +316,8 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
                     "dir": str(d), "load_ms": LOAD_MS.get(d.name),
                     "load": "lazy" if m.get("load") == "lazy" else "eager", "first_use_ms": FIRST_USE_MS.get(d.name),
                     "events": [str(e) for e in m.get("events", [])] if isinstance(m.get("events"), list) else [],
+                    "permissions": [x for x in m["permissions"] if isinstance(x, str)] if isinstance(m.get("permissions"), list) else [],
+                    "permissions_unknown": "permissions" not in m,
                     "eager_needed": sorted(EAGER_NEEDED.get(d.name, ())),
                     "jobs": [{"name": j.name, "every": j.every, "runs": j.runs, "error": j.last_error}
                              for j in JOBS if j.pid == d.name],
@@ -306,7 +334,11 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
 
 
 def plugin_file(cfg, pid: str, rel: str) -> Path | None:
-    for base in plugin_dirs(cfg):
+    bases = plugin_dirs(cfg)
+    repo_ext = Path(__file__).resolve().parent.parent.parent / "extensions"
+    if repo_ext.is_dir():
+        bases = [*bases, repo_ext]
+    for base in bases:
         try:
             root = (base / pid).resolve()
             f = (root / rel).resolve()

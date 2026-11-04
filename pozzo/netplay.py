@@ -15,16 +15,26 @@ import re
 import time
 
 PORT = 55435
+EDEN_PORT = 24872  # porta di default delle stanze di Eden (UDP)
 TTL = 3600  # secondi di validità del codice
 PREFIX = "POZZO-"
+LINK_PREFIX = "pozzo://join/"
 MAX_PAYLOAD = 512  # tetto della parte dopo il prefisso; il codice si incolla a mano (i secrets di Discord ne vorrebbero 128)
 
 _B64_RE = re.compile(r"[A-Za-z0-9_-]+")
+_ROOM_PW = re.compile(r"[A-Za-z0-9_-]{1,32}")  # niente ':' o '@': Eden separa nick:password@indirizzo:porta
+_EDEN_NICK = re.compile(r"[^a-zA-Z0-9._\- ]")
 
 
 def supported(emulator: str) -> bool:
-    """Oggi solo RetroArch ha il netplay da riga di comando."""
-    return emulator == "retroarch"
+    """RetroArch (host/connect da riga di comando) ed Eden (stanze: la stanza la avvia Pozzo, vedi edenroom.py)."""
+    return emulator in ("retroarch", "eden")
+
+
+def eden_nick(nick: str) -> str:
+    """Eden accetta solo lettere, cifre, '.', '_', '-' e spazio nel nick (4-20 caratteri nella sua interfaccia)."""
+    n = _EDEN_NICK.sub("", nick or "").strip()[:20]
+    return n if len(n) >= 4 else (n + "Pozzo")[:20]
 
 
 def _pack(info: dict) -> str:
@@ -99,11 +109,50 @@ def decode(code: str, now: float | None = None) -> dict:
         raise ValueError("Codice non valido: gioco mancante")
     if not isinstance(d.get("n"), str):
         raise ValueError("Codice non valido: nick non valido")
+    w = d.get("w")
+    if w is not None and not (isinstance(w, str) and _ROOM_PW.fullmatch(w)):
+        raise ValueError("Codice non valido: password della stanza non valida")
     return d
 
 
-def args(mode: str, host: str = "", port: int = PORT, nick: str = "") -> list[str]:
-    """Argomenti RetroArch per ospitare ("host") o unirsi ("join") a una partita."""
+_CODE_RE = re.compile(r"POZZO-[A-Za-z0-9_-]+")
+
+
+def extract_code(text: str) -> str:
+    """Primo codice invito nel testo (anche in un link pozzo://join/ o in un messaggio). Non valida: lo fa decode."""
+    m = _CODE_RE.search(text or "")
+    if not m:
+        raise ValueError("Nessun codice invito trovato")
+    return m.group(0)
+
+
+def link(code: str) -> str:
+    return LINK_PREFIX + code
+
+
+def invite_message(code: str, title: str, emulator: str) -> str:
+    """Testo da mandare all'amico: link e codice, con i requisiti dell'emulatore."""
+    if emulator == "eden":
+        req = "Ti serve lo stesso gioco e la stessa versione di Eden."
+    else:
+        req = "Ti serve lo stesso gioco e lo stesso core di RetroArch."
+    return "\n".join([
+        f"Vuoi giocare a {title} con me?",
+        req,
+        f"Apri questo link con Pozzo: {link(code)}",
+        f"Oppure incolla questo codice in Pozzo, in «Ho un invito»: {code}",
+    ])
+
+
+def args(mode: str, host: str = "", port: int = PORT, nick: str = "", emulator: str = "retroarch", password: str = "") -> list[str]:
+    """Argomenti dell'emulatore per ospitare ("host") o unirsi ("join") a una partita.
+    Eden: la stanza e' un processo a parte (edenroom), quindi anche l'ospite entra come un ospite qualsiasi."""
+    if emulator == "eden":
+        if mode not in ("host", "join"):
+            raise ValueError(f"Modalità netplay sconosciuta: {mode}")
+        if password and not _ROOM_PW.fullmatch(password):
+            raise ValueError("Password della stanza non valida")
+        return ["-m", f"{eden_nick(nick)}{':' + password if password else ''}@{host}:{port}"]
     if mode == "host":
         out = ["--host", "--port", str(port)]
     elif mode == "join":

@@ -22,6 +22,49 @@
       + `<div class="txt">${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></div>`;
   }
 
+  /* ---- «Riprendi»: il gioco da riprendere, prima card della home (GET /api/home/resume) */
+  function saveWhen(t) {
+    const ms = typeof t === "number" ? (t < 1e12 ? t * 1000 : t) : Date.parse(t);
+    const d = new Date(ms);
+    if (isNaN(d)) return "";
+    const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((day(new Date()) - day(d)) / 86400000);
+    const hm = d.toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" });
+    if (diff === 0) return `oggi ${hm}`;
+    if (diff === 1) return `ieri ${hm}`;
+    return `${d.toLocaleDateString("it", { day: "numeric", month: "short" })} ${hm}`;
+  }
+
+  function resumeCard(it, i) {
+    const r = it.resume;
+    const left = r.remaining_secs > 0 ? `circa ${Math.max(1, Math.round(r.remaining_secs / 3600))} h rimaste` : "";
+    const when = r.save ? saveWhen(r.save.time) : "";
+    const save = when ? `salvataggio di ${when}` : "";
+    return `<div class="card resume-card" data-i="${i}" style="--h:${hueOf(r.title || "")}">`
+      + `<div class="rc-cover"><div class="ph">${esc(r.title || "")}</div>`
+      + (r.cover ? `<img loading="lazy" decoding="async" src="/img/${r.id}/cover?w=400" onerror="this.remove()">` : "")
+      + `</div><div class="rc-body"><h3>${esc(r.title || "")}</h3>`
+      + (left ? `<p class="rc-meta">${esc(left)}</p>` : "") + (save ? `<p class="rc-meta">${esc(save)}</p>` : "") + `</div></div>`;
+  }
+
+  /* Come «Gioca» nella pagina del gioco: stessa strada (playGame); se il gioco non è avviabile così, si apre la pagina. */
+  async function resumePlay(id) {
+    const d = await detail(id);
+    if (!d || (d.store && !d.installed) || !d.emulator) return push(gameScreen(id));
+    playGame(d);
+  }
+
+  /* In cima alla home, se il server ha un gioco da riprendere. Lista vuota o errore: la home resta com'è. */
+  async function addResume(scr) {
+    const it = (await api("/api/home/resume").catch(() => null))?.items?.[0];
+    if (!it || !it.id) return;
+    scr.shelves.unshift({ title: "Riprendi", resume: true, items: [{ id: it.id, label: it.title || "", sub: it.platform ? platName(it.platform) : "",
+      resume: it, ok: () => resumePlay(it.id) }] });
+    scr.cols.unshift(0);
+    scr.row = scr.row > 0 ? scr.row + 1 : 0; // la scheda con il fuoco resta la stessa; senza fuoco in basso, si parte da Riprendi
+    if (cur() === scr) scr.render(main);
+  }
+
   function classicNav() {
     const s = cur();
     const html = (t, i) => `<span data-tab="${i}" class="bp-tab${s.tab === t.id ? " active" : ""}${s.navFocus === i ? " focus" : ""}"${t.aria ? ` aria-label="${esc(t.aria)}"` : ""}>${t.icon ? `<span class="bp-tab-ico">${t.icon}</span>` : ""}${esc(t.label)}</span>`;
@@ -68,15 +111,16 @@
 
   function classicShelves(shelves, tab) {
     const scr = {
-      tab, row: 0, cols: shelves.map(() => 0), navFocus: null, shelves,
+      tab, row: 0, cols: shelves.map(() => 0), navFocus: null, shelves, resumeAsked: false,
       render(el) {
+        if (tab === "home" && !this.resumeAsked) { this.resumeAsked = true; addResume(this); }
         el.innerHTML = `<div class="bp-home"><div class="bp-hero" id="hero"></div><div class="bp-shelves"><div class="bp-shelves-inner" id="shelves">`
           + shelves.map((sh, r) => `<section class="shelf" data-r="${r}"><h2>${esc(sh.title)}${sh.sub ? `<span>${esc(sh.sub)}</span>` : ""}</h2>`
-            + `<div class="shelf-row">${sh.items.map((it, i) => (sh.text ? textCard(it.label, it.sub, i, it.key, it.img, it) : card(it, i))).join("")}</div></section>`).join("")
+            + `<div class="shelf-row">${sh.items.map((it, i) => (sh.resume ? resumeCard(it, i) : sh.text ? textCard(it.label, it.sub, i, it.key, it.img, it) : card(it, i))).join("")}</div></section>`).join("")
           + `</div></div></div>`;
         this.update();
       },
-      current() { const sh = shelves[this.row]; return sh && !sh.text ? sh.items[this.cols[this.row]] : null; },
+      current() { const sh = shelves[this.row]; return sh && !sh.text && !sh.resume ? sh.items[this.cols[this.row]] : null; },
       update() {
         document.querySelectorAll(".card.focus").forEach((c) => c.classList.remove("focus"));
         renderNav();
@@ -102,7 +146,7 @@
         } else {
           const it = shelves[this.row].items[this.cols[this.row]];
           hero.innerHTML = it ? `<h1>${esc(it.label)}</h1><div class="meta">${esc(it.sub || "")}</div>` : "";
-          setBackground(null);
+          setBackground(it?.resume ? it.id : null);
         }
       },
       move(dx, dy) {
@@ -129,7 +173,7 @@
         if (this.navFocus !== null) { openTab(this.navFocus); return; }
         const sh = shelves[this.row], it = sh.items[this.cols[this.row]];
         if (!it) return;
-        if (sh.text) it.ok(); else push(gameScreen(it.id));
+        if (sh.text || sh.resume) it.ok(); else push(gameScreen(it.id));
       },
       fav() { const g = this.current(); if (g) toggleFav(g); },
       hints: [["a", "Apri"], ["y", "Cerca"], ["x", "Preferito"]],

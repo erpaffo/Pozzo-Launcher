@@ -171,3 +171,14 @@ html[data-motion="off"] :is(dialog, #toast, #settings-page), html[data-motion="o
   html:not([data-motion="normal"]) #d-fav, html:not([data-motion="normal"]) #detail .star { animation: none; }
   html:not([data-motion="normal"]) :is(dialog, #toast, #settings-page), html:not([data-motion="normal"]) dialog::backdrop { transition: none; }
 }
+
+/* Copertina condivisa tessera <-> scheda (js/detail.js coverTransition): solo con motion "normal". */
+.tile.vt-hold { animation: none; }
+html.vt-cover::view-transition-old(root), html.vt-cover::view-transition-new(root) { animation: none; }
+::view-transition-group(cover) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+::view-transition-old(cover), ::view-transition-new(cover) { height: 100%; object-fit: cover; }
+html:not([data-motion="normal"])::view-transition-group(cover),
+html:not([data-motion="normal"])::view-transition-old(cover), html:not([data-motion="normal"])::view-transition-new(cover) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(cover), ::view-transition-old(cover), ::view-transition-new(cover) { animation: none; }
+}

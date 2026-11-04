@@ -168,3 +168,55 @@ def test_args_join():
 def test_args_modalita_sconosciuta():
     with pytest.raises(ValueError):
         NP.args("spectate")
+
+
+def test_eden_supportato_e_argomenti():
+    assert NP.supported("eden") and NP.supported("retroarch") and not NP.supported("dolphin")
+    a = NP.args("join", host="10.0.0.2", port=24872, nick="Ale!", emulator="eden", password="abc-12")
+    assert a == ["-m", "AlePozzo:abc-12@10.0.0.2:24872"]
+    assert NP.args("join", host="1.2.3.4", port=1, nick="Marco", emulator="eden") == ["-m", "Marco@1.2.3.4:1"]
+    with pytest.raises(ValueError):
+        NP.args("join", host="1.2.3.4", nick="Marco", emulator="eden", password="a@b")
+
+
+def test_codice_con_password_stanza():
+    c = NP.encode({"v": 1, "k": "switch/x", "e": "eden", "h": "10.0.0.2", "p": 24872, "n": "Ale", "w": "abc_12"})
+    assert NP.decode(c)["w"] == "abc_12"
+    bad = NP.encode({"v": 1, "k": "switch/x", "h": "10.0.0.2", "p": 24872, "n": "Ale", "w": "a:b@c"})
+    with pytest.raises(ValueError):
+        NP.decode(bad)
+
+
+def test_extract_code_nudo():
+    code = NP.encode(INFO)
+    assert NP.extract_code(code) == code
+
+
+def test_extract_code_dentro_link():
+    code = NP.encode(INFO)
+    assert NP.extract_code("pozzo://join/" + code) == code
+
+
+def test_extract_code_messaggio_multiriga():
+    code = NP.encode(INFO)
+    assert NP.extract_code(f"Ciao!\nVuoi giocare?\n  {code}\nA dopo.") == code
+
+
+def test_extract_code_assente():
+    with pytest.raises(ValueError, match="Nessun codice"):
+        NP.extract_code("nessun invito qui")
+
+
+def test_link_round_trip():
+    code = NP.encode(INFO)
+    assert NP.extract_code(NP.link(code)) == code
+
+
+def test_invite_message():
+    code = NP.encode(INFO)
+    msg = NP.invite_message(code, "Super Mario World", "retroarch")
+    assert "Super Mario World" in msg and NP.link(code) in msg and code in msg
+    assert "RetroArch" in msg
+    eden = NP.invite_message(code, "Zelda", "eden")
+    assert "Eden" in eden and "RetroArch" not in eden
+    assert eden != NP.invite_message(code, "Zelda", "retroarch")

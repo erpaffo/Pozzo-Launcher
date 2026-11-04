@@ -80,6 +80,55 @@ function shelfGame(g) {
     <span class="shelf-game-title">${esc(g.title)}</span><span class="shelf-game-meta">${esc(meta)}</span></button>`;
 }
 
+/* ---- Riprendi (home): testi puri, testati in tests/test_home_resume_ui.js */
+function resumeLeftText(sec) {
+  if (!(sec > 0)) return "";
+  const m = Math.round(sec / 60);
+  if (m < 60) return `circa ${Math.max(1, m)} min rimasti`;
+  const h = Math.round(m / 60);
+  return `circa ${h} h rimast${h === 1 ? "a" : "e"}`;
+}
+function resumeSaveText(save, now = Date.now() / 1000) {
+  if (!save || !save.time) return "";
+  const t = new Date(save.time * 1000), n = new Date(now * 1000);
+  const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((day(n) - day(t)) / 86400000);
+  const when = diff <= 0 ? "oggi" : diff === 1 ? "ieri" : `${diff} giorni fa`;
+  const hm = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+  return `salvataggio di ${when} ${hm}`;
+}
+/* items: risposta di GET /api/home/resume; il primo diventa la card grande, gli altri le righe piccole */
+function resumeHtml(items) {
+  const [top, ...rest] = items;
+  const left = resumeLeftText(top.remaining_secs), save = resumeSaveText(top.save);
+  return `<article class="resume-hero" style="--h:${hue(top.title)}">
+      <div class="resume-cover"><img src="/img/${top.id}/cover?w=640" alt="" loading="lazy" onerror="this.remove()"></div>
+      <div class="resume-body">
+        <div class="shelves-kicker">Riprendi</div>
+        <h3>${esc(top.title)}</h3>
+        <p class="muted">${esc(platName(top.platform))}</p>
+        ${left ? `<p>${esc(left)}</p>` : ""}
+        ${save ? `<p class="muted">${esc(save)}</p>` : ""}
+        <button class="btn primary" type="button" data-resume-play="${top.id}">▶ Riprendi</button>
+      </div></article>
+    ${rest.length ? `<section class="shelf-section resume-row"><h2>Continua a giocare</h2><div class="shelf-lane">
+      ${rest.map((g) => `<div class="resume-mini">${shelfGame(g)}<button class="btn" type="button" data-resume-play="${g.id}" aria-label="Riprendi ${esc(g.title)}">▶ Riprendi</button></div>`).join("")}
+    </div></section>` : ""}`;
+}
+async function loadResume(pv) {
+  let items = [];
+  try { items = (await api("/api/home/resume")).items || []; } catch { return; }
+  const host = pv.querySelector(".resume-host");
+  if (!host || !items.length || S.view.type !== "home") return;
+  host.innerHTML = resumeHtml(items);
+  // lo scaffale dei recenti non ripete i giochi gia' nella card Riprendi
+  const shown = new Set(items.map((g) => String(g.id))), recent = pv.querySelector("[data-recent-shelf]");
+  if (!recent) return;
+  recent.querySelectorAll("[data-shelf-game]").forEach((b) => { if (shown.has(b.dataset.shelfGame)) b.remove(); });
+  if (!recent.querySelector("[data-shelf-game]")) recent.remove();
+  else recent.querySelector("h2").textContent = "Giocati di recente";
+}
+
 function renderShelvesHome(pv) {
   if (!pv || S.view.type !== "home") return;
   const games = S.games.filter((g) => g.id === g.grp.primary && !g.grp.hidden);
@@ -93,12 +142,12 @@ function renderShelvesHome(pv) {
   } catch (e) { console.warn("Suggerimenti non disponibili", e); }
   const hero = recent[0] || recommendations[0]?.items?.[0] || games[0];
   const sections = [
-    { title: "Continua a giocare", items: recent.slice(0, 16) },
+    { title: "Continua a giocare", items: recent.slice(0, 16), recent: true },
     ...recommendations.slice(0, 3).map((r) => ({ title: r.title, why: r.why, items: r.items.slice(0, 16) })),
     { title: "I tuoi preferiti", items: favorites.slice(0, 16) },
     ...(recent.length || recommendations.length || favorites.length ? [] : [{ title: "Dalla tua libreria", items: games.slice(0, 16) }]),
   ].filter((r) => r.items.length);
-  pv.innerHTML = `<section class="shelves-hero"${hero ? ` data-hero="${hero.id}"` : ""}>
+  pv.innerHTML = `<div class="resume-host"></div><section class="shelves-hero"${hero ? ` data-hero="${hero.id}"` : ""}>
       <img class="shelves-hero-art" alt="" hidden>
       <div class="shelves-hero-copy">
         <div class="shelves-kicker">${hero ? (recent.length ? "Bentornato" : "Una selezione per te") : "La tua raccolta"}</div>
@@ -114,7 +163,7 @@ function renderShelvesHome(pv) {
     ${!games.length && !recommendations.length ? `<section class="shelves-empty"><h2>Ancora nessun gioco da mostrare</h2>
       <p class="muted">Puoi collegare uno store, aggiungere un gioco o avviare una scansione dalle impostazioni.</p>
       <button class="btn" type="button" data-home-view="all">Apri la libreria</button></section>` : ""}
-    ${sections.map((r) => `<section class="shelf-section"><h2>${esc(r.title)}${r.why ? `<small>${esc(r.why)}</small>` : ""}</h2>
+    ${sections.map((r) => `<section class="shelf-section"${r.recent ? " data-recent-shelf" : ""}><h2>${esc(r.title)}${r.why ? `<small>${esc(r.why)}</small>` : ""}</h2>
       <div class="shelf-lane">${r.items.map(shelfGame).join("")}</div></section>`).join("")}
     ${collectionRows.length ? `<section class="shelf-section"><h2>Collezioni</h2><div class="shelf-lane">
       ${collectionRows.flatMap((r) => r.items).slice(0, 12).map((x) => `<button class="shelf-collection" type="button" data-shelf-collection="${esc(x.coll.slug)}">
@@ -123,11 +172,14 @@ function renderShelvesHome(pv) {
   pv.onclick = (e) => {
     const game = e.target.closest("[data-shelf-game]");
     if (game) { openDetail(+game.dataset.shelfGame); return; }
+    const resume = e.target.closest("[data-resume-play]");
+    if (resume) { play(+resume.dataset.resumePlay); return; }
     const collection = e.target.closest("[data-shelf-collection]");
     if (collection) { setView({ type: "collection", id: collection.dataset.shelfCollection }); return; }
     if (e.target.closest("[data-home-view]")) { setView({ type: "all" }); return; }
     if (e.target.closest("[data-home-scan]")) $("#scan-btn").click();
   };
+  loadResume(pv);
   if (hero) {
     const id = hero.id, target = pv.querySelector(".shelves-hero");
     api(`/api/game/${id}`).then((d) => {
@@ -213,3 +265,5 @@ function renderQuizResults() {
   };
   if (S.view.type === "foryou") renderForYou($("#plugin-view")); // i gusti aggiornati cambiano le righe
 }
+
+if (typeof module !== "undefined") module.exports = { resumeLeftText, resumeSaveText, resumeHtml };

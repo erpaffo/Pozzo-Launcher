@@ -1,0 +1,21 @@
+[plugin]
+name = "Sconti e bundle"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "🏷️"
+screenshot = "screenshot.png"
+description = "Gli sconti sui giochi della tua lista dei desideri, i bundle attivi che contengono giochi che ti interessano o che possiedi già, e i giochi gratis da prendere ora."
+long_description = "Raccoglie in un'unica pagina dedicata le migliori occasioni d'acquisto videoludiche. Mostra gli sconti correnti sui titoli della tua lista dei desideri (con evidenza speciale per il «Minimo storico»), i bundle promozionali attivi su IsThereAnyDeal (contrassegnati con il badge «Per te» se contengono giochi che segui o che possiedi già) e la panoramica aggiornata dei giochi attualmente riscattabili gratuitamente su store come Epic Games e Steam."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Inserisci la tua chiave gratuita di IsThereAnyDeal in Impostazioni › Lista dei desideri per sbloccare la sincronizzazione dei bundle.\n3. Apri la pagina «Sconti» dalla barra laterale sinistra.\n4. Esplora le tre schede: «Lista desideri» per i tuoi saldi prioritari, «Bundle» per le raccolte a prezzo stracciato e «Gratis ora» per riscattare promozioni a costo zero.\n5. Clicca su «Apri offerta» per completare l'acquisto o il riscatto direttamente sul negozio online."
+features = [
+  "Monitoraggio saldi in tempo reale con sconto percentuale e prezzo originale barrato",
+  "Evidenza visiva speciale per i giochi che hanno raggiunto il loro «Minimo storico»",
+  "Integrazione bundle IsThereAnyDeal con elenco dei titoli inclusi e countdown scadenza",
+  "Badge «Per te» sui pacchetti contenenti giochi presenti nella tua wishlist o libreria",
+  "Sezione «Gratis ora» per non perdere mai titoli promozionali e giochi senza DRM",
+  "Aggiornamento automatico e cache intelligente ogni 6 ore per non sprecare traffico dati"
+]
+api = 1
+min_app = "0.7.1"
+load = "lazy"
+permissions = ["rete:api.isthereanydeal.com", "rete:widget.allkeyshop.com", "rete:feed.phenx.de", "rete:www.gamerpower.com", "rete:store.steampowered.com", "libreria:lettura", "impostazioni"]

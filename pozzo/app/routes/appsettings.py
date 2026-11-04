@@ -4,17 +4,20 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import sys
 import threading
 import unicodedata
 import uuid
+from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import FileResponse
 
 from .. import extensions as X
 from ... import config as C, profilecfg as PC
-from ...library import launcher as L
+from ...library import fastcopy as FC, launcher as L
 
 
 DEFAULT_EXP_PROFILES = (
@@ -25,6 +28,52 @@ DEFAULT_EXP_PROFILES = (
 )
 EXP_PROFILE_ANIMATIONS = frozenset(("normal", "reduced", "off"))
 EXP_PROFILE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}\Z")
+WEBHOOK_EVENTS = ("gioco_avviato", "gioco_chiuso", "download_finito", "prezzo_sceso")
+WEBHOOK_MAX = 20
+
+
+def _webhook_url(value) -> str:
+    url = str(value or "").strip()
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        raise HTTPException(400, "L'indirizzo del webhook deve iniziare con http:// o https://")
+    return url
+
+
+def _public_webhooks(hooks) -> list[dict]:
+    """Webhook per il browser: il segreto non esce mai, solo has_secret."""
+    return [{**{k: v for k, v in h.items() if k != "secret"}, "has_secret": bool(h.get("secret"))} for h in hooks or []]
+
+
+def _old_secret(old_hooks, item: dict) -> str:
+    """Segreto gia' salvato per la riga: si cerca per indirizzo originale («orig», dalla GET) o per indirizzo."""
+    want = [str(item.get(k) or "").strip() for k in ("orig", "url")]
+    return next((str(h.get("secret") or "") for u in want if u for h in old_hooks or [] if h.get("url") == u), "")
+
+
+def _clean_webhooks(items, old_hooks=None) -> list[dict]:
+    """secret vuoto = resta quello salvato; clear_secret = lo toglie; un valore nuovo lo sostituisce."""
+    if not isinstance(items, list):
+        raise HTTPException(400, "I webhook devono essere una lista")
+    if len(items) > WEBHOOK_MAX:
+        raise HTTPException(400, f"Al massimo {WEBHOOK_MAX} webhook")
+    out = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise HTTPException(400, "Webhook non valido")
+        events = item.get("events") or []
+        if not isinstance(events, list) or not all(e in WEBHOOK_EVENTS for e in events):
+            raise HTTPException(400, "Evento webhook sconosciuto")
+        hook = {
+            "url": _webhook_url(item.get("url")),
+            "events": [e for e in WEBHOOK_EVENTS if e in events],  # ordine fisso, senza duplicati
+            "enabled": bool(item.get("enabled", True)),
+        }
+        secret = "" if item.get("clear_secret") else (str(item.get("secret") or "").strip() or _old_secret(old_hooks, item))
+        if secret:
+            hook["secret"] = secret
+        out.append(hook)
+    return out
 
 
 def build_router(ctx) -> APIRouter:
@@ -102,6 +151,71 @@ def build_router(ctx) -> APIRouter:
         cfg.app["launch"] = conf
         return conf
 
+    # ------------------------------------------------------------ copia veloce da disco
+    def _fastcopy_default() -> Path:
+        return Path(cfg.cache) / "fastcopy"
+
+    def _fastcopy_state() -> dict:
+        fc = cfg.app.get("fastcopy") or {}
+        raw = fc.get("dir") if isinstance(fc.get("dir"), str) else ""
+        delete_after = fc.get("delete_after")
+        effective = Path(raw).expanduser() if raw else _fastcopy_default()
+        free_gb = None
+        try:  # spazio libero della cartella, o del primo genitore esistente
+            probe = next(p for p in (effective, *effective.parents) if p.exists())
+            free_gb = round(shutil.disk_usage(probe).free / 1024 ** 3, 1)
+        except (OSError, StopIteration):
+            pass
+        return {"dir": raw, "delete_after": delete_after if isinstance(delete_after, bool) else True,
+                "default_dir": str(_fastcopy_default()), "free_gb": free_gb}
+
+    def _fastcopy_check_dir(raw: str) -> str:
+        p = Path(raw).expanduser().resolve()
+        if p.parent == p:
+            raise HTTPException(400, "Scegli una cartella dedicata: la radice di un disco non è ammessa")
+        if p == Path.home().resolve():
+            raise HTTPException(400, "Scegli una cartella dedicata: la home non è ammessa")
+        for r in C.rom_roots(cfg):  # le copie si svuotano: mai dentro (o sopra) la libreria
+            r = r.expanduser().resolve()
+            if p == r or r in p.parents or p in r.parents:
+                raise HTTPException(400, "La cartella non può stare dentro la libreria né contenerla")
+        try:
+            if p.exists():
+                if not p.is_dir():
+                    raise HTTPException(400, "Il percorso esiste ed è un file")
+                # a fine gioco la cartella puo' essere svuotata: non toccare cartelle altrui
+                if any(p.iterdir()) and not (p / FC.MARKER).exists():
+                    raise HTTPException(400, "La cartella non è vuota: scegli una cartella vuota o dedicata")
+            p.mkdir(parents=True, exist_ok=True)
+            (p / FC.MARKER).touch()  # ora e' nostra: purge_stale la puo' svuotare
+        except OSError as e:
+            raise HTTPException(400, f"Cartella non utilizzabile: {e.strerror or e}")
+        return str(p)
+
+    @router.get("/api/app/fastcopy")
+    def api_fastcopy_get():
+        return _fastcopy_state()
+
+    @router.post("/api/app/fastcopy")
+    def api_fastcopy_save(body: dict = Body(...)):
+        """Cartella della copia veloce e cancellazione a fine partita. I campi non inviati restano."""
+        fc = dict(cfg.app.get("fastcopy") or {})
+        if "delete_after" in body:
+            if not isinstance(body["delete_after"], bool):
+                raise HTTPException(400, "delete_after deve essere true o false")
+            fc["delete_after"] = body["delete_after"]
+        if "dir" in body:
+            if not isinstance(body["dir"], str):
+                raise HTTPException(400, "Cartella non valida")
+            raw = body["dir"].strip()
+            if raw:
+                fc["dir"] = _fastcopy_check_dir(raw)
+            else:  # vuota = cartella predefinita
+                fc.pop("dir", None)
+        C.save_settings(cfg, app={"fastcopy": fc})
+        cfg.app["fastcopy"] = fc
+        return _fastcopy_state()
+
     @router.get("/api/library/watch")
     def api_watch_get():
         """Stato del rilevamento automatico delle cartelle ROM (impostazioni › Libreria)."""
@@ -129,6 +243,26 @@ def build_router(ctx) -> APIRouter:
             from ... import notify
             notify.send(cfg, "Pozzo Launcher", "Notifiche attive: prezzi, giochi gratis e lavori finiti.")
         return {"enabled": on}
+
+    @router.get("/api/webhooks")
+    def api_webhooks_get():
+        return {"webhooks": _public_webhooks(cfg.app.get("webhooks"))}
+
+    @router.post("/api/webhooks")
+    def api_webhooks_set(body: dict = Body(...)):
+        hooks = _clean_webhooks(body.get("webhooks"), cfg.app.get("webhooks"))
+        C.save_settings(cfg, app={"webhooks": hooks})
+        cfg.app["webhooks"] = hooks
+        return {"webhooks": _public_webhooks(hooks)}
+
+    @router.post("/api/webhooks/test")
+    def api_webhooks_test(body: dict = Body(...)):
+        from ... import webhooks  # modulo scritto a parte: importato solo quando serve
+        url = _webhook_url(body.get("url"))
+        secret = "" if body.get("clear_secret") else (str(body.get("secret") or "").strip()
+                                                      or _old_secret(cfg.app.get("webhooks"), body))
+        ok, msg = webhooks.send_test(url, secret or None)
+        return {"ok": bool(ok), "msg": msg}
 
     @router.get("/api/app/power")
     def api_power_get():

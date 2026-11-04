@@ -50,7 +50,7 @@ def run(name: str, timeout: float) -> bool:
         print(f"!! {name}: file mancante", flush=True)
         return False
     print(f"\n=== {name}", flush=True)
-    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"}
+    env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1", "POZZO_NO_SAMPLE": "1"}
     start = time.time()
     text = path.read_text(encoding="utf-8", errors="replace")
     cmd = [sys.executable, "-X", "faulthandler"]

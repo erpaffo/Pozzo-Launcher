@@ -61,7 +61,9 @@ def main():
         assert r["ok"] and (plugins / "statistiche" / "backend.py").is_file()
         ps = X.list_plugins(cfg)
         assert [p["id"] for p in ps] == [S.STORE_ID, "statistiche"] and ps[0]["locked"] and ps[1]["enabled"]
-        assert {x["id"]: x for x in S.catalog(cfg)["items"]}["statistiche"]["state"] == "installed"
+        cat = {x["id"]: x for x in S.catalog(cfg)["items"]}
+        assert cat["statistiche"]["state"] == "installed"
+        assert cat["statistiche"]["installed_permissions"] == ["libreria:lettura"] and cat["minerva"]["installed_permissions"] is None
         print("ok  installazione da indice locale, store per primo")
 
         # aggiornamento: versione piu' alta nell'indice -> «update», reinstallando si sostituisce la cartella

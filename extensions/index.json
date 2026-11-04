@@ -6,178 +6,525 @@
       "name": "Anniversari retro",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Un badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi, di qualche anno fa, e la pagina «Oggi nel…» con l'elenco.",
+      "description": "Mostra un badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi e apre la vista speciale «Oggi nel…» con la cronologia storica della tua collezione.",
       "min_app": "0.7.1",
       "base": "anniversari/",
       "files": {
         "backend.py": "4188b25566141a966561a36508cc852a0e3322ac8cb1f968d98921a5530b3229",
         "frontend.js": "8b9665770cf2eefe47c96a52a6800f3754852e3aa20e83f19a73e16aca36a86b",
-        "plugin.toml": "955508bd2d337d06dc4e9fd2b481aa272e3730ee822d743b8b9efa437d47b91f",
+        "plugin.toml": "cb85bac94c149a160fd688b265b91cad921b03670602c54a39fa49782fb07dca",
+        "screenshot.png": "9c70f7976905490ff21af56e87ff1fa56bbd52f1cfa38d4087bdc45048c06516",
         "style.css": "57030827a56b1e35ac6c1d3b8317b60600cd85e20371b73da8e8bb096cb47b40"
-      }
+      },
+      "icon": "🎂",
+      "screenshot": "screenshot.png",
+      "long_description": "Trasforma la tua libreria in un viaggio nella storia del videogioco. Ogni giorno, Pozzo Launcher confronta la data odierna con le date di uscita complete dei tuoi titoli e mette in risalto i giochi che compiono cifre tonde (10, 20, 25, 30 o 40 anni). Dalla barra laterale puoi accedere alla vista speciale «Oggi nel…», che raccoglie tutti i compleanni videoludici del giorno organizzati per anno.",
+      "how_it_works": "1. Installa l'estensione dallo Store estensioni e riavvia Pozzo Launcher.\n2. Se i tuoi giochi hanno date di uscita complete (giorno, mese, anno scaricate da ScreenScraper o IGDB), le copertine dei giochi festeggiati mostrano automaticamente un badge dorato (es. «30 ANNI», «25 ANNI»).\n3. Nella barra laterale sinistra compare la voce «Oggi nel…»: cliccaci per sfogliare tutti i titoli usciti in questa precisa data nel corso dei decenni.\n4. Cliccando su un titolo puoi visualizzarne la scheda e avviarlo subito per celebrare il suo anniversario!",
+      "features": [
+        "Badge dorati dinamici sulle copertine dei giochi in libreria",
+        "Pagina dedicata «Oggi nel…» nella barra laterale",
+        "Calcolo automatico delle ricorrenze su decenni e lustri",
+        "Supporto a tutte le console e a tutti i cataloghi PC"
+      ],
+      "permissions": [
+        "libreria:lettura"
+      ]
     },
     {
       "id": "calendario-uscite",
       "name": "Calendario uscite",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Le prossime uscite: prima i giochi della tua lista dei desideri che devono ancora uscire, poi i titoli più attesi dei generi che giochi di più. Usa la chiave RAWG già impostata nell'app.",
+      "description": "Calendario delle prossime uscite videoludiche con priorità ai titoli della tua lista desideri e ai generi che giochi più spesso, alimentato da RAWG.",
       "min_app": "0.7.1",
       "base": "calendario-uscite/",
       "files": {
         "backend.py": "17ab35703763ca2190ced3fd31af0174acadb167a78fb3e6a80e8db250717fd0",
         "frontend.js": "763cded618d1ea2585ae32eabbb6dab83f8399a87a42e8cc4b51531e3b38ecfd",
-        "plugin.toml": "ece3a3887dd40e6c18a62567f69773f4277acca01e73f5645bb6c139bd1d39c3",
+        "plugin.toml": "96f401ced831dc79c4623e032ead2218a9c96cde3e9da5d1b685ca2bb191dba7",
+        "screenshot.png": "b17803efdfd138d206a95400dc1400ce0245ab449e45bd5866f27c283683098e",
         "style.css": "d0dbe66bd6e494de9946a9740e869aacef24b0f71267af9a3f509092fab8ab01"
-      }
+      },
+      "icon": "📅",
+      "screenshot": "screenshot.png",
+      "long_description": "Non perdere mai il lancio di un gioco atteso. Questa estensione interroga il database RAWG per creare una panoramica ordinata delle uscite dei prossimi mesi. Mostra prima i giochi che hai già aggiunto alla tua lista dei desideri di Pozzo Launcher, seguiti dai titoli di maggiore rilievo appartenenti ai generi con cui trascorri più tempo.",
+      "how_it_works": "1. Installa l'estensione e assicurati di avere una chiave API gratuita di RAWG configurata in Impostazioni › Fonti › RAWG (l'app ne fornisce già una predefinita).\n2. Nella barra laterale si attiva la voce «Calendario uscite».\n3. La vista è divisa per mese: in cima trovi i titoli della tua lista dei desideri con il countdown dei giorni mancanti.\n4. Più in basso trovi i giochi consigliati per te in base alle statistiche dei tuoi generi preferiti.",
+      "features": [
+        "Riconoscimento automatico dei titoli in lista desideri",
+        "Suggerimenti personalizzati basati sui tuoi generi più giocati",
+        "Data di uscita precisa, piattaforme previste e sinossi per ogni gioco",
+        "Cache intelligente delle chiamate di rete per evitare consumi di quota"
+      ],
+      "permissions": [
+        "rete:api.rawg.io",
+        "rete:media.rawg.io",
+        "libreria:lettura",
+        "impostazioni"
+      ]
     },
     {
       "id": "diario",
       "name": "Diario di gioco",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Nel dettaglio di ogni gioco, un diario con voci datate (a che punto sei, trucchi, password) e la cronologia delle sessioni giocate. Si affianca alla nota personale già presente.",
+      "description": "Aggiunge una scheda diario nel dettaglio di ogni gioco con appunti datati, trucchi, password e il registro cronologico di tutte le tue sessioni di gioco.",
       "min_app": "0.7.1",
       "base": "diario/",
       "files": {
         "backend.py": "492150d7396718da88e1c06ba5538bb2caa13e40619240dede77fb303dcd5839",
         "frontend.js": "59932be8f5152cf7864a11595a2eecdfe87b738a3e4cc8df2c1cb356f31cd0e4",
-        "plugin.toml": "caebcd9cf20736213df29bb0bcfe38d65546813eabc75b59f67be4b58452fa68",
+        "plugin.toml": "7682847ae58a3b011af59e4062fd18df570d708048bd70b504a2f49e0562af16",
+        "screenshot.png": "47e667994cd6db5d18117925d5da209c6552d524a71de7a77b2cd292493c98c0",
         "style.css": "f2424e5c7fcc2d654f59f9db0cc37f81546873a35eb65e58ed642b27ecba0940"
-      }
+      },
+      "icon": "📔",
+      "screenshot": "screenshot.png",
+      "long_description": "Tieni traccia dei tuoi progressi, delle sensazioni di gioco e delle informazioni cruciali. Nella scheda di ogni titolo della libreria viene integrata una sezione Diario in cui annotare pensieri personali, promemoria su dove eri rimasto, password dei livelli e strategie. Si affianca alla cronologia automatica delle sessioni con orari di inizio, durata e data.",
+      "how_it_works": "1. Installa l'estensione e apri il dettaglio di qualsiasi gioco in libreria.\n2. Scorrendo verso il basso o nella scheda laterale troverai il blocco «Diario di gioco».\n3. Scrivi un appunto nel campo di testo e premi Salva: verrà registrato con la data e l'ora attuali.\n4. Puoi consultare l'elenco di tutte le sessioni passate (durata effettiva e timestamp di avvio) registrate automaticamente dal launcher.",
+      "features": [
+        "Note personali datate salvate in locale in formato sicuro",
+        "Cronologia reale delle sessioni di gioco con durata al minuto",
+        "Modifica e cancellazione rapida degli appunti",
+        "Condivisione delle note tra profili o backup integrato"
+      ],
+      "permissions": [
+        "libreria:lettura",
+        "impostazioni"
+      ]
     },
     {
       "id": "limite-tempo",
       "name": "Limite di tempo",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Avvisa con una notifica quando superi X ore di gioco al giorno o alla settimana (del profilo attivo): utile per te o per i figli. È un avviso, non chiude il gioco.",
+      "description": "Monitora il tempo di gioco quotidiano o settimanale e invia notifiche discrete a schermo quando superi le ore impostate per il profilo attivo.",
       "min_app": "0.7.1",
       "base": "limite-tempo/",
       "files": {
         "backend.py": "647d5b0f177f3de7f1b240298a591a65eb3db11cf3b37ba2849506a9833654e4",
         "frontend.js": "7b1b0b7dc24d1b66844d8a6e7263052820f51501d2aa0d2a11ca7bbf08aa8d80",
-        "plugin.toml": "071daf1db5800fa1779a8ceaa409200888c52ed41e05f630f54a5744948336b3",
+        "plugin.toml": "be1231c8c49ece98eb7faa1601ef7f09fefdaa055f05104654d05348f590d453",
+        "screenshot.png": "238bce65cd31d3a3513795e11278305e1be40c2ce5ae9500a028a2dd807c7dd1",
         "style.css": "005928af354ef58b2fb99f2f4d3e09ccc470c99a91862e8b62a6f15753eba611"
-      }
+      },
+      "icon": "⏳",
+      "screenshot": "screenshot.png",
+      "long_description": "Uno strumento dedicato al benessere digitale per te o per i più piccoli. Ti permette di stabilire un tetto massimo di ore di gioco giornaliere o settimanali. Quando la soglia viene raggiunta, Pozzo Launcher mostra una notifica non invasiva sul desktop per avvisarti, senza interrompere bruscamente la partita o forzare la chiusura.",
+      "how_it_works": "1. Installa l'estensione e vai in Impostazioni › Estensioni › Limite di tempo.\n2. Imposta il numero massimo di ore al giorno (es. 2 ore) o alla settimana (es. 10 ore) per il profilo utente corrente.\n3. Mentre giochi, l'estensione calcola il tempo trascorso in background.\n4. Al superamento del limite riceverai un messaggio discreto che ti invita a fare una pausa o a salvare la partita.",
+      "features": [
+        "Limiti personalizzabili separatamente per giorno e settimana",
+        "Gestione indipendente per ogni profilo utente creato nell'app",
+        "Notifiche gentili che non chiudono il gioco né causano perdite di salvataggi",
+        "Azzeramento automatico a mezzanotte e a inizio settimana"
+      ],
+      "permissions": [
+        "libreria:lettura",
+        "impostazioni",
+        "notifiche"
+      ]
     },
     {
       "id": "linkstores",
       "name": "Link → Store",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Legge una pagina che raccoglie altri siti, raggruppa i link per intestazione (h2/h3) e aggiunge ciascuno come store di una console o come store PC (repack / download diretto).",
+      "description": "Converte elenchi di link web (repack, archivi e siti di download) in store consultabili all'interno del launcher, ordinati per console o per PC.",
       "min_app": "0.7.1",
       "base": "linkstores/",
       "files": {
         "backend.py": "b21286df81e91faccb3866d1b3848a6d42b9d82c60313ba2decee2b654e072ba",
         "frontend.js": "b421a17688c16e1953405313ef373056f135ca4f66bc82646f5cd20ce24d3179",
-        "plugin.toml": "34ce3bcf881422a314f0f3f603b18aea0facbe6092b70ccf2968cd1f12ae7220",
+        "plugin.toml": "353ecd3688374f97fcb87e083b1f3c670f9b5c83649573d3b923ffe38feb6ab0",
+        "screenshot.png": "c0fcd704acb1d91a60c4ad8b4f9a1841ab2f92d3619dc0c9391aea41e1d7edb3",
         "style.css": "3f947fa5c51631cdf3b26718698a0f74975817c907435dee3d2758f1e7e930b9"
-      }
+      },
+      "icon": "🔗",
+      "screenshot": "screenshot.png",
+      "long_description": "Automatizza la catalogazione dei tuoi siti preferiti. Incollando l'indirizzo di una pagina HTML che raccoglie collegamenti a giochi, l'estensione analizza la struttura del documento (titoli H2, H3, liste puntate) e aggiunge automaticamente ogni sezione come fonte store della console corrispondente o come store per PC.",
+      "how_it_works": "1. Installa l'estensione e apri la sezione Link → Store dalla barra laterale o dalle impostazioni degli store.\n2. Incolla l'URL della pagina web da analizzare e seleziona la console di destinazione (o Store PC).\n3. L'estensione scansiona i tag HTML e mostra un'anteprima dei link trovati con i rispettivi titoli.\n4. Conferma con «Aggiungi come store»: i titoli compariranno direttamente nelle ricerche dello Store online!",
+      "features": [
+        "Parser HTML euristico per titoli, categorie e link di download",
+        "Integrazione diretta con il Gestore dei download nativo",
+        "Raggruppamento per console o repack PC",
+        "Salvataggio immediato nelle impostazioni senza necessità di riavviare"
+      ],
+      "permissions": [
+        "rete:*",
+        "impostazioni",
+        "file:lettura",
+        "file:scrittura"
+      ]
     },
     {
       "id": "minerva",
       "name": "Store Minerva + Switch",
       "version": "1.4",
       "author": "Pozzo Launcher",
-      "description": "Aggiunge allo «Store online» di ogni console le cartelle di minerva-archive.org elencate su r-roms.github.io e gli store preimpostati (Switch: NXBrew, Ziperto; PS4 e PS5: superpsx), senza leggerli. Un pulsante «Leggi» per console scarica gli elenchi dei giochi.",
+      "description": "Importa con un clic gli archivi Minerva per ogni console e configura store Switch preimpostati (NXBrew, Ziperto) e PlayStation (superpsx).",
       "min_app": "0.7.1",
       "base": "minerva/",
       "files": {
         "backend.py": "9d45cd88fefb55490cecad34468aa05eeb68867226a7510dfef4ae1cb49bf609",
         "frontend.js": "acf9f4107e3f5534bd730dc9053dece9f0a0f142cc2ae52f3d7b9f1f41ac7bbe",
-        "plugin.toml": "cfa3b02350db6feebb92a48d9f49ccc111a50552dee2b838ea89f50a4e6e99b1"
-      }
+        "plugin.toml": "c5d0637c94bf3469f091b1355dfb09e9bbc5dfc51c4a9e88e3393c754e249f9f",
+        "screenshot.png": "e1c74da2bc76a8235b9f3d748d58fb2dd3e6bd53ed58446b0bda00818d7a713f"
+      },
+      "icon": "🏛️",
+      "screenshot": "screenshot.png",
+      "long_description": "Espande istantaneamente le fonti dello Store Online con un solo clic. Configura automaticamente le directory di minerva-archive.org indicizzate dal progetto r-roms per decine di console retro, insieme a preset pronti per Nintendo Switch (NXBrew, Ziperto) e PlayStation 4/5 (superpsx), senza dover inserire a mano lunghi elenchi di indirizzi.",
+      "how_it_works": "1. Installa l'estensione dallo store.\n2. Nella pagina dell'estensione trovi l'elenco dei preset disponibili suddivisi per piattaforma.\n3. Clicca su «Aggiungi preset Minerva» o «Aggiungi store Switch»: i link verranno configurati nello Store online.\n4. Premi «Leggi» accanto a una console per scaricare l'elenco aggiornato dei giochi disponibili.",
+      "features": [
+        "Archivi Minerva completi per oltre 30 console supportate",
+        "Preset dedicati per Nintendo Switch (NXBrew game-index, Ziperto NSP/XCI)",
+        "Riconoscimento automatico del formato dell'indice (cartelle Apache, indici JSON, tabelle)",
+        "Download diretto compatibile con il nuovo Download Manager integrato"
+      ],
+      "permissions": [
+        "rete:r-roms.github.io",
+        "impostazioni",
+        "file:lettura"
+      ]
+    },
+    {
+      "id": "notizie",
+      "name": "Notizie videogiochi",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Le ultime notizie dei produttori (Nintendo, PlayStation, Xbox, Valve, Capcom, Sega e altri) e dei principali siti, raccolte da feed RSS/Atom.",
+      "min_app": "0.7.1",
+      "base": "notizie/",
+      "files": {
+        "backend.py": "404606e9108823841b5a1cd4a5e38b09e37893fbe91e60229f6b7fa1096bddbc",
+        "frontend.js": "c9f6a7da38bd540c38e6c1727c69906164bd598432f3be8f802e9f511477530e",
+        "logica.js": "cc882f6b63e6c25c0f18c43dcd613b4e51b5957b6814474fa70fa0dd71359cad",
+        "plugin.toml": "ec77c9df0d98bce8ea9378f235fc7e36939c97ef05ab758f097ce77cc0eabb31",
+        "rassegna.js": "03b6745b92a6d27aae0f089904b14521be29bbb5d28a4a6b74373ad0380382d1",
+        "screenshot.png": "2bfe199c9fba0a56bf6f7bacc39331a6d0b02aaf1d6cc6571bdaf20bf1cb04e4",
+        "segui.js": "7feebf1fb5b97dc3e11adfffc68c07cd29fe9b32aefaf406a178c76df4787391",
+        "style.css": "75c8de92db264c834aac0cbc7e69381bf9875eb452f09d63c2e547f8abb7a16a"
+      },
+      "icon": "📰",
+      "screenshot": "screenshot.png",
+      "long_description": "Raccoglie in un'unica pagina le notizie dai feed RSS e Atom ufficiali delle case videoludiche e dei principali siti specializzati. Ogni notizia è classificata automaticamente per tipologia (annuncio, patch, DLC, uscita), si può filtrare per produttore o cercare per testo. Include il filtro dedicato «Solo i miei giochi e console» per vedere solo le novità relative alla tua collezione, la possibilità di seguire singoli giochi e una rassegna settimanale automatica generata ogni lunedì. I feed sono salvati in cache su disco nel pieno rispetto dei limiti dei siti.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri la pagina «Notizie» dalla barra laterale sinistra.\n3. Usa la barra di ricerca o seleziona una casa produttrice (PlayStation, Xbox, Nintendo, Steam, Capcom, ecc.) per filtrare gli articoli.\n4. Attiva la casella «Solo i miei giochi e console» per isolare gli aggiornamenti pertinenti alla tua libreria.\n5. Dalla scheda di un gioco puoi cliccare su «Segui» per ricevere notifiche su patch e DLC.\n6. Da Fonti puoi disattivare feed specifici o aggiungere URL personalizzati (feed RSS/Atom).",
+      "features": [
+        "Feed RSS e Atom raggruppati per casa produttrice e testata di settore",
+        "Classificazione automatica degli articoli: annuncio, patch, DLC o uscita",
+        "Filtro intelligente «Solo i miei giochi e console» basato sulla tua libreria",
+        "Azione «Segui» nel dettaglio gioco per notifiche mirate su novità e patch",
+        "Rassegna settimanale automatica ogni lunedì con i 10 fatti salienti",
+        "Cache su disco con ETag e scaricamento differito per massimo rispetto della banda",
+        "Fonti completamente personalizzabili con aggiunta di nuovi feed"
+      ],
+      "permissions": [
+        "rete:blog.playstation.com",
+        "rete:news.xbox.com",
+        "rete:store.steampowered.com",
+        "rete:www.nintendolife.com",
+        "rete:www.nintendo-insider.com",
+        "rete:www.nintendoeverything.com",
+        "rete:www.siliconera.com",
+        "rete:www.gematsu.com",
+        "rete:www.eurogamer.net",
+        "rete:www.gamesindustry.biz",
+        "rete:retrododo.com",
+        "rete:www.everyeye.it",
+        "rete:www.spaziogames.it",
+        "rete:api.steampowered.com",
+        "rete:www.nintendo.co.jp",
+        "rete:eu.finalfantasyxiv.com",
+        "rete:*",
+        "impostazioni",
+        "libreria:lettura",
+        "notifiche"
+      ]
     },
     {
       "id": "obiettivi",
       "name": "Obiettivi personali",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Obiettivi tuoi («finisci 3 giochi a marzo», «20 ore questa settimana»), serie di giorni consecutivi e distintivi che si sbloccano giocando.",
+      "description": "Crea e monitora sfide personali (giochi completati, ore giocate, giorni consecutivi) e sblocca distintivi e serie speciali giocando.",
       "min_app": "0.7.1",
       "base": "obiettivi/",
       "files": {
         "backend.py": "d8986d89d6f4c97b43ae5ab4259a639bfa4e1cc8bfacf25900d896374ca6ca7c",
         "frontend.js": "074e16f6d37fd56157890fd3f023518d7d215e7c7f0714bd8b5cafd9505395d4",
-        "plugin.toml": "703d41229d839d42196373c5a0d680a598f8c6f36b2739098585cb1087267b91",
+        "plugin.toml": "5ae9abec8f5cbbdc8883e9c2492fb0a94ef777299edb1810a55f683b5683cefc",
+        "screenshot.png": "4445dff223643a8be00cd6bf1b95fc91d6dcb930615ffa86c9ecb875112f1e0b",
         "style.css": "cc117b6eae389a23aa3fe7c69823a6c0e6b66769ba1a48766e417656e8536e6e"
-      }
+      },
+      "icon": "🏆",
+      "screenshot": "screenshot.png",
+      "long_description": "Gamifica la tua esperienza di gioco con un sistema di traguardi e sfide su misura. Imposta obiettivi periodici come «Completa 3 giochi questo mese» o «Gioca 15 ore questa settimana». L'estensione tiene traccia della tua serie di giorni consecutivi di gioco (streak) e assegna distintivi speciali man mano che arricchisci la tua esperienza videoludica.",
+      "how_it_works": "1. Installa l'estensione e aprila dalla barra laterale («Obiettivi»).\n2. Crea una nuova sfida scegliendo la tipologia (titoli finiti, ore complessive, giorni attivi) e la scadenza temporale.\n3. Pozzo Launcher aggiorna le barre di avanzamento in tempo reale a ogni sessione conclusa.\n4. Guarda la bacheca dei distintivi sbloccati e mantieni attiva la tua serie giornaliera!",
+      "features": [
+        "Sfide personalizzate a tempo (settimanali, mensili, annuali)",
+        "Riconoscimento automatico dei giochi segnati con stato «Finito»",
+        "Calcolatore di serie di giorni consecutivi (Streak) con salvataggio dello storico",
+        "Bacheca visiva dei distintivi e trofei conseguiti"
+      ],
+      "permissions": [
+        "libreria:lettura",
+        "impostazioni"
+      ]
+    },
+    {
+      "id": "pc-adatto",
+      "name": "Il mio PC ce la fa?",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Verifica se il tuo PC è abbastanza potente per far girare ogni gioco e suggerisce le impostazioni ottimali per gli emulatori.",
+      "min_app": "0.7.1",
+      "base": "pc-adatto/",
+      "files": {
+        "backend.py": "020e3f9485cafe86ea6ac20f1dbca43b8babbffbb6e3bb61861accbc505a2fd4",
+        "frontend.js": "98e97c6ab0b51e9acbe5bc2c24d210796ebd88b4f02e2c47fcad1df8fc74e5e7",
+        "plugin.toml": "5d82bc1cbacfa5ec9a98e24bba17e2b83e36103d39b4c9fbc138acd98a9f84d5",
+        "screenshot.png": "2d0bd7d2a400eb8168136036b433216ae70c48dbad4473773350c03d8db9710f",
+        "style.css": "185185d14bbe12192f5b8bfb8934ec6a8716241a98f41d04fa4fd0915d7cb55c"
+      },
+      "icon": "💻",
+      "screenshot": "screenshot.png",
+      "long_description": "Rileva automaticamente la configurazione hardware del tuo computer (processore, scheda video e memoria RAM) e la confronta con i requisiti del titolo selezionato. Per i giochi PC Steam verifica la compatibilità con i requisiti minimi e consigliati ufficiali; per i giochi su console emulata consulta una matrice di requisiti per piattaforma offrendo consigli mirati sulle impostazioni dell'emulatore (come l'uso di Vulkan, la risoluzione interna, il compilatore shader o il frameskip).",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Clicca su qualsiasi gioco nella libreria per aprire la scheda di dettaglio.\n3. Nella sezione «Il mio PC ce la fa?» visualizzerai il verdetto immediato a colori: «Gira bene», «Gira con queste impostazioni» o «Probabilmente troppo pesante».\n4. Consulta i motivi del giudizio e la checklist dei componenti hardware rilevati a confronto con i requisiti minimi e raccomandati.\n5. Se il gioco è emulato, segui i suggerimenti grafici indicati per massimizzare la fluidità senza scatti.",
+      "features": [
+        "Rilevamento hardware trasparente di CPU, GPU e RAM tramite comandi di sistema",
+        "Verdetto prestazionale istantaneo con badge colorato ad alta leggibilità",
+        "Confronto analitico con requisiti minimi e consigliati ufficiali dello store Steam",
+        "Consigli specifici sulle impostazioni grafiche degli emulatori (Vulkan, upscale, ecc.)",
+        "Pannello a tendina espandibile con le specifiche dettagliate del tuo computer",
+        "Nessun impatto sulle prestazioni grazie alla cache in memoria delle verifiche"
+      ],
+      "permissions": [
+        "rete:store.steampowered.com",
+        "libreria:lettura",
+        "avvio"
+      ]
     },
     {
       "id": "pulizia",
       "name": "Pulizia libreria",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Pozzo Launcher",
-      "description": "Trova duplicati, giochi mai avviati o fermi da anni e giochi con metadati incompleti, con azioni di massa (nascondi, abbandonato, backlog) e un badge «DUP» sulle copertine dei duplicati.",
+      "description": "Individua giochi duplicati, titoli mai avviati o dimenticati da anni e metadati mancanti, con azioni rapide di massa e badge «DUP».",
       "min_app": "0.7.1",
       "base": "pulizia/",
       "files": {
-        "frontend.js": "496f020d8ca59bce4a8103e8e89530c5ea892898e0c41fab5a0fa283eb683141",
-        "logica.js": "067871519aec426153fea3c1849bc2e98c6ef40dda5ed7e2a5beebfd4d49b219",
-        "plugin.toml": "7a8aa35154b9cfc8e6592f965c61590e4abc405d2c1cc03c524bd7b79a2d19b0",
-        "style.css": "675b11dd82766b7441b0a63b865b17be0e6193a493b154aa9113d7aa0d312039"
-      }
+        "backend.py": "355a7180514956d9e16c4cbb95ddeec475cac7256fc47f810bbd4560fdb69713",
+        "frontend.js": "e2cba54b22fd546d98d5ebb3445664f796dc59d0a2091a86d7ba47f8c8951549",
+        "logica.js": "7e2a77f2f74cdc97d07ac69b394fa412f1fb3ebb0c104d6f4f4e77c85f7a847f",
+        "plugin.toml": "c281805c972c3e8c26adff8efdfee3f88abe164d88cf796eb20f532a82d59fbb",
+        "screenshot.png": "d4ddda29e550fc78794a80b0a68fee25deee932e4d56157d3a92d1634eea3f94",
+        "style.css": "1c63fbc27dbd1829b3ecb9c8920b20341e9bfb91ed5f44999d0316d6c7adfdb3"
+      },
+      "icon": "🧹",
+      "screenshot": "screenshot.png",
+      "long_description": "Mantieni la tua collezione ordinata e impeccabile. Questa estensione scansiona l'intero archivio per rilevare file doppi (stesso gioco su cartelle diverse), giochi aggiunti a mano con eseguibili identici, titoli abbandonati da più di un anno e copertine o descrizioni mancanti. Consente di nascondere o ripulire centinaia di elementi con un solo clic.",
+      "how_it_works": "1. Installa l'estensione e clicca su «Pulizia libreria» nella barra laterale sinistra.\n2. Scegli la scheda da analizzare: Duplicati, Mai avviati, Fermi da anni o Dati incompleti.\n3. Sulle copertine dei giochi doppi compare l'etichetta «DUP».\n4. Seleziona più giochi ed esegui azioni di massa: Nascondi, Segna come abbandonato, Sposta nel backlog o Rimuovi doppioni manuali.",
+      "features": [
+        "Rilevamento intelligente di eseguibili e parametri duplicati",
+        "Filtri veloci per giochi mai avviati o inattivi da oltre 365 giorni",
+        "Azioni cumulative su selezioni multiple",
+        "Badge visivo «DUP» integrato direttamente nella griglia della libreria"
+      ],
+      "permissions": [
+        "libreria:lettura",
+        "libreria:scrittura",
+        "file:lettura",
+        "file:scrittura"
+      ]
+    },
+    {
+      "id": "recensioni",
+      "name": "Recensioni e punteggi",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Punteggi aggregati nel dettaglio di ogni gioco: Metacritic, OpenCritic e recensioni degli utenti Steam.",
+      "min_app": "0.7.1",
+      "base": "recensioni/",
+      "files": {
+        "backend.py": "e7f3104e9c1929d16c33c67cf8401403b1f7b0943162f98a44ff4f6c3dbcd22c",
+        "frontend.js": "efc7b8636c76a94a174c434d3e45ed7c9900de448e121ceeacc3f73ae09f4bdc",
+        "plugin.toml": "300f404ba8121fd8189970d52b47532182c463e8aa7d471cec961b8620f0eba6",
+        "screenshot.png": "66da5cb4e191539a1368e1d3da5eea8d122d279c448db76ba83e32aa2a22fa1d",
+        "style.css": "1e8c02be1ad06ce7a066293158345af3f59d4d503d77804b08e9aa41b2254799"
+      },
+      "icon": "⭐",
+      "screenshot": "screenshot.png",
+      "long_description": "Consulta all'istante l'accoglienza critica e il giudizio dei giocatori senza uscire dall'app. L'estensione aggrega nella scheda di ogni gioco i punteggi ufficiali di Metacritic (già presenti nei metadati), il voto complessivo e la percentuale di raccomandazione di OpenCritic, e la percentuale di gradimento con numero totale di recensioni degli utenti Steam. Include collegamenti rapidi alle recensioni complete e una cache intelligente per garantire risposte immediate senza sovraccaricare la rete.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri la scheda di dettaglio di qualsiasi gioco: troverai la nuova sezione «⭐ Recensioni» con i voti colorati per fascia (verde, giallo o rosso).\n3. Per abilitare OpenCritic inserisci la tua chiave gratuita RapidAPI in Impostazioni › Recensioni (Metacritic e Steam funzionano subito senza alcuna configurazione).\n4. Clicca sui link «Apri su…» per consultare la pagina web completa della testata o della community.",
+      "features": [
+        "Integrazione punteggi Metacritic, OpenCritic e recensioni della community Steam",
+        "Badge colorati dinamici per fascia di gradimento (verde >= 75, giallo >= 50, rosso < 50)",
+        "Dettagli OpenCritic con tier (Mighty, Strong) e percentuale di critici che consigliano il gioco",
+        "Percentuale di recensioni positive e volume complessivo degli utenti Steam",
+        "Collegamenti rapidi alle pagine ufficiali per approfondire articoli e recensioni",
+        "Cache automatica su disco di 7 giorni per garantire aperture istantanee dei giochi",
+        "Configurazione semplificata con chiave RapidAPI gratuita nella scheda Impostazioni"
+      ],
+      "permissions": [
+        "rete:opencritic-api.p.rapidapi.com",
+        "rete:store.steampowered.com",
+        "libreria:lettura",
+        "impostazioni"
+      ]
     },
     {
       "id": "riepilogo-annuale",
       "name": "Riepilogo annuale",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Il tuo anno in giochi: ore, giochi più giocati, console preferita, mese e giorno più attivi, giochi finiti. Con un'immagine da salvare e condividere.",
+      "description": "Genera un riassunto grafico del tuo anno di gioco (ore totali, titoli più giocati, console preferita, mese record) pronto da salvare e condividere.",
       "min_app": "0.7.1",
       "base": "riepilogo-annuale/",
       "files": {
         "backend.py": "30bcec14e781e0d590c23937bd89184e4fc164071de442179d437d6e264934f0",
         "frontend.js": "6ed432ec8318629b96e1c0193a92e84c9b23837b8240588271b820ced2a5f92f",
-        "plugin.toml": "d81b3dd1b3daf82ce50232917ec354ab4bc52a8545664a5b3b93fea78660c3a8",
+        "plugin.toml": "0556d46c6005d7cd959699c9749d36ce70649ecd2ed3e8e3597cff060fbb00b8",
+        "screenshot.png": "7861d4eaf99fbfa9fb7ca8ae582f9dc9aaf49df7a0f9de218f93cbfa4b25aba6",
         "style.css": "54c3c8685c2819e9ba02a210f828278c29ce2592c1326aa8abe454de96689e4e"
-      }
+      },
+      "icon": "📊",
+      "screenshot": "screenshot.png",
+      "long_description": "Il tuo 'Wrapped' videoludico personale. Al termine dell'anno (o in qualsiasi momento per gli anni passati), l'estensione elabora tutte le sessioni registrate ed elabora un'infografica elegante ad alta risoluzione con le tue statistiche chiave: tempo totale speso a giocare, podio dei giochi preferiti, console più utilizzata e giorno con la sessione più lunga.",
+      "how_it_works": "1. Installa l'estensione e seleziona «Riepilogo annuale» dalla barra laterale.\n2. Seleziona l'anno di riferimento dal menu a discesa (es. 2026, 2025...).\n3. Visualizza la schermata con grafici, classifiche e copertine dei tuoi titoli più amati.\n4. Premi «Salva immagine» per scaricare una card grafica PNG perfetta da condividere sui social o con gli amici.",
+      "features": [
+        "Calcolo accurato di ore complessive, titoli completati e piattaforme dominanti",
+        "Unificazione automatica delle diverse versioni dello stesso gioco",
+        "Esportazione grafica in alta risoluzione pronta per la condivisione",
+        "Funziona al 100% in locale senza inviare alcun dato a server esterni"
+      ],
+      "permissions": [
+        "libreria:lettura"
+      ]
+    },
+    {
+      "id": "sconti",
+      "name": "Sconti e bundle",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Gli sconti sui giochi della tua lista dei desideri, i bundle attivi che contengono giochi che ti interessano o che possiedi già, e i giochi gratis da prendere ora.",
+      "min_app": "0.7.1",
+      "base": "sconti/",
+      "files": {
+        "backend.py": "bbe19308ec4b40a8f424640e428689d01972f337d128ab320adef3cee803eb6b",
+        "frontend.js": "e54fc646a30a9d35c39b9623bff5c9015fe80974c8245c0f77f95899ed21f249",
+        "logica.js": "d17f8c8134a89a94f969851b81b653fabbd477d86a7351e799ae2cf2b4e4df71",
+        "plugin.toml": "8adf41b376ac317d584ae6510099d1f7d8a78f2ad4cedcd87319eebad21ab7ae",
+        "screenshot.png": "caee6e51af3888b5ad3a2d254d7b1db357c3b04434637b9c1aa93728e8bf0194",
+        "style.css": "4135b1679f49a0e7a1262c768d9e17617bf91e850334b3283d921ff5d8a104cf"
+      },
+      "icon": "🏷️",
+      "screenshot": "screenshot.png",
+      "long_description": "Raccoglie in un'unica pagina dedicata le migliori occasioni d'acquisto videoludiche. Mostra gli sconti correnti sui titoli della tua lista dei desideri (con evidenza speciale per il «Minimo storico»), i bundle promozionali attivi su IsThereAnyDeal (contrassegnati con il badge «Per te» se contengono giochi che segui o che possiedi già) e la panoramica aggiornata dei giochi attualmente riscattabili gratuitamente su store come Epic Games e Steam.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Inserisci la tua chiave gratuita di IsThereAnyDeal in Impostazioni › Lista dei desideri per sbloccare la sincronizzazione dei bundle.\n3. Apri la pagina «Sconti» dalla barra laterale sinistra.\n4. Esplora le tre schede: «Lista desideri» per i tuoi saldi prioritari, «Bundle» per le raccolte a prezzo stracciato e «Gratis ora» per riscattare promozioni a costo zero.\n5. Clicca su «Apri offerta» per completare l'acquisto o il riscatto direttamente sul negozio online.",
+      "features": [
+        "Monitoraggio saldi in tempo reale con sconto percentuale e prezzo originale barrato",
+        "Evidenza visiva speciale per i giochi che hanno raggiunto il loro «Minimo storico»",
+        "Integrazione bundle IsThereAnyDeal con elenco dei titoli inclusi e countdown scadenza",
+        "Badge «Per te» sui pacchetti contenenti giochi presenti nella tua wishlist o libreria",
+        "Sezione «Gratis ora» per non perdere mai titoli promozionali e giochi senza DRM",
+        "Aggiornamento automatico e cache intelligente ogni 6 ore per non sprecare traffico dati"
+      ],
+      "permissions": [
+        "rete:api.isthereanydeal.com",
+        "rete:widget.allkeyshop.com",
+        "rete:feed.phenx.de",
+        "rete:www.gamerpower.com",
+        "rete:store.steampowered.com",
+        "libreria:lettura",
+        "impostazioni"
+      ]
     },
     {
       "id": "stasera",
       "name": "Cosa gioco stasera?",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Sceglie un gioco dal backlog in base al tempo che hai (durata HowLongToBeat), al genere e alla console, dando la precedenza a quelli che non giochi da più tempo. «Un altro» ne propone un altro, «Avvia» lo lancia.",
+      "description": "Ti consiglia il titolo ideale dal tuo backlog in base al tempo libero a disposizione (durata HowLongToBeat), al genere e alla console preferita.",
       "min_app": "0.7.1",
       "base": "stasera/",
       "files": {
         "frontend.js": "6e43bb3c82df820a4bb667ddaccb5c07ed6f269bfbcc2595fa773e07e97370ee",
         "logica.js": "f3dbc76c814a0574a427304b96400479b0f618da4413113173009c0a9135b68a",
-        "plugin.toml": "feabd58688441f79e848657f64b5b8eac59deaf41a5c0abc4744b970d2bcd27b",
+        "plugin.toml": "c86417cbcf172046a895f2f80d5e7efe409d7c114390322d46c8b383ae5705dd",
+        "screenshot.png": "535916af1fe97dd50a86d22c72d0a6db8ad84eacb070201d17a24f56bdcad731",
         "style.css": "07ec9f5e800c2f90259bdb88c3789c708215fd6d4d8beddc7eb8ceb66d49c02a"
-      }
+      },
+      "icon": "🎲",
+      "screenshot": "screenshot.png",
+      "long_description": "Risolve per sempre l'indecisione davanti a una libreria sconfinata. Indica quanti minuti o ore hai a disposizione (es. 45 minuti o 2 ore), seleziona eventualmente una console o un genere, e l'algoritmo estrarrà il titolo perfetto dal tuo backlog privilegiando i giochi che non tocchi da più tempo o con valutazioni eccellenti.",
+      "how_it_works": "1. Installa l'estensione e clicca sull'icona «Cosa gioco stasera?» nella barra laterale o nella schermata principale.\n2. Regola il cursore del tempo a disposizione (utilizza i dati di completamento medio HowLongToBeat).\n3. Imposta eventuali filtri opzionali su piattaforma e genere.\n4. Clicca su «Consigliami un gioco»: apparirà la copertina con motivazione, pulsante «Un altro» per pescarne un secondo o «Avvia gioco» per lanciarlo subito.",
+      "features": [
+        "Integrazione nativa con le stime orarie HowLongToBeat",
+        "Algoritmo di ponderazione intelligente con rotazione dei titoli meno giocati",
+        "Lancio immediato del gioco con un clic",
+        "Filtri combinabili su console, genere e stato di avanzamento"
+      ],
+      "permissions": [
+        "libreria:lettura",
+        "avvio"
+      ]
     },
     {
       "id": "statistiche",
       "name": "Statistiche di gioco",
       "version": "1.0",
       "author": "Pozzo Launcher",
-      "description": "Pagina con tempo di gioco per console e store, giochi piu' giocati e completezza della libreria. Aggiunge anche «Video su YouTube» nel dettaglio dei giochi.",
+      "description": "Dashboard avanzata con grafici di tempo di gioco per console e store, classifiche dei titoli più amati e pulsante «Video su YouTube» nel dettaglio.",
       "min_app": "0.7.1",
       "base": "statistiche/",
       "files": {
         "backend.py": "cd50a833c89d9b61936590302c4e659dded6629ad8634c7fcd19e08796990d94",
         "frontend.js": "37ed36554079dd9f7c5d94d9c20ba35e8d9e403f3dc43f2d030320b850a11ff7",
-        "plugin.toml": "57f187468902b8e49c92db93c1ae280de39b471c90a9c321a136a8e3b67025da",
+        "plugin.toml": "8e65f67a600c74e681252e52fd29f91439419e2b2a64fefea26eb3f9546680fc",
+        "screenshot.png": "94d17c473b2775d7db05b5d2d146c9040353f6962d888b2c299e0917f27d3a11",
         "style.css": "5f206414809d5571487e96aa8a50bf763609f9939778a61004cc1ac5d3c9c595"
-      }
+      },
+      "icon": "📈",
+      "screenshot": "screenshot.png",
+      "long_description": "Esplora a fondo le tue abitudini videoludiche. Offre una panoramica statistica approfondita sulla tua collezione: ore suddivise per console, quota percentuale tra giochi PC e retro, indice di completamento della libreria e grafici di attività settimanale. Nel dettaglio di ogni gioco aggiunge inoltre il pulsante rapido per aprire recensioni o video gameplay su YouTube.",
+      "how_it_works": "1. Installa l'estensione e aprila dalla voce «Statistiche» nella barra laterale.\n2. Consulta i grafici interattivi con la ripartizione del tempo per console, store e generi.\n3. Scopri la percentuale di titoli avviati rispetto alla collezione totale.\n4. Aprendo la scheda di qualsiasi gioco in libreria, troverai il pulsante «▶ Video su YouTube» per aprire istantaneamente gameplay e walkthrough.",
+      "features": [
+        "Grafici dettagliati su ore di gioco per piattaforma e store (Steam, Epic, ROM)",
+        "Ripartizione percentuale e contatori di giochi posseduti vs giocati",
+        "Scorciatoia integrata per la ricerca di video gameplay su YouTube",
+        "Caricamento differito per non appesantire l'avvio del launcher"
+      ],
+      "permissions": [
+        "libreria:lettura"
+      ]
     },
     {
       "id": "steamgriddb",
       "name": "SteamGridDB",
       "version": "1.1",
       "author": "Pozzo Launcher",
-      "description": "Fonte di copertine (verticali), sfondi (hero) e logo da SteamGridDB, per i giochi a cui le altre fonti non le hanno trovate. Serve una chiave gratuita di steamgriddb.com.",
+      "description": "Fonte di copertine verticali, sfondi hero, banner e loghi ad altissima risoluzione da SteamGridDB, integrata nel menu «Immagini del gioco…».",
       "min_app": "0.7.1",
       "base": "steamgriddb/",
       "files": {
         "backend.py": "db52d953507281852773bcef42aae244d9fe83355cca5449d94c9cefc9143fb0",
         "frontend.js": "b2db9476220602938fe6e094f857a004f345b9cd2f72cb31a11b62561507cdfc",
-        "plugin.toml": "b02d1cc4288d3cc5138ad05dfbdbe8b6c3721b4c26157906e3d73c568b9fa0cb"
-      }
+        "plugin.toml": "f33db0db9ef597362edd0543d43ef360570e08fdada8019ae331c8e66289af63",
+        "screenshot.png": "31c05c1d35eaa038a068218cd18995e40733a5516fc487b3441dfff8b9c2d0df"
+      },
+      "icon": "🖼️",
+      "screenshot": "screenshot.png",
+      "long_description": "Porta la grafica della tua libreria a livelli professionali. Collegando una chiave gratuita di steamgriddb.com, questa estensione recupera automaticamente le immagini mancanti e alimenta il nuovo menu «🖼 Immagini del gioco…» con decine di copertine artistiche verticali, loghi trasparenti, sfondi e banner personalizzati realizzati dalla community.",
+      "how_it_works": "1. Installa l'estensione dallo store e ottieni una chiave gratuita su steamgriddb.com.\n2. Inserisci la chiave in Impostazioni › SteamGridDB.\n3. L'estensione cercherà copertine e sfondi durante lo scraping per i giochi privi di immagini ufficiali.\n4. Clicca col tasto destro su qualsiasi gioco in libreria e scegli «🖼 Immagini del gioco…»: troverai tutti i candidati SteamGridDB pronti da selezionare con un clic!",
+      "features": [
+        "Copertine verticali 600x900 ad altissima risoluzione",
+        "Sfondi panoramici (hero banner), loghi trasparenti e icone",
+        "Selezione visiva dei candidati nella finestra di personalizzazione immagini",
+        "Filtro per immagini ufficiali o create dalla community"
+      ],
+      "permissions": [
+        "rete:www.steamgriddb.com",
+        "rete:cdn2.steamgriddb.com",
+        "impostazioni"
+      ]
     }
   ]
 }

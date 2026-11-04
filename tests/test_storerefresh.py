@@ -53,6 +53,9 @@ def make_env(tmp: Path):
     cfg.pc_stores = [{"url": PC1, "kind": "repack"}, {"url": PC2, "kind": "repack"},
                      {"url": PC3, "kind": "direct"}]
     cfg.catalogs = {"switch": [CONSOLE]}
+    # porta torrent gia' scelta: all'avvio il download manager non salva settings.json, che riapplicato
+    # cancellerebbe gli store qui sopra (impostati solo in memoria)
+    cfg.app["downloads"] = {"port": 6881}
     return cfg
 
 

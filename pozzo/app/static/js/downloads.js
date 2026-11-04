@@ -49,12 +49,28 @@ const DLU = (() => {
   const PRIO = [[2, "Massima"], [1, "Alta"], [0, "Normale"], [-1, "Bassa"], [-2, "Minima"]];
   const clampPrio = (p) => Math.min(Math.max(Math.round(Number(p)) || 0, -2), 2);
   const prio = (p) => PRIO.find(([v]) => v === clampPrio(p))[1];
+  /** larghezza di una colonna dopo aver trascinato il suo bordo: mai sotto il minimo leggibile */
+  const colW = (w, dx, min = 56) => Math.round(Math.max(w + dx, min));
   // le chiavi coincidono con lo stato dei task («Attivi» = in corso)
   const FILTERS = [["all", "Tutti"], ["running", "Attivi"], ["queued", "In coda"], ["paused", "In pausa"], ["completed", "Completati"], ["error", "Errori"]];
   function filter(tasks, f, q) {
     q = (q || "").trim().toLocaleLowerCase("it");
     return (tasks || []).filter((t) => (!f || f === "all" || t.status === f)
       && (!q || `${t.name || ""} ${t.source || ""}`.toLocaleLowerCase("it").includes(q)));
+  }
+  /** host mostrato nella tabella: «torrent» per magnet e .torrent, altrimenti il dominio del link */
+  const host = (t) => (t.type === "torrent" ? "torrent" : urlHost(t.source) || "—");
+  const SORT_VAL = { name: (t) => (t.name || t.source || "").toLocaleLowerCase("it"), host: (t) => host(t), size: (t) => t.size || 0,
+    progress: (t) => t.progress || 0, speed: (t) => t.speed || 0, eta: (t) => (t.eta == null || t.status !== "running" ? Infinity : t.eta),
+    status: (t) => status(t.status), priority: (t) => t.priority || 0 };
+  /** ordina per colonna ({key, dir}); senza ordine resta quello di coda. Stabile: a parità vale l'ordine di coda. */
+  function sortBy(list, s) {
+    const f = s && SORT_VAL[s.key], d = s && s.dir === "desc" ? -1 : 1;
+    if (!f) return list;
+    return list.map((t, i) => [t, i]).sort((a, b) => {
+      const x = f(a[0]), y = f(b[0]);
+      return (x < y ? -1 : x > y ? 1 : 0) * d || a[1] - b[1];
+    }).map((p) => p[0]);
   }
   /** selezione come in Esplora file: "one" solo quella riga, "toggle" (Ctrl) aggiunge o toglie, "range" (Maiusc) dall'ancora
    *  nell'ordine visibile `ids`, "ctx" (tasto destro) tiene la selezione se la riga ne fa parte. Restituisce { sel, anchor } nuovi. */
@@ -164,13 +180,121 @@ const DLU = (() => {
   }
   /** da copiare e aprire a mano nel browser: solo indirizzi http(s), niente magnet; senza doppioni */
   const copyable = (urls) => [...new Set((urls || []).map((u) => String(u || "").trim()).filter((u) => /^https?:\/\//i.test(u)))];
-  return { copyable, logView, logMerge, logRel, logKind, logSummary, isMultiup, isMirrorSource, sortMirrors, mirrorView, defaultMirror, muTitle, bytes, speed, eta, status, FILE_PRIO, merge, summary, backoff, PRIO, clampPrio, prio, FILTERS, filter, select, limit, schedule,
-    DEBRID, debridName, debridState };
+  /** spazio libero in parole: «120 GB», «9,5 GB»; «—» se manca */
+  function room(n) {
+    if (n == null || !isFinite(n) || n < 0) return "—";
+    let i = 0;
+    while (n >= 1024 && i < UNITS.length - 1) { n /= 1024; i++; }
+    return (n < 10 && i > 0 ? n.toFixed(1) : n.toFixed(0)).replace(".", ",") + " " + UNITS[i];
+  }
+  /** previsione di spazio per disco ({drive, free_now, after_queue, after_extract, ok, unknown}) in righe; bad = la coda non ci sta */
+  const spaceLines = (drives) => (drives || []).map((d) => ({
+    text: `${d.drive} libero ora ${room(d.free_now)} · dopo la coda ${room(d.after_queue)} · dopo l'estrazione ${room(d.after_extract)}`
+      + (d.unknown > 0 ? ` (${d.unknown} senza dimensione)` : "")
+      + (d.ok === false ? " · Spazio insufficiente: alcuni download restano in attesa" : ""),
+    bad: d.ok === false,
+  }));
+  /* ---- gruppi: download della stessa partita (campo group), una testata con i totali */
+  const KIND = { base: "Base", update: "Aggiornamento", dlc: "DLC", altro: "Altro" };
+  const GROUP_STATUS = [["running", "in corso"], ["queued", "in coda"], ["paused", "in pausa"], ["error", "con errore"], ["completed", "completati"]];
+  /** totali di un gruppo: barra solo su chi ha la dimensione nota, velocità sommate, tempo = rimanente / velocità */
+  function groupAgg(m) {
+    const known = m.filter((t) => t.size > 0);
+    const size = known.reduce((a, t) => a + t.size, 0);
+    const done = known.reduce((a, t) => a + Math.min(Math.max(t.done || 0, 0), t.size), 0);
+    const speed = m.reduce((a, t) => a + (t.status === "running" ? t.speed || 0 : 0), 0);
+    // il rimanente è di ciò che può ancora finire (né completato né in errore)
+    const left = known.filter((t) => t.status !== "completed" && t.status !== "error").reduce((a, t) => a + Math.max(t.size - (t.done || 0), 0), 0);
+    const counts = {};
+    for (const t of m) counts[t.status] = (counts[t.status] || 0) + 1;
+    // «pronto a giocare» della testata: il più tardi tra i membri che lo prevedono; pronto solo se lo sono tutti
+    const readyEta = m.reduce((a, t) => (t.ready_eta != null && (a == null || t.ready_eta > a) ? t.ready_eta : a), null);
+    return { size, done, speed, unknown: m.length - known.length, progress: size ? done / size : 0,
+      eta: speed > 0 && left > 0 ? left / speed : null, counts, ready: m.length > 0 && m.every((t) => t.ready), ready_eta: readyEta,
+      summary: GROUP_STATUS.filter(([k]) => counts[k]).map(([k, l]) => `${counts[k]} ${l}`).join(", "),
+      kinds: Object.keys(KIND).filter((k) => m.some((t) => t.kind === k)) };
+  }
+  /** elenco mostrato → righe {task} per i download singoli, {group} alla posizione del primo membro se i membri visibili sono ≥2 */
+  function groupRows(list) {
+    const by = new Map();
+    for (const t of list || []) if (t.group) by.set(t.group, [...(by.get(t.group) || []), t]);
+    const out = [];
+    for (const t of list || []) {
+      const m = t.group ? by.get(t.group) : null;
+      if (!m || m.length < 2) out.push({ task: t, group: null });
+      else if (m[0] === t) {
+        const title = (m.find((x) => x.group_title) || m[0]).group_title || m[0].name || m[0].source || "";
+        out.push({ task: null, group: { key: t.group, title, members: m, ...groupAgg(m) } });
+      }
+    }
+    return out;
+  }
+  /* ---- pronto a giocare: passi del download (stages) e ora prevista (ready_eta, secondi epoch) */
+  const STAGE_LABEL = { download: "Scarico", extract: "Estrazione", library: "Libreria", data: "Dati" };
+  const STAGE_STATE = { todo: "da fare", active: "in corso", done: "fatto", error: "errore" };
+  /** «Pronto alle 21:40», «Pronto domani alle 21:40», «Pronto gio alle 21:40» più in là, «Pronto a giocare ✓»; "" se non si sa */
+  function readyText(t, now = Date.now()) {
+    if (!t) return "";
+    if (t.ready) return "Pronto a giocare ✓";
+    if (t.ready_eta == null || !isFinite(t.ready_eta)) return "";
+    const d = new Date(Number(t.ready_eta) * 1000), n = new Date(now);
+    const hm = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+    const tom = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1).toDateString();
+    const day = d.toDateString() === n.toDateString() ? "" : d.toDateString() === tom ? "domani "
+      : d.toLocaleDateString("it-IT", { weekday: "short" }).replace(/\.$/, "") + " ";  // più in là: «Pronto gio alle 21:40»
+    return "Pronto " + day + "alle " + hm;
+  }
+  /** passi visibili come lista (skip nascosti): pallino, nome, «Scarico 42%», «Estrazione ✓», «Libreria ✗»; "" se non ci sono */
+  function stepperHtml(t) {
+    const steps = ((t && t.stages) || []).filter((s) => s && STAGE_LABEL[s.id] && s.state !== "skip");
+    if (!steps.length) return "";
+    const items = steps.map((s) => {
+      const st = STAGE_STATE[s.state] ? s.state : "todo", label = STAGE_LABEL[s.id];
+      const pct = Math.round(Math.min(Math.max(Number(s.pct) || 0, 0), 100));
+      // nota (attesa dell'installazione o della scansione) al posto della percentuale, che lì non avanza
+      const note = st === "active" && s.note ? String(s.note).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`) : "";
+      const now = note ? ` · ${note}` : ` ${pct}%`;
+      const text = st === "done" ? `${label} ✓` : st === "error" ? `${label} ✗` : st === "active" ? `${label}${now}` : label;
+      const aria = `${label}: ${STAGE_STATE[st]}${st === "active" ? now : ""}`;
+      return `<li class="dl-step ${st}" role="listitem" aria-label="${aria}"><i class="dl-dot" aria-hidden="true"></i>${text}</li>`;
+    });
+    return `<ul class="dl-stepper" role="list" aria-label="Passi fino a giocare">${items.join("")}</ul>`;
+  }
+  /* ---- velocità: sparkline in SVG (niente librerie), campioni per task, storico per giorno */
+  /** path SVG della linea (o dell'area chiusa sul fondo) su scala 0..max; NaN e negativi valgono 0; lista vuota = "" */
+  function sparkPath(values, w, h, area = false) {
+    const v = (values || []).map((x) => (isFinite(x) && x > 0 ? Number(x) : 0));
+    if (!v.length) return "";
+    const src = v.length === 1 ? [v[0], v[0]] : v, max = Math.max(...v);
+    const y = (x) => (max > 0 ? h - 1 - (x / max) * (h - 2) : h - 1);
+    const line = "M" + src.map((x, i) => `${((i * w) / (src.length - 1)).toFixed(1)},${y(x).toFixed(1)}`).join(" L");
+    return area ? `${line} L${w},${h} L0,${h} Z` : line;
+  }
+  /** aggiunge un campione (byte/s) alla lista del task, al più `max` (i più vecchi via); restituisce la lista */
+  function pushSample(map, id, v, max) {
+    const a = [...(map.get(id) || []), isFinite(v) && v > 0 ? Number(v) : 0].slice(-max);
+    map.set(id, a);
+    return a;
+  }
+  /** GB da 1 GB in su, altrimenti MB/KB come bytes(); «—» se manca */
+  const fmtGB = (n) => (n != null && isFinite(n) && n >= 1024 ** 3
+    ? (n / 1024 ** 3).toFixed(n < 10 * 1024 ** 3 ? 2 : 1).replace(".", ",") + " GB" : bytes(n));
+  /** colonne dello storico, una per giorno, alte in proporzione al giorno più pieno: {bars:[{day,bytes,x,y,width,height}], max} */
+  function barsLayout(days, w, h) {
+    const d = (days || []).map((x) => ({ day: String((x && x.day) ?? ""), bytes: isFinite(x && x.bytes) && x.bytes > 0 ? Number(x.bytes) : 0 }));
+    const max = d.reduce((a, x) => Math.max(a, x.bytes), 0), slot = d.length ? w / d.length : 0, bw = slot * 0.7;
+    return { max, bars: d.map((x, i) => {
+      const bh = max > 0 ? (x.bytes / max) * h : 0;
+      return { day: x.day, bytes: x.bytes, x: +(i * slot + (slot - bw) / 2).toFixed(1), y: +(h - bh).toFixed(1), width: +bw.toFixed(1), height: +bh.toFixed(1) };
+    }) };
+  }
+  return { groupRows, groupAgg, KIND, spaceLines, copyable,logView, logMerge, logRel, logKind, logSummary, isMultiup, isMirrorSource, sortMirrors, mirrorView, defaultMirror, muTitle, bytes, speed, eta, status, FILE_PRIO, merge, summary, backoff, PRIO, clampPrio, prio, colW, FILTERS, filter, sortBy, host, select, limit, schedule,
+    DEBRID, debridName, debridState, readyText, stepperHtml, sparkPath, pushSample, fmtGB, barsLayout };
 })();
 if (typeof module !== "undefined") module.exports = DLU;
 
 
-const DL = { tasks: [], settings: {}, open: new Set(), html: new WeakMap(), filter: "all", q: "", sel: new Set(), anchor: null, kbdMenu: 0, log: { id: "", lines: [], n: 0, busy: false, timer: 0 } };
+const DL = { tasks: [], settings: {}, html: new WeakMap(), filter: "all", q: "", sel: new Set(), anchor: null, kbdMenu: 0, open: new Set(), sort: undefined, colW: {}, tab: "gen", panelId: "", panelHtml: "", panelH: 0, spaceAt: 0, spaceT: 0, spark: new Map(), stats: null, statsI: 0, statsBusy: false,plog: { id: "", lines: [], n: 0, loaded: false, busy: false }, log: { id: "", lines: [], n: 0, busy: false, timer: 0 } };
 const dlTask = (id) => DL.tasks.find((x) => x.id === id);
 /** provider di un link MultiUp (o accorciatore): una risposta per URL in memoria per tutta la sessione; gli errori non si ricordano */
 const MU_CACHE = new Map();
@@ -210,42 +334,174 @@ function dlRefresh() {
   }
   dlAltButton();
   dlsAltState();
-  if (S.view.type === "downloads") dlRenderList();
+  if (S.view.type === "downloads") { dlSample(); dlRenderList(); dlSpace(); dlTrendNow(); }
 }
 
-/** righe compatte: scelta ricordata nel browser */
-function dlDense() {
-  try { return !!localStorage.getItem("dlDense"); } catch { return false; }
+/* ---- velocità per task: ultimi 40 campioni di ogni download in corso, a ogni aggiornamento della lista */
+function dlSample() {
+  for (const t of DL.tasks) if (t.status === "running") DLU.pushSample(DL.spark, t.id, t.speed, 40);
+  for (const id of DL.spark.keys()) {
+    const t = dlTask(id);
+    if (!t || t.status === "completed" || t.status === "error") DL.spark.delete(id); // finito: niente più campioni
+  }
 }
+/** mini grafico della velocità recente, accanto al valore («—» e nulla se non ci sono campioni) */
+function dlSpark(id) {
+  const v = DL.spark.get(id) || [], p = DLU.sparkPath(v, 80, 18);
+  return p ? `<svg class="dl-spark" width="80" height="18" viewBox="0 0 80 18" role="img" focusable="false" aria-label="Velocità recente, picco ${esc(DLU.speed(Math.max(...v)))}"><path d="${p}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>` : "";
+}
+
+/* ---- pannello velocità e storico: la velocità «adesso» viene dalla lista, il grafico e lo storico da /api/downloads/stats */
+const DL_STATS_EVERY = 30000;
+/** avvia il controllo ogni 30 s (solo mentre la pagina è visibile); una sola volta per pagina */
+function dlTrendStart() {
+  clearInterval(DL.statsI);
+  DL.statsI = setInterval(() => { if (!$("#dl-trend")) return clearInterval(DL.statsI); dlStatsFetch(); }, DL_STATS_EVERY);
+  dlStatsFetch();
+}
+async function dlStatsFetch() {
+  if (DL.statsBusy || document.visibilityState !== "visible") return;
+  DL.statsBusy = true;
+  const el = $("#dl-trend");
+  try {
+    const s = await api("/api/downloads/stats");
+    dlTrendDraw(s);
+    if (el) el.hidden = false;
+  } catch { if (el && !DL.stats) el.hidden = true; } // senza statistiche resta la lista, senza pannello
+  finally { DL.statsBusy = false; dlFit(); }
+}
+function dlTrendNow() {
+  const el = $("#dl-trend-now");
+  if (!el) return;
+  const { speed } = DLU.summary(DL.tasks);
+  el.textContent = `Adesso ${speed > 0 ? DLU.speed(speed) : "fermo"}`;
+}
+function dlTrendDraw(s) {
+  DL.stats = s;
+  const chart = $("#dl-trend-chart"), hist = $("#dl-hist"), peakEl = $("#dl-trend-peak");
+  if (!chart) return;
+  const vals = (s.last_hour || []).map((x) => (x && x.bps) || 0);
+  const peak = vals.reduce((a, v) => Math.max(a, isFinite(v) ? v : 0), 0), W = 600, H = 40;
+  const line = DLU.sparkPath(vals, W, H), area = DLU.sparkPath(vals, W, H, true);
+  chart.innerHTML = line
+    ? `<svg class="dl-trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(`Velocità ultima ora, picco ${DLU.speed(peak)}`)}"><path class="dl-area" d="${area}"/><path class="dl-line" d="${line}" vector-effect="non-scaling-stroke"/></svg>`
+    : `<p class="muted small">Nessuna velocità registrata nell'ultima ora.</p>`;
+  peakEl.textContent = `picco ${DLU.speed(peak)}`;
+  const days = s.per_day || [], total30 = days.reduce((a, d) => a + (d && d.bytes > 0 ? d.bytes : 0), 0);
+  const B = DLU.barsLayout(days, W, 60);
+  const aria = `GB al giorno, ultimi 30 giorni: totale ${DLU.fmtGB(total30)}, giorno più pieno ${DLU.fmtGB(B.max)}`;
+  const cols = B.bars.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}"><title>${esc(b.day)}: ${DLU.fmtGB(b.bytes)}</title></rect>`).join("");
+  const rows = (s.per_host || []).map((h) => `<tr><th scope="row">${esc(h.host || "—")}</th><td class="num">${DLU.fmtGB(h.bytes_30d)}</td><td class="num">${DLU.fmtGB(h.bytes_total)}</td></tr>`).join("");
+  hist.innerHTML = (B.max > 0
+    ? `<p class="muted small">GB al giorno, ultimi 30 giorni</p><svg class="dl-bars-svg" viewBox="0 0 ${W} 60" preserveAspectRatio="none" role="img" aria-label="${esc(aria)}">${cols}</svg>`
+    : `<p class="muted small">Nessun download negli ultimi 30 giorni.</p>`)
+    + (rows ? `<table class="dl-hosts"><thead><tr><th scope="col">Host</th><th scope="col" class="num">GB ultimi 30 giorni</th><th scope="col" class="num">GB totali</th></tr></thead>`
+      + `<tbody>${rows}</tbody><tfoot><tr><th scope="row">Totale</th><td class="num">${DLU.fmtGB(total30)}</td><td class="num">${DLU.fmtGB(s.total_bytes)}</td></tr></tfoot></table>` : "");
+}
+
+/** la tabella (altezza fissa in app.css) si accorcia di quanto occupano previsione e grafico sopra di lei */
+function dlFit() {
+  const wrap = $("#dl-wrap");
+  if (!wrap) return;
+  const h = ["#dl-space", "#dl-trend"].reduce((a, q) => {
+    const el = $(q);
+    return a + (el && !el.hidden ? el.offsetHeight + (parseFloat(getComputedStyle(el).marginBottom) || 0) : 0);
+  }, 0);
+  wrap.style.setProperty("--dl-extra", Math.round(h) + "px");
+}
+
+/* ---- previsione dello spazio su disco: sopra la coda, al più ogni 5 s, nascosta se la coda è vuota */
+const dlBusy = (t) => t.status === "queued" || t.status === "running" || t.status === "paused";
+function dlSpace() {
+  const el = $("#dl-space");
+  if (!el) return;
+  if (!DL.tasks.some(dlBusy)) { if (!el.hidden) { el.hidden = true; dlFit(); } return; }
+  if (!DL.spaceT) DL.spaceT = setTimeout(dlSpaceFetch, Math.max(0, DL.spaceAt + 5000 - Date.now()));
+}
+async function dlSpaceFetch() {
+  DL.spaceT = 0;
+  DL.spaceAt = Date.now();
+  const el = $("#dl-space");
+  if (!el) return;
+  if (!DL.tasks.some(dlBusy)) { el.hidden = true; return; }
+  try {
+    const lines = DLU.spaceLines((await api("/api/downloads/space")).drives);
+    el.innerHTML = lines.map((l) => `<div class="dl-space-row${l.bad ? " bad" : ""}">${esc(l.text)}</div>`).join("");
+    el.hidden = !lines.length;
+  } catch { el.hidden = true; } // senza previsione la coda funziona lo stesso
+  dlFit();
+}
+
+/** ordinamento scelto (colonna e verso) ricordato nel browser; null = ordine di coda */
+function dlSortLoad() {
+  try { const s = JSON.parse(localStorage.getItem("dlSort") || "null"); return s && s.key ? { key: String(s.key), dir: s.dir === "desc" ? "desc" : "asc" } : null; } catch { return null; }
+}
+function dlSortSave() {
+  try { localStorage.setItem("dlSort", JSON.stringify(DL.sort)); } catch { /* modalità privata: vale solo per questa visita */ }
+}
+/** larghezze delle colonne scelte trascinando i bordi (px); vuoto = larghezze standard */
+function dlColsLoad() {
+  try { const w = JSON.parse(localStorage.getItem("dlCols") || "{}"); return w && typeof w === "object" ? w : {}; } catch { return {}; }
+}
+function dlColsSave() {
+  try { localStorage.setItem("dlCols", JSON.stringify(DL.colW)); } catch { /* modalità privata: vale solo per questa visita */ }
+}
+/** download mostrati, nell'ordine in cui compaiono (la selezione a intervallo usa lo stesso) */
+const dlVisible = () => DLU.sortBy(DLU.filter(DL.tasks, DL.filter, DL.q), DL.sort);
+/** righe che si vedono davvero, in ordine: i membri di un gruppo chiuso non ci sono (selezione e frecce usano queste) */
+const dlShown = () => DLU.groupRows(dlVisible()).flatMap((e) => (e.group ? (DL.open.has(e.group.key) ? e.group.members : []) : [e.task]));
+
+const DL_COLS = [["name", "Nome", ""], ["host", "Host", "hide-s"], ["size", "Dimensione", "num"], ["progress", "Avanzamento", "c-prog"],
+  ["speed", "Velocità", "num"], ["eta", "ETA", "num hide-s"], ["status", "Stato", "c-st"], ["priority", "Priorità", "hide-s"]];
 
 /* ---- pagina */
 async function renderDownloads(pv) {
-  pv.innerHTML = `<div class="page dl-page${dlDense() ? " dense" : ""}">
-    <div class="page-head"><div><h2>⬇ Download</h2></div>
-      <div class="dl-tools">
-        <span class="dl-seg" role="group" aria-label="Tutti i download">
-          <button class="btn" id="dl-pause-all" type="button">⏸ Pausa tutto</button>
-          <button class="btn" id="dl-resume-all" type="button">▶ Riprendi tutto</button></span>
-        <span class="dl-seg" role="group" aria-label="Pulizia dell'elenco">
-          <button class="btn" id="dl-clear-done" type="button" title="Toglie dall'elenco i download completati">🧹 Completati</button>
-          <button class="btn" id="dl-clear-err" type="button" title="Toglie dall'elenco i download falliti ed elimina i file parziali">🗑 Falliti</button></span>
-        <button class="btn" id="dl-density" type="button" aria-pressed="${dlDense()}" title="Righe compatte">↕ Compatta</button>
-        <button class="btn" id="dl-alt" type="button" aria-pressed="false">🐢 Modalità lenta</button>
-        <button class="btn primary" id="dl-add" type="button">＋ Aggiungi</button></div></div>
-    <div class="dl-stats" id="dl-total"></div>
-    <div class="dl-filters">
+  DL.sort ??= dlSortLoad();
+  try { DL.panelH = Number(localStorage.getItem("dlPanelH")) || 0; } catch { DL.panelH = 0; }
+  DL.panelHtml = ""; // la pagina è nuova: il pannello va ridisegnato
+  DL.spark = new Map(); // i campioni ripartono con la pagina
+  pv.innerHTML = `<div class="page dl-page">
+    <div class="dl-tools" role="toolbar" aria-label="Download">
+      <button class="btn primary" id="dl-add" type="button">＋ Aggiungi</button>
+      <button class="btn" id="dl-resume-all" type="button" title="Avvia o riprende tutti i download">▶ Avvia tutto</button>
+      <button class="btn" id="dl-pause-all" type="button">⏸ Pausa tutto</button>
+      <button class="btn" id="dl-clear-done" type="button" title="Toglie dall'elenco i download completati">🧹 Completati</button>
+      <button class="btn" id="dl-clear-err" type="button" title="Toglie dall'elenco i download falliti ed elimina i file parziali">🗑 Falliti</button>
       <div class="chips dl-chips" role="group" aria-label="Mostra">${DLU.FILTERS.map(([k, l]) =>
         `<button class="chip" type="button" data-filter="${k}" aria-pressed="${DL.filter === k}">${l}</button>`).join("")}</div>
       <input class="field" type="search" id="dl-q" placeholder="Cerca per nome o link" aria-label="Cerca nei download" value="${esc(DL.q)}">
     </div>
-    <div class="dl-list" id="dl-rows"></div></div>`;
+    <div class="dl-space" id="dl-space" hidden></div>
+    <section class="dl-trend" id="dl-trend" aria-label="Velocità e storico" hidden>
+      <div class="dl-trend-head"><b id="dl-trend-now"></b><span class="muted small" id="dl-trend-peak"></span></div>
+      <div id="dl-trend-chart"></div>
+      <p class="muted small dl-trend-cap">ultima ora</p>
+      <details class="dl-hist" id="dl-hist-box"><summary>Storico download</summary><div id="dl-hist"></div></details>
+    </section>
+    <div class="dl-wrap" id="dl-wrap"${DL.panelH ? ` style="--dl-panel-h:${DL.panelH}px"` : ""}>
+      <div class="dl-scroll">
+        <table class="dl-grid"><thead><tr>${DL_COLS.map(([k, l, c]) =>
+          `<th class="${c}" data-col="${k}" aria-sort="none"><button class="dl-th" type="button" data-sort="${k}">${l}<span class="dl-arrow" aria-hidden="true"></span></button><span class="dl-rs" role="separator" aria-orientation="vertical" aria-label="Larghezza colonna ${l}" tabindex="0"></span></th>`).join("")}
+          <th class="c-act"><span class="sr-only">Azioni</span></th></tr></thead>
+          <tbody id="dl-rows"></tbody></table>
+        <div id="dl-empty"></div>
+      </div>
+      <div class="dl-split" id="dl-split" role="separator" aria-orientation="horizontal" aria-label="Altezza del pannello dettagli" tabindex="0"></div>
+      <section class="dl-panel" aria-label="Dettagli del download">
+        <div class="dl-ptabs" role="tablist">${[["gen", "Generale"], ["files", "File"], ["log", "Registro"]].map(([k, l]) =>
+          `<button class="dl-ptab" type="button" role="tab" data-ptab="${k}" aria-selected="${DL.tab === k}">${l}</button>`).join("")}</div>
+        <div class="dl-pbody" id="dl-pbody" role="tabpanel" tabindex="0"></div>
+      </section>
+    </div>
+    <div class="dl-status" id="dl-status" role="status">
+      <span id="dl-s-down" title="Velocità totale in download"></span><span id="dl-s-up" title="Velocità totale in invio"></span>
+      <span id="dl-s-slots" title="Download attivi / massimo contemporanei"></span>
+      <button class="dl-lim" id="dl-s-lim" type="button" title="Limite globale di velocità: apri le impostazioni"></button>
+      <button class="btn" id="dl-alt" type="button" aria-pressed="false">🐢 Modalità lenta</button>
+      <span id="dl-s-game" hidden title="Modalità gioco attiva: i download rallentano mentre giochi">🎮 Modalità gioco</span>
+    </div></div>`;
   $("#dl-add", pv).onclick = dlOpenAdd;
-  $("#dl-density", pv).onclick = () => {
-    const on = !dlDense();
-    try { localStorage.setItem("dlDense", on ? "1" : ""); } catch { /* modalità privata: vale solo per questa visita */ }
-    $(".dl-page", pv).classList.toggle("dense", on);
-    $("#dl-density", pv).setAttribute("aria-pressed", on);
-  };
+  $("#dl-hist-box", pv).addEventListener("toggle", dlFit);
   const all = (what) => async () => {
     try { await api(`/api/downloads/${what}`, { body: {} }); } catch (e) { toast(e.message, true); }
   };
@@ -265,6 +521,7 @@ async function renderDownloads(pv) {
     dlRefresh();
     toast(DL.settings.alt_active ? "🐢 Modalità lenta attiva" : "Modalità lenta disattivata");
   };
+  $("#dl-s-lim", pv).onclick = () => { if (typeof openSettings === "function") openSettings("download"); };
   $(".dl-chips", pv).addEventListener("click", (e) => {
     const c = e.target.closest("[data-filter]");
     if (!c) return;
@@ -273,22 +530,119 @@ async function renderDownloads(pv) {
     dlRenderList();
   });
   $("#dl-q", pv).addEventListener("input", (e) => { DL.q = e.target.value; dlRenderList(); });
+  // maniglione: trascinando (o con ↑/↓) cambia l'altezza del pannello, ricordata nel browser
+  const wrap = $("#dl-wrap", pv), split = $("#dl-split", pv);
+  const setH = (h, save) => {
+    DL.panelH = Math.round(Math.min(Math.max(h, 90), Math.max(140, wrap.clientHeight - 110)));
+    wrap.style.setProperty("--dl-panel-h", DL.panelH + "px");
+    if (save) try { localStorage.setItem("dlPanelH", String(DL.panelH)); } catch { /* solo per questa visita */ }
+  };
+  split.addEventListener("pointerdown", (e) => {
+    const y0 = e.clientY, h0 = $(".dl-panel", pv).offsetHeight;
+    split.setPointerCapture(e.pointerId);
+    const move = (ev) => setH(h0 + y0 - ev.clientY, false);
+    const up = () => { split.removeEventListener("pointermove", move); split.removeEventListener("lostpointercapture", up); setH(DL.panelH, true); };
+    split.addEventListener("pointermove", move);
+    split.addEventListener("lostpointercapture", up); // rilascio o trascinamento interrotto
+  });
+  split.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    setH($(".dl-panel", pv).offsetHeight + (e.key === "ArrowUp" ? 24 : -24), true);
+  });
+  // bordi delle colonne: trascinando (o con ←/→) la colonna si allarga e le altre si stringono fino al minimo,
+  // poi la tabella scorre. Doppio clic sul bordo: tornano le larghezze standard. Tutto ricordato nel browser.
+  const COL_MIN = 64;
+  const head = $(".dl-grid thead", pv);
+  const colThs = () => [...head.querySelectorAll("th[data-col]")].filter((t) => t.getBoundingClientRect().width > 0);
+  DL.colW = dlColsLoad();
+  for (const [k, w] of Object.entries(DL.colW)) {
+    const t = $(`th[data-col="${k}"]`, head);
+    if (t && Number(w) > 0) t.style.width = Number(w) + "px";
+  }
+  // larghezze di partenza del gesto, fissate in px: da qui si calcola tutto, senza accumulare errori
+  const colStart = () => {
+    const m = new Map();
+    for (const t of colThs()) m.set(t, Math.round(t.getBoundingClientRect().width));
+    for (const [t, w] of m) { t.style.width = w + "px"; DL.colW[t.dataset.col] = w; }
+    dlColsSave();
+    return m;
+  };
+  const setColW = (th, start, w) => {
+    const px = DLU.colW(w, 0), d = px - start.get(th);
+    th.style.width = px + "px";
+    DL.colW[th.dataset.col] = px;
+    // lo spazio che si libera o serve lo prende l'avanzamento (la colonna elastica); se è lei a muoversi, il nome
+    const flex = $(`th[data-col="${th.dataset.col === "progress" ? "name" : "progress"}"]`, head);
+    if (d > 0) { // lo spazio lo danno le altre colonne; se hanno già il minimo, la tabella si allarga e scorre
+      const others = [...start.keys()].filter((t) => t !== th);
+      const room = others.reduce((a, t) => a + Math.max(0, start.get(t) - COL_MIN), 0), take = Math.min(d, room);
+      for (const t of others) {
+        const nw = DLU.colW(start.get(t), -(room ? take * Math.max(0, start.get(t) - COL_MIN) / room : 0), COL_MIN);
+        t.style.width = nw + "px";
+        DL.colW[t.dataset.col] = nw;
+      }
+    } else if (d < 0 && flex && flex !== th && start.has(flex)) {
+      const nw = DLU.colW(start.get(flex), -d);
+      flex.style.width = nw + "px";
+      DL.colW[flex.dataset.col] = nw;
+    }
+    dlColsSave();
+  };
+  head.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest(".dl-rs");
+    if (!h) return;
+    e.preventDefault();
+    const th = h.parentElement, start = colStart(), x0 = e.clientX, w0 = start.get(th);
+    h.setPointerCapture(e.pointerId);
+    const move = (ev) => setColW(th, start, w0 + ev.clientX - x0);
+    const up = () => { h.removeEventListener("pointermove", move); h.removeEventListener("lostpointercapture", up); };
+    h.addEventListener("pointermove", move);
+    h.addEventListener("lostpointercapture", up); // rilascio o trascinamento interrotto
+  });
+  head.addEventListener("keydown", (e) => {
+    const h = e.target.closest(".dl-rs");
+    if (!h || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    e.preventDefault();
+    const th = h.parentElement;
+    // la larghezza chiesta, non quella disegnata: la tabella riempie lo spazio e le altre colonne si allargano
+    const w = parseFloat(th.style.width) || th.getBoundingClientRect().width;
+    setColW(th, colStart(), w + (e.key === "ArrowRight" ? 16 : -16));
+  });
+  head.addEventListener("dblclick", (e) => {
+    if (!e.target.closest(".dl-rs")) return;
+    DL.colW = {};
+    dlColsSave();
+    for (const th of head.querySelectorAll("th[data-col]")) th.style.width = "";
+  });
   const page = $(".dl-page", pv);
+  const rowId = (el) => el.closest(".dl-row")?.dataset.id || DL.panelId; // i controlli del pannello valgono per il task mostrato
   page.addEventListener("click", (e) => {
     if (e.target.id === "dl-empty-add") return dlOpenAdd();
+    const h = e.target.closest("[data-sort]");
+    if (h) { // asc -> desc -> ordine di coda
+      const k = h.dataset.sort, s = DL.sort;
+      DL.sort = !s || s.key !== k ? { key: k, dir: "asc" } : s.dir === "asc" ? { key: k, dir: "desc" } : null;
+      dlSortSave();
+      return dlRenderList();
+    }
+    const tb = e.target.closest("[data-ptab]");
+    if (tb) { DL.tab = tb.dataset.ptab; return dlRenderPanel(); }
+    const g = e.target.closest("[data-gact]");
+    if (g) return dlGroupAct(g.closest("[data-gid]").dataset.gid, g.dataset.gact);
     const b = e.target.closest("button[data-act]");
-    if (b) return dlAct(b.closest(".dl-row").dataset.id, b.dataset.act, b);
+    if (b) return dlAct(rowId(b), b.dataset.act, b);
     const row = e.target.closest(".dl-row");
-    if (row && !e.target.closest("a, button, input, select, label, .dl-x")) dlSelect(row.dataset.id, e.shiftKey ? "range" : e.ctrlKey || e.metaKey ? "toggle" : "one");
+    if (row && !e.target.closest("a, button, input, select, label")) dlSelect(row.dataset.id, e.shiftKey ? "range" : e.ctrlKey || e.metaKey ? "toggle" : "one");
   });
   page.addEventListener("dblclick", (e) => {
     const row = e.target.closest(".dl-row");
-    if (row && !e.target.closest("a, button, input, select, label, .dl-x")) dlLog(row.dataset.id);
+    if (row && !e.target.closest("a, button, input, select, label")) dlLog(row.dataset.id);
   });
   page.addEventListener("mousedown", (e) => { if (e.shiftKey && e.target.closest(".dl-row")) e.preventDefault(); }); // niente testo evidenziato con Maiusc+clic
   page.addEventListener("change", (e) => {
     const c = e.target.closest("[data-act]");
-    if (c) dlAct(c.closest(".dl-row").dataset.id, c.dataset.act, c);
+    if (c) dlAct(rowId(c), c.dataset.act, c);
   });
   // menu della riga: tasto destro, tasto Menu o Maiusc+F10 (il WebView genera anche «contextmenu»: kbdMenu evita il doppio)
   page.addEventListener("contextmenu", (e) => {
@@ -301,13 +655,35 @@ async function renderDownloads(pv) {
   });
   page.addEventListener("keydown", (e) => {
     const row = e.target.closest(".dl-row");
-    if (!row || !(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) return;
-    e.preventDefault();
-    DL.kbdMenu = Date.now();
-    const r = e.target.getBoundingClientRect();
-    dlMenu(row.dataset.id, { x: r.left, y: r.bottom });
+    if (row && (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) {
+      e.preventDefault();
+      DL.kbdMenu = Date.now();
+      const r = e.target.getBoundingClientRect();
+      return dlMenu(row.dataset.id, { x: r.left, y: r.bottom });
+    }
+    // ↑/↓ cambiano selezione, Canc annulla, Spazio pausa/riprendi: solo nella tabella e mai dentro i campi
+    if (!e.target.closest(".dl-scroll") || e.target.closest("input, select, textarea") || e.altKey || e.ctrlKey || e.metaKey) return;
+    const ids = dlShown().map((t) => t.id), cur = DL.sel.has(DL.anchor) ? DL.anchor : [...DL.sel][0];
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!ids.length) return;
+      e.preventDefault();
+      const down = e.key === "ArrowDown", i = ids.indexOf(cur);
+      const n = ids[Math.min(Math.max((i < 0 ? (down ? -1 : ids.length) : i) + (down ? 1 : -1), 0), ids.length - 1)];
+      dlSelect(n, "one");
+      $(`#dl-rows .dl-row[data-id="${CSS.escape(n)}"]`)?.focus();
+      return;
+    }
+    const tasks = DL.tasks.filter((t) => DL.sel.has(t.id));
+    if (e.key === "Delete" && tasks.length) { e.preventDefault(); dlCancel(tasks); }
+    else if (e.key === " " && tasks.length && !e.target.closest("button, a")) {
+      e.preventDefault();
+      const live = (x) => x.status === "running" || x.status === "queued";
+      const run = tasks.filter(live).map((x) => x.id), stop = tasks.filter((x) => x.status === "paused" || x.status === "error").map((x) => x.id);
+      (run.length ? dlEach(run, "pause") : dlEach(stop, "resume")).catch((err) => toast(err.message, true));
+    }
   });
-  try { await dlLoad(); } catch (e) { $("#dl-rows", pv).innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+  dlTrendStart();
+  try { await dlLoad(); } catch (e) { $("#dl-empty", pv).innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
 
 function dlAltButton() {
@@ -320,37 +696,90 @@ function dlAltButton() {
     + (sch ? ` · programmata ${sch}` : "");
 }
 
-function dlRow(t) {
-  const o = t.options || {}, tor = t.type === "torrent", name = t.name || t.source || "";
-  const pct = Math.round(Math.min(Math.max(t.progress || 0, 0), 1) * 100), open = DL.open.has(t.id);
-  const btn = (act, ico, label, extra = "") => `<button class="icon-btn" type="button" data-act="${act}" title="${label}" aria-label="${label}: ${esc(name)}"${extra}>${ico}</button>`;
-  const live = t.status === "running" || t.status === "queued", p = DLU.clampPrio(t.priority), lim = DLU.limit(o.limit);
-  const install = !!o.setup && t.status === "completed"; // repack estratto: il setup si avvia da qui
-  return `<div class="dl-row" data-id="${esc(t.id)}" data-status="${esc(t.status)}"${o.seeding ? ' data-seed="1"' : ""}>
-    <div class="dl-main">
-      ${tor ? `<button class="icon-btn" type="button" data-act="toggle" aria-expanded="${open}" aria-controls="dl-x-${esc(t.id)}" title="File e dettagli" aria-label="File e dettagli: ${esc(name)}">${open ? "▾" : "▸"}</button>` : "<span></span>"}
-      <div class="dl-info">
-        <div class="dl-name"><b title="${esc(t.source)}">${esc(name)}</b><span class="dl-type">${tor ? "Torrent" : "HTTP"}</span>
-          ${p ? `<span class="dl-type${p > 0 ? " hi" : ""}" title="Priorità">${p > 0 ? "↑" : "↓"} ${DLU.prio(p)}</span>` : ""}
-          ${lim ? `<span class="dl-type" title="Limite di velocità di questo download">⏱ ${lim}</span>` : ""}
-          ${o.start_at ? `<span class="dl-type" title="Avvio pianificato: parte da solo">⏰ ${esc(o.start_at)}</span>` : ""}
-          ${o.resolved_by ? `<span class="dl-type">via ${esc(DLU.debridName(o.resolved_by))}</span>` : ""}
-          <span class="dl-st">${o.seeding ? "In condivisione" : esc(DLU.status(t.status))}</span></div>
-        <div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${esc(name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-        ${t.phase ? `<div class="dl-now${t.status === "error" ? " bad" : ""}" title="Passaggio prima del download">${t.status === "error" ? "Fermo a: " : ""}${esc(t.phase)}</div>` : ""}
-        <div class="dl-meta muted small">${pct}% · ${DLU.bytes(t.done)} di ${t.size ? DLU.bytes(t.size) : "?"}${t.status === "running" ? ` · ${DLU.speed(t.speed)} · mancano ${DLU.eta(t.eta)}` : ""}${tor && o.peers != null ? ` · ${o.peers} peer, ${o.seeds ?? 0} seed` : ""}${tor && o.upload_rate ? ` · ↑ ${DLU.speed(o.upload_rate)}` : ""}${tor && o.ratio != null ? ` · rapporto ${Number(o.ratio).toFixed(2).replace(".", ",")}` : ""}
-          ${t.status === "error" && t.error ? `<div class="dl-err">${esc(t.error)}</div>` : ""}</div>
-      </div>
-      <div class="dl-acts">
-        ${install ? `<button class="btn" type="button" data-act="install" title="Avvia il setup del repack: a installazione finita il gioco entra in libreria">📦 Installa</button>` : ""}
-        <span class="dl-more">${btn("up", "▲", "Priorità più alta")}${btn("down", "▼", "Priorità più bassa")}${btn("open-folder", "📂", "Apri cartella")}${btn("cancel", "✕", "Annulla")}</span>
-        ${live ? btn("pause", "⏸", "Pausa") : t.status !== "completed" ? btn("resume", "▶", "Riprendi") : ""}
-        ${btn("log", "📋", "Registro")}${btn("menu", "⋯", "Altre azioni", ' aria-haspopup="menu"')}
-      </div>
-    </div>
-    ${tor && open ? dlTorrentBox(t) : ""}
-  </div>`;
+/** barra di stato: i nodi sono fissi, cambia solo il testo (il fuoco non si perde) */
+function dlStatus() {
+  const { speed, up } = DLU.summary(DL.tasks), s = DL.settings || {};
+  const running = DL.tasks.filter((t) => t.status === "running" && !(t.options || {}).seeding).length;
+  const set = (id, txt) => { const el = $(id); if (el && el.textContent !== txt) el.textContent = txt; };
+  const pre = s.alt_active ? "alt_" : "", d = s[pre + "limit_down"] || 0, u = s[pre + "limit_up"] || 0;
+  set("#dl-s-down", "↓ " + (speed > 0 ? DLU.speed(speed) : "0 B/s"));
+  set("#dl-s-up", "↑ " + (up > 0 ? DLU.speed(up) : "0 B/s"));
+  set("#dl-s-slots", s.max_active ? `${running}/${s.max_active} attivi` : `${running} attivi`);
+  set("#dl-s-lim", d || u ? `Limite ${d ? "↓ " + d + " KB/s" : ""}${d && u ? " " : ""}${u ? "↑ " + u + " KB/s" : ""}` : "Nessun limite");
+  const g = $("#dl-s-game");
+  if (g) g.hidden = !s.game_active;
 }
+
+/** stepper «pronto a giocare» e testo dell'ora sotto il nome (riga o testata di gruppo); "" se non ci sono */
+function dlReadyHtml(t) {
+  const txt = DLU.readyText(t);
+  return DLU.stepperHtml(t) + (txt ? `<span class="dl-ready${t.ready ? " ok" : ""}">${txt}</span>` : "");
+}
+
+/** una riga della tabella; ▸ (solo torrent) apre la scheda File del pannello */
+function dlRow(t, member = false) {
+  const o = t.options || {}, tor = t.type === "torrent", name = t.name || t.source || "";
+  const pct = Math.round(Math.min(Math.max(t.progress || 0, 0), 1) * 100), p = DLU.clampPrio(t.priority);
+  const btn = (act, ico, label, extra = "") => `<button class="icon-btn" type="button" data-act="${act}" title="${label}" aria-label="${label}: ${esc(name)}"${extra}>${ico}</button>`;
+  const live = t.status === "running" || t.status === "queued";
+  const install = !!o.setup && t.status === "completed"; // repack estratto: il setup si avvia da qui
+  const st = o.seeding ? "In condivisione" : DLU.status(t.status);
+  const note = t.status === "error" ? t.error || t.phase : t.phase; // errore corto in riga, completo nel title
+  return `<tr class="dl-row${member ? " dl-member" : ""}" tabindex="0" data-id="${esc(t.id)}" data-status="${esc(t.status)}"${o.seeding ? ' data-seed="1"' : ""}>
+    <td class="c-name"><span class="dl-ico" aria-hidden="true" title="${tor ? "Torrent" : "HTTP"}">${tor ? "🧲" : "🌐"}</span>${tor ? btn("toggle", "▸", "File e dettagli") : ""}<b title="${esc(t.source)}">${esc(name)}</b>${o.start_at ? `<span class="dl-type" title="Avvio pianificato">⏰ ${esc(o.start_at)}</span>` : ""}${dlReadyHtml(t)}</td>
+    <td class="hide-s">${esc(DLU.host(t))}</td>
+    <td class="num">${t.size ? DLU.bytes(t.size) : "?"}</td>
+    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${esc(name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${pct}%</span></td>
+    <td class="num">${t.status === "running" ? DLU.speed(t.speed) + dlSpark(t.id) : "—"}</td>
+    <td class="num hide-s">${t.status === "running" ? DLU.eta(t.eta) : "—"}</td>
+    <td class="c-st"${note ? ` title="${esc(t.status === "error" && t.error ? t.error : t.phase)}"` : ""}><span class="dl-st">${esc(st)}</span>${note ? `<span class="dl-now${t.status === "error" ? " bad" : ""}">${esc(note)}</span>` : ""}</td>
+    <td class="hide-s">${p ? `<span class="dl-type${p > 0 ? " hi" : ""}">${p > 0 ? "↑" : "↓"} ${DLU.prio(p)}</span>` : "Normale"}</td>
+    <td class="c-act">${install ? `<button class="btn" type="button" data-act="install" title="Avvia il setup del repack: a installazione finita il gioco entra in libreria">📦 Installa</button>` : ""}${live ? btn("pause", "⏸", "Pausa") : t.status !== "completed" ? btn("resume", "▶", "Riprendi") : ""}${btn("menu", "⋯", "Altre azioni", ' aria-haspopup="menu"')}</td>
+  </tr>`;
+}
+
+/* ---- gruppi: una testata con i totali sopra i membri (righe normali, aperte dal ▸) */
+/** testata di un gruppo: stessi campi delle colonne della tabella, con i totali del gruppo */
+function dlGroupRow(g, open) {
+  const title = esc(g.title), pct = Math.round(Math.min(Math.max(g.progress, 0), 1) * 100);
+  const live = g.members.some((x) => x.status === "running" || x.status === "queued");
+  const stop = g.members.some((x) => x.status === "paused" || x.status === "error");
+  const btn = (act, ico, label) => `<button class="icon-btn" type="button" data-gact="${act}" title="${label}" aria-label="${label}: ${title}">${ico}</button>`;
+  const kinds = g.kinds.map((k) => `<span class="dl-kind">${DLU.KIND[k]}</span>`).join("");
+  return `<tr class="dl-group" data-gid="${esc(g.key)}">
+    <td class="c-name"><button class="icon-btn dl-gtog" type="button" data-gact="toggle" aria-expanded="${open}" title="${open ? "Nascondi" : "Mostra"} i download" aria-label="${open ? "Nascondi" : "Mostra"} i download di ${title}">▸</button>` +
+    `<b>${title}</b>${kinds}<span class="muted small dl-gcount">${g.members.length} download</span>${dlReadyHtml(g)}</td>
+    <td class="hide-s"></td>
+    <td class="num">${g.size ? DLU.bytes(g.size) : "?"}</td>
+    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${title}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${g.size ? pct + "%" : "—"}</span>${g.unknown ? ` <span class="muted small">+${g.unknown} senza dimensione</span>` : ""}</td>
+    <td class="num">${DLU.speed(g.speed)}</td>
+    <td class="num hide-s">${DLU.eta(g.eta)}</td>
+    <td class="c-st"><span class="dl-st">${esc(g.summary)}</span></td>
+    <td class="hide-s"></td>
+    <td class="c-act">${live ? btn("pause", "⏸", "Pausa tutti") : ""}${stop ? btn("resume", "▶", "Riprendi tutti") : ""}${btn("cancel", "🗑", "Annulla tutti")}</td>
+  </tr>`;
+}
+
+/** Pausa/Riprendi/Annulla della testata: le stesse azioni delle righe, applicate ai membri mostrati */
+function dlGroupAct(key, act) {
+  if (act === "toggle") { DL.open.has(key) ? DL.open.delete(key) : DL.open.add(key); return dlRenderList(); }
+  const g = DLU.groupRows(dlVisible()).find((e) => e.group && e.group.key === key)?.group;
+  if (!g) return;
+  if (act === "cancel") return dlCancel(g.members);
+  const ids = g.members.filter((x) => (act === "pause" ? x.status === "running" || x.status === "queued" : x.status === "paused" || x.status === "error")).map((x) => x.id);
+  dlEach(ids, act).catch((err) => toast(err.message, true));
+}
+
+/** voci della tabella in ordine: un download, o la testata di un gruppo seguita dai membri se è aperta */
+function dlItems(list) {
+  return DLU.groupRows(list).flatMap((e) => {
+    if (!e.group) return [{ key: e.task.id, html: dlRow(e.task) }];
+    const g = e.group, open = DL.open.has(g.key);
+    return [{ key: "g:" + g.key, html: dlGroupRow(g, open) }, ...(open ? g.members.map((t) => ({ key: t.id, html: dlRow(t, true) })) : [])];
+  });
+}
+/** chiave di un elemento della tabella (per riusarlo al ridisegno) */
+const dlRowKey = (el) => (el.dataset.gid != null ? "g:" + el.dataset.gid : el.dataset.id);
 
 function dlTorrentBox(t) {
   const o = t.options || {}, files = o.files || [];
@@ -369,38 +798,39 @@ function dlTorrentBox(t) {
 function dlRenderList() {
   const box = $("#dl-rows");
   if (!box) return;
-  const { active, speed, up } = DLU.summary(DL.tasks), list = DLU.filter(DL.tasks, DL.filter, DL.q);
-  const total = $("#dl-total");
-  if (total) {
-    const n = (s) => DL.tasks.filter((t) => t.status === s).length;
-    total.innerHTML = [["Attivi", active || "0"], ["↓", DLU.speed(speed)], ["↑", DLU.speed(up)],
-      ["Completati", n("completed")], ["Errori", n("error")]]
-      .map(([k, v]) => `<div class="dl-stat${k === "Errori" && v ? " bad" : ""}"><span class="k">${esc(k)}</span><span class="v">${esc(String(v))}</span></div>`).join("");
-  }
+  dlStatus();
+  const list = dlVisible(), empty = $("#dl-empty");
+  const items = dlItems(list);
+  document.querySelectorAll(".dl-grid th[data-col]").forEach((th) => {
+    const on = DL.sort && DL.sort.key === th.dataset.col;
+    th.setAttribute("aria-sort", on ? (DL.sort.dir === "desc" ? "descending" : "ascending") : "none");
+    th.querySelector(".dl-arrow").textContent = on ? (DL.sort.dir === "desc" ? "▼" : "▲") : "";
+  });
   if (!list.length) {
-    box.innerHTML = `<div class="dl-empty muted">${!DL.tasks.length
+    box.replaceChildren();
+    empty.innerHTML = `<div class="dl-empty muted">${!DL.tasks.length
       ? `<div class="dl-empty-ico" aria-hidden="true">⬇</div><p>Nessun download.</p>
          <p class="small">Incolla un link http, un magnet o un file .torrent.</p>
          <button class="btn primary" type="button" id="dl-empty-add">＋ Aggiungi un download</button>`
       : "Nessun download corrisponde al filtro o alla ricerca."}</div>`;
-    return;
+    return dlMarkSel();
   }
-  box.querySelector(".dl-empty")?.remove();
-  const act = document.activeElement, focusRow = box.contains(act) ? act.closest(".dl-row") : null;
-  const old = new Map([...box.children].map((el) => [el.dataset.id, el]));
+  if (empty.firstChild) empty.replaceChildren();
+  const act = document.activeElement, focusRow = box.contains(act) ? act.closest(".dl-row, .dl-group") : null;
+  const old = new Map([...box.children].map((el) => [dlRowKey(el), el]));
+  // il pulsante con il fuoco si ritrova per il suo attributo (data-act delle righe, data-gact delle testate)
+  const sel = (x) => (x.dataset.act ? `[data-act="${x.dataset.act}"]` : x.dataset.gact ? `[data-gact="${x.dataset.gact}"]` : null);
   let refocus = null;
-  list.forEach((t, i) => {
-    const html = dlRow(t);
-    let el = old.get(t.id);
-    old.delete(t.id);
-    // una tendina con il fuoco non si ridisegna (si chiuderebbe): si aggiorna al giro dopo
-    if (!el || (DL.html.get(el) !== html && !(el === focusRow && act.tagName === "SELECT"))) {
+  items.forEach(({ key, html }, i) => {
+    let el = old.get(key);
+    old.delete(key);
+    if (!el || DL.html.get(el) !== html) {
       const tpl = document.createElement("template");
-      tpl.innerHTML = html;
-      const nu = tpl.content.firstElementChild;
+      tpl.innerHTML = `<table><tbody>${html}</tbody></table>`; // un <tr> da solo non si legge fuori da una tabella
+      const nu = tpl.content.querySelector("tr");
       DL.html.set(nu, html);
       if (el) {
-        if (el === focusRow && act.dataset.act) refocus = [nu, `[data-act="${act.dataset.act}"]${act.dataset.file != null ? `[data-file="${act.dataset.file}"]` : ""}`];
+        if (el === focusRow) refocus = [nu, act === el ? "" : sel(act)];
         el.replaceWith(nu);
       }
       el = nu;
@@ -408,18 +838,91 @@ function dlRenderList() {
     if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
   });
   old.forEach((el) => el.remove());
-  if (refocus) refocus[0].querySelector(refocus[1])?.focus();
+  if (refocus) (refocus[1] === "" ? refocus[0] : refocus[1] && refocus[0].querySelector(refocus[1]))?.focus({ preventScroll: true });
   dlMarkSel();
 }
 
 /* ---- selezione multipla: la classe si mette a parte, così la riga non va ridisegnata */
 function dlSelect(id, mode) {
-  ({ sel: DL.sel, anchor: DL.anchor } = DLU.select(DL.sel, DLU.filter(DL.tasks, DL.filter, DL.q).map((t) => t.id), DL.anchor, id, mode));
+  ({ sel: DL.sel, anchor: DL.anchor } = DLU.select(DL.sel, dlShown().map((t) => t.id), DL.anchor, id, mode));
   dlMarkSel();
 }
 
 function dlMarkSel() {
   document.querySelectorAll("#dl-rows .dl-row").forEach((el) => el.classList.toggle("sel", DL.sel.has(el.dataset.id)));
+  dlRenderPanel();
+}
+
+/* ---- pannello dettagli: il task selezionato (l'ultimo cliccato); si ridisegna solo se l'HTML cambia */
+function dlPanelTask() {
+  return dlTask(DL.sel.has(DL.anchor) ? DL.anchor : [...DL.sel].pop());
+}
+
+function dlPanelGeneral(t) {
+  const o = t.options || {}, tor = t.type === "torrent";
+  const when = (s) => (s ? new Date(s * 1000).toLocaleString("it-IT") : "");
+  const kv = [["Nome", t.name], ["Sorgente", t.source], ["Cartella", t.save_path],
+    ["Stato", `${o.seeding ? "In condivisione" : DLU.status(t.status)}${t.phase ? " · " + t.phase : ""}`],
+    ["Dimensione", `${DLU.bytes(t.done)} di ${t.size ? DLU.bytes(t.size) : "?"}`],
+    ["Via", o.resolved_by ? DLU.debridName(o.resolved_by) : ""], ["Pianificazione", o.start_at ? "Avvio alle " + o.start_at : ""],
+    ["Limite", DLU.limit(o.limit)], ["Priorità", DLU.prio(t.priority)],
+    ["Peer", tor && o.peers != null ? `${o.peers} peer, ${o.seeds ?? 0} seed` : ""], ["Invio", tor && o.upload_rate ? DLU.speed(o.upload_rate) : ""],
+    ["Rapporto", tor && o.ratio != null ? Number(o.ratio).toFixed(2).replace(".", ",") : ""],
+    ["Creato", when(t.created)], ["Finito", when(t.finished)], ["Errore", t.status === "error" ? t.error : ""]];
+  return `<dl class="dl-kv">${kv.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd${k === "Errore" ? ' class="bad"' : ""}>${esc(String(v))}</dd>`).join("")}</dl>`;
+}
+
+/** scheda Registro: stesse righe del modale (dlLogRow), ma lette per il task mostrato e accodate a ogni aggiornamento */
+function dlPanelLog(t) {
+  const L = DL.plog;
+  if (L.id !== t.id) Object.assign(L, { id: t.id, lines: [], n: 0, loaded: false });
+  if (!L.busy && (dlLogLive(t) || t.log_n !== L.n || !L.loaded)) dlPanelLogFetch(t.id);
+  const t0 = (L.lines[0] || {}).t;
+  return L.lines.length ? `<div class="dl-logbox" role="log" aria-label="Registro del download">${L.lines.map((l) => dlLogRow(l, t0)).join("")}</div>`
+    : `<p class="muted small">${L.loaded ? "Nessuna riga nel registro." : "Carico il registro…"}</p>`;
+}
+
+async function dlPanelLogFetch(id) {
+  const L = DL.plog;
+  L.busy = true;
+  try {
+    const r = await api(`${dlUrl(id)}log?after=${L.n}`);
+    if (L.id !== id) return;
+    const st = DLU.logMerge(L, r), first = !L.loaded;
+    Object.assign(L, { lines: st.lines, n: st.n, loaded: true });
+    if (first || st.added.length || st.fresh) dlPanelDraw();
+  } catch { /* si riprova al prossimo aggiornamento */ }
+  finally { L.busy = false; }
+}
+
+function dlRenderPanel() {
+  const t = dlPanelTask();
+  if (!$("#dl-pbody")) return;
+  DL.panelId = t ? t.id : "";
+  if (DL.tab === "files" && (!t || t.type !== "torrent")) DL.tab = "gen";
+  document.querySelectorAll(".dl-ptab").forEach((b) => {
+    b.setAttribute("aria-selected", b.dataset.ptab === DL.tab);
+    if (b.dataset.ptab === "files") b.hidden = !t || t.type !== "torrent";
+  });
+  dlPanelDraw();
+}
+
+function dlPanelDraw() {
+  const t = dlPanelTask(), body = $("#dl-pbody");
+  if (!body) return;
+  const id = t ? t.id : "", same = body.dataset.id === id && body.dataset.tab === DL.tab;
+  const html = !t ? `<p class="muted small">Seleziona un download per vedere i dettagli.</p>`
+    : DL.tab === "files" ? dlTorrentBox(t) : DL.tab === "log" ? dlPanelLog(t) : dlPanelGeneral(t);
+  if (same && html === DL.panelHtml) return;
+  const act = document.activeElement;
+  if (same && body.contains(act) && act.tagName === "SELECT") return; // tendina aperta: si aggiorna al giro dopo
+  const top = body.scrollTop, bottom = body.scrollHeight - top - body.clientHeight < 24;
+  const re = body.contains(act) && act.dataset.act ? `[data-act="${act.dataset.act}"]${act.dataset.file != null ? `[data-file="${act.dataset.file}"]` : ""}` : "";
+  body.innerHTML = html;
+  DL.panelHtml = html;
+  Object.assign(body.dataset, { id, tab: DL.tab });
+  body.scrollTop = !same ? 0 : DL.tab === "log" && bottom ? body.scrollHeight : top;
+  if (re) body.querySelector(re)?.focus({ preventScroll: true });
 }
 
 /** la stessa azione su più download; continua anche se uno fallisce e poi segnala il primo errore */
@@ -527,7 +1030,7 @@ function dlMenu(id, pt) {
 async function dlAct(id, act, el) {
   const t = dlTask(id);
   if (!t) return;
-  if (act === "toggle") { if (!DL.open.delete(id)) DL.open.add(id); return dlRenderList(); }
+  if (act === "toggle") { dlSelect(id, "one"); DL.tab = "files"; return dlRenderPanel(); }
   if (act === "cancel") return dlCancel([t]);
   if (act === "log") return dlLog(id);
   if (act === "menu") { const r = el.getBoundingClientRect(); return dlMenu(id, { x: r.left, y: r.bottom }); }
@@ -594,8 +1097,8 @@ function dlLimit(ids) {
 /* ---- registro del download: finestra con le righe nuove accodate (aria-live), senza ridisegnare */
 const dlLogLive = (t) => !!t && (t.status === "running" || t.status === "queued");
 
-function dlLogRow(l) {
-  const v = DLU.logView(l), k = DLU.logKind(l.msg), t0 = (DL.log.lines[0] || l).t;
+function dlLogRow(l, t0 = (DL.log.lines[0] || l).t) {
+  const v = DLU.logView(l), k = DLU.logKind(l.msg);
   return `<div class="dl-ll ${v.level}${k ? " " + k : ""}"><time title="${v.time}" data-abs="${v.time}">${DLU.logRel(l.t, t0)}</time>`
     + `<b>${v.icon}${v.label}</b><span>${esc(v.msg.replace(/^\s*\u2192\s*/, ""))}</span></div>`;
 }
@@ -622,7 +1125,7 @@ function dlLogShow(st) {
   const L = DL.log, box = $("#dl-log-box");
   if (st.fresh) box.replaceChildren();
   box.querySelector(".dl-log-empty")?.remove();
-  box.insertAdjacentHTML("beforeend", (st.fresh ? st.lines : st.added).map(dlLogRow).join(""));
+  box.insertAdjacentHTML("beforeend", (st.fresh ? st.lines : st.added).map((l) => dlLogRow(l)).join(""));
   if (!L.lines.length) box.innerHTML = `<p class="dl-log-empty muted small">Nessuna riga nel registro.</p>`;
   dlLogSummary();
   if ($("#dl-log-follow").checked) box.scrollTop = box.scrollHeight;
@@ -664,7 +1167,7 @@ function dlLog(id) {
   d.onclose = () => {
     clearInterval(L.timer);
     L.id = "";
-    (opener && opener.isConnected ? opener : $(`#dl-rows .dl-row[data-id="${CSS.escape(id)}"] [data-act="log"]`))?.focus();
+    (opener && opener.isConnected ? opener : $(`#dl-rows .dl-row[data-id="${CSS.escape(id)}"]`))?.focus();
   };
   d.showModal();
   $("#dl-log-box").focus();

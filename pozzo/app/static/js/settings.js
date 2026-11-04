@@ -3,11 +3,20 @@
 
 /* ------------------------------------------------------------------ toast, impostazioni, splash */
 let toastTimer = 0;
+/* Annuncio per i lettori di schermo: #toast-live resta nel DOM (sr-only), il box visivo #toast viene nascosto con hidden e non e' una regione live. */
+function toastLive(msg, err) {
+  const live = $("#toast-live");
+  if (live.parentElement !== overlayHost()) overlayHost().appendChild(live);
+  live.setAttribute("role", err ? "alert" : "status");
+  live.textContent = "";
+  live.textContent = msg;
+}
+
 function toast(msg, err = false) {
   const t = $("#toast");
   if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
   t.textContent = msg;
-  t.removeAttribute("role");
+  toastLive(msg, err);
   t.className = err ? "err" : "";
   t.hidden = false;
   clearTimeout(toastTimer);
@@ -18,7 +27,7 @@ function savedToast(undo, label = "Salvato") {
   const t = $("#toast");
   if (t.parentElement !== overlayHost()) overlayHost().appendChild(t);
   t.className = "";
-  t.removeAttribute("role");
+  toastLive(label, false);
   t.replaceChildren(document.createTextNode(label));
   if (undo) {
     t.append(" · ");
@@ -72,7 +81,7 @@ function failToast(code, details = {}) {
     b.className = "toast-undo";
     b.textContent = label;
     b.onclick = onclick;
-    t.append(" ? ", b);
+    t.append(" · ", b);
   };
   if (entry) add(entry.label, () => { t.hidden = true; entry.run(details); });
   add("Chiudi", () => { t.hidden = true; });
@@ -261,7 +270,7 @@ function showTab(tab) {
     ? (GS.ui.settingsTabs.find((x) => `ext:${x.id}` === id)?.label || "Estensione")
     : (settingsCategory(id)?.[1] || "Impostazioni");
   $("#settings-body").scrollTop = 0;
-  if (id === "generale") { loadPower(); loadNotify(); loadProfilesSettings(); loadHints(); loadTour(); }
+  if (id === "generale") { loadPower(); loadNotify(); loadWebhooks(); loadProfilesSettings(); loadHints(); loadTour(); }
   else if (id === "download") loadDownloadSettings();
   else if (id === "sistema") { loadHealth(); loadAbout(); }
   else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); watchStatusStart(); api("/api/status").then(showStatus); }
@@ -271,7 +280,7 @@ function showTab(tab) {
   else if (id === "controller" || id === "streaming") loadRemote();
   else if (id === "integrazioni") loadIntegrations();
   else if (id === "aspetto" || id === "estensioni") { loadAppearance(); if (id === "aspetto") initUiPrefs(); }
-  else if (id === "dati") { loadBackups(); loadSync(); loadSaveDir(); }
+  else if (id === "dati") { loadBackups(); loadSync(); loadSaveDir(); loadMaintenance(); }
   else if (id.startsWith("ext:")) stopPadTest();
   refreshSettingsHealth();
 }
@@ -566,6 +575,73 @@ async function loadNotify() {
   } catch (e) { toast(e.message, true); }
 }
 
+/* ---- webhook in uscita: una riga per webhook, salvate tutte insieme */
+const WH_EVENTS = [["gioco_avviato", "Gioco avviato"], ["gioco_chiuso", "Gioco chiuso"],
+  ["download_finito", "Download finito"], ["prezzo_sceso", "Prezzo sceso"]];
+function whRow(h = {}) {
+  const row = document.createElement("div");
+  row.className = "wh-row";
+  row.dataset.orig = h.url || "";  // il server ritrova il segreto salvato da qui: non arriva mai al browser
+  row.innerHTML = `<div class="row wrap">
+      <input type="url" class="wh-url" placeholder="https://..." aria-label="Indirizzo del webhook" value="${esc(h.url || "")}">
+      <label class="chk"><input type="checkbox" class="wh-on"${h.enabled === false ? "" : " checked"}> Attivo</label></div>
+    <div class="row wrap">${WH_EVENTS.map(([id, label]) => `<label class="chk"><input type="checkbox" class="wh-ev" value="${id}"${(h.events || []).includes(id) ? " checked" : ""}> ${label}</label>`).join("")}</div>
+    <div class="row wrap"><input type="password" class="wh-secret" placeholder="${h.has_secret ? "Segreto impostato (scrivine uno per cambiarlo)" : "Segreto (facoltativo)"}" aria-label="Segreto del webhook" autocomplete="new-password">
+      ${h.has_secret ? `<label class="chk"><input type="checkbox" class="wh-clear"> Rimuovi segreto</label>` : ""}
+      <button class="btn wh-test" type="button">Prova</button> <button class="btn wh-del" type="button">Rimuovi</button></div>`;
+  return row;
+}
+function whSecret(row) {  // campo vuoto = il server tiene il segreto salvato
+  return { orig: row.dataset.orig, secret: row.querySelector(".wh-secret").value, clear_secret: !!row.querySelector(".wh-clear")?.checked };
+}
+function whCollect() {
+  return [...document.querySelectorAll("#wh-list .wh-row")].map((row) => ({
+    url: row.querySelector(".wh-url").value.trim(),
+    events: [...row.querySelectorAll(".wh-ev:checked")].map((c) => c.value),
+    ...whSecret(row),
+    enabled: row.querySelector(".wh-on").checked,
+  }));
+}
+async function loadWebhooks() {
+  const list = $("#wh-list");
+  if (!list) return;
+  if (!list.dataset.bound) {
+    list.dataset.bound = "1";
+    $("#wh-add").addEventListener("click", () => {
+      const row = whRow();
+      list.appendChild(row);
+      row.querySelector(".wh-url").focus();
+    });
+    $("#wh-save").addEventListener("click", async () => {
+      try {
+        const r = await api("/api/webhooks", { body: { webhooks: whCollect() } });
+        list.innerHTML = "";
+        r.webhooks.forEach((h) => list.appendChild(whRow(h)));  // indirizzi originali e «segreto impostato» aggiornati
+        $("#wh-state").textContent = `Salvati ${r.webhooks.length} webhook`;
+        toast("Webhook salvati");
+      } catch (e) { toast(e.message, true); }
+    });
+    list.addEventListener("click", async (e) => {
+      const row = e.target.closest(".wh-row");
+      if (!row) return;
+      if (e.target.closest(".wh-del")) return row.remove();
+      if (!e.target.closest(".wh-test")) return;
+      const btn = e.target.closest(".wh-test");
+      btn.disabled = true;
+      try {
+        const r = await api("/api/webhooks/test", { body: { url: row.querySelector(".wh-url").value.trim(), ...whSecret(row) } });
+        toast(r.msg, !r.ok);
+      } catch (err) { toast(err.message, true); }
+      finally { btn.disabled = false; }
+    });
+  }
+  try {
+    const d = await api("/api/webhooks");
+    list.innerHTML = "";
+    d.webhooks.forEach((h) => list.appendChild(whRow(h)));
+  } catch (e) { toast(e.message, true); }
+}
+
 /* ---- prova controller: ultimo stato ricevuto da ogni telefono (la scheda «Telefono e streaming») */
 let padTestT = 0;
 function stopPadTest() { clearTimeout(padTestT); padTestT = 0; }
@@ -771,6 +847,98 @@ async function loadBackups() {
         + `<td><button class="btn bk-restore" data-name="${esc(b.name)}">Ripristina</button></td></tr>`).join("") + `</table>`
       + `<p class="muted small">Cartella: <code>${esc(d.folder)}</code></p>`
     : `<p class="muted small">Ancora nessuna copia.</p>`;
+}
+
+/* ---- manutenzione programmata (pannello in settings/dati.html; API /api/maintenance) */
+/* pure:maintenance:start -- formattazione del rapporto, testata da tests/test_maintenance_ui.js (usa esc e fmtSize di core.js) */
+const MAINT_LIST_MAX = 20;
+function maintName(x) { return x && typeof x === "object" ? String(x.game ?? x.name ?? "") : String(x ?? ""); }
+function maintList(items) {
+  const list = items || [];
+  const rows = list.slice(0, MAINT_LIST_MAX).map((x) => `<li>${esc(maintName(x))}`
+    + (x && typeof x === "object" && x.path ? ` <span class="muted small">${esc(x.path)}</span>` : "") + "</li>").join("");
+  const more = list.length > MAINT_LIST_MAX ? `<li class="muted">e altre ${list.length - MAINT_LIST_MAX}</li>` : "";
+  return list.length ? `<ul class="maint-list">${rows}${more}</ul>` : `<p class="muted small">Nessuno.</p>`;
+}
+function maintDiffLines(diff) {
+  if (!diff) return [];
+  const short = (arr) => arr.slice(0, 5).map(maintName).join(", ") + (arr.length > 5 ? ` e altre ${arr.length - 5}` : "");
+  const nuove = diff.rom_nuove_mancanti || [], ripr = diff.rom_ripristinate || [], bios = diff.bios_nuovi_invalidi || [];
+  const out = [];
+  if (nuove.length) out.push({ cls: "maint-bad", text: `${nuove.length} ROM nuove mancanti: ${short(nuove)}` });
+  if (ripr.length) out.push({ cls: "maint-good", text: `${ripr.length} ROM ripristinate: ${short(ripr)}` });
+  if (bios.length) out.push({ cls: "maint-bad", text: `${bios.length} BIOS nuovi non validi: ${short(bios)}` });
+  const cd = diff.covers_delta || 0;
+  if (cd) out.push({ cls: cd > 0 ? "maint-bad" : "maint-good", text: `Copertine mancanti: ${cd > 0 ? "+" : ""}${cd}` });
+  const fd = diff.freeable_delta || 0; // più spazio da liberare = peggio
+  if (fd) out.push({ cls: fd > 0 ? "maint-bad" : "maint-good", text: `Spazio liberabile: ${fd > 0 ? "+" : "-"}${fmtSize(Math.abs(fd))}` });
+  return out;
+}
+function maintRenderReport(r, diff) {
+  const steps = (r.steps || []).map((s) => `<li class="${s.ok ? "maint-good" : "maint-bad"}"><span aria-label="${s.ok ? "riuscito" : "fallito"}">${s.ok ? "✓" : "✗"}</span>`
+    + ` ${esc(s.nome)}${s.note ? ` <span class="muted small">${esc(s.note)}</span>` : ""}</li>`).join("");
+  const lines = maintDiffLines(diff);
+  const diffHtml = diff ? `<h5>Rispetto all'ultima volta:</h5>` + (lines.length
+    ? `<ul class="maint-diff">${lines.map((l) => `<li class="${l.cls}">${esc(l.text)}</li>`).join("")}</ul>`
+    : `<p class="muted small">Nessuna differenza.</p>`) : "";
+  return `<h5>Passaggi</h5>${steps ? `<ul class="maint-steps">${steps}</ul>` : `<p class="muted small">Nessun passaggio registrato.</p>`}`
+    + `<h5>ROM sparite (${(r.rom_missing || []).length})</h5>${maintList(r.rom_missing)}`
+    + `<h5>BIOS non validi (${(r.bios_invalid || []).length})</h5>${maintList(r.bios_invalid)}`
+    + `<h5>Copertine mancanti</h5><p class="small">${esc(r.covers_missing ?? 0)}</p>`
+    + `<h5>Spazio liberabile</h5><p class="small">${r.freeable_bytes == null ? "non calcolato" : esc(fmtSize(r.freeable_bytes) || "0 B")}</p>`
+    + diffHtml;
+}
+/* pure:maintenance:end */
+
+let MAINT_TIMER = 0;
+function maintTime(t) {
+  if (t == null || t === "") return "";
+  return typeof t === "number" ? fmtDate(t) : new Date(t).toLocaleString("it", { dateStyle: "medium", timeStyle: "short" });
+}
+function maintPaint(d) {
+  const run = $("#mt-run");
+  run.disabled = !!d.running;
+  run.textContent = d.running ? "In corso…" : "Esegui ora";
+  $("#mt-state").textContent = d.running ? "Manutenzione in corso…" : "";
+  const latest = d.latest || {}, rep = latest.report;
+  const peggiora = !!(latest.diff && latest.diff.peggiora);
+  $("#mt-last").textContent = rep ? `Ultimo rapporto: ${maintTime(rep.time)}${peggiora ? " · peggiorato" : ""}` : "Nessun rapporto ancora.";
+  $("#mt-last").classList.toggle("maint-bad", peggiora);
+  $("#mt-detail").innerHTML = rep ? maintRenderReport(rep, latest.diff) : "";
+}
+async function maintPoll() {
+  clearTimeout(MAINT_TIMER);
+  if (SET.tab !== "dati" || !$("#mt-box")) return;
+  let d;
+  try { d = await api("/api/maintenance"); } catch (e) { $("#mt-state").textContent = e.message; return; }
+  maintPaint(d);
+  if (d.running) MAINT_TIMER = setTimeout(maintPoll, 2000);
+}
+async function loadMaintenance() {
+  clearTimeout(MAINT_TIMER);
+  const box = $("#mt-box");
+  if (!box) return;
+  if (!box.dataset.bound) {
+    box.dataset.bound = "1";
+    // il salvataggio rilegge tutti e tre i campi: l'annulla di autosaveControl riscrive prima il valore precedente
+    const save = () => api("/api/maintenance/settings", { body: { enabled: $("#mt-on").checked, day: Number($("#mt-day").value), time: $("#mt-time").value } });
+    autosaveControl($("#mt-on"), save);
+    autosaveControl($("#mt-day"), save);
+    autosaveControl($("#mt-time"), save);
+    $("#mt-run").addEventListener("click", async () => {
+      try { await api("/api/maintenance/run", { method: "POST" }); } catch (e) { return toast(e.message, true); }
+      MAINT_TIMER = setTimeout(maintPoll, 1000);
+    });
+  }
+  try {
+    const d = await api("/api/maintenance");
+    const s = d.settings || {};
+    $("#mt-on").checked = !!s.enabled;
+    $("#mt-day").value = String(s.day ?? 0);
+    $("#mt-time").value = s.time || "03:00";
+    maintPaint(d);
+    if (d.running) MAINT_TIMER = setTimeout(maintPoll, 2000);
+  } catch (e) { $("#mt-state").textContent = e.message; }
 }
 
 /* ---- profili utente: dati personali separati (preferiti, tempo di gioco, collezioni...), libreria comune */

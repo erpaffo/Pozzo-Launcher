@@ -11,7 +11,7 @@ hide:
     
     <a href="download.md" class="hero-release-pill">
       <span class="hero-pulse-dot"></span>
-      <span>Disponibile la nuova versione <strong class="gh-release-tag">v0.12.1</strong> · Gratuito e Open Source</span>
+      <span>Disponibile la nuova versione <strong class="gh-release-tag">v0.14.3</strong> · Gratuito e Open Source</span>
     </a>
 
     <h1 class="hero-title">
@@ -19,7 +19,7 @@ hide:
     </h1>
 
     <p class="hero-subtitle">
-      Pozzo Launcher riunisce in un'interfaccia ultra-veloce i giochi PC di Steam, Epic Games, GOG, Riot, Battle.net e Xbox con la tua intera collezione di ROM per console. Copertine in alta definizione, metadati automatici, modalità Big Picture per la TV e streaming controller su smartphone.
+      Pozzo Launcher riunisce in un'interfaccia ultra-veloce i giochi PC di Steam, Epic Games, GOG, Riot, Battle.net e Xbox con la tua intera collezione di ROM per console. Copertine in alta definizione, metadati automatici, download manager integrato con torrent e debrid, multiplayer con gli amici e streaming controller su smartphone.
     </p>
 
     <!-- Gruppo di Download Principale Intelligente -->
@@ -187,6 +187,51 @@ hide:
       </div>
       <div class="feature-media-frame">
         <img src="images/impostazioni-aspetto.jpg" alt="Impostazioni di aspetto con anteprime dei temi e dei profili grafici" loading="lazy">
+      </div>
+    </div>
+
+    <!-- Feature 5: Download Manager e Debrid -->
+    <div class="feature-row">
+      <div class="feature-content">
+        <h2>Download Manager integrato: Torrent, Debrid e archivio automatico</h2>
+        <p>
+          Scarica ROM, aggiornamenti e DLC direttamente dentro Pozzo Launcher senza browser esterni. Il gestore integrato supporta download HTTP multi-segmento accelerati con file sparsi, client BitTorrent e Magnet nativo, e integrazione con i principali account Debrid (Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link).
+        </p>
+        <p>
+          Tabella completa con colonne ordinabili, pannello dettagli con registro eventi in tempo reale, estrazione automatica degli archivi (ZIP, 7z, RAR multi-volume) con smistamento per console e <strong>Modalità Gioco</strong> che riduce la banda in background durante le tue sessioni di gioco.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">HTTP Multi-Segmento</span>
+          <span class="feature-tag-pill">Torrent & Magnet Nativo</span>
+          <span class="feature-tag-pill">Debrid Integrato</span>
+          <span class="feature-tag-pill">Estrazione Automatica</span>
+          <span class="feature-tag-pill">Modalità Gioco</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/store-online.jpg" alt="Download manager e store online con coda dei download e impostazioni" loading="lazy">
+      </div>
+    </div>
+
+    <!-- Feature 6: Gioca con un amico (Reverse) -->
+    <div class="feature-row reverse">
+      <div class="feature-content">
+        <h2>Gioca con un amico: Netplay e multiplayer privato a distanza</h2>
+        <p>
+          Condividi la passione per il retrogaming a chilometri di distanza. Con <strong>RetroArch Netplay</strong> generi un codice invito con un clic da condividere su Discord o WhatsApp: l'amico lo incolla e siete subito in partita a 2 giocatori perfettamente sincronizzati.
+        </p>
+        <p>
+          Supporto per stanze private <strong>Eden (Switch)</strong> con avvio automatico del server e Direct Connect precompilato. Inoltre, il launcher rileva da solo gli emulatori già installati sul PC e configura automaticamente i tasti dei controller Xbox, PlayStation e Nintendo Switch.
+        </p>
+        <div class="feature-tags">
+          <span class="feature-tag-pill">Netplay RetroArch a 2 Giocatori</span>
+          <span class="feature-tag-pill">Stanze Private Eden Switch</span>
+          <span class="feature-tag-pill">Presenza Discord Integrata</span>
+          <span class="feature-tag-pill">Mappatura Controller Automatica</span>
+        </div>
+      </div>
+      <div class="feature-media-frame">
+        <img src="images/libreria-multigiocatore.jpg" alt="Libreria con filtro multigiocatore e opzioni di partita con un amico" loading="lazy">
       </div>
     </div>
 

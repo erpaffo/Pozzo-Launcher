@@ -84,6 +84,7 @@ async function loadOnline(seq) {
 function loading(text) {
   $("#loadbar").hidden = !text;
   $("#loadbar-text").textContent = text || "";
+  if ($("#grid-scroll")) layout(); // segnaposto e messaggio "vuoto" seguono lo stato di caricamento
 }
 
 /* ------------------------------------------------------------------ filtri e ordinamento */

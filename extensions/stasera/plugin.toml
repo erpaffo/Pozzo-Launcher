@@ -2,6 +2,12 @@
 name = "Cosa gioco stasera?"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Sceglie un gioco dal backlog in base al tempo che hai (durata HowLongToBeat), al genere e alla console, dando la precedenza a quelli che non giochi da più tempo. «Un altro» ne propone un altro, «Avvia» lo lancia."
+icon = "🎲"
+screenshot = "screenshot.png"
+description = "Ti consiglia il titolo ideale dal tuo backlog in base al tempo libero a disposizione (durata HowLongToBeat), al genere e alla console preferita."
+long_description = "Risolve per sempre l'indecisione davanti a una libreria sconfinata. Indica quanti minuti o ore hai a disposizione (es. 45 minuti o 2 ore), seleziona eventualmente una console o un genere, e l'algoritmo estrarrà il titolo perfetto dal tuo backlog privilegiando i giochi che non tocchi da più tempo o con valutazioni eccellenti."
+how_it_works = "1. Installa l'estensione e clicca sull'icona «Cosa gioco stasera?» nella barra laterale o nella schermata principale.\n2. Regola il cursore del tempo a disposizione (utilizza i dati di completamento medio HowLongToBeat).\n3. Imposta eventuali filtri opzionali su piattaforma e genere.\n4. Clicca su «Consigliami un gioco»: apparirà la copertina con motivazione, pulsante «Un altro» per pescarne un secondo o «Avvia gioco» per lanciarlo subito."
+features = ["Integrazione nativa con le stime orarie HowLongToBeat", "Algoritmo di ponderazione intelligente con rotazione dei titoli meno giocati", "Lancio immediato del gioco con un clic", "Filtri combinabili su console, genere e stato di avanzamento"]
 api = 1
 min_app = "0.7.1"
+permissions = ["libreria:lettura", "avvio"]

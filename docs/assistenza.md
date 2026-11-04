@@ -12,6 +12,8 @@ Scegli l'argomento su cui desideri ricevere supporto:
 |---|---|
 | [📁 ROM, Cartelle e Copertine](#rom-cartelle-e-copertine) | Configurare le cartelle ROM, identificare i giochi e correggere immagini o titoli mancanti |
 | [🎮 Avvio Giochi ed Emulatori](#avvio-giochi-ed-emulatori) | Risolvere problemi di avvio, configurare emulatori e parametri personalizzati |
+| [⬇️ Download, Torrent e Debrid](#download-torrent-e-debrid) | Gestore download integrato, risoluzione link protetti, torrent e account Debrid |
+| [👥 Multiplayer e Partita con un amico](#multiplayer-e-partita-con-un-amico) | Giocare in rete a distanza con RetroArch, stanze private Eden Switch e porte di rete |
 | [📱 Telefono, Telecomando e Doppio Schermo](#telefono-telecomando-e-doppio-schermo) | Abbinare lo smartphone, certificato HTTPS, touchscreen DS/3DS e controller |
 | [💾 Salvataggi, Versioni e Backup](#salvataggi-versioni-e-backup) | Come ripristinare un salvataggio precedente, sincronizzare due PC e usare Ludusavi |
 | [💻 Giochi PC, Store e Web Game](#giochi-pc-store-e-web-game) | Integrare Steam, Epic, GOG, Riot, Battle.net e aggiungere giochi browser o .exe |
@@ -195,6 +197,57 @@ Pozzo Launcher esegue una copia di sicurezza automatica con timestamp dei tuoi f
 
 ---
 
+## ⬇️ Download, Torrent e Debrid
+
+### Come funziona la coda di download integrata?
+**Risposta:** Cliccando su **⬇ Download** nella barra laterale o nelle Attività accedi a una tabella completa in cui puoi monitorare ogni trasferimento:
+- Cliccando sulle intestazioni puoi ordinare per nome, dimensione, velocità o tempo stimato (ETA).
+- Con il tasto destro puoi mettere in pausa, forzare la ripresa o assegnare priorità più alta a un file.
+- Facendo doppio clic su una riga si apre il pannello dettagli con la cronologia in tempo reale di ogni passaggio e dei controlli del browser nascosto.
+- Quando avvii una partita, la **Modalità gioco** riduce o sospende automaticamente il download per garantire zero lag e massima fluidità.
+
+---
+
+### Cosa fare se un download si ferma o l'host richiede un captcha?
+**Risposta:** Molti siti di hosting (FileKeeper, DataNodes, ecc.) utilizzano sistemi di protezione o conti alla rovescia che vengono gestiti in automatico dal browser integrato. Se un host richiede una verifica manuale (come un captcha Cloudflare):
+1. Vai in **Impostazioni › Download**.
+2. Attiva l'opzione **«Mostra il browser mentre risolve i link»**.
+3. Riprova il download: si aprirà la finestra del browser consentendoti di completare la verifica o cliccare sul pulsante richiesto. Il launcher catturerà il link finale e avvierà il download a segmenti, chiudendo la finestra.
+
+---
+
+### Come configuro un account Debrid (Real-Debrid, AllDebrid, TorBox, ecc.)?
+**Risposta:**
+1. Vai in **Impostazioni › Download › Servizi debrid**.
+2. Inserisci la tua chiave API o token del servizio (Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link).
+3. Clicca su **Verifica**: l'app controllerà la validità della chiave e la salverà in modo crittografato sul tuo computer.
+4. Da questo momento, tutti i download supportati verranno sbloccati ad alta velocità tramite i server Debrid, superando code di attesa e limiti di velocità degli host gratuiti.
+
+---
+
+## 👥 Multiplayer e Partita con un amico
+
+### Come gioco in multiplayer con un amico a distanza su RetroArch o Eden Switch?
+**Risposta:** Pozzo Launcher include il supporto nativo a **«Partita con un amico»** senza dover creare account o configurare server dedicati:
+1. Nella scheda del gioco, clicca su **👥 Partita con un amico**: Pozzo genera un codice invito o link pronto da mandare al tuo amico (via Discord, WhatsApp o Telegram).
+2. L'amico apre Pozzo sul suo PC, clicca su **👥 Ho un invito** e incolla il codice.
+3. **RetroArch**: avvia una sessione netplay peer-to-peer per due giocatori (richiede la stessa ROM e lo stesso core). Se hai Discord aperto, la presenza mostrerà la partita come «(1 di 2)».
+4. **Eden (Nintendo Switch)**: l'app avvia in background la stanza privata di Eden (eden-room, porta UDP 24872) con password casuale e precompila automaticamente i campi in *Multiplayer › Direct Connect* sul PC dell'amico, che dovrà solo premere *Connetti*.
+5. **Altri emulatori**: se l'emulatore non supporta il netplay nativo, Pozzo suggerisce lo **Share Play** con Sunshine e Moonlight per trasmettere il gioco dal tuo PC e assegnare un secondo controller virtuale all'amico!
+
+---
+
+### Che porte devo aprire sul router per giocare su Internet?
+**Risposta:**
+- **In rete locale (stessa casa o Wi-Fi)**: non serve aprire alcuna porta.
+- **Tramite VPN gratuita (consigliato)**: installa **Tailscale** o **ZeroTier** su entrambi i PC. Non serve toccare il router e la connessione è crittografata e sicura.
+- **Tramite Internet diretto (Port Forwarding)**:
+  - Per **RetroArch**: apri la porta **TCP 55435** verso l'IP locale del tuo PC;
+  - Per **Eden Switch**: apri la porta **UDP 24872** verso l'IP locale del tuo PC;
+  - Usa il pulsante **«Rileva il mio IP pubblico»** nell'app prima di inviare l'invito.
+
+---
+
 ## 🛠️ Diagnostica, Porte e Risoluzione Errori
 
 ![La pagina Salute: controllo automatico di percorsi, database e servizi](images/impostazioni-salute.jpg)
@@ -217,6 +270,15 @@ Pozzo Launcher esegue una copia di sicurezza automatica con timestamp dei tuoi f
 - Se viene rilevato un problema, la schermata ti mostrerà un pulsante verde **Risolvi** con le istruzioni esatte per sistemarlo con un solo clic.
 
 ---
+
+---
+
+### Cosa significano i nuovi messaggi di errore descrittivi?
+**Risposta:** Nelle ultime versioni di Pozzo Launcher non vedrai più generici messaggi come «Internal Server Error» o «Failed to fetch». L'app analizza l'errore a basso livello e ti spiega subito la causa e la soluzione:
+- **Database di versione diversa**: ti consiglia di andare in Impostazioni e cliccare su *Ricostruisci libreria*.
+- **File o cartella non trovati**: indica il percorso esatto che manca sul disco.
+- **Permesso negato o disco pieno**: segnala la mancanza di spazio o la necessità di verificare i permessi della cartella.
+- **Rete non raggiungibile**: distingue tra assenza di connessione internet, timeout dell'host e blocco firewall.
 
 > [!TIP]
 > Hai un'altra domanda non presente in questa guida? Consulta il [Riferimento Completo dei Comandi](riferimento.md) o visita la community ufficiale sul repository GitHub di Pozzo Launcher!

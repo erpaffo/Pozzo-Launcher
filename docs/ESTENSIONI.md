@@ -226,6 +226,17 @@ description = "Cosa fa"
 api = 1
 ```
 
+Chiavi facoltative di `[plugin]`:
+
+- `permissions = [...]`: i permessi che l'estensione usa, come stringhe di un elenco chiuso (con un eventuale suffisso `:dettaglio`):
+  `"rete:<host>"` (accesso a un host, es. `"rete:api.rawg.io"`), `"rete:*"` (qualsiasi sito scelto dall'utente, es.
+  feed o pagine aggiunti a mano), `"libreria:lettura"`, `"libreria:scrittura"`,
+  `"file:lettura"`, `"file:scrittura"`, `"impostazioni"`, `"notifiche"`, `"avvio"` (può avviare giochi o programmi).
+  Lo store li mostra prima dell'installazione (scritture, file, avvio e `rete:*` evidenziati come sensibili); in un
+  aggiornamento chiede conferma solo per i permessi nuovi rispetto alla versione installata (`installed_permissions`).
+  Un permesso non riconosciuto viene mantenuto ma segnalato come tale;
+  se la chiave manca del tutto, lo store indica che i permessi non sono dichiarati (`permissions_unknown`).
+
 ### Interfaccia (frontend.js)
 
 È un modulo JavaScript che esporta una funzione. Riceve `gs`, l'API dell'app, che funziona sia nella vista normale sia nella Big Picture:
@@ -357,7 +368,21 @@ Le estensioni arrivano dalle **fonti**, elencate in *Fonti delle estensioni* in 
   se è un altro store si aggiunge tutto il suo elenco. L'app controlla che il link risponda e contenga estensioni;
 - se la stessa estensione è in più fonti vince lo store ufficiale; quelle di altre fonti mostrano «da utente/repo».
 
-Ogni estensione ha il suo `index.json` con l'elenco dei file e il loro sha256. L'installazione scarica i file uno per
+Ogni estensione ha il suo `index.json` con l'elenco dei file e il loro sha256. Nello Store estensioni ogni estensione
+mostra un'**anteprima grafica (screenshot)**, la descrizione accurata e i badge delle funzionalità principali.
+Facendo clic su una card (o sul pulsante **ℹ️ Dettagli**) si apre una **scheda modale approfondita** che illustra:
+- la versione dell'estensione, l'autore e la versione minima richiesta di Pozzo Launcher;
+- uno screenshot ad alta risoluzione del plugin in azione nell'interfaccia;
+- la descrizione completa degli scopi dell'estensione;
+- la sezione **«Come funziona e dove trovarla»**, con i passaggi guidati e l'indicazione precisa di dove compaiono voci di menu, pulsanti o impostazioni;
+- l'elenco puntato di tutte le caratteristiche salienti e le specifiche tecniche: file inclusi, origine e **permessi** dichiarati
+  dall'estensione (per esempio accesso alla rete, lettura della libreria), con in evidenza quelli sensibili (scrittura su disco,
+  accesso ai file, avvio di programmi). Un'estensione che non dichiara i permessi viene segnalata come tale.
+
+Prima di installare l'app mostra i permessi e chiede conferma. Su un aggiornamento chiede conferma solo se la nuova versione
+aggiunge permessi rispetto a quella installata (quando l'app conosce quella installata). Le card riportano il numero di permessi.
+
+Dalla scheda dettagli è inoltre possibile installare, aggiornare o rimuovere direttamente l'estensione. L'installazione scarica i file uno per
 uno e scrive su disco solo se **tutti** corrispondono. Rifiuta anche nomi di file con percorsi, sottocartelle e versioni
 dell'app più vecchie di `min_app`. Lo sha256 garantisce che i file siano quelli dell'indice, non che l'estensione sia
 affidabile: le estensioni di fonti di terzi eseguono codice sul PC, quindi aggiungi solo fonti di cui ti fidi.
@@ -417,6 +442,10 @@ non parte (WinError 448). La release contiene solo lo store.
 | **Riepilogo annuale** | il tuo anno in giochi (ore, più giocati, console, mese) con un'immagine da salvare |
 | **SteamGridDB** | fonte di copertine verticali, sfondi e logo mancanti; chiave gratuita in Impostazioni › SteamGridDB. Alimenta anche **🖼 Immagini del gioco…** del menu del tasto destro (candidati da scegliere per il singolo gioco) |
 | **Calendario uscite** | uscite future dei giochi in lista desideri e dei prossimi titoli dei tuoi generi, da RAWG (usa la chiave di Impostazioni › Fonti) |
+| **Notizie videogiochi** | feed RSS/Atom dai produttori (PlayStation, Xbox, Nintendo, Steam, Capcom…) e dai siti di settore, filtro «Solo i miei giochi e console», classificazione per tipologia (annuncio, patch, DLC, uscita), rassegna settimanale del lunedì e azione «Segui» nel dettaglio |
+| **Il mio PC ce la fa?** | rileva CPU, GPU e RAM del computer e fornisce un verdetto immediato sul gioco (Gira bene, Con impostazioni, Troppo pesante), confrontando i requisiti Steam e indicando le impostazioni consigliate per gli emulatori |
+| **Recensioni e punteggi** | voti della critica e della community aggregati nella scheda di ogni gioco: Metacritic, OpenCritic (con tier e percentuale di raccomandazione) e recensioni degli utenti Steam |
+| **Sconti e bundle** | saldi in tempo reale sui giochi della lista dei desideri (con avviso «Minimo storico»), bundle attivi su IsThereAnyDeal marcati «Per te» se contengono titoli seguiti o posseduti, e giochi attualmente gratis da riscattare |
 
 **Store Minerva + Switch** tiene i preset in `PRESETS` (`backend.py`): per aggiungerne altri basta una riga
 (`{"console": ["https://…"]}`). Poiché gli elenchi della stessa console possono avere formati diversi

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import math
+import random
 import re
+import socket
 import threading
 import time
 from datetime import datetime
@@ -17,8 +19,14 @@ from pathlib import Path
 import httpx
 
 from .. import config as C, net
-from . import resolvers
+from . import hosts, ingest as I, resolvers, task as TASK
+try:
+    from .bandwidth import record as _record_bw
+except ImportError:  # modulo non ancora presente: niente statistiche di banda
+    def _record_bw(host: str, nbytes: int) -> None:
+        pass
 from .debrid import SERVICES
+from .extract import drive_of, queue_forecast
 from .engines import http as HTTP, torrent as TOR
 from .store import Store
 from .task import ACTIVE, COMPLETED, ERROR, PAUSED, QUEUED, RUNNING, DownloadTask, mb
@@ -39,6 +47,9 @@ BOOLS = ("alt_enabled", "clipboard", "auto_extract", "delete_archive", "show_bro
 SCHEMES = ("http://", "https://")
 TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")
 GAME_MODES = ("off", "limit", "pause")  # mentre giochi: niente, solo un limite di banda, torrent in pausa
+RESOLVERS_MAX = 3  # task HTTP che risolvono il link insieme (non occupano posti: senza tetto partirebbero tutti)
+SPACE_PHASE = "Spazio insufficiente"  # fase di un task in coda che non ha ancora spazio sul disco
+SAVE_EVERY = 10  # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
 
 
 def default_dir() -> Path:
@@ -141,6 +152,23 @@ def _num(k: str, v, kind=int):
     return n
 
 
+def _port_ok(p: int) -> bool:
+    """La porta si apre in TCP e UDP (Windows riserva blocchi di porte alte a Hyper-V/WinNAT, anche dopo un riavvio:
+    libtorrent non ci ascolterebbe)."""
+    try:
+        with socket.socket() as a, socket.socket(type=socket.SOCK_DGRAM) as b:
+            a.bind(("0.0.0.0", p))
+            b.bind(("0.0.0.0", p))
+        return True
+    except OSError:
+        return False
+
+
+def _free_port() -> int:
+    """Porta a caso in 49152-65000 libera in TCP e UDP, 0 se non ne trova."""
+    return next((p for p in (random.randint(49152, 65000) for _ in range(50)) if _port_ok(p)), 0)
+
+
 class Manager:
     def __init__(self, cfg, events=None, client_factory=net.make_client, save=None, playing=None):
         self.cfg, self.events, self.client_factory = cfg, events, client_factory
@@ -148,6 +176,7 @@ class Manager:
         self.playing = playing or (lambda: False)  # fn() -> True se c'e' un gioco in corso (iniettata dalle rotte)
         self.now = datetime.now  # orologio del ciclo: i test lo sostituiscono per la pianificazione
         self.store = Store(Path(cfg.cache))
+        TASK.RATE_FILE = Path(cfg.cache) / "extract_rate.json"
         self.uploads = Path(cfg.cache) / "torrents" / "uploads"  # copie dei .torrent caricati dalla UI
         self.lock = threading.RLock()
         self.on_completed = None  # fn(task), in un thread: estrazione e libreria (downloads/finish.py)
@@ -163,6 +192,12 @@ class Manager:
         self._sent: dict[str, dict] = {}  # task id -> ultima vista mandata alla UI
         self._alt_sent: bool | None = None  # modalita' lenta all'ultimo evento: se cambia (orario) l'evento porta le impostazioni
         self._game = {"on": False, "paused": []}  # partita in corso e i task fermati da lei (da riprendere alla fine)
+        self._dl_ids: set[str] = set()  # task HTTP che hanno il link e scaricano davvero: solo loro occupano un posto
+        self._gates: dict[str, asyncio.Future] = {}  # task HTTP col link pronto in attesa di un posto (li sblocca il tick)
+        self._saved: dict[str, tuple] = {}  # task id -> (tempo, (status, phase, error, name)) dell'ultimo salvataggio nel tick
+        self.ctx = None  # lo mette finish.run: serve a mark_ready per cercare il gioco in libreria
+        self._pend_at = 0.0  # ultimo controllo dei task in attesa della scansione
+        self._dirty: set[str] = set()  # task con la vista cambiata dopo l'ultimo salvataggio nel tick
 
     # ------------------------------------------------------------ impostazioni
     def _raw(self) -> dict:
@@ -199,6 +234,8 @@ class Manager:
             for k, (lo, hi) in INTS.items():
                 if k in body:
                     new[k] = min(max(_num(k, body[k]), lo), hi)
+            if "port" in body:  # scelta da start() o dall'utente (a mano: non la cambia piu' nessuno)
+                new["port_auto"] = body.get("port_auto") is True
             if "seed_ratio" in body:
                 new["seed_ratio"] = min(max(_num("seed_ratio", body["seed_ratio"], float), 0.0), 100.0)
             for k in BOOLS:
@@ -308,6 +345,14 @@ class Manager:
     def start(self):
         if self._loop:
             return
+        # port 0 = «scegli tu»: una porta a caso salvata, cosi' a ogni avvio e' la stessa (UPnP e i peer ritrovano il
+        # client); se nel frattempo Windows l'ha riservata se ne sceglie un'altra. Quella impostata a mano non si tocca
+        port = int(self._raw()["port"] or 0)
+        auto = (self.cfg.app.get("downloads") or {}).get("port_auto")
+        if not port or (auto and not _port_ok(port)):
+            port = _free_port()
+            if port:
+                self.update_settings({"port": port, "port_auto": True})
         for t in self.store.load():
             if t.status == RUNNING:
                 t.status = QUEUED  # il launcher e' stato chiuso a meta': riprende da dove era
@@ -422,6 +467,8 @@ class Manager:
         with self.lock:
             t = self.tasks.pop(self._get(tid).id)
             self._sent.pop(tid, None)
+            self._saved.pop(tid, None)
+            self._dirty.discard(tid)
             self._cancel_job(tid)
             job = self._jobs.get(tid)
             self.store.delete(tid)
@@ -582,21 +629,58 @@ class Manager:
 
     # ------------------------------------------------------------ ciclo
     async def _main(self):
-        async with self.client_factory() as client:
+        try:  # HTTP/1.1: con HTTP/2 tutti i segmenti verso un host passano su una sola connessione
+            client = self.client_factory(http2=False)
+        except TypeError:  # factory senza il parametro (test)
+            client = self.client_factory()
+        async with client:
             self._client = client
+            opened = False
             while True:
                 try:
                     self._tick()
                 except Exception:  # noqa: BLE001 - un tick sbagliato non deve fermare la coda
                     import traceback
                     traceback.print_exc()
+                if not opened and self._torrent:  # sessione subito, dopo il primo configure: DHT gia' caldo al primo magnet
+                    opened = True
+                    try:
+                        self._torrent.session()
+                    except Exception:  # noqa: BLE001 - senza sessione ora, la apre il primo torrent
+                        pass
                 self._wake.clear()
                 try:
                     await asyncio.wait_for(self._wake.wait(), 1)
                 except asyncio.TimeoutError:
                     pass
 
+    def mark_ready(self, tid: str) -> bool:
+        """Task con la libreria in attesa della scansione: se il gioco e' comparso, libreria e dati sono fatti."""
+        t = self.tasks.get(tid)
+        if not (t and self.ctx and t.options.get("pending_files")) or t._stage("library")["state"] != "active":
+            return False
+        files = t.options["pending_files"]
+        if not (g := I._lib_match(self.ctx.lib, [Path(p) for p in files])):  # mai pronto senza il gioco
+            return False
+        t.set_stage("library", "done")
+        t.set_stage("data", "done")
+        t.options.pop("pending_files", None)
+        self.store.save([t])
+        self._poke()
+        # ingest non l'ha emesso (pending): lo si fa qui, una volta sola (pending_files tolto e salvato), per webhook e avviso
+        if ev := getattr(self.ctx, "events", None):
+            ev.emit("game_downloaded", {"game_id": g["id"], "from_id": t.options.get("game_id"),
+                                        "title": g["title"], "key": g["key"], "files": list(files)})
+        return True
+
     def _tick(self):
+        if time.monotonic() - self._pend_at >= 30:
+            self._pend_at = time.monotonic()
+            for tid in [i for i, x in list(self.tasks.items()) if x.options.get("pending_files")]:
+                try:
+                    self.mark_ready(tid)
+                except Exception:  # noqa: BLE001 - un controllo fallito si ripete al giro dopo
+                    pass
         s = self._raw()
         self._game_tick(s)
         down, up = self._limits(s)
@@ -609,23 +693,57 @@ class Manager:
                     prev = self._last.get(t.id)
                     if prev and now > prev[1]:
                         inst = max(t.done - prev[0], 0) / (now - prev[1])
+                        if t.done > prev[0]:  # magnet e .torrent non hanno host: vanno sotto «torrent»
+                            _record_bw(hosts.host(t.source) or t.type, t.done - prev[0])
                         t.speed = inst if not t.speed else t.speed * 0.7 + inst * 0.3
                         t.speed = t.speed if t.speed >= 1 else 0.0  # fermo: la media da sola non arriva mai a zero
                     self._last[t.id] = (t.done, now)
                 else:
                     t.speed = 0.0
-            # i torrent in condivisione non occupano posti; un job annullato ma non ancora finito si' (tipo "")
-            busy = [self.tasks[tid].type if tid in self.tasks else "" for tid in self._jobs
-                    if not (tid in self.tasks and self.tasks[tid].options.get("seeding"))]
+            # posti: solo chi scarica davvero. Fuori: torrent in condivisione o in attesa dei metadati, task HTTP che
+            # risolvono il link o lo aspettano al gate. Un job annullato ma non ancora finito occupa (tipo "")
+            busy, resolving = [], 0
+            for tid in self._jobs:
+                o = self.tasks.get(tid)
+                if o is None:
+                    busy.append("")
+                elif o.options.get("seeding") or o.options.get("metadata") is False:
+                    continue
+                elif o.type == "http" and tid not in self._dl_ids:
+                    resolving += tid not in self._gates
+                else:
+                    busy.append(o.type)
+
+            def free(kind: str) -> bool:
+                cap = int(s.get(f"max_active_{kind}") or 0)
+                return len(busy) < int(s["max_active"]) and not (cap and busy.count(kind) >= cap)
+
+            for t in sorted((self.tasks[i] for i, f in self._gates.items() if not f.done() and i in self.tasks), key=_order):
+                if free("http"):  # link pronto e posto libero: si scarica (prima chi ha priorita')
+                    busy.append("http")
+                    self._dl_ids.add(t.id)
+                    self._gates[t.id].set_result(None)
             for t in sorted((t for t in self.tasks.values() if t.status == QUEUED and t.id not in self._jobs), key=_order):
                 if not _due(t.options, self.now()):
                     continue  # pianificato («Avvia alle»): aspetta il suo orario, senza occupare un posto
                 if len(busy) >= int(s["max_active"]):
                     break
-                cap = int(s.get(f"max_active_{t.type}") or 0)
-                if cap and busy.count(t.type) >= cap:
+                gap = self._space_gap(t)
+                if gap:  # resta in coda: il posto e' di chi sta dopo, se e' piu' piccolo
+                    if not t.phase.startswith(SPACE_PHASE):  # una riga sola, non una per tick
+                        t.log(f"In attesa: spazio insufficiente (mancano {gap / 2**30:.1f} GB)", "warn")
+                    self._phase(t, f"{SPACE_PHASE}: servono {gap / 2**30:.1f} GB")
                     continue
-                busy.append(t.type)
+                if t.phase.startswith(SPACE_PHASE):
+                    t.phase = ""
+                if t.type == "http":
+                    if resolving >= RESOLVERS_MAX:
+                        continue
+                    resolving += 1  # il posto lo prende al gate, a link risolto
+                elif not free(t.type):
+                    continue
+                else:
+                    busy.append(t.type)
                 t.status = RUNNING
                 planned = t.options.pop("start_at", None), t.options.pop("days", None)
                 if any(v is not None for v in planned):
@@ -640,7 +758,18 @@ class Manager:
                     self._sent[t.id] = v
                     changed.append(t)
                     views.append(v)
-            self.store.save(changed)
+                    self._dirty.add(t.id)
+            save = []  # su disco subito se cambia stato/fase/errore/nome, l'avanzamento al massimo ogni SAVE_EVERY s
+            for tid in list(self._dirty):
+                t = self.tasks.get(tid)
+                sig = t and (t.status, t.phase, t.error, t.name)
+                if t and sig == self._saved.get(tid, (0.0, None))[1] and now - self._saved[tid][0] < SAVE_EVERY:
+                    continue
+                self._dirty.discard(tid)
+                if t:
+                    self._saved[tid] = (now, sig)
+                    save.append(t)
+            self.store.save(save)
         alt = alt_active(s)
         if self.events and (views or alt != self._alt_sent):
             ev = {"tasks": views}
@@ -654,7 +783,8 @@ class Manager:
         libtorrent (il limite della sessione resta come tetto)."""
         rates = {}
         for kind in ("http", "torrent"):
-            run = [t for t in self.tasks.values() if t.type == kind and t.status == RUNNING and t.id in self._jobs]
+            run = [t for t in self.tasks.values() if t.type == kind and t.status == RUNNING and t.id in self._jobs
+                   and (kind != "http" or t.id in self._dl_ids)]  # HTTP che risolve o aspetta il gate: niente quota
             w = sum(2 ** t.priority for t in run)
             for t in run:
                 own = int((t.options.get("limit") or {}).get("down") or 0) * 1024
@@ -668,6 +798,14 @@ class Manager:
                 h.set_upload_limit(int(lim.get("up") or 0) * 1024 or -1)
             except RuntimeError:  # appena tolto dalla sessione (il job lo sta chiudendo)
                 pass
+
+    def _space_gap(self, t: DownloadTask) -> int:
+        """Byte che mancano per far partire `t` insieme ai task in corso sullo stesso disco (0 = bastano).
+        La coda in attesa non conta: un task piu' piccolo puo' partire lo stesso."""
+        run = [o for o in self.tasks.values() if o.status == RUNNING]
+        drv = drive_of(t.save_path)
+        d = next(x for x in queue_forecast([*run, t])["drives"] if x["drive"] == drv)
+        return 0 if d["ok"] else -d["after_extract"]
 
     def _resolve(self, t: DownloadTask, url: str) -> str:
         """Gira in un thread. `tok` identifica questa risoluzione: se nel frattempo il task e' stato fermato o e' scaduto
@@ -715,13 +853,24 @@ class Manager:
             self.store.save([t])
         self._poke()
 
+    async def _gate(self, t: DownloadTask):
+        """Link risolto: aspetta un posto per scaricare. Lo assegna il tick (per priorita') mettendo il task in _dl_ids;
+        un annullamento qui arriva come CancelledError e il posto, se gia' dato, lo libera _job."""
+        fut = self._gates[t.id] = asyncio.get_running_loop().create_future()
+        self._phase(t, "In attesa di un posto libero")  # la sovrascrive _fetch appena parte
+        self._poke()
+        try:
+            await fut
+        finally:
+            self._gates.pop(t.id, None)
+
     async def _job(self, t: DownloadTask, segments: int):
         try:
             if t.type == "torrent":
                 await TOR.run(t, self._torrent, self._client, lambda: self._completed(t))
             else:
                 await HTTP.run(t, self._client, self._buckets.setdefault(t.id, HTTP.Bucket()), segments,
-                               lambda u: self._resolve(t, u))
+                               lambda u: self._resolve(t, u), gate=lambda: self._gate(t))
             end = (COMPLETED, "")
         except asyncio.CancelledError:
             end = None  # pausa/annulla/chiusura: lo stato lo ha gia' messo chi ha chiesto
@@ -734,6 +883,7 @@ class Manager:
         with self.lock:
             self._res.pop(t.id, None)  # un thread del risolutore ancora vivo non scrive piu' sul task
             self._jobs.pop(t.id, None)
+            self._dl_ids.discard(t.id)  # posto liberato: il tick lo da' al prossimo
             self._buckets.pop(t.id, None)
             if t.options.pop("seeding", None):
                 end = None  # gia' completato: un errore durante la condivisione non lo rovina

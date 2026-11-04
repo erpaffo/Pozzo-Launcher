@@ -258,7 +258,36 @@ def cmd_bigpicture(args):
     webview.start()
 
 
+def _join_action(args, forward=None):
+    """Decide cosa fare con un link pozzo:// come primo argomento.
+
+    Ritorna None se non c'e' link, ("focus", None) se l'app gia' aperta ha accettato
+    l'invito, ("pending", codice) se va passato all'avvio, ("ignore", None) se non valido.
+    `forward` e' iniettabile per i test; default protocol.forward.
+    """
+    if not args or not args[0].lower().startswith("pozzo://"):
+        return None
+    from pozzo import protocol
+    if (forward or protocol.forward)(args[0], port=8765):
+        return ("focus", None)
+    code = protocol.parse_url(args[0])
+    return ("pending", code) if code else ("ignore", None)
+
+
 def main(argv=None):
+    raw = argv if argv is not None else sys.argv[1:]
+    link = _join_action(raw)
+    if link is not None:
+        if link[0] == "focus":
+            try:
+                from pozzo.app import server
+                server._focus_running_window(8765)
+            except Exception:
+                pass
+            return
+        if link[0] == "pending":
+            os.environ["POZZO_PENDING_JOIN"] = raw[0]
+        argv = ["app"]
     ap = argparse.ArgumentParser(prog="pozzo", description=f"PozzoLauncher {__version__} - la tua libreria di giochi")
     ap.add_argument("-c", "--config", help="file config.toml (default: POZZO_CONFIG, poi la cartella dati dell'utente)")
     sub = ap.add_subparsers(dest="cmd")

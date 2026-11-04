@@ -1,0 +1,8 @@
+.rc-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.rc-chip { display: flex; flex-direction: column; min-width: 120px; padding: 6px 10px; border-radius: 8px; color: #fff; background: #555; }
+.rc-chip span, .rc-chip small { font-size: 12px; opacity: .9; }
+.rc-chip b { font-size: 22px; line-height: 1.1; }
+.rc-good { background: #2e7d4f; }
+.rc-warn { background: #9a7b12; }
+.rc-bad { background: #9b2f2f; }
+.rc-links { margin: 4px 0 0; }

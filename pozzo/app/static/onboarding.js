@@ -149,9 +149,15 @@
       info = parts.join(" · ") || esc(r.err || "informazioni non disponibili");
     }
     const can = r.rec && r.rec.supported && !r.rec.installed;
+    // perche' questo emulatore: una frase e tre motivi (fedeltà, prestazioni, controller) con il testo nel tooltip
+    const m = r.rec && r.rec.reasons;
+    const why = r.rec && r.rec.reason ? `<span class="onb-why">${esc(r.rec.reason)}</span>` : "";
+    const chips = m ? [["fedelta", "Fedeltà"], ["prestazioni", "Prestazioni"], ["controller", "Controller"]]
+      .filter(([k]) => m[k]).map(([k, t]) => `<span class="onb-chip" tabindex="0" title="${esc(m[k])}">${t}</span>`).join(" ") : "";
     return `<li data-id="${esc(p.id)}"><span class="onb-name">${esc(p.name)}</span> <span class="onb-info">${info}</span>
       ${can ? `<button class="btn" data-a="install" data-id="${esc(p.id)}" ${r.busy ? "disabled" : ""}>${r.busy ? "Installo…" : "Installa"}</button>` : ""}
-      <span class="onb-prog" role="status">${esc(r.msg || "")}</span></li>`;
+      <span class="onb-prog" role="status">${esc(r.msg || "")}</span>
+      ${why || chips ? `<div class="onb-motivi">${why} ${chips}</div>` : ""}</li>`;
   }
 
   function paintConsole(id) {

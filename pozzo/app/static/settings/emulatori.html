@@ -3,6 +3,16 @@
   sono dei loro sviluppatori: il link porta a ciascun progetto. Vanno nella cartella qui sotto, se indicata.</p>
 <div id="emu-inst"></div>
 <div id="emu-inst-job"></div>
+<h3>Aggiornamenti degli emulatori</h3>
+<label class="small" for="emu-au-mode">Aggiornamento automatico emulatori</label>
+<div class="row"><select id="emu-au-mode" class="field grow">
+  <option value="off">Disattivato</option>
+  <option value="notify">Solo avviso</option>
+  <option value="install">Installa automaticamente</option>
+</select></div>
+<p class="muted small">Controlla una volta al giorno. Un emulatore aperto non viene aggiornato: si riprova il giorno dopo.</p>
+<div class="row"><button class="btn" id="emu-upd-check" type="button">🔄 Controlla ora</button></div>
+<div id="emu-upd" class="small" role="status" aria-live="polite"></div>
 <h3>Emulatori già installati</h3>
 <div class="row">
   <input id="emu-folder" class="field grow" placeholder="Cartella che contiene gli emulatori, es. C:\Emulatori">
@@ -34,3 +44,12 @@
 <label class="chk"><input type="checkbox" id="ln-close"> Chiudi il launcher dello store (Steam, Epic, GOG Galaxy,
   Battle.net, Amazon) a fine partita, se l'aveva aperto il gioco</label>
 <div class="row end"><button class="btn primary" id="ln-save" type="button">Salva</button></div>
+<h3>Disco veloce</h3>
+<p class="muted small">Copia il gioco su un disco veloce (SSD) prima di avviarlo, per caricamenti più rapidi se la libreria sta su un HDD.</p>
+<label class="small" for="fc-dir">Cartella delle copie temporanee</label>
+<div class="row"><input id="fc-dir" class="field grow" placeholder="" aria-describedby="fc-free"><button class="btn" id="fc-pick" type="button">Scegli…</button></div>
+<p class="muted small" id="fc-free"></p>
+<label class="chk"><input type="checkbox" id="fc-del"> Elimina la copia quando chiudi il gioco</label>
+<p class="muted small">Se la disattivi, la copia resta sul disco veloce e occupa spazio finché non la cancelli tu.</p>
+<div class="row end"><button class="btn primary" id="fc-save" type="button">Salva</button></div>
+<label class="chk"><input type="checkbox" id="pl-proto"> Registra il link pozzo:// su Windows <span class="muted small">Permette di aprire un invito ricevuto da un amico cliccando il link. Si puo' disattivare in ogni momento.</span></label>

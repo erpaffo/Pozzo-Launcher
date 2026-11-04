@@ -3,9 +3,23 @@
 
 /* ------------------------------------------------------------------ eventi */
 function bind() {
+  // a11y: aprendo il dettaglio il focus va al titolo; closeDetail (detail.js) riporta il focus sull'elemento di partenza
+  let detailWasOpen = false;
+  new MutationObserver(() => {
+    const open = $("#detail").classList.contains("open"), h = $("#detail-title");
+    if (open && !detailWasOpen && h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    detailWasOpen = open;
+  }).observe($("#detail"), { attributes: true, attributeFilter: ["class"] });
   $("#feedback-btn").onclick = () => api("/api/open", {
     body: { url: "https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose" },
   }).catch((e) => toast(e.message, true));
+  // a11y: le voci create da sidebar.js (store, piattaforme, plugin) non hanno tabindex: le rendo raggiungibili da tastiera
+  const focusableNav = () => document.querySelectorAll("#nav .nav-item:not([tabindex])").forEach((a) => {
+    a.tabIndex = 0;
+    a.setAttribute("role", "button");
+  });
+  focusableNav();
+  new MutationObserver(focusableNav).observe($("#nav"), { childList: true, subtree: true });
   $("#nav").addEventListener("click", (e) => {
     const a = e.target.closest(".nav-item");
     if (!a) return;

@@ -371,6 +371,8 @@ def with_browser(url: str, timeout: float | None = None) -> str:
         resolvers.note("browser nascosto non disponibile")
         return ""
     resolvers.phase(f"Apro la pagina nel browser nascosto (fino a {timeout:g} s)…")
+    if _LOCK.locked():  # phase() nel thread `run` non fa nulla: va mostrato qui, prima del thread
+        resolvers.phase("In attesa del browser (un altro download lo sta usando)")
     out, gone = [], threading.Event()
 
     def run():  # thread a parte: se la finestra si pianta l'attesa finisce lo stesso

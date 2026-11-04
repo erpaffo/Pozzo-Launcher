@@ -1,0 +1,22 @@
+[plugin]
+name = "Notizie videogiochi"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "📰"
+screenshot = "screenshot.png"
+description = "Le ultime notizie dei produttori (Nintendo, PlayStation, Xbox, Valve, Capcom, Sega e altri) e dei principali siti, raccolte da feed RSS/Atom."
+long_description = "Raccoglie in un'unica pagina le notizie dai feed RSS e Atom ufficiali delle case videoludiche e dei principali siti specializzati. Ogni notizia è classificata automaticamente per tipologia (annuncio, patch, DLC, uscita), si può filtrare per produttore o cercare per testo. Include il filtro dedicato «Solo i miei giochi e console» per vedere solo le novità relative alla tua collezione, la possibilità di seguire singoli giochi e una rassegna settimanale automatica generata ogni lunedì. I feed sono salvati in cache su disco nel pieno rispetto dei limiti dei siti."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri la pagina «Notizie» dalla barra laterale sinistra.\n3. Usa la barra di ricerca o seleziona una casa produttrice (PlayStation, Xbox, Nintendo, Steam, Capcom, ecc.) per filtrare gli articoli.\n4. Attiva la casella «Solo i miei giochi e console» per isolare gli aggiornamenti pertinenti alla tua libreria.\n5. Dalla scheda di un gioco puoi cliccare su «Segui» per ricevere notifiche su patch e DLC.\n6. Da Fonti puoi disattivare feed specifici o aggiungere URL personalizzati (feed RSS/Atom)."
+features = [
+  "Feed RSS e Atom raggruppati per casa produttrice e testata di settore",
+  "Classificazione automatica degli articoli: annuncio, patch, DLC o uscita",
+  "Filtro intelligente «Solo i miei giochi e console» basato sulla tua libreria",
+  "Azione «Segui» nel dettaglio gioco per notifiche mirate su novità e patch",
+  "Rassegna settimanale automatica ogni lunedì con i 10 fatti salienti",
+  "Cache su disco con ETag e scaricamento differito per massimo rispetto della banda",
+  "Fonti completamente personalizzabili con aggiunta di nuovi feed"
+]
+api = 1
+min_app = "0.7.1"
+# niente load = "lazy": gs.job («rassegna-settimanale») deve partire con l'app
+permissions = ["rete:blog.playstation.com", "rete:news.xbox.com", "rete:store.steampowered.com", "rete:www.nintendolife.com", "rete:www.nintendo-insider.com", "rete:www.nintendoeverything.com", "rete:www.siliconera.com", "rete:www.gematsu.com", "rete:www.eurogamer.net", "rete:www.gamesindustry.biz", "rete:retrododo.com", "rete:www.everyeye.it", "rete:www.spaziogames.it", "rete:api.steampowered.com", "rete:www.nintendo.co.jp", "rete:eu.finalfantasyxiv.com", "rete:*", "impostazioni", "libreria:lettura", "notifiche"]

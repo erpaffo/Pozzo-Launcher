@@ -69,8 +69,40 @@ def mock(monkeypatch):
     CALLS.clear()
     D._cache.clear()
     D._hosts_cache.clear()
-    monkeypatch.setattr(D, "_client", lambda: httpx.Client(transport=httpx.MockTransport(handler)))
+    D._hosts_fail.clear()
+    monkeypatch.setattr(D, "_client", lambda timeout=None: httpx.Client(transport=httpx.MockTransport(handler)))
     monkeypatch.setattr(resolvers, "_FNS", [])
+
+
+def test_fallimento_lista_host_ricordato_per_10_minuti(monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr(D, "time", SimpleNamespace(time=lambda: clock[0], sleep=lambda s: None))
+    chiamate = []
+
+    def giu(c, svc):
+        chiamate.append(svc)
+        raise httpx.ConnectError("rete giu'")
+
+    monkeypatch.setattr(D, "_provider_hosts", giu)
+    with pytest.raises(httpx.ConnectError):
+        D._supports("realdebrid", HOSTER)
+    with pytest.raises(D._Fail, match="servizio non raggiungibile"):  # dalla memoria: nessuna nuova richiesta
+        D._supports("realdebrid", HOSTER)
+    assert len(chiamate) == 1
+    clock[0] += D._HOSTS_FAIL_TTL  # scaduto: riprova
+    with pytest.raises(httpx.ConnectError):
+        D._supports("realdebrid", HOSTER)
+    assert len(chiamate) == 2
+
+
+def test_successo_azzera_il_fallimento(monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr(D, "time", SimpleNamespace(time=lambda: clock[0], sleep=lambda s: None))
+    D._hosts_fail["realdebrid"] = (1000.0, "servizio non raggiungibile")
+    clock[0] += D._HOSTS_FAIL_TTL
+    monkeypatch.setattr(D, "_provider_hosts", lambda c, svc: {"1fichier.com"})
+    assert D._supports("realdebrid", HOSTER)
+    assert "realdebrid" not in D._hosts_fail
 
 
 def test_sblocco_e_cache():

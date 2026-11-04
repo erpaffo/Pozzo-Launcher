@@ -1,10 +1,13 @@
 """Fixture condivise: molti test nascono come script (`python tests/x.py`) e chiedono `tmp` o `t`."""
 import asyncio
 import inspect
+import os
 import tempfile
 from pathlib import Path
 
 import pytest
+
+os.environ.setdefault("POZZO_NO_SAMPLE", "1")  # niente gioco d'esempio nei test
 
 
 @pytest.fixture

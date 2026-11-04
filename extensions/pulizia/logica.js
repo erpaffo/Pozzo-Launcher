@@ -44,3 +44,54 @@ export function missing(g) {
 export function incomplete(games) {
   return owned(games).map((g) => [g, missing(g)]).filter(([, m]) => m.length).map(([g, m]) => ({ g, m }));
 }
+
+/** Byte leggibili, con la virgola come in italiano: 1536 -> "1,5 KB". */
+export function fmtBytes(n) {
+  if (n == null || isNaN(n)) return "—";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let v = +n, i = 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return i === 0 ? `${v} B` : `${v.toFixed(1).replace(".", ",")} ${u[i]}`;
+}
+
+/** Nome del file da un percorso (con / o \). */
+export function baseName(p) {
+  return String(p).split(/[\\/]/).pop();
+}
+
+/** Spazio liberato tenendo la copia `keep`: le copie gia' collegate (hardlink) non liberano nulla. */
+export function freeable(group, keep = group.keep) {
+  return group.files.reduce((s, f, j) => s + (j !== keep && !f.is_hardlink ? group.size : 0), 0);
+}
+
+export function freeableTotal(groups) {
+  return groups.reduce((s, g) => s + freeable(g), 0);
+}
+
+/** Si puo' collegare ogni altra copia alla `keep`? Falso se una e' su un altro disco (non c'e' hardlink). */
+export function linkable(group, keep = group.keep) {
+  const f = group.files;
+  // «dev» = volume del file (backend): confronto diretto con la copia scelta; senza, si ripiega sulla prima copia
+  if (f.every((x) => x.dev != null)) return f.every((x) => x.dev === f[keep].dev);
+  const sameVol = (j) => j === 0 || !!f[j].same_volume_as_first;   // la prima copia fa da riferimento
+  return f.every((_, j) => j === keep || (sameVol(j) && sameVol(keep)));
+}
+
+/** Testo del confirm() per l'azione ("hardlink" | "delete") sulle copie diverse da `keep`. */
+export function confirmText(action, group, keep = group.keep) {
+  const others = group.files.filter((_, j) => j !== keep).map((f) => `  • ${f.path}`);
+  const tieni = `Si tiene:\n  ${group.files[keep].path}`;
+  if (action === "delete")
+    return [`Eliminare definitivamente ${others.length} ${others.length === 1 ? "copia" : "copie"}:`, ...others, tieni, "Non si puo' annullare."].join("\n");
+  return [`Sostituire con collegamenti (hardlink) ${others.length} ${others.length === 1 ? "copia" : "copie"}:`, ...others, tieni].join("\n");
+}
+
+/** Gruppo dopo `dup-apply`: `results` = [{path, ok}]. Ritorna il gruppo aggiornato, o null se ne restano meno di due. */
+export function afterApply(group, action, results) {
+  const done = new Set(results.filter((r) => r.ok).map((r) => r.path));
+  const keepPath = group.files[group.keep].path;
+  let files = group.files.filter((f) => f.path === keepPath || !done.has(f.path) || action !== "delete");
+  if (action === "hardlink") files = files.map((f) => (done.has(f.path) && f.path !== keepPath ? { ...f, is_hardlink: true } : f));
+  if (files.length < 2) return null;
+  return { ...group, files, keep: files.findIndex((f) => f.path === keepPath) };
+}

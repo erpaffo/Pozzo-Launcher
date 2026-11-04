@@ -57,5 +57,6 @@ if (typeof window !== "undefined") {
       const t = watchToastText(ev);
       if (t) { toast(t); syncLibrary(); }
     });
+    es.addEventListener("party_invite", (ev) => { let d = {}; try { d = JSON.parse(ev.data) || {}; } catch { return; } const code = typeof d.code === "string" ? d.code.trim() : ""; if (code && typeof window.openJoinWith === "function") window.openJoinWith(code); });
   }
 }

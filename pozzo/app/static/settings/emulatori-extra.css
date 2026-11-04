@@ -16,3 +16,7 @@ html:not([data-motion="off"]) .xe-fill { transition: transform var(--mo-base, 20
 html[data-motion="off"] .xe-fill, html[data-motion="off"] .xe-box { transition: none; animation: none; }
 html:not([data-motion="off"]):not([data-motion="reduced"]) .xe-box { animation: xe-in var(--mo-base, 200ms) var(--mo-ease, ease-out) both; }
 @keyframes xe-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* motivazioni del consiglio emulatore */
+.xe-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.xe-chip{padding:2px 10px;border:1px solid var(--line,#3a3f4a);border-radius:999px;cursor:help}
+.xe-chip:focus-visible{outline:var(--focus-ring-width,3px) solid var(--accent,#6aa9ff);outline-offset:2px}

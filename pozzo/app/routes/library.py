@@ -149,6 +149,40 @@ def build_router(ctx) -> APIRouter:
         out += [MEDIA_LABELS.get(m, m) for m in cfg.media if m not in g["media"]]
         return out
 
+    @router.get("/api/home/resume")
+    def api_home_resume():
+        """«Riprendi»: i 3 giochi giocati di piu' di recente (non nascosti), con tempo giocato, ore di HowLongToBeat
+        e ultimo salvataggio. Ogni dato sconosciuto e' null: la pagina non deve mai fallire per un gioco solo."""
+        from ...library import saves as SV  # import locale come routes/saves.py
+        pid, st, own = PC.active(cfg), user.games(), user.media_keys("cover")
+        with lib.lock:
+            keys = sorted((k for k, s in st.items() if s.get("last_played") and not s.get("hidden") and k in lib.by_key),
+                          key=lambda k: -st[k]["last_played"])
+            picks = []
+            for k in keys:
+                g = lib.by_key[k]
+                if lib.has_owners and not OW.visible(g, pid):
+                    continue
+                picks.append((g, st[k]))
+                if len(picks) == 3:
+                    break
+        items = []
+        for g, s in picks:
+            played = round(float(s.get("playtime") or 0))
+            hours = _hltb_main(g.get("hltb"))  # ore: HowLongToBeat le da' in ore
+            main = round(hours * 3600) if hours else None
+            try:
+                backups = SV.list_backups(cfg, g["key"])
+                save = {"time": backups[0]["time"], "name": backups[0]["name"]} if backups else None
+            except Exception:  # copia illeggibile o cartella mancante: la card resta senza salvataggio
+                save = None
+            items.append({"id": g["id"], "key": g["key"], "title": g["title"], "platform": g["platform"],
+                          "cover": f"/img/{g['id']}/cover" if "cover" in g["media"] or g["key"] in own else None,
+                          "played_secs": played, "hltb_main_secs": main,
+                          "remaining_secs": max(0, main - played) if main is not None else None,
+                          "last_played": s["last_played"], "save": save})
+        return {"items": items}
+
     @router.get("/api/game/{gid}")
     def api_game(gid: int):
         g = lib.game(gid)
@@ -403,6 +437,7 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/game/{gid}/play")
     def api_play(gid: int, body: dict = Body(default={})):
         g = lib.game(gid)
+        fast = isinstance(body, dict) and bool(body.get("fast"))  # chiamata diretta (API v1): body e' il default di Body  # «gioca da disco veloce»
         if g.get("store"):
             if not g.get("installed"):
                 raise HTTPException(409, "Il gioco non e' installato: usa «Installa»")
@@ -415,7 +450,7 @@ def build_router(ctx) -> APIRouter:
                 launch = {**launch, "window": mode}
             try:
                 launcher.launch_pc(g["key"], g["title"], launch, g.get("install_dir") or "",
-                                   STORE_NAMES.get(g["store"], g["store"]), g["store"])
+                                   STORE_NAMES.get(g["store"], g["store"]), g["store"], fast=fast)
             except L.LaunchError as e:
                 raise HTTPException(409, str(e))
             return {"ok": True}
@@ -426,7 +461,8 @@ def build_router(ctx) -> APIRouter:
             raise ApiError(404, "File del gioco non trovato (disco scollegato?)", "rom_folder_missing",
                            {"path": folders[0] if folders else ""})
         try:
-            launcher.launch(g["key"], g["title"], p, path)
+            fb = body.get("fallback") if isinstance(body, dict) else None  # candidato proposto dopo un crash
+            launcher.launch(g["key"], g["title"], p, path, fast=fast, fallback=str(fb) if fb else None)
         except L.LaunchError as e:
             raise launch_error(e)
         return {"ok": True}

@@ -2,7 +2,13 @@
 name = "Obiettivi personali"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Obiettivi tuoi («finisci 3 giochi a marzo», «20 ore questa settimana»), serie di giorni consecutivi e distintivi che si sbloccano giocando."
+icon = "🏆"
+screenshot = "screenshot.png"
+description = "Crea e monitora sfide personali (giochi completati, ore giocate, giorni consecutivi) e sblocca distintivi e serie speciali giocando."
+long_description = "Gamifica la tua esperienza di gioco con un sistema di traguardi e sfide su misura. Imposta obiettivi periodici come «Completa 3 giochi questo mese» o «Gioca 15 ore questa settimana». L'estensione tiene traccia della tua serie di giorni consecutivi di gioco (streak) e assegna distintivi speciali man mano che arricchisci la tua esperienza videoludica."
+how_it_works = "1. Installa l'estensione e aprila dalla barra laterale («Obiettivi»).\n2. Crea una nuova sfida scegliendo la tipologia (titoli finiti, ore complessive, giorni attivi) e la scadenza temporale.\n3. Pozzo Launcher aggiorna le barre di avanzamento in tempo reale a ogni sessione conclusa.\n4. Guarda la bacheca dei distintivi sbloccati e mantieni attiva la tua serie giornaliera!"
+features = ["Sfide personalizzate a tempo (settimanali, mensili, annuali)", "Riconoscimento automatico dei giochi segnati con stato «Finito»", "Calcolatore di serie di giorni consecutivi (Streak) con salvataggio dello storico", "Bacheca visiva dei distintivi e trofei conseguiti"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["libreria:lettura", "impostazioni"]
+load = "lazy"

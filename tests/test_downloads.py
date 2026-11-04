@@ -174,18 +174,147 @@ def _wait(cond, timeout=20):
 
 
 def test_coda_priorita_e_limite(server, tmp):
-    m = _mgr(tmp, max_active=1, limit_down=2048)  # lento: la coda resta visibile
+    m = _mgr(tmp, max_active=1)
+    release, orig = threading.Event(), m._resolve
+    m._resolve = lambda t, u: orig(t, u) if u.endswith("/a") else (release.wait(30), orig(t, u))[1]
     m.start()
-    with m.lock:  # tutti e tre in coda prima del tick: altrimenti «a» puo' partire prima che arrivi «c»
-        a = m.add(server + "/a", name="a.bin")
+    with m.lock:  # risolvono tutti e tre (non occupano posti), il link di «a» arriva per primo
+        a = m.add(server + "/a", name="a.bin", limit={"down": 256, "up": 0})  # lento: la coda resta visibile
         b = m.add(server + "/b", name="b.bin")
-        c = m.add(server + "/c", name="c.bin", priority=5)
-    assert _wait(lambda: any(t.status == T.RUNNING for t in m.tasks.values()))
-    assert sum(t.status == T.RUNNING for t in m.tasks.values()) == 1
-    assert c.status == T.RUNNING and a.status == b.status == T.QUEUED  # vince la priorita'
-    m.pause(c.id)
-    assert _wait(lambda: a.status == T.RUNNING)
+        c = m.add(server + "/c", name="c.bin", priority=5, limit={"down": 256, "up": 0})
+    assert _wait(lambda: a.done > 0)
+    release.set()
+    # link risolti, ma il solo posto e' di «a»: aspettano al gate senza scaricare
+    assert _wait(lambda: b.id in m._gates and c.id in m._gates)
+    assert m._dl_ids == {a.id} and b.done == c.done == 0 and b.phase == "In attesa di un posto libero"
+    m.pause(a.id)
+    assert _wait(lambda: c.done > 0)  # vince la priorita'
+    assert b.id in m._gates and b.done == 0
     m.stop()
+
+
+def test_risoluzione_lenta_non_blocca_chi_ha_gia_il_link(server, tmp):
+    m = _mgr(tmp, max_active=1)
+    release, orig = threading.Event(), m._resolve
+    m._resolve = lambda t, u: (release.wait(30), orig(t, u))[1] if "/slow" in u else orig(t, u)
+    m.start()
+    with m.lock:
+        slow = m.add(server + "/slow", name="s.bin", priority=2)  # prima in coda, ma bloccato a risolvere
+        fast = m.add(server + "/fast", name="f.bin")
+    assert _wait(lambda: fast.status == T.COMPLETED)
+    assert slow.status == T.RUNNING and slow.done == 0
+    release.set()
+    assert _wait(lambda: slow.status == T.COMPLETED)
+    m.stop()
+
+
+def test_tetto_ai_risolutori_in_parallelo(server, tmp):
+    m = _mgr(tmp, max_active=1)
+    release, orig = threading.Event(), m._resolve
+    m._resolve = lambda t, u: (release.wait(30), orig(t, u))[1]
+    m.start()
+    with m.lock:
+        ts = [m.add(server + f"/r{i}", name=f"r{i}.bin") for i in range(M.RESOLVERS_MAX + 1)]
+    assert _wait(lambda: sum(t.status == T.RUNNING for t in ts) == M.RESOLVERS_MAX)
+    time.sleep(1.5)
+    assert sum(t.status == T.RUNNING for t in ts) == M.RESOLVERS_MAX  # il quarto aspetta in coda
+    release.set()
+    assert _wait(lambda: all(t.status == T.COMPLETED for t in ts), 30)
+    m.stop()
+
+
+def test_annullato_al_gate_non_perde_il_posto(server, tmp):
+    m = _mgr(tmp, max_active=1)
+    release, orig = threading.Event(), m._resolve
+    m._resolve = lambda t, u: (release.wait(30), orig(t, u))[1] if u.endswith("/b") else orig(t, u)
+    m.start()
+    with m.lock:
+        a = m.add(server + "/a", name="a.bin", limit={"down": 256, "up": 0})
+        b = m.add(server + "/b", name="b.bin")
+    assert _wait(lambda: a.done > 0)
+    release.set()
+    assert _wait(lambda: b.id in m._gates)
+    m.cancel(b.id)
+    assert _wait(lambda: b.id not in m._jobs and not m._gates)
+    assert m._dl_ids == {a.id}
+    m.cancel(a.id)
+    c = m.add(server + "/c", name="c.bin")
+    assert _wait(lambda: c.status == T.COMPLETED)  # il posto di «a» torna libero, quello di «b» non era mai stato preso
+    assert not m._dl_ids
+    m.stop()
+
+
+async def test_magnet_senza_metadati_non_occupa_un_posto(tmp):
+    m = _mgr(tmp, max_active=1)
+
+    async def job(t, segments):
+        pass
+    m._job = job
+    mag = _task("magnet:?xt=urn:btih:abc", tmp)
+    mag.type, mag.status, mag.options["metadata"] = "torrent", T.RUNNING, False
+    b = _task("http://x/b", tmp)
+    m.tasks, m._jobs = {mag.id: mag, b.id: b}, {mag.id: None}
+    m._tick()
+    assert b.status == T.RUNNING and b.id in m._jobs  # il magnet aspetta i metadati: il posto e' libero
+    m._jobs.pop(b.id)
+    b.status, mag.options["metadata"] = T.QUEUED, True
+    m._tick()
+    assert b.status == T.QUEUED  # con i metadati il magnet scarica e occupa il posto
+
+
+def test_salvataggio_del_tick_limitato(tmp):
+    m = _mgr(tmp, max_active=0)
+    saved = []
+    m.store.save = lambda ts: saved.extend(t.id for t in ts)
+    t = _task("http://x/a", tmp)
+    t.status = T.RUNNING
+    m.tasks = {t.id: t}
+    m._tick()
+    assert saved == [t.id]
+    t.done = 100
+    m._tick()
+    assert saved == [t.id]  # solo avanzamento: aspetta
+    t.phase = "Cerco il file"
+    m._tick()
+    assert saved == [t.id] * 2  # la fase cambia: subito
+    t.done = 200
+    m._tick()
+    m._saved[t.id] = (m._saved[t.id][0] - M.SAVE_EVERY, m._saved[t.id][1])  # passano 10 s
+    m._tick()
+    assert saved == [t.id] * 3  # l'avanzamento rimasto da salvare arriva su disco anche senza altri cambi
+    m._tick()
+    assert saved == [t.id] * 3
+
+
+def test_porta_fissa_scelta_una_volta(tmp):
+    saved = []
+    cfg = SimpleNamespace(cache=tmp / "cache", app={"downloads": {"dir": str(tmp / "out")}})
+    m = Manager(cfg, client_factory=net.make_client, save=saved.append)
+    m.start()
+    port = m.settings()["port"]
+    assert 49152 <= port <= 65000 and saved[-1]["port"] == port
+    m.stop()
+    m2 = Manager(cfg, client_factory=net.make_client, save=saved.append)
+    m2.start()
+    assert m2.settings()["port"] == port and len(saved) == 1  # stessa porta, niente da salvare
+    m2.stop()
+
+
+def test_porta_automatica_occupata_si_cambia_quella_a_mano_no(tmp, monkeypatch):
+    saved = []
+    cfg = SimpleNamespace(cache=tmp / "cache", app={"downloads": {"dir": str(tmp / "out"), "port": 50001,
+                                                                   "port_auto": True}})
+    monkeypatch.setattr(M, "_port_ok", lambda p: p != 50001)  # riservata da Windows dopo il riavvio
+    m = Manager(cfg, client_factory=net.make_client, save=saved.append)
+    m.start()
+    assert m.settings()["port"] != 50001 and saved[-1]["port_auto"] is True
+    m.stop()
+    m.update_settings({"port": 50001})  # a mano
+    assert cfg.app["downloads"]["port_auto"] is False
+    m2 = Manager(cfg, client_factory=net.make_client, save=saved.append)
+    m2.start()
+    assert m2.settings()["port"] == 50001  # occupata, ma scelta dall'utente: resta
+    m2.stop()
 
 
 def test_persistenza_e_ripresa(server, tmp):
@@ -374,7 +503,7 @@ def test_limiti_lenti_e_quote_per_priorita(tmp):
     m = _mgr(tmp, limit_down=1000, alt_limit_down=100, alt_limit_up=7, max_active=0)
     a, b = _task("http://x/a", tmp), _task("http://x/b", tmp)
     a.priority, b.priority, a.status, b.status = 2, 0, T.RUNNING, T.RUNNING
-    m.tasks, m._jobs = {a.id: a, b.id: b}, {a.id: None, b.id: None}
+    m.tasks, m._jobs, m._dl_ids = {a.id: a, b.id: b}, {a.id: None, b.id: None}, {a.id, b.id}
     m._tick()
     assert m._buckets[a.id].rate == 800 * 1024 and m._buckets[b.id].rate == 200 * 1024  # peso 2**priorita'
     m.set_limit(b.id, 50, 0)

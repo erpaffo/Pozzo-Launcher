@@ -22,6 +22,17 @@ una cartella gli eseguibili conosciuti: RetroArch, Ryujinx, Eden, melonDS, Dolph
 RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu. **＋ Aggiungi un altro emulatore** aggiunge un programma
 qualsiasi.
 
+**Cerca emulatori già installati**: in cima alla pagina, questo pulsante esegue una scansione rapida del PC (circa 4 secondi)
+ispezionando le cartelle di sistema standard (Programmi, Winget, Scoop, librerie di Steam e registro di Windows) per trovare
+gli emulatori già presenti. Se ne trova uno, lo propone con il pulsante **Usa questo**: nessuna impostazione viene cambiata
+senza la tua conferma. Se un emulatore è già installato, il pulsante **Installa** non lo riscarica.
+
+**Mappatura automatica del controller negli emulatori**: per Dolphin, PCSX2, DuckStation, RPCS3 e RetroArch, l'app
+include profili di mappatura ottimali per i controller più diffusi (Xbox XInput, PlayStation DualSense e DualShock 4, Nintendo
+Switch Pro). Il profilo si applica automaticamente quando installi un emulatore per la prima volta, oppure a mano da
+**Impostazioni › Controller › Mappa i tasti negli emulatori**. Prima di qualsiasi scrittura viene creata una copia di backup
+del file di configurazione originale, e le impostazioni personalizzate già esistenti non vengono mai sovrascritte senza richiesta.
+
 **Emulatore per console**: per ogni console scegli
 
 - l'**emulatore**: *Automatico* usa il primo installato tra quelli consigliati per quella console; *Altro…* permette
@@ -96,6 +107,31 @@ Durante la partita la barra **In esecuzione** mostra il gioco in corso e permett
 **Select + Start (View + Menu) tenuti premuti per 2 secondi** chiudono il gioco in esecuzione, anche mentre il gioco
 è in primo piano, con i controller XInput (Xbox). Si disattiva con `[app] exit_combo = false`.
 
+## Gioca da disco veloce
+
+Se la libreria sta su un disco lento (HDD), il gioco può essere copiato su un SSD e avviato da lì, per caricamenti più
+rapidi.
+
+Nel dettaglio del gioco, **⚡ Gioca da disco veloce** sta accanto a **▶ Gioca**. L'app copia il gioco (l'avanzamento in
+percentuale si vede nella barra **In esecuzione**), poi lo avvia da sola.
+
+**Dove va la copia**: nella cartella temporanea scelta in **Impostazioni › Emulatori e avvio**, sezione **Disco veloce**; se non ne hai
+scelta una, nella cartella della cache dell'app. Conviene un SSD con abbastanza spazio libero: serve almeno la dimensione
+del gioco (per i giochi PC, l'intera cartella di installazione). Se lo spazio non basta, l'app lo dice e non copia nulla.
+Per sicurezza, non è consentito scegliere percorsi a rischio come la radice del disco (`C:\`), la cartella home dell'utente o la cartella della libreria.
+
+**Alla fine**: di base la copia viene eliminata quando chiudi il gioco. Disattiva **Elimina la copia quando chiudi il
+gioco** per riusarla la volta dopo, senza ricopiare (se nel frattempo il gioco è cambiato, viene ricopiato).
+
+Avvertenze:
+
+- per i giochi PC, i salvataggi scritti dentro la cartella del gioco si perdono con la copia eliminata; quelli nelle
+  cartelle standard di Windows o gestiti dall'app no;
+- non è disponibile per i giochi avviati da uno store o launcher esterno;
+- **Chiudi gioco** durante la copia la annulla immediatamente;
+- le copie rimaste su disco dopo un arresto anomalo del PC o dell'emulatore vengono ripulite automaticamente al successivo avvio del launcher;
+- la modalità resta attiva anche dopo aver selezionato la finestra in cui avviare il gioco.
+
 ## Tempo di gioco e partite
 
 Per ogni gioco l'app registra **tempo di gioco**, **ultima partita** e **numero di avvii**. Una partita entra subito
@@ -116,20 +152,48 @@ non si possono mostrare, perché Discord accetta solo asset caricati sull'applic
 
 ![Impostazioni › Integrazioni: avvisi di Windows e presenza su Discord](images/impostazioni-integrazioni.jpg)
 
+## Partita con un amico
+
+Puoi giocare con un amico senza account e senza server: crei un **invito** (un codice o un link) e lo mandi all'amico
+su Discord, WhatsApp o come preferisci.
+
+Possono usarlo **RetroArch** ed **Eden**. Per gli altri giochi usa Discord o lo store.
+
+- **👥 Partita con un amico**, nel dettaglio del gioco: crea l'invito da mandare.
+- **👥 Ho un invito**, in alto: incolli il codice ricevuto ed entri nella partita.
+
+### Il messaggio di invito
+
+Il pulsante **Copia invito** copia un messaggio già pronto, con il gioco, i requisiti, il link `pozzo://join/…` e il codice. Mandalo all'amico: lui può incollare l'intero messaggio in **Ho un invito**. Il link apre Pozzo sul suo PC, ma il gioco non parte mai da solo: prima compare una conferma.
+
+### Dove giocate?
+
+- **Stessa rete** (Wi-Fi o cavo di casa): non serve fare niente, l'app sceglie l'indirizzo giusto.
+- **Su internet**: l'amico deve poter raggiungere il tuo PC. Apri la porta sul router: **TCP 55435** per RetroArch, **UDP 24872** per Eden (come aprirla dipende dal router: cerca «port forwarding» + modello). Nell'app, **Rileva il mio IP pubblico**.
+- **VPN gratuita** (Tailscale o ZeroTier): installala su entrambi i PC, usa l'indirizzo che la VPN assegna al tuo PC; nessuna porta da aprire.
+
+Se non sai quale scegliere, usa la VPN.
+
+Avvertenze:
+
+- la password della stanza Eden è nel codice invito: chi lo vede può entrare finché la stanza è aperta;
+- la porta aperta sul router resta esposta: chiudila quando finite di giocare;
+- l'amico deve avere la stessa versione del gioco e dell'emulatore.
+
 ## Giocare con un amico
 
 Con RetroArch si può giocare in rete con un amico, nello stesso gioco (netplay, due giocatori). Pozzo non ha un server:
-crea un **codice invito** che mandi all'amico su Discord, WhatsApp o come preferisci.
+crea un invito come descritto in «Partita con un amico».
 
 ### Creare l'invito
 
-Nel dettaglio di un gioco RetroArch, **👥 Gioca con un amico** chiede il nick e l'IP del tuo PC. **Crea invito** avvia il
-gioco come host e mostra il codice, che inizia con `POZZO-`. Premi **Copia** e mandalo all'amico.
+Nel dettaglio di un gioco RetroArch, **👥 Partita con un amico** chiede il nick e l'IP del tuo PC e avvia il gioco come
+host. Il codice (`POZZO-…`) si copia e si manda come in «Partita con un amico».
 
 ### Unirsi all'invito
 
-L'amico, nella barra in alto, sceglie **Unisciti a un amico** e incolla il codice. Pozzo mostra la conferma («Entrare
-nella partita di … a …?»): alla conferma avvia lo stesso gioco e RetroArch si collega al tuo.
+Si incolla il codice come in «Partita con un amico». Alla conferma Pozzo avvia lo stesso gioco e RetroArch si collega
+all'host.
 
 ### Cosa serve
 
@@ -137,19 +201,24 @@ nella partita di … a …?»): alla conferma avvia lo stesso gioco e RetroArch 
   dell'amico. Se il core è diverso Pozzo lo segnala; se la ROM è diversa RetroArch non si connette.
 - La porta è la **55435**.
 - **In LAN** (stessa rete di casa) funziona direttamente con l'IP locale proposto.
-- **Su internet** c'è da fare una delle due cose:
-  - **port forwarding**: sul router dell'host si inoltra la porta 55435 verso il PC dell'host, e l'IP pubblico si scrive
-    nel campo IP;
-  - **una VPN gratuita** come Tailscale o ZeroTier: installata su entrambi i PC, dà a ciascuno un IP che resta uguale.
-    Quell'IP si sceglie nella finestra al posto dell'IP di casa.
+- **Su internet**: come in «Partita con un amico», ma la porta è la **55435** (port forwarding verso il PC dell'host, o
+  VPN con l'IP che la VPN assegna nella finestra al posto dell'IP di casa).
 
-### Scadenza e limiti
+### Limiti e altre piattaforme
 
-- Il codice scade dopo **1 ora**: dopo, si crea un invito nuovo.
-- Per ora funziona solo con **RetroArch**. Per gli altri emulatori Pozzo propone lo **Share Play** (streaming con
-  Sunshine e Moonlight), in cui l'amico gioca la tua partita da remoto.
+- Funziona con **RetroArch** ed **Eden** (vedi sotto). Per gli altri emulatori Pozzo propone lo **Share Play**
+  (streaming con Sunshine e Moonlight), in cui l'amico gioca la tua partita da remoto.
 - Con il client Discord aperto e la presenza attiva (**Impostazioni › 🧩 Integrazioni**) il tuo profilo mostra la partita
   come «(1 di 2)», perché RetroArch in rete gestisce due giocatori.
+
+### Stanza multiplayer con Eden (Nintendo Switch)
+
+Per i giochi Nintendo Switch che supportano il multigiocatore wireless o locale:
+
+1. **Chi ospita**: nel dettaglio del gioco clicca su **👥 Partita con un amico**. Pozzo Launcher avvia una stanza privata in background (`eden-room` accanto all'eseguibile di Eden, oppure `eden --room`) sulla porta **UDP 24872** con una password sicura generata a caso, e poi fa partire il gioco.
+2. **Chi si unisce**: clicca su **👥 Ho un invito** e incolla il codice ricevuto. Pozzo apre Eden con la scheda *Multiplayer › Direct Connect* già precompilata (indirizzo IP dell'host, porta 24872 e nome giocatore): basta premere **Connetti** per entrare immediatamente nella stanza.
+3. **Chiudi stanza**: l'host può premere in qualsiasi momento **Chiudi la stanza** per arrestare il server della stanza senza chiudere il gioco.
+4. *Requisiti*: entrambi i giocatori devono disporre della stessa versione di Eden e della stessa versione del gioco Switch (inclusi gli aggiornamenti).
 
 ## Download mentre giochi
 
@@ -252,3 +321,16 @@ Il gioco viene abbinato:
 2. altrimenti per titolo, nome canonico o nome del file.
 
 Cache: catalogo 7 giorni, abbinamento 30 giorni, progresso 30 minuti.
+
+### Eden (Switch)
+
+Con Eden le partite passano dalle **stanze** di Eden: il gioco in locale (wireless) della Switch viaggia su internet, quindi
+funziona solo con i giochi che hanno la modalità locale. Il codice invito è lo stesso.
+
+- **Chi ospita**: in **👥 Partita con un amico → Crea invito** Pozzo avvia la stanza (privata, con una password nel codice,
+  porta **UDP 24872**) e il gioco, e li chiude insieme a Pozzo. **Chiudi la stanza** la ferma senza chiudere il gioco.
+  La stanza richiede `eden-room.exe` accanto a `eden.exe` (o una versione di Eden che accetta `eden --room`).
+- **L'amico**: incolla il codice come in «Partita con un amico». Pozzo compila **Multiplayer › Direct Connect** con indirizzo,
+  porta e nome e avvia il gioco: in Eden basta **Multiplayer › Direct Connect › Connetti**, poi aprire la modalità locale del gioco.
+- Porta **UDP 24872** (fuori dalla rete di casa: port forwarding o VPN, come in «Partita con un amico»). Serve lo stesso
+  gioco su entrambi i PC. Chiudi Eden prima di unirti, altrimenti Pozzo non può compilare i campi.

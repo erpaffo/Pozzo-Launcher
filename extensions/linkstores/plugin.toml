@@ -2,7 +2,13 @@
 name = "Link → Store"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Legge una pagina che raccoglie altri siti, raggruppa i link per intestazione (h2/h3) e aggiunge ciascuno come store di una console o come store PC (repack / download diretto)."
+icon = "🔗"
+screenshot = "screenshot.png"
+description = "Converte elenchi di link web (repack, archivi e siti di download) in store consultabili all'interno del launcher, ordinati per console o per PC."
+long_description = "Automatizza la catalogazione dei tuoi siti preferiti. Incollando l'indirizzo di una pagina HTML che raccoglie collegamenti a giochi, l'estensione analizza la struttura del documento (titoli H2, H3, liste puntate) e aggiunge automaticamente ogni sezione come fonte store della console corrispondente o come store per PC."
+how_it_works = "1. Installa l'estensione e apri la sezione Link → Store dalla barra laterale o dalle impostazioni degli store.\n2. Incolla l'URL della pagina web da analizzare e seleziona la console di destinazione (o Store PC).\n3. L'estensione scansiona i tag HTML e mostra un'anteprima dei link trovati con i rispettivi titoli.\n4. Conferma con «Aggiungi come store»: i titoli compariranno direttamente nelle ricerche dello Store online!"
+features = ["Parser HTML euristico per titoli, categorie e link di download", "Integrazione diretta con il Gestore dei download nativo", "Raggruppamento per console o repack PC", "Salvataggio immediato nelle impostazioni senza necessità di riavviare"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["rete:*", "impostazioni", "file:lettura", "file:scrittura"]
+load = "lazy"

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
+import os
 import time
 from pathlib import Path
 from urllib.parse import unquote, urlparse, urlsplit
@@ -14,7 +15,6 @@ from ..task import mb
 
 RETRIES = 5
 CHUNK = 256 * 1024
-RESOLVE_TIMEOUT = 240  # secondi: tetto a tutta la catena dei risolutori (due passaggi dal browser nascosto stanno dentro)
 MIN_SEGMENT = 2 * 1024 * 1024  # sotto questa dimensione un solo flusso basta
 # link che valgono una richiesta sola: ogni richiesta in piu' (anche il controllo) dà 410 Gone
 ONE_TIME = ('1fichier.com',)
@@ -63,27 +63,43 @@ def _meta(r: httpx.Response, url: str) -> tuple[str, int, bool, str]:
     return _filename(r, url), total, r.status_code == 206 and total > 0,         r.headers.get("etag") or r.headers.get("last-modified") or ""
 
 
-async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve) -> None:
+def _sparse(f) -> None:
+    """Windows: marca il file come sparso, cosi' truncate non scrive tutti gli zeri. Mai solleva."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        import msvcrt
+        ctypes.windll.kernel32.DeviceIoControl(msvcrt.get_osfhandle(f.fileno()), 0x900C4, None, 0, None, 0,
+                                               ctypes.byref(ctypes.c_ulong()), None)
+    except Exception:
+        pass
+
+
+async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve, gate=None) -> None:
     """Scarica `task` fino alla fine. Lo stato per riprendere sta in task.options (segs, tag, url): il manager lo salva."""
     url = task.options.get("url")
+    gated = False  # gate (coda per lo scaricamento) una volta sola in tutto run
     if url and time.time() - float(task.options.get("url_at") or 0) < URL_TTL:
         # ripresa: il link diretto di prima evita di rifare tutti i passaggi (pubblicita', pagina dell'host...)
         task.log("Riprovo il link già risolto")
         try:
+            if gate:
+                gated = True
+                await gate()
             return await _fetch(task, client, bucket, segments, url, time.time())
         except (httpx.HTTPStatusError, httpx.TransportError, ValueError) as e:
             task.log(f"Link di prima non più valido ({type(e).__name__}): lo risolvo di nuovo", "warn")
         task.options.pop("url", None)
     task.log("Risolvo il link")
     t0 = time.time()
-    try:  # il thread del risolutore non si ferma, ma il suo risultato tardivo non serve piu' a nessuno
-        url = await asyncio.wait_for(asyncio.to_thread(resolve, task.source), RESOLVE_TIMEOUT)
-    except asyncio.TimeoutError:
-        raise ValueError(f"Non sono riuscito a ottenere il link in {RESOLVE_TIMEOUT:g} s") from None
+    url = await asyncio.to_thread(resolve, task.source)  # senza tetto: l'attesa dei lock del browser non conta
     task.log(f"Link risolto in {time.time() - t0:.1f} s")
     host = urlsplit(url).hostname or ""
     if not any(host == h or host.endswith("." + h) for h in ONE_TIME):  # un link monouso non si riusa
         task.options.update(url=url, url_at=time.time())
+    if gate and not gated:
+        await gate()
     await _fetch(task, client, bucket, segments, url, t0)
 
 
@@ -133,6 +149,7 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
         task.options["tag"] = tag
         with open(part, "wb") as f:
             if total:
+                _sparse(f)
                 f.truncate(total)
         task.log(f"Nuovo download: {n} segment{'o' if n == 1 else 'i'}")
     else:

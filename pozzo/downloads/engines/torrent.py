@@ -114,11 +114,24 @@ class Engine:
 
     def session(self):
         if self.ses is None:
-            self.ses = lt.session(self._pack)
+            try:  # stato salvato (DHT ecc.); le impostazioni correnti si riapplicano subito dopo
+                self.ses = lt.session(lt.read_session_params((self.folder / "session.dat").read_bytes()))
+                self.ses.apply_settings(self._pack)
+            except Exception:  # file assente/rovinato o libtorrent vecchio
+                self.ses = lt.session(self._pack)
         return self.ses
 
     def close(self):
         self.handles.clear()
+        if self.ses:
+            try:  # stato della sessione su disco, atomico
+                self.folder.mkdir(parents=True, exist_ok=True)
+                f = self.folder / "session.dat"
+                tmp = f.with_suffix(".tmp")
+                tmp.write_bytes(lt.write_session_params_buf(self.ses.session_state()))
+                tmp.replace(f)
+            except Exception:
+                pass
         self.ses = None  # il distruttore chiude la sessione (pochi istanti: annunci di stop ai tracker)
 
     def resume_file(self, tid: str) -> Path:

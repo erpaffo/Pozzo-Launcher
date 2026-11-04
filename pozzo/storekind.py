@@ -59,10 +59,18 @@ TAG_KINDS = (("update", re.compile(r"\b(update|patch)\b", re.I)),
 BIG_GAMES = {"psvita", "ps3", "ps4", "ps5", "switch", "wiiu", "xbox360", "xboxone"}
 MIN_GAME_SIZE = 1024 ** 2
 
+# e-Reader del Game Boy Advance: schede da strisciare col lettore, non giochi a sé (nei cataloghi
+# sono migliaia e si confondono con i giochi). L'intero elenco «... (e-Reader)» e' di questo tipo.
+# Solo sul GBA: le ROM NES «(e-Reader)» sono giochi NES veri, giocabili.
+EREADER = re.compile(r"e-?reader", re.I)
 
-def catalog_kind(name: str, title: str, size: int | None = None, pid: str = "") -> str:
-    """Tipo di una voce di catalogo console: prima le etichette del nome originale (il titolo pulito le ha
-    perse), poi le parole del titolo, infine il peso minimo dei giochi della console."""
+
+def catalog_kind(name: str, title: str, size: int | None = None, pid: str = "", url: str = "") -> str:
+    """Tipo di una voce di catalogo console: un catalogo di schede e-Reader e' tutto DLC, poi le etichette
+    del nome originale (il titolo pulito le ha perse), poi le parole del titolo, infine il peso minimo dei
+    giochi della console."""
+    if EREADER.search(url or "") or (pid == "gba" and EREADER.search(name or "")):
+        return "dlc"
     tags = [a or b for a, b in _TAGS.findall(name or "")]
     for kind, rx in TAG_KINDS:
         if any(rx.search(t) for t in tags):

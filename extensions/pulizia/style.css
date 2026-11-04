@@ -3,3 +3,8 @@
 .pl-list { list-style: none; padding: 0; margin: 12px 0 0; max-width: 900px; }
 .pl-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
 .pl-list label { display: flex; gap: 8px; align-items: baseline; }
+.pl-disk { margin-top: 28px; max-width: 900px; }
+.pl-dup-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.pl-dup-file { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; }
+.pl-dup-file code { font-size: 12px; word-break: break-all; }
+.pl-tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }

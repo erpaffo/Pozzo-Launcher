@@ -8,7 +8,7 @@ hide:
 <div class="download-page-header">
   <div class="hero-release-pill">
     <span class="hero-pulse-dot"></span>
-    <span>Ultima versione stabile: <strong class="gh-release-tag">v0.12.1</strong> · <span class="gh-release-date">Novembre 2026</span></span>
+    <span>Ultima versione stabile: <strong class="gh-release-tag">v0.14.3</strong> · <span class="gh-release-date">Novembre 2026</span></span>
   </div>
   <h1>Scarica Pozzo Launcher</h1>
   <p class="hero-subtitle">
@@ -173,3 +173,4 @@ hide:
 
 ??? question "Come faccio a iniziare dopo aver scaricato?"
     Al primo avvio, l'applicazione ti accoglierà con la procedura guidata per indicare la cartella delle tue ROM e collegare i tuoi account dei negozi PC (Steam, Epic, GOG). Consulta la [Guida introduttiva](guida.md) o i capitoli [Installazione e aggiornamenti](installazione.md) e [La libreria](libreria.md).
+

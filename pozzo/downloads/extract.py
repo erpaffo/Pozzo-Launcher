@@ -14,6 +14,8 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
+from .task import PAUSED, QUEUED, RUNNING
+
 MAX_BYTES = 200 * 2**30  # tetto al decompresso (anti zip-bomb), cambiabile per chiamata con max_bytes
 MAX_RATIO = 2000  # decompresso/compresso oltre questo (e oltre RATIO_MIN) = bomba
 RATIO_MIN = 2**30
@@ -499,6 +501,46 @@ def find_games(root, exts: set[str]) -> list[Path]:
     """File dell'albero estratto con estensione in `exts` (con il punto, es. {".iso", ".chd"}), in ordine."""
     ex = {e.lower() if e.startswith(".") else "." + e.lower() for e in exts}
     return sorted(p for p in Path(root).rglob("*") if p.is_file() and p.suffix.lower() in ex)
+
+
+def drive_of(path) -> str:
+    """Radice del disco di una cartella («C:\\» su Windows, «/» altrove): il disco dello spazio libero."""
+    return Path(os.path.abspath(path)).anchor
+
+
+def _existing(path) -> str:
+    """La cartella o il suo primo genitore esistente: serve per chiedere lo spazio libero."""
+    q = Path(os.path.abspath(path))
+    while not q.exists() and q.parent != q:
+        q = q.parent
+    return str(q)
+
+
+def queue_forecast(tasks) -> dict:
+    """Spazio libero per disco di destinazione: dopo i download non finiti, poi dopo le estrazioni stimate.
+    Ritorna {"drives": [{drive, free_now, after_queue, after_extract, ok, unknown}]} in byte."""
+    drives: dict[str, dict] = {}
+    for t in tasks:
+        if t.status not in (QUEUED, RUNNING, PAUSED):
+            continue
+        d = drives.setdefault(drive_of(t.save_path), {"path": _existing(t.save_path), "queue": 0, "extract": 0, "unknown": 0})
+        if not t.size:
+            d["unknown"] += 1  # dimensione ancora ignota (link non risolto): conta zero
+        d["queue"] += max(t.size - t.done, 0) if t.size else 0
+        # shortcut: estratto stimato = dimensione dell'archivio (rapporto 1.0); upgrade leggendo il listing reale
+        if is_archive(t.name or t.source.split("?")[0]):
+            d["extract"] += t.size
+    out = []
+    for drive, d in drives.items():
+        try:
+            free = shutil.disk_usage(d["path"]).free
+        except OSError:  # disco non montato o sparito: non si puo' dire che c'e' spazio
+            free = 0
+        after_queue = free - d["queue"]
+        after_extract = after_queue - d["extract"]
+        out.append({"drive": drive, "free_now": free, "after_queue": after_queue, "after_extract": after_extract,
+                    "ok": after_extract >= 0, "unknown": d["unknown"]})
+    return {"drives": out}
 
 
 def delete_archive_set(group) -> int:

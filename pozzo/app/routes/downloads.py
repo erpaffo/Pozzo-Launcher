@@ -13,8 +13,9 @@ from fastapi.responses import StreamingResponse
 from ... import storelinks as SL
 from .. import browserdl
 from ...cache import Cache
-from ...downloads import debrid, finish, hosts, install, multiup, resolvers
+from ...downloads import bandwidth, debrid, finish, hosts, install, multiup, resolvers
 from ...downloads.engines import http as HTTP, torrent as TOR
+from ...downloads.extract import queue_forecast
 from ...downloads.manager import Manager
 from ..apiv1 import sse
 
@@ -41,6 +42,7 @@ def build_router(ctx) -> APIRouter:
 
     mgr = Manager(cfg, ctx.events, playing=_playing)
     ctx.downloads = mgr
+    bandwidth.configure(Path(cfg.cache))  # stesso downloads.db dello Store
 
     def _unshorten(url: str) -> str:  # accorciatori pubblicitari, come per il pulsante «Scarica» del dettaglio gioco
         c = Cache(cfg.cache)
@@ -56,6 +58,7 @@ def build_router(ctx) -> APIRouter:
                        lambda u: f"Cerco il file su {hosts.host(u)}" if hosts.is_host_page(u) else "")
     browserdl.SHOW["fn"] = lambda: bool(mgr.settings().get("show_browser"))  # finestra del browser visibile per seguirla
     mgr.on_completed = lambda t: finish.run(t, mgr, ctx)  # estrae e mette il gioco in libreria
+    mgr.ctx = ctx  # subito: dopo un riavvio i task in attesa della scansione si ricontrollano (Manager.mark_ready)
     mgr.start()
     # alla chiusura: file .part chiusi e stato salvato prima dell'uscita immediata (os._exit non svuota i buffer)
     ctx.app.router.add_event_handler("shutdown", mgr.stop)
@@ -94,6 +97,8 @@ def build_router(ctx) -> APIRouter:
             except ValueError as e:
                 raise HTTPException(400, str(e))
         return {"ok": True, "tasks": out}
+    # la usa POST /m/api/downloads (remote/phone.py): con FastAPI recente app.routes non elenca le rotte dei router inclusi
+    ctx.app.state.downloads_add = api_downloads_add
 
     def _act(tid: str, fn, *a):
         try:
@@ -159,6 +164,18 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/downloads/{tid}/limit")
     def api_downloads_limit(tid: str, body: dict = Body(...)):
         return _act(tid, mgr.set_limit, body.get("down") or 0, body.get("up") or 0)
+
+    @router.get("/api/downloads/space")
+    def api_downloads_space():
+        """Spazio sui dischi della coda: dopo i download non finiti e dopo le estrazioni stimate (byte)."""
+        with mgr.lock:
+            tasks = list(mgr.tasks.values())
+        return queue_forecast(tasks)
+
+    @router.get("/api/downloads/stats")
+    def api_downloads_stats():
+        """Storico della banda: ultima ora per minuto, ultimi 30 giorni, host, totale (vedi downloads/bandwidth.py)."""
+        return bandwidth.stats()
 
     @router.get("/api/downloads/{tid}/log")
     def api_downloads_log(tid: str, after: int = 0):

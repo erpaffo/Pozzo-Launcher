@@ -36,8 +36,9 @@ from ..updates import parse
 from . import extensions as X
 
 STORE_ID = X.STORE_ID  # lo store stesso: incluso nell'app, non si disattiva ne' si rimuove
-# lo store sta nel repository dell'app (cartella extensions/): il vecchio repository gamescraper-extensions non esiste piu'
-OFFICIAL = "https://raw.githubusercontent.com/erpaffo/Pozzo-Launcher/HEAD/extensions/index.json"
+# lo store ufficiale e' un repository a parte, con index.json alla radice e una cartella per estensione
+# (sorgenti in extensions/ di questo repository; si ripubblica copiando i file elencati nell'indice)
+OFFICIAL = "https://raw.githubusercontent.com/erpaffo/pozzo-store-extension/HEAD/index.json"
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _FILE = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}$")
 _GITHUB = re.compile(r"^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?(?:/tree/([\w./-]+?))?/?$")
@@ -159,6 +160,7 @@ def catalog(cfg) -> dict:
     installed = {p["id"]: p for p in X.list_plugins(cfg)}
     found, report = fetch_all(cfg)
     items = []
+    repo_ext = Path(__file__).resolve().parent.parent.parent / "extensions"
     for e in found:
         p = installed.get(e["id"])
         d = Path(p["dir"]) if p else None
@@ -166,9 +168,25 @@ def catalog(cfg) -> dict:
                  else "available" if not p
                  else "update" if _ver(e.get("version")) > _ver(p["version"]) and compatible(e)
                  else "installed")
-        items.append({k: e.get(k) for k in ("id", "name", "version", "description", "author", "min_app", "source", "official")}
-                     | {"state": state, "installed_version": p["version"] if p else None,
-                        "dev": bool(d and is_linked(d)), "enabled": bool(p and p["enabled"])})
+        m = {}
+        if repo_ext.is_dir() and (repo_ext / e["id"] / "plugin.toml").exists():
+            try:
+                import tomllib
+                m = tomllib.loads((repo_ext / e["id"] / "plugin.toml").read_text(encoding="utf-8")).get("plugin", {})
+            except Exception:
+                pass
+        item = {k: e.get(k) or m.get(k) for k in ("id", "name", "version", "description", "author", "min_app", "source", "official",
+                                                  "icon", "screenshot", "screenshots", "long_description", "how_it_works", "features", "base", "featured")}
+        raw = e["permissions"] if "permissions" in e else m.get("permissions")  # l'indice verificato prima del repository locale
+        perms = [x for x in raw if isinstance(x, str)] if isinstance(raw, list) else []
+        item.update({"permissions": perms, "permissions_unknown": raw is None,
+                     "permissions_labels": X.describe_permissions(perms)})
+        item["files"] = list(e.get("files", {}).keys()) if isinstance(e.get("files"), dict) else []
+        # permessi della versione installata: l'aggiornamento chiede conferma solo per quelli nuovi
+        item["installed_permissions"] = p["permissions"] if p and not p["permissions_unknown"] else None
+        item.update({"state": state, "installed_version": p["version"] if p else None,
+                     "dev": bool(d and is_linked(d)), "enabled": bool(p and p["enabled"])})
+        items.append(item)
     return {"items": items, "sources": report, "app_version": __version__}
 
 

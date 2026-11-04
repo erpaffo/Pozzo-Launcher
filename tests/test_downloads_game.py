@@ -55,7 +55,7 @@ def test_game_mode_limit_sostituisce_il_limite(tmp):
     m.playing = lambda: state["on"]
     a = _task("http://x/a", tmp)
     a.status = T.RUNNING
-    m.tasks, m._jobs = {a.id: a}, {a.id: None}
+    m.tasks, m._jobs, m._dl_ids = {a.id: a}, {a.id: None}, {a.id}
     m._tick()
     assert m._buckets[a.id].rate == 1000 * 1024  # nessun gioco: vale il limite globale
     state["on"] = True

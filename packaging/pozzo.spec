@@ -19,12 +19,15 @@ datas = [
     (str(APP / "static"), "pozzo/app/static"),
     (str(APP / "themes"), "pozzo/app/themes"),
     (str(APP / "plugins"), "pozzo/app/plugins"),
-    (str(ROOT / "pozzo" / "data"), "pozzo/data"),  # hash dei BIOS (pozzo/bios.py)
+    *[(str(f), "pozzo/data" + ("/" + f.name if f.is_dir() else ""))  # hash dei BIOS, preset...; esempi/ solo Windows (sotto)
+      for f in (ROOT / "pozzo" / "data").iterdir() if f.name not in ("esempi", "__pycache__")],
     (str(ROOT / "config.example.toml"), "."),
     (str(ROOT / "packaging" / "icon.ico"), "packaging"),  # icona nell'area di notifica
     (str(ROOT / "changelog.md"), "."),  # mostrato in Impostazioni > Info
     (str(ROOT / "pozzo" / "remote" / "vendor"), "pozzo/remote/vendor"),  # ViGEmClient.dll
 ]
+if sys.platform == "win32":  # gioco d'esempio (pozzo/sample.py): il motore e' solo per Windows
+    datas.append((str(ROOT / "pozzo" / "data" / "esempi"), "pozzo/data/esempi"))
 datas += collect_data_files("fake_useragent")  # usata da howlongtobeatpy
 hidden = (collect_submodules("uvicorn") + collect_submodules("pozzo") + collect_submodules("rich._unicode_data")
           + collect_submodules("qrcode") + ["h2", "hpack", "hyperframe", "multipart", "PIL.WebPImagePlugin"])

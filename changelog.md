@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.15.0 (2026-11-03)
+
+### Aggiunto
+
+- «Partita con un amico» anche con **Eden** (Switch): Pozzo avvia una stanza privata di Eden (`eden-room` accanto a `eden.exe`, oppure `eden --room`; porta UDP 24872, password casuale dentro il codice invito) e poi il gioco. Chi si unisce con il codice trova «Multiplayer › Direct Connect» già compilato (indirizzo, porta, nome) e preme «Connetti». «Chiudi la stanza» la ferma senza chiudere il gioco. Serve un gioco con modalità locale/wireless e la stessa versione di Eden su entrambi i PC
+- «⚡ Gioca da disco veloce» nel dettaglio del gioco: copia il gioco su un SSD, lo avvia da lì e a fine partita toglie la copia (se non scegli di tenerla). Impostazioni › Emulatori e avvio › «Disco veloce»: cartella delle copie (mai la radice di un disco, la home o la libreria), spazio libero e «Elimina la copia quando chiudi il gioco». Le copie rimaste dopo un arresto anomalo si ripuliscono all'avvio; durante la copia si può annullare
+- Pagina Download come tabella: colonne ordinabili (nome, host, dimensione, avanzamento, velocità, ETA, stato, priorità) con l'ordine ricordato, pannello dei dettagli ridimensionabile con le schede Generale, File e Registro, e barra di stato con velocità in discesa e in salita, posti occupati, limite globale, modalità lenta e l'indicatore «🎮 Modalità gioco»
+- Link di invito «pozzo://» (Windows): «Copia invito» copia un messaggio pronto con il gioco, i requisiti, il link e il codice. Cliccando il link, Pozzo apre l'invito dell'amico: se è già aperto lo porta in primo piano, se è chiuso lo mostra all'avvio. Il gioco non parte mai da solo: prima compare la conferma
+- «Dove giocate?» nella creazione dell'invito: stessa rete, internet con la porta aperta sul router (con «Rileva il mio IP pubblico») oppure VPN come Tailscale o ZeroTier, con il consiglio sull'indirizzo da usare
+- «👥 Ho un invito» in alto: si incolla il codice, il link o l'intero messaggio ricevuto; se arriva un link, la finestra si apre già compilata
+- Impostazione «Registra il link pozzo:// su Windows» in Impostazioni › Emulatori e avvio: si può disattivare in ogni momento
+- **Riprendi** in home (e in Big Picture): una card con l'ultimo gioco, il tempo che resta secondo HowLongToBeat, il salvataggio più recente e «▶ Riprendi» per avviarlo con un clic; sotto, gli altri due giochi giocati da poco
+- **«❔ Perché non parte?»** nel dettaglio del gioco e nell'avviso d'errore: controlla il file, l'emulatore scelto, l'eseguibile, il BIOS, gli argomenti di avvio e l'ultimo crash, e indica la causa più probabile con il rimedio. Non avvia nulla
+- Dopo due chiusure improvvise dell'emulatore (entro 10 secondi) Pozzo registra codice d'uscita e ultime righe del registro e propone un core o un emulatore alternativo: «Prova con…». L'impostazione `crash_fallback` può anche applicarlo da sola e ricordarlo per quel gioco (per ora si cambia solo a mano in `settings.json`)
+- **Aggiornamento degli emulatori** in Impostazioni › Emulatori: controllo giornaliero delle novità, con «Disattivato», «Solo avviso» o «Installa automaticamente». Prima di aggiornare la cartella viene copiata in `.bak` e, se l'installazione fallisce, torna la versione precedente. Non aggiorna un emulatore aperto
+- Onboarding e Impostazioni › Emulatori: per ogni console l'emulatore consigliato mostra il perché, con fedeltà, prestazioni e controller
+- **Webhook in uscita** in Impostazioni › Generale: una richiesta POST in JSON a un indirizzo a tua scelta (Home Assistant, Stream Deck, script) per «gioco avviato», «gioco chiuso», «download finito» e «prezzo sceso». Segreto facoltativo con firma HMAC (`X-Pozzo-Signature`) e pulsante «Prova»; il segreto non torna mai al browser
+- **Manutenzione programmata** in Impostazioni › Dati e backup (di default spenta, domenica alle 03:00): verifica ROM e BIOS, riprova le copertine mancanti, aggiorna gli store e fa un backup. Al mattino c'è un rapporto con le differenze rispetto all'ultima volta, e la notifica arriva solo se qualcosa è peggiorato. Parte solo se non stai giocando né scaricando
+- **Pulizia › File identici su disco**: trova i file con gli stessi byte in cartelle diverse e propone di sostituire le copie con un collegamento (hardlink) o di eliminarle, tenendo la versione che preferisci (preselezionata secondo le regioni). Prima di agire ricontrolla ogni file; non esce mai dalle cartelle della libreria e non cancella mai l'ultima copia
+- Download: **spazio richiesto dalla coda** (libero ora, dopo la coda e dopo l'estrazione; i download che non ci stanno restano in attesa con «Spazio insufficiente»), **gruppi per gioco** (base, aggiornamenti e DLC in una sola scheda con avanzamento totale), **«pronto a giocare»** (scarico → estrazione → libreria → dati, con «Pronto alle 21:40»; il download è finito quando il gioco è avviabile) e **grafico della banda** con storico dei GB al giorno e per host
+- Dal telefono: «Scarica sul PC» incolla uno o più link (o si usa «Condividi → Pozzo») e li mette in coda sul PC; serve il telefono abbinato
+- Estensioni: i **permessi** sono dichiarati da ogni estensione e mostrati prima dell'installazione (e solo i nuovi in un aggiornamento); nuova scheda **Scopri** nello Store estensioni con novità, consigliate e suggerimenti per te
+- Nuova estensione **Notizie videogiochi**: una timeline con le novità da Nintendo, PlayStation, Xbox, Valve, Square Enix e dai siti di settore (RSS/Atom, nessun account), filtri per casa e tipo, «solo i miei giochi e console», fonti configurabili, «Segui» un gioco per patch e DLC, annunci e prossime uscite e la **Rassegna** settimanale. Alcune case (Epic, Ubisoft, Capcom, Sega, Bandai Namco, CD Projekt) non hanno un feed ufficiale raggiungibile e sono coperte solo in parte
+- Nuove estensioni **Il mio PC ce la fa?** (dice se il tuo PC regge un gioco o con quali impostazioni dell'emulatore), **Recensioni e punteggi** (Metacritic, OpenCritic con una tua chiave e Steam) e **Sconti e bundle** (offerte della lista desideri, bundle IsThereAnyDeal e giochi gratis)
+- Accessibilità: «Vai al contenuto», voci della barra laterale raggiungibili da tastiera, frecce, Home, Fine e Pag↑/Pag↓ nella griglia dei giochi, etichette per i pulsanti con la sola icona e annunci per lettori di schermo (notifiche e pannelli)
+- Segnaposto di caricamento («scheletri») al posto della griglia vuota e nelle pagine Lista desideri, Statistiche, Classifica e Screenshot
+- La copertina «vola» dalla griglia al dettaglio del gioco (solo con le animazioni complete e se il browser lo supporta)
+
+### Cambiato
+
+- «Gioca con un amico» diventa «Partita con un amico» e «Unisciti a un amico» diventa «Ho un invito»: un solo nome ovunque, e un solo posto per creare l'invito e per entrare
+
+- Nella coda i posti dei download contemporanei li occupa solo chi scarica davvero: i download che stanno ancora risolvendo il link (fino a 3 alla volta) o lo aspettano non bloccano più quelli pronti, e tra i pronti vale la priorità
+- Il risolutore dei link non ha più il tetto di 240 secondi: l'attesa del browser nascosto, usato da un download alla volta, non conta più come tempo perso. Chi aspetta vede «In attesa del browser (un altro download lo sta usando)»
+- Torrent: la porta di ascolto, se non l'hai scelta tu, è una porta libera a caso (in TCP e UDP) che resta la stessa a ogni avvio; se Windows nel frattempo l'ha riservata ne sceglie un'altra. La porta impostata a mano non si tocca
+- Torrent: lo stato della sessione (DHT e peer) si salva su disco e la sessione parte subito all'avvio, così i magnet trovano i peer più in fretta
+- Lo Store delle estensioni legge ora dal repository dedicato `erpaffo/pozzo-store-extension` (un `index.json` alla radice e una cartella per estensione) invece che da `extensions/` del repository dell'app
+- I pulsanti principali hanno il testo scuro invece di bianco (il bianco non era leggibile sull'accento nei temi predefinito, OLED, Retrò e Notte Blu); nel tema Chiaro sono stati scuriti leggermente l'accento e il testo attenuato per rispettare il contrasto minimo
+
+### Migliorato
+
+- Pagina Download: la tabella occupa tutta la finestra (niente più bande vuote ai lati) e sta dentro i bordi, senza barra di scorrimento orizzontale; la barra di avanzamento è molto più larga e si allunga con la finestra
+- Colonne della tabella dei download ridimensionabili: si trascina il bordo destro di un'intestazione (o la si sposta con ←/→) per allargarla, per esempio per leggere un titolo lungo; le altre colonne si stringono fino al minimo e la tabella scorre in orizzontale solo quando lo spazio è finito. Le larghezze restano memorizzate, il doppio clic sul bordo riporta tutto allo standard
+- Download HTTP più veloci a segmenti: le connessioni usano HTTP/1.1, perché con HTTP/2 tutti i segmenti verso lo stesso host passavano su una sola connessione; su Windows il file parziale è creato «sparso» e non scrive più tutti gli zeri in anticipo
+- La coda salva i download al massimo ogni 10 secondi quando cambia solo l'avanzamento, con meno scritture su disco
+- Servizi debrid: se l'elenco degli host non risponde (timeout di 10 secondi) l'errore si ricorda per 10 minuti, senza richiamare la rete a ogni download
+- Partita con un amico: i passi di Eden restano nel dialog invece di sparire con un messaggio breve; se Eden era già aperto il dialog lo dice, e il pulsante resta visibile ma disattivato, con il motivo, per gli emulatori senza gioco in rete
+- Se i core di RetroArch non coincidono, il messaggio indica i due nomi dei core
+- Animazioni: la scelta «Complete / Ridotte / Nessuna» è la stessa sul dispositivo e nel profilo, e ha la precedenza quella del profilo; le animazioni usano solo spostamento e trasparenza (niente sfocatura sui badge delle copertine, niente transizioni di larghezza nelle barre)
+- Anello di focus visibile anche su campi, menu e ricerca; modalità «Colori forzati» di Windows rispettata
+
+### Corretto
+
+- Immagini dei giochi: se l'originale sparisce mentre la copertina viene ottimizzata in parallelo, l'app riprova o risponde «non trovato» invece di «Internal Server Error» con la traccia nei registri
+- Profilo di avvio del gioco: se il caricamento fallisce non resta il profilo del gioco aperto prima, e per i giochi PC (senza emulatore) i campi dell'emulatore si svuotano
+- «⚡ Gioca da disco veloce» resta attivo anche dopo aver scelto la finestra in cui avviare il gioco
+- «Partita con un amico» con un emulatore senza gioco in rete non dice più che Share Play è l'unica strada
+- Game Boy Advance: le migliaia di schede **e-Reader** dello store (e il lettore stesso) non si confondono più con i giochi: arrivano come **DLC** e si nascondono con **Nascondi DLC**
+- Il separatore dei pulsanti negli avvisi d'errore era un «?» al posto di «·»
+
 ## 0.14.2 (2026-11-03)
 
 ### Aggiunto

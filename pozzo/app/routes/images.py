@@ -16,6 +16,15 @@ from fastapi.responses import FileResponse, Response
 from ..server import THUMB_WIDTHS, _REMOTE_DOWN, _REMOTE_MISS, _REMOTE_SEM
 
 
+def file_response(path: Path, **kw):
+    """FileResponse per un file che puo' sparire nel frattempo: la cache delle immagini remote viene
+    ottimizzata in parallelo e l'originale (.png) viene tolto appena il .webp e' pronto. Un file
+    mancante e' un 404, mai un 500 con tutto il traceback nei log."""
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, **kw)
+
+
 def build_router(ctx) -> APIRouter:
     cfg, lib, state, thumbs_dir, user = ctx.cfg, ctx.lib, ctx.state, ctx.thumbs_dir, ctx.user
     router = APIRouter()
@@ -133,10 +142,10 @@ def build_router(ctx) -> APIRouter:
         if w:
             w = min(THUMB_WIDTHS, key=lambda x: abs(x - w))
             try:
-                return FileResponse(_thumb(src, w), media_type="image/webp", headers=headers)
+                return file_response(_thumb(src, w), media_type="image/webp", headers=headers)
             except Exception:
-                pass  # immagine non decodificabile: si serve l'originale
-        return FileResponse(src, headers=headers)
+                pass  # immagine non decodificabile (o sparita): si serve l'originale
+        return file_response(src, headers=headers)
 
     from ...net import MAGIC, UA
     remote_exts = list(dict.fromkeys([ext for _, ext in MAGIC] + ["mp4"]))
@@ -189,6 +198,8 @@ def build_router(ctx) -> APIRouter:
                     dest = imgopt.optimize(dest)
                 except Exception:
                     pass
+            if not dest.exists():  # optimize ha tolto l'originale senza produrre il .webp
+                return None
             return dest.relative_to(cfg.cache).as_posix()
         return None
 
@@ -272,9 +283,15 @@ def build_router(ctx) -> APIRouter:
         if urlparse(u).hostname not in REMOTE_HOSTS:
             raise HTTPException(400)
         rel = _fetch_remote(u)
-        if not rel:
+        p = Path(cfg.cache) / rel if rel else None
+        if p is None or not p.exists():
+            # l'ottimizzazione in parallelo ha tolto l'originale appena scritto il .webp: si riprova,
+            # la cache ora contiene il .webp (o si riscarica se e' sparito tutto)
+            rel = _fetch_remote(u)
+            p = Path(cfg.cache) / rel if rel else None
+        if p is None:
             raise HTTPException(404)
-        return FileResponse(Path(cfg.cache) / rel, headers={"Cache-Control": "public, max-age=604800"})
+        return file_response(p, headers={"Cache-Control": "public, max-age=604800"})
 
     vars(ctx).update(_media=_media, _pregen_thumbs=_pregen_thumbs, _thumb=_thumb)
     return router

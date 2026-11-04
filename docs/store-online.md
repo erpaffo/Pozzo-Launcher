@@ -50,6 +50,9 @@ Nella stessa finestra:
   Switch, il Title ID distinguono DLC, aggiornamenti e giochi base. Il peso può confermare una DLC solo se il catalogo
   contiene anche il gioco base e la console supporta contenuti scaricabili; gli aggiornamenti vengono associati al
   gioco base. Nella pagina **🛒 Store**, **Escludi DLC** nasconde o mostra le DLC riconosciute.
+- **Software che non sono giochi**: le schede **e-Reader** del Game Boy Advance (compreso il lettore stesso) sono
+  migliaia e finiscono tra i giochi: la voce ha un catalogo con «e-Reader» nell'indirizzo o il nome lo dice, quindi
+  arriva come **DLC** e si nasconde con **Nascondi DLC**.
 - **⬇ Scarica** mette in coda i file elencati nella pagina del gioco, non la pagina dello store. La scheda
   mostra tutti i link disponibili, uno per provider, divisi per tipo: **gioco** (anche a parti: «Part 2», «Part 3»),
   **aggiornamento**, **DLC/espansioni** e le eventuali **versioni in altre lingue**. Il pulsante grande mette in coda
@@ -105,7 +108,66 @@ Il lavoro già fatto resta in cache (60 giorni): ogni esecuzione riprende da dov
 **Metadati store** (LaunchBox e TheGamesDB, solo copie locali: nessuna API, nessun token) cerca descrizione, sviluppatore,
 editore, generi, giocatori, data e voto non solo per i giochi degli store PC ma anche per i giochi degli store online
 delle console. La ricerca resta nella piattaforma dello store (una voce Switch non si confonde con quella PC), salta
-DLC e aggiornamenti e riempie solo i campi ancora vuoti: i dati gi? presi dalle pagine dei siti non vengono sovrascritti.
+DLC e aggiornamenti e riempie solo i campi ancora vuoti: i dati già presi dalle pagine dei siti non vengono sovrascritti.
+
+## Gestore dei download integrato (Coda, Torrent e Debrid)
+
+Pozzo Launcher include un **gestore dei download completo**, progettato sia per scaricare file HTTP da host online sia per gestire torrent e magnet, senza dover installare client esterni come qBittorrent o JDownloader.
+
+La schermata si apre cliccando su **⬇ Download** nella barra laterale (o dal contatore vicino al logo) oppure dal pannello delle **Attività**.
+
+### La tabella della coda
+
+La coda raccoglie tutti i download attivi, in pausa o completati in una vista a tabella centrata e reattiva:
+
+- **Colonne ordinabili**: Cliccando sull'intestazione puoi ordinare i download per *Nome*, *Host*, *Dimensione*, *Avanzamento*, *Velocità*, *ETA (tempo stimato)*, *Stato* o *Priorità*. L'ordinamento scelto viene ricordato per le sessioni successive.
+- **Barra di avanzamento estesa**: Mostra visivamente lo stato del trasferimento e si allarga dinamicamente con la larghezza della finestra.
+- **Barra di stato inferiore**:
+  - Velocità totale istantanea in download (discesa) e upload (salita);
+  - Posti occupati rispetto al limite massimo dei download contemporanei (impostabile in *Impostazioni › Download*);
+  - Indicatore della **Modalità lenta** (limite di banda attivabile a mano o su fasce orarie programmate);
+  - Indicatore **🎮 Modalità gioco**: quando avvii una partita, il launcher rileva la sessione attiva e riduce automaticamente la priorità dei download in corso per proteggere il ping e la CPU.
+- **Pulsanti e menu rapido**: Con il tasto destro su una riga (o con il tasto `Menu` da tastiera) puoi cambiare la priorità del download, spostarlo in cima o in fondo alla lista, metterlo in pausa o riprenderlo, forzare il ricontrollo, aprire la cartella del file scaricato o copiare il link originale.
+
+### Dettagli e registro in tempo reale
+
+Facendo doppio clic su un download (oppure aprendo il pannello inferiore ridimensionabile) sono disponibili tre schede di dettaglio:
+
+1. **Generale**: Mostra la cartella di destinazione su disco, la data di avvio, il tempo trascorso, il tipo di connessione e l'eventuale stato di estrazione dell'archivio.
+2. **File**: Per i download Torrent con più file, elenca tutti gli elementi contenuti consentendo di escludere file non desiderati o assegnare priorità differenti ai singoli file.
+3. **Registro**: Mostra la cronologia temporale dettagliata di ogni singolo passaggio con timestamp preciso. In caso di link protetti, registra i passaggi del browser nascosto (pulsanti cliccati, timer di attesa, tentativi anti-bot). In alto sono presenti filtri per isolare avvisi o errori, oltre ai pulsanti per copiare o ripulire il registro.
+
+### Download HTTP a segmenti e risolutore link
+
+- **Segmenti paralleli**: I file HTTP vengono scaricati a segmenti contemporanei con protocollo HTTP/1.1 per sfruttare la massima velocità consentita dall'host. Su Windows i file parziali vengono creati come file «sparsi», evitando di dover scrivere tutti gli zeri in anticipo sul disco.
+- **Risoluzione automatica**: Gli accorciatori e le pagine dei provider (DataNodes, FileKeeper, KrakenFiles, 1Fichier, ecc.) vengono risolti in un'istanza del browser interno. Se il download viene chiuso o interrotto, riprende esattamente dal punto raggiunto senza riscaricare i megabyte già completati.
+- **Mostra browser per Captcha**: Se un host richiede di risolvere manualmente un captcha o un controllo Cloudflare, puoi attivare **Impostazioni › Download › Mostra il browser mentre risolve i link**: la finestra diventerà visibile consentendoti di completare la verifica a schermo prima che il download parta.
+
+### Torrent e Magnet integrati
+
+- I collegamenti magnet e i file `.torrent` vengono gestiti nativamente.
+- Include supporto per tracker UDP e TCP, DHT (Distributed Hash Table), PEX (Peer Exchange), LSD (Local Peer Discovery) e inoltro automatico delle porte UPnP sul router.
+- Puoi impostare una porta fissa o lasciare che il launcher scelga una porta casuale stabile. La sessione salva su disco lo stato dei peer per riprendere subito la ricerca all'avvio.
+- Supporto al **download sequenziale**, utile per ordinare i pezzi del file ed eseguire controlli di integrità immediati.
+
+### Servizi Debrid (Multi-host)
+
+Se possiedi un account per un servizio Debrid, puoi configurare la tua chiave API in **Impostazioni › Download**:
+
+- **Provider supportati**: **Real-Debrid**, **AllDebrid**, **Premiumize**, **TorBox** e **Debrid-Link**.
+- **Massima sicurezza**: La chiave API viene salvata esclusivamente sul tuo computer locale, non viene mai trasmessa a server esterni né inclusa nei registri o nelle segnalazioni di errore.
+- I link dei provider associati vengono sbloccati automaticamente alla velocità massima consentita dal tuo account Debrid, superando code di attesa e limiti di velocità degli host gratuiti.
+- Se un gioco è disponibile tramite MultiUp, la scheda mostrerà i singoli host disponibili con pulsanti dedicati per scegliere il server desiderato.
+
+### Estrazione automatica e smistamento nelle cartelle
+
+Quando un download viene completato:
+
+1. **Estrazione automatica**: Se il gioco scaricato è un archivio `.zip`, `.7z` o `.rar` (compresi gli archivi multi-volume divisi in più parti), il launcher avvia l'estrazione non appena tutti i volumi sono disponibili. Per i file RAR è richiesto 7-Zip o UnRAR installato sul PC. L'archivio compresso viene rimosso automaticamente a estrazione ultimata.
+2. **Smistamento intelligente per console**: Il gioco estratto viene spostato nella cartella corretta della console associata.
+3. **Riconoscimento speciale per Nintendo Switch**: Il launcher riconosce tramite Title ID il gioco base, gli aggiornamenti e i DLC, raggruppandoli ordinatamente all'interno di una cartella unica intitolata con il nome del gioco.
+4. **Aggiunta istantanea in libreria**: Il nuovo gioco appare in libreria in frazioni di secondo (da 0,1 a 0,4 s), e in background viene avviata la ricerca di copertine, valutazioni e metadati.
+5. **Rilevamento automatico ROM su disco (Hot-reload)**: Se copi manualmente nuove ROM all'interno delle cartelle delle console senza passare dal download manager, Pozzo Launcher le rileva automaticamente dopo 10 secondi di calma e le aggiunge alla tua libreria.
 
 ## Formati di pagina riconosciuti
 

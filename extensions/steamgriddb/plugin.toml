@@ -2,8 +2,12 @@
 name = "SteamGridDB"
 version = "1.1"
 author = "Pozzo Launcher"
-description = "Fonte di copertine (verticali), sfondi (hero) e logo da SteamGridDB, per i giochi a cui le altre fonti non le hanno trovate. Serve una chiave gratuita di steamgriddb.com."
+icon = "🖼️"
+screenshot = "screenshot.png"
+description = "Fonte di copertine verticali, sfondi hero, banner e loghi ad altissima risoluzione da SteamGridDB, integrata nel menu «Immagini del gioco…»."
+long_description = "Porta la grafica della tua libreria a livelli professionali. Collegando una chiave gratuita di steamgriddb.com, questa estensione recupera automaticamente le immagini mancanti e alimenta il nuovo menu «🖼 Immagini del gioco…» con decine di copertine artistiche verticali, loghi trasparenti, sfondi e banner personalizzati realizzati dalla community."
+how_it_works = "1. Installa l'estensione dallo store e ottieni una chiave gratuita su steamgriddb.com.\n2. Inserisci la chiave in Impostazioni › SteamGridDB.\n3. L'estensione cercherà copertine e sfondi durante lo scraping per i giochi privi di immagini ufficiali.\n4. Clicca col tasto destro su qualsiasi gioco in libreria e scegli «🖼 Immagini del gioco…»: troverai tutti i candidati SteamGridDB pronti da selezionare con un clic!"
+features = ["Copertine verticali 600x900 ad altissima risoluzione", "Sfondi panoramici (hero banner), loghi trasparenti e icone", "Selezione visiva dei candidati nella finestra di personalizzazione immagini", "Filtro per immagini ufficiali o create dalla community"]
 api = 1
 min_app = "0.7.1"
-# Resta eager (nessun load = "lazy"): gs.add_source deve registrare la fonte prima del primo scraping; non e' una
-# route ne' un evento, quindi non si puo' avviare al primo uso senza perdere la fonte.
+permissions = ["rete:www.steamgriddb.com", "rete:cdn2.steamgriddb.com", "impostazioni"]

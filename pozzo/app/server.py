@@ -378,6 +378,12 @@ def create_app(cfg) -> FastAPI:
         return users[pid]
     active = cfg.app.get("profile") or "default"
     user = _ActiveUser(user_of(active if any(p["id"] == active for p in SY.profiles(cfg)) else "default"), user_of)
+    try:  # gioco d'esempio (Doom) al primo avvio: una volta sola, non deve impedire l'avvio
+        from .. import sample
+        if not os.environ.get("POZZO_NO_SAMPLE"):  # i test non estraggono né riscrivono le impostazioni
+            sample.seed(cfg, user_of("default"))
+    except Exception as e:  # noqa: BLE001
+        print(f"Gioco d'esempio: {e}")
 
     @app.middleware("http")
     async def _profile_cookie(request, call_next):
@@ -401,6 +407,8 @@ def create_app(cfg) -> FastAPI:
     app.state.spotify, app.state.discord_voice = spotify, discord_voice
     events.on("game_started", discord.game_started)
     events.on("game_stopped", discord.game_stopped)
+    from .. import webhooks as WH
+    WH.register(events, cfg)
     from ..library import screens as SC
     shots = SC.Shots(cfg.cache, Path(cfg.cache) / "userdata.db")
     launcher = L.Launcher(cfg, user, on_event=events.emit, shots=shots, profile_of=user.profile,

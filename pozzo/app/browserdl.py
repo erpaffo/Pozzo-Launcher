@@ -282,8 +282,8 @@ def _record(args) -> str:
 def resolve(link: str, timeout: float = TIMEOUT) -> str | None:
     """Link al file, o None. Bloccante: da chiamare in un thread, con il ciclo dell'interfaccia avviato."""
     from ..downloads import resolvers
-    if _LOCK.locked():
-        resolvers.phase("Browser nascosto occupato da un altro download: aspetto il mio turno")
+    if _LOCK.locked():  # occupato: mostro l'attesa prima di bloccarmi
+        resolvers.phase("In attesa del browser (un altro download lo sta usando)")
     with _LOCK:  # i download in parallelo aspettano il loro turno (il timeout parte dopo)
         resolvers.phase(f"Browser nascosto: apro {urlparse(link).hostname or link}")
         return _resolve(link, timeout)

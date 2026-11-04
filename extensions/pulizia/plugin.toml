@@ -1,7 +1,14 @@
 [plugin]
 name = "Pulizia libreria"
-version = "1.0"
+version = "1.1"
 author = "Pozzo Launcher"
-description = "Trova duplicati, giochi mai avviati o fermi da anni e giochi con metadati incompleti, con azioni di massa (nascondi, abbandonato, backlog) e un badge «DUP» sulle copertine dei duplicati."
+icon = "🧹"
+screenshot = "screenshot.png"
+description = "Individua giochi duplicati, titoli mai avviati o dimenticati da anni e metadati mancanti, con azioni rapide di massa e badge «DUP»."
+long_description = "Mantieni la tua collezione ordinata e impeccabile. Questa estensione scansiona l'intero archivio per rilevare file doppi (stesso gioco su cartelle diverse), giochi aggiunti a mano con eseguibili identici, titoli abbandonati da più di un anno e copertine o descrizioni mancanti. Consente di nascondere o ripulire centinaia di elementi con un solo clic."
+how_it_works = "1. Installa l'estensione e clicca su «Pulizia libreria» nella barra laterale sinistra.\n2. Scegli la scheda da analizzare: Duplicati, Mai avviati, Fermi da anni o Dati incompleti.\n3. Sulle copertine dei giochi doppi compare l'etichetta «DUP».\n4. Seleziona più giochi ed esegui azioni di massa: Nascondi, Segna come abbandonato, Sposta nel backlog o Rimuovi doppioni manuali."
+features = ["Rilevamento intelligente di eseguibili e parametri duplicati", "Filtri veloci per giochi mai avviati o inattivi da oltre 365 giorni", "Azioni cumulative su selezioni multiple", "Badge visivo «DUP» integrato direttamente nella griglia della libreria"]
 api = 1
 min_app = "0.7.1"
+permissions = ["libreria:lettura", "libreria:scrittura", "file:lettura", "file:scrittura"]
+load = "lazy"

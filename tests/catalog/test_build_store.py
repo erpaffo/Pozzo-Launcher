@@ -193,6 +193,18 @@ def test_content_kind():
     assert catalog_kind("FIFA 13 (Mexico) (Unknown).zip", "FIFA 13", 196, "psvita") == "extra"  # troppo piccolo per un gioco
     assert catalog_kind("Soul Sacrifice - Pre Order Entitlement (Europe).zip", "Soul Sacrifice - Pre Order Entitlement", 1_600_000, "psvita") == "dlc"
     assert catalog_kind("Tetris (World).zip", "Tetris", 30_000, "gb") == "game"           # sulle console vecchie si'
+    # e-Reader del GBA: schede e lettore non sono giochi. L'elenco «... (e-Reader)» e' tutto DLC,
+    # anche le schede senza «e-Reader» nel nome («EON Ticket», «Kirby Contest Card»)
+    ereader_url = "https://minerva-archive.org/browse/No-Intro/Nintendo%20-%20Game%20Boy%20Advance%20(e-Reader)/"
+    assert catalog_kind("EON Ticket - 00-C000 (USA) (Promo).zip", "EON Ticket - 00-C000", 20_000, "gba",
+                        ereader_url) == "dlc"
+    assert catalog_kind("e-Reader (USA).zip", "e-Reader", 8_000_000, "gba") == "dlc"
+    assert catalog_kind("Card e-Reader+ (Japan).zip", "Card e-Reader+", 3_292_644, "gba") == "dlc"
+    assert catalog_kind("Animal Crossing-e - Series 1 - A-001 - K.K. Slider (USA).zip",
+                        "Animal Crossing-e - Series 1 - A-001 - K.K. Slider", 30_000, "gba", ereader_url) == "dlc"
+    assert catalog_kind("Card Party (Europe).zip", "Card Party", 4_000_000, "gba") == "game"  # un gioco vero
+    # le ROM NES distribuite su scheda e-Reader sono giochi NES veri: restano giochi
+    assert catalog_kind("Balloon Fight (USA) (e-Reader).zip", "Balloon Fight", 24_576, "nes") == "game"
     assert catalog_kind("Theme Park (Europe).zip", "Theme Park", 3_000_000, "psx") == "game"
     assert catalog_kind("WipEout 2048 (Europe).zip", "WipEout 2048", 1_600_000_000, "psvita") == "game"
     assert update_base("Gioco [Update v1.2.0]") == "Gioco"

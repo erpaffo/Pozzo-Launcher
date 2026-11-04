@@ -2,7 +2,13 @@
 name = "Diario di gioco"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Nel dettaglio di ogni gioco, un diario con voci datate (a che punto sei, trucchi, password) e la cronologia delle sessioni giocate. Si affianca alla nota personale già presente."
+icon = "📔"
+screenshot = "screenshot.png"
+description = "Aggiunge una scheda diario nel dettaglio di ogni gioco con appunti datati, trucchi, password e il registro cronologico di tutte le tue sessioni di gioco."
+long_description = "Tieni traccia dei tuoi progressi, delle sensazioni di gioco e delle informazioni cruciali. Nella scheda di ogni titolo della libreria viene integrata una sezione Diario in cui annotare pensieri personali, promemoria su dove eri rimasto, password dei livelli e strategie. Si affianca alla cronologia automatica delle sessioni con orari di inizio, durata e data."
+how_it_works = "1. Installa l'estensione e apri il dettaglio di qualsiasi gioco in libreria.\n2. Scorrendo verso il basso o nella scheda laterale troverai il blocco «Diario di gioco».\n3. Scrivi un appunto nel campo di testo e premi Salva: verrà registrato con la data e l'ora attuali.\n4. Puoi consultare l'elenco di tutte le sessioni passate (durata effettiva e timestamp di avvio) registrate automaticamente dal launcher."
+features = ["Note personali datate salvate in locale in formato sicuro", "Cronologia reale delle sessioni di gioco con durata al minuto", "Modifica e cancellazione rapida degli appunti", "Condivisione delle note tra profili o backup integrato"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["libreria:lettura", "impostazioni"]
+load = "lazy"

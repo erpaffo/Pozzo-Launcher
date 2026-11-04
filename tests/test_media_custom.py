@@ -65,3 +65,13 @@ def test_file_non_immagine_e_tipo_sconosciuto_rifiutati(client):
     r = client.post(f"/api/game/{gid}/media/boh/file", files={"file": ("c.png", io.BytesIO(PNG), "image/png")})
     assert r.status_code == 400
     assert client.delete(f"/api/game/{gid}/media/boh").status_code == 400
+
+
+def test_immagine_sparita_non_diventa_un_errore_del_server(tmp: Path):
+    """La cache delle immagini si ottimizza in parallelo: un file puo' sparire tra il controllo e l'invio
+    (era un 500 con il traceback nei log: l'utente lo vedeva all'avvio)."""
+    from fastapi import HTTPException
+    from pozzo.app.routes.images import file_response
+    with pytest.raises(HTTPException) as e:
+        file_response(tmp / "sparita.png")
+    assert e.value.status_code == 404

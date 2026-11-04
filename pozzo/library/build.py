@@ -381,12 +381,14 @@ def _store_title(stem: str) -> str:
     return clean_title(base) or base or stem
 
 
-def _catalog_to_store_game(item: CatalogItem, console_pid: str, meta: dict | None = None) -> dict:
+def _catalog_to_store_game(item: CatalogItem, console_pid: str, meta: dict | None = None,
+                           url: str = "") -> dict:
     """Converte una voce di catalogo (catalog.py) nel gioco "da scaricare" della libreria.
 
     `console_pid` e' la console a cui appartiene lo store (es. "nds"): serve per la chiave,
     il gruppo delle versioni e il filtro per piattaforma. `meta` sono i dati della pagina (storemeta):
-    per Switch il Title ID dice se la voce e' il gioco, un aggiornamento o una DLC.
+    per Switch il Title ID dice se la voce e' il gioco, un aggiornamento o una DLC. `url` e' l'elenco
+    dello store: un catalogo di schede e-Reader e' tutto DLC.
     """
     from ..scanner import clean_title, regions_of
 
@@ -396,7 +398,7 @@ def _catalog_to_store_game(item: CatalogItem, console_pid: str, meta: dict | Non
     content = ""
     if console_pid == "switch" and meta:
         content = storekind.switch_kind(meta.get("title_id") or "")
-    content = content or storekind.catalog_kind(name, title, item.get("size"), console_pid)
+    content = content or storekind.catalog_kind(name, title, item.get("size"), console_pid, url)
     return {
         "key": f"{console_pid}/net:{hashlib.sha1(item['url'].encode()).hexdigest()[:16]}",
         "pid": console_pid,
@@ -577,7 +579,7 @@ def _catalog_entries(cfg, cache, merged: dict, pc_entries: list[dict] = ()) -> t
             tk = tkey(title, pid)
             meta = {} if is_file_list else storemeta.cached(cache, it["url"])
             content = (storekind.switch_kind(meta.get("title_id")) if pid == "switch" else "") \
-                or storekind.catalog_kind(it["name"], title, it.get("size"), pid)
+                or storekind.catalog_kind(it["name"], title, it.get("size"), pid, url)
             if content == "update":
                 base = storekind.update_base(title)
                 updates.append({"pid": pid, "base": normalize(base), "tk": tkey(base, pid),
@@ -604,7 +606,7 @@ def _catalog_entries(cfg, cache, merged: dict, pc_entries: list[dict] = ()) -> t
                 if not is_file_list:
                     apply_store_meta(existing, meta)
                 continue
-            e = _catalog_to_store_game(it, pid, meta)
+            e = _catalog_to_store_game(it, pid, meta, url)
             if kind:
                 e["kind"] = kind
             if lb_ready:

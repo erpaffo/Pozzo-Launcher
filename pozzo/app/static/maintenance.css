@@ -1,0 +1,12 @@
+/* Impostazioni > Dati e backup > Manutenzione programmata (settings/dati.html, loadMaintenance in js/settings.js) */
+.maint-row { align-items: flex-end; }
+.maint-row .lbl-field { margin: 0; }
+.maint-panel { margin-top: 10px; }
+.maint-panel > summary { cursor: pointer; font-weight: 600; }
+.maint-panel h5 { margin: 12px 0 4px; font-size: var(--type-sm); color: var(--muted); }
+.maint-list, .maint-diff { margin: 0; padding-left: 18px; font-size: var(--type-sm); }
+.maint-steps { margin: 0; padding-left: 0; list-style: none; font-size: var(--type-sm); }
+.maint-list li, .maint-diff li, .maint-steps li { margin: 2px 0; }
+.maint-steps li span:first-child { display: inline-block; width: 1.2em; font-weight: 700; }
+.maint-good { color: var(--good); }
+.maint-bad { color: var(--bad); }

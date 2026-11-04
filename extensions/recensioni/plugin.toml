@@ -1,0 +1,22 @@
+[plugin]
+name = "Recensioni e punteggi"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "⭐"
+screenshot = "screenshot.png"
+description = "Punteggi aggregati nel dettaglio di ogni gioco: Metacritic, OpenCritic e recensioni degli utenti Steam."
+long_description = "Consulta all'istante l'accoglienza critica e il giudizio dei giocatori senza uscire dall'app. L'estensione aggrega nella scheda di ogni gioco i punteggi ufficiali di Metacritic (già presenti nei metadati), il voto complessivo e la percentuale di raccomandazione di OpenCritic, e la percentuale di gradimento con numero totale di recensioni degli utenti Steam. Include collegamenti rapidi alle recensioni complete e una cache intelligente per garantire risposte immediate senza sovraccaricare la rete."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri la scheda di dettaglio di qualsiasi gioco: troverai la nuova sezione «⭐ Recensioni» con i voti colorati per fascia (verde, giallo o rosso).\n3. Per abilitare OpenCritic inserisci la tua chiave gratuita RapidAPI in Impostazioni › Recensioni (Metacritic e Steam funzionano subito senza alcuna configurazione).\n4. Clicca sui link «Apri su…» per consultare la pagina web completa della testata o della community."
+features = [
+  "Integrazione punteggi Metacritic, OpenCritic e recensioni della community Steam",
+  "Badge colorati dinamici per fascia di gradimento (verde >= 75, giallo >= 50, rosso < 50)",
+  "Dettagli OpenCritic con tier (Mighty, Strong) e percentuale di critici che consigliano il gioco",
+  "Percentuale di recensioni positive e volume complessivo degli utenti Steam",
+  "Collegamenti rapidi alle pagine ufficiali per approfondire articoli e recensioni",
+  "Cache automatica su disco di 7 giorni per garantire aperture istantanee dei giochi",
+  "Configurazione semplificata con chiave RapidAPI gratuita nella scheda Impostazioni"
+]
+api = 1
+min_app = "0.7.1"
+load = "lazy"
+permissions = ["rete:opencritic-api.p.rapidapi.com", "rete:store.steampowered.com", "libreria:lettura", "impostazioni"]

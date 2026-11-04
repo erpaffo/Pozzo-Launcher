@@ -15,6 +15,86 @@ from .. import jobs as J
 from ... import config as C, platforms as P, profilecfg as PC, relink as RL
 
 
+MAINT_DEFAULT = {"enabled": False, "day": 6, "time": "03:00"}  # day: lunedi' = 0, domenica = 6
+_HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+
+
+def _maint_settings(raw, strict: bool = False) -> dict:
+    """Impostazioni della manutenzione: quelle non valide tornano al predefinito (o 400 se strict)."""
+    out = dict(MAINT_DEFAULT)
+    raw = raw if isinstance(raw, dict) else {}
+    checks = {
+        "enabled": lambda v: isinstance(v, bool),
+        "day": lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 6,
+        "time": lambda v: isinstance(v, str) and _HHMM.fullmatch(v) is not None,
+    }
+    for key, ok in checks.items():
+        if key in raw:
+            if ok(raw[key]):
+                out[key] = raw[key]
+            elif strict:
+                raise HTTPException(400, f"Impostazione non valida: {key}")
+    return out
+
+
+def maintenance_due(now, settings: dict, last_run: str) -> bool:
+    """Manutenzione dovuta adesso? Giorno giusto, ora passata (anche tardi, se l'app era chiusa), non ancora fatta oggi."""
+    if not settings.get("enabled") or now.weekday() != settings.get("day") or last_run == now.strftime("%Y-%m-%d"):
+        return False
+    hh, mm = (int(x) for x in settings.get("time", "03:00").split(":"))
+    return now.hour * 60 + now.minute >= hh * 60 + mm
+
+
+def _n(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
+def _maint_summary(d: dict) -> str:
+    """Riepilogo in italiano delle sole voci peggiorate rispetto al giro precedente."""
+    parts = []
+    if n := len(d.get("rom_nuove_mancanti") or []):
+        parts.append(_n(n, "ROM non trovata", "ROM non trovate"))
+    if n := len(d.get("bios_nuovi_invalidi") or []):
+        parts.append(_n(n, "BIOS non valido", "BIOS non validi"))
+    if (n := d.get("covers_delta") or 0) > 0:
+        parts.append(_n(n, "copertina in più mancante", "copertine in più mancanti"))
+    if (b := d.get("freeable_delta") or 0) > 0:  # byte: piu' spazio sprecato in doppioni
+        size = f"{b / 1024 ** 3:.1f} GB" if b >= 1024 ** 3 else f"{max(1, round(b / 1024 ** 2))} MB"
+        parts.append(f"{size.replace('.', ',')} in più di doppioni")
+    return "Manutenzione: " + (", ".join(parts) or "un controllo non è riuscito, apri il rapporto")
+
+
+def maintenance_execute(cfg, job=None, state=None, lib=None, claim=None) -> bool:
+    """Un giro di manutenzione. L'avviso parte solo se, rispetto al giro precedente, la situazione e' peggiorata.
+    Con i job dell'app (job/state/claim): non parte se c'e' gia' uno scraping, una ricostruzione o un aggiornamento
+    store, e occupa lo slot dello scraping cosi' l'utente non ne avvia un secondo. False = non partita."""
+    from ... import maintenance as M, notify as N  # modulo a parte: importato solo quando serve
+    kw, sj = {}, None
+    if job is not None:
+        if (state or {}).get("building") or job["store_refresh"].status == "running":
+            return False
+        from .. import jobs as _J
+        sj = _J.ScrapeJob(retry_missing=True, title="Manutenzione notturna")
+        if not (claim or (lambda n, j: True))("current", sj):
+            return False
+        if claim is None:
+            job["current"] = sj
+        kw = {"scrape_job": sj, "store_job": job["store_refresh"]}
+    try:
+        prev = (M.latest(cfg) or {}).get("report")  # ultimo giro salvato, prima di farne uno nuovo
+        cur = M.run(cfg, **kw)
+    finally:
+        if sj is not None and sj.status == "running":  # passo saltato o annullato: lo slot non resta occupato
+            sj.status, sj.phase = "cancelled", "Manutenzione interrotta"
+        if lib is not None:
+            lib.load()  # scraping/store hanno riscritto la libreria
+    if prev is not None:  # primo giro: niente da confrontare
+        d = M.diff(prev, cur)
+        if d.get("peggiora"):
+            N.send(cfg, "Pozzo Launcher", _maint_summary(d))
+    return True
+
+
 def build_router(ctx) -> APIRouter:
     _missing, _pregen_thumbs, _rebuild, _refresh_manual, cfg, events = ctx._missing, ctx._pregen_thumbs, ctx._rebuild, ctx._refresh_manual, ctx.cfg, ctx.events
     job, lib, state, user = ctx.job, ctx.lib, ctx.state, ctx.user
@@ -164,6 +244,84 @@ def build_router(ctx) -> APIRouter:
                 print(f"Pianificazione: {e}")
 
     threading.Thread(target=_scheduler, daemon=True).start()
+
+    # ------------------------------------------------------------ manutenzione notturna (pozzo/maintenance.py)
+    maint_lock = threading.Lock()  # una sola manutenzione alla volta: pulsante e pianificazione
+
+    def _maint_busy() -> bool:
+        """Gioco, download o scraping in corso: la manutenzione aspetta."""
+        launcher = getattr(ctx, "launcher", None)
+        if launcher is not None and launcher.running().get("status") in ("starting", "extracting", "running"):
+            return True
+        dl = getattr(ctx, "downloads", None)  # il gestore dei download nasce piu' avanti in ORDER
+        if dl is not None and any(t.get("status") == "running" for t in dl.list()):
+            return True
+        return (job["current"].status == "running" or bool(state["building"])
+                or job["store_refresh"].status == "running")
+
+    def _maint_locked_run():
+        """Chiamare solo con maint_lock acquisito: lo rilascia alla fine."""
+        try:
+            if not maintenance_execute(cfg, job, state, lib, ctx._claim):
+                print("Manutenzione: scraping o aggiornamento store in corso, saltata")
+        except Exception as e:
+            print(f"Manutenzione: {e}")
+        finally:
+            maint_lock.release()
+
+    def _maint_scheduler():
+        """Come lo scraping pianificato, ma se c'e' un gioco o un download in corso riprova nei minuti dopo, per 2 ore."""
+        import datetime as _dt
+        blocked = None  # da quando la manutenzione e' dovuta ma bloccata
+        while True:
+            time.sleep(60)
+            try:
+                now = _dt.datetime.now()
+                st = _maint_settings(cfg.app.get("maintenance"))
+                if not maintenance_due(now, st, cfg.app.get("maintenance_last", "")):
+                    blocked = None
+                    continue
+                if maint_lock.locked() or _maint_busy():
+                    blocked = blocked or now
+                    if now - blocked >= _dt.timedelta(hours=2):  # troppo tardi: salta il giorno
+                        C.save_settings(cfg, app={"maintenance_last": now.strftime("%Y-%m-%d")})
+                        blocked = None
+                    continue
+                blocked = None
+                C.save_settings(cfg, app={"maintenance_last": now.strftime("%Y-%m-%d")})
+                if maint_lock.acquire(blocking=False):
+                    _maint_locked_run()  # gia' in un thread di sfondo: resta qui
+            except Exception as e:
+                print(f"Manutenzione pianificata: {e}")
+
+    threading.Thread(target=_maint_scheduler, daemon=True).start()
+
+    @router.get("/api/maintenance")
+    def api_maintenance_get():
+        from ... import maintenance as M
+        return {"settings": _maint_settings(cfg.app.get("maintenance")), "latest": M.latest(cfg),
+                "running": maint_lock.locked()}
+
+    @router.post("/api/maintenance/settings")
+    def api_maintenance_settings(body: dict = Body(...)):
+        clean = _maint_settings({**_maint_settings(cfg.app.get("maintenance")), **body}, strict=True)
+        C.save_settings(cfg, app={"maintenance": clean})
+        cfg.app["maintenance"] = clean
+        return {"settings": clean}
+
+    @router.post("/api/maintenance/run")
+    def api_maintenance_run():
+        if job["current"].status == "running" or state["building"] or job["store_refresh"].status == "running":
+            raise HTTPException(409, "Uno scraping o un aggiornamento e' gia' in corso: riprova dopo")
+        if not maint_lock.acquire(blocking=False):
+            raise HTTPException(409, "Manutenzione gia' in corso")
+        threading.Thread(target=_maint_locked_run, daemon=True).start()
+        return {"ok": True}
+
+    @router.get("/api/maintenance/history")
+    def api_maintenance_history():
+        from ... import maintenance as M
+        return {"history": M.history(cfg)}
 
     @router.post("/api/platforms/custom")
     def api_custom_platform(body: dict = Body(...)):

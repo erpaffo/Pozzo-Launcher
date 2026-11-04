@@ -21,11 +21,34 @@
   const current = () => stored()
     || (system.matches || (window.GSMotionBudget && window.GSMotionBudget.state.reduced) ? "reduced" : "normal");
 
-  function set(v) {
+  // Applica senza toccare il server (usato anche al caricamento del profilo)
+  function apply(v) {
     if (!VALUES.includes(v)) return;
     if (window.GSMotion && window.GSMotion.set) return window.GSMotion.set(v);
     try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* storage non disponibile */ }
     if (root.dataset) root.dataset.motion = v;
+  }
+
+  // Scelta dell'utente: resta locale e va anche nel profilo attivo (exp_animations)
+  function set(v) {
+    if (!VALUES.includes(v)) return;
+    apply(v);
+    fetch("/api/profile/settings", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ exp_animations: v }),
+    }).catch(() => { /* offline: resta la scelta locale */ });
+  }
+
+  // Il profilo attivo vince sulla scelta locale: se ha un valore lo applica e lo copia in localStorage
+  async function loadProfile() {
+    try {
+      const response = await fetch("/api/profile/settings", { credentials: "same-origin" });
+      if (!response.ok) return;
+      const profile = await response.json();
+      if (VALUES.includes(profile.exp_animations)) { apply(profile.exp_animations); sync(); }
+    } catch { /* route assente o offline: resta la scelta locale */ }
   }
 
   const inputs = [];
@@ -59,6 +82,7 @@
 
   function start() {
     mount();
+    loadProfile();
     const body = document.getElementById("settings-body");
     // i riquadri delle impostazioni arrivano da fetch: si aspetta che la pagina Aspetto esista
     if (body && typeof MutationObserver === "function") {
@@ -71,7 +95,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
 
-  window.GSMotionSettings = { values: VALUES, current, set };
+  window.GSMotionSettings = { values: VALUES, current, set, apply };
 
   /* Griglie: segnaposto leggeri al posto del vuoto durante il caricamento.
      GSSkeleton.show(document.querySelector("#grid-scroll"), 18) / GSSkeleton.hide(...) */

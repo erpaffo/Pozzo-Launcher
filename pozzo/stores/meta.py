@@ -27,7 +27,7 @@ def _console_items(cfg, cache) -> list[tuple[str, str, str]]:
             continue
         for url in urls or []:
             for it in cached_info(cache, pid, url)["entries"]:
-                g = _catalog_to_store_game(it, pid)
+                g = _catalog_to_store_game(it, pid, url=url)
                 if g["key"] not in seen and g["content"] == "game":  # DLC/update non hanno una scheda propria
                     seen.add(g["key"])
                     out.append((g["key"], pid, g["title"]))

@@ -2,7 +2,13 @@
 name = "Riepilogo annuale"
 version = "1.0"
 author = "Pozzo Launcher"
-description = "Il tuo anno in giochi: ore, giochi più giocati, console preferita, mese e giorno più attivi, giochi finiti. Con un'immagine da salvare e condividere."
+icon = "📊"
+screenshot = "screenshot.png"
+description = "Genera un riassunto grafico del tuo anno di gioco (ore totali, titoli più giocati, console preferita, mese record) pronto da salvare e condividere."
+long_description = "Il tuo 'Wrapped' videoludico personale. Al termine dell'anno (o in qualsiasi momento per gli anni passati), l'estensione elabora tutte le sessioni registrate ed elabora un'infografica elegante ad alta risoluzione con le tue statistiche chiave: tempo totale speso a giocare, podio dei giochi preferiti, console più utilizzata e giorno con la sessione più lunga."
+how_it_works = "1. Installa l'estensione e seleziona «Riepilogo annuale» dalla barra laterale.\n2. Seleziona l'anno di riferimento dal menu a discesa (es. 2026, 2025...).\n3. Visualizza la schermata con grafici, classifiche e copertine dei tuoi titoli più amati.\n4. Premi «Salva immagine» per scaricare una card grafica PNG perfetta da condividere sui social o con gli amici."
+features = ["Calcolo accurato di ore complessive, titoli completati e piattaforme dominanti", "Unificazione automatica delle diverse versioni dello stesso gioco", "Esportazione grafica in alta risoluzione pronta per la condivisione", "Funziona al 100% in locale senza inviare alcun dato a server esterni"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["libreria:lettura"]
+load = "lazy"

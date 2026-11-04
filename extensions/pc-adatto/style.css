@@ -1,0 +1,16 @@
+/* Il mio PC ce la fa?: badge del verdetto e blocchi della sezione nel dettaglio */
+
+.pa-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; font-size: var(--type-sm); font-weight: 600; background: color-mix(in srgb, currentColor 14%, transparent); }
+.pa-good { color: var(--good); }
+.pa-warn { color: var(--warn); }
+.pa-bad { color: var(--bad); }
+.pa-muted { color: var(--muted); }
+
+.pa-list { margin: 8px 0 0; padding-left: 18px; font-size: var(--type-sm); line-height: 1.5; }
+.pa-sub { font-size: var(--type-xs); text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 10px; }
+
+.pa-box { margin-top: 8px; padding: 6px 10px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; font-size: var(--type-sm); }
+.pa-box > summary { cursor: pointer; color: var(--muted); }
+.pa-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px solid var(--line); }
+.pa-row:first-of-type { border-top: 0; }
+.pa-row > span:last-child { text-align: right; overflow-wrap: anywhere; }

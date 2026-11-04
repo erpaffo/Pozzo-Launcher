@@ -97,7 +97,7 @@ def test_installazione_finita_mette_il_gioco_in_libreria(monkeypatch, tmp):
     t = _task(tmp)
     refreshed = []
     ctx = SimpleNamespace(lib=None, user=User(), _refresh_manual=refreshed.append)
-    mgr = SimpleNamespace(_poke=lambda: None)
+    mgr = SimpleNamespace(_poke=lambda: None, store=SimpleNamespace(save=lambda ts: None))
     exe = tmp / "Program Files" / "Gioco" / "gioco.exe"
     monkeypatch.setattr(install, "_snapshot", lambda: {"apps": {}, "dirs": []})
     monkeypatch.setattr(install, "_launch", lambda e: 0)
@@ -111,7 +111,7 @@ def test_installazione_finita_mette_il_gioco_in_libreria(monkeypatch, tmp):
 def test_installazione_senza_gioco_riconosciuto(monkeypatch, tmp):
     t = _task(tmp)
     ctx = SimpleNamespace(lib=None, user=User(), _refresh_manual=None)
-    mgr = SimpleNamespace(_poke=lambda: None)
+    mgr = SimpleNamespace(_poke=lambda: None, store=SimpleNamespace(save=lambda ts: None))
     monkeypatch.setattr(install, "_snapshot", lambda: {"apps": {}, "dirs": []})
     monkeypatch.setattr(install, "_launch", lambda e: 0)
     monkeypatch.setattr(install, "detect", lambda before: None)
@@ -123,7 +123,7 @@ def test_installazione_senza_gioco_riconosciuto(monkeypatch, tmp):
 def test_senza_setup_non_parte(tmp):
     t = DownloadTask(source="https://x/a", save_path=str(tmp), name="a", status=COMPLETED, options={})
     try:
-        install.start(t, SimpleNamespace(_poke=lambda: None), SimpleNamespace())
+        install.start(t, SimpleNamespace(_poke=lambda: None, store=SimpleNamespace(save=lambda ts: None)), SimpleNamespace())
     except ValueError as e:
         assert "Nessun setup" in str(e)
     else:

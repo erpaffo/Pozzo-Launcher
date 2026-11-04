@@ -2,7 +2,13 @@
 name = "Store Minerva + Switch"
 version = "1.4"
 author = "Pozzo Launcher"
-description = "Aggiunge allo «Store online» di ogni console le cartelle di minerva-archive.org elencate su r-roms.github.io e gli store preimpostati (Switch: NXBrew, Ziperto; PS4 e PS5: superpsx), senza leggerli. Un pulsante «Leggi» per console scarica gli elenchi dei giochi."
+icon = "🏛️"
+screenshot = "screenshot.png"
+description = "Importa con un clic gli archivi Minerva per ogni console e configura store Switch preimpostati (NXBrew, Ziperto) e PlayStation (superpsx)."
+long_description = "Espande istantaneamente le fonti dello Store Online con un solo clic. Configura automaticamente le directory di minerva-archive.org indicizzate dal progetto r-roms per decine di console retro, insieme a preset pronti per Nintendo Switch (NXBrew, Ziperto) e PlayStation 4/5 (superpsx), senza dover inserire a mano lunghi elenchi di indirizzi."
+how_it_works = "1. Installa l'estensione dallo store.\n2. Nella pagina dell'estensione trovi l'elenco dei preset disponibili suddivisi per piattaforma.\n3. Clicca su «Aggiungi preset Minerva» o «Aggiungi store Switch»: i link verranno configurati nello Store online.\n4. Premi «Leggi» accanto a una console per scaricare l'elenco aggiornato dei giochi disponibili."
+features = ["Archivi Minerva completi per oltre 30 console supportate", "Preset dedicati per Nintendo Switch (NXBrew game-index, Ziperto NSP/XCI)", "Riconoscimento automatico del formato dell'indice (cartelle Apache, indici JSON, tabelle)", "Download diretto compatibile con il nuovo Download Manager integrato"]
 api = 1
-load = "lazy"
 min_app = "0.7.1"
+permissions = ["rete:r-roms.github.io", "impostazioni", "file:lettura"]
+load = "lazy"

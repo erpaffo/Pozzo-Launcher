@@ -75,13 +75,29 @@ Hai dubbi sull'avvio di un emulatore, la sincronizzazione dei salvataggi tra due
 
 ---
 
+### 8. Gestire i download con coda unica, Torrent e servizi Debrid
+Vuoi scaricare i tuoi giochi con accelerazione a segmenti paralleli, gestire file torrent o sbloccare link con Real-Debrid ed estrarre automaticamente gli archivi nelle cartelle giuste?
+
+👉 **Cosa fare:** Apri la vista **⬇ Download** nella barra laterale e consulta la guida [Gestore dei download integrato](store-online.md#gestore-dei-download-integrato-coda-torrent-e-debrid) per scoprire le opzioni di coda, la modalità gioco e l'estrazione automatica per Nintendo Switch.
+
+---
+
+### 9. Giocare online con un amico (Netplay RetroArch & Eden Switch)
+Vuoi sfidare un amico a distanza ai classici arcade/console su RetroArch o avviare una stanza privata locale/wireless su Nintendo Switch con Eden?
+
+👉 **Cosa fare:** Vai alla sezione [Partita con un amico](giocare.md#partita-con-un-amico): genera un codice invito con un clic, invialo al tuo amico e giocate subito insieme in rete locale, su internet o tramite VPN gratuita.
+
+---
+
 ## Panoramica delle funzionalità
 
 | Area | In breve | Dove approfondire |
 |---|---|---|
 | **Libreria** | Griglia di copertine con ricerca istantanea, filtri, collezioni automatiche e personali, consigli | [La libreria](libreria.md) |
 | **ROM e Metadati** | Riconosce le cartelle console, identifica i giochi offline e scarica dati e immagini da molte fonti | [ROM e scraping dei dati](rom-e-scraping.md) |
-| **Giocare** | Avvia ogni gioco con l'emulatore giusto, registra il tempo di sessione, copia i salvataggi | [Giocare](giocare.md) |
+| **Giocare** | Avvia ogni gioco con l'emulatore giusto, registra il tempo di sessione, copia i salvataggi, disco veloce SSD | [Giocare](giocare.md) |
+| **Download Manager** | Coda unificata HTTP a segmenti, Torrent e Debrid (Real-Debrid, ecc.) con estrazione automatica | [Aggiungere store e download](store-online.md#gestore-dei-download-integrato-coda-torrent-e-debrid) |
+| **Multiplayer / Netplay** | Gioca a distanza con un amico su RetroArch o Eden Switch con codice invito senza server | [Giocare con un amico](giocare.md#partita-con-un-amico) |
 | **Giochi PC** | Giochi installati e posseduti di Steam, Epic, GOG, Riot, Battle.net, Amazon, Xbox | [Giochi PC dagli store](store-pc.md) |
 | **Store online** | Cataloghi di giochi da scaricare per console e PC, letti da siti e archivi web | [Aggiungere store](store-online.md) |
 | **Extra** | Giochi gratis settimanali, lista desideri con prezzi chiavi, port PC dei giochi console | [Giochi gratis, lista desideri, port PC](extra.md) |
@@ -89,8 +105,24 @@ Hai dubbi sull'avvio di un emulatore, la sincronizzazione dei salvataggi tra due
 | **TV** | Interfaccia a schermo intero nativa per controller e schermi 4K | [Big Picture](bigpicture.md) |
 | **Personalizzazione** | 4 temi di colore, 6 profili di esperienza desktop e store di estensioni/plugin | [Temi e plugin](ESTENSIONI.md) |
 | **Più PC e Famiglia** | Sincronizzazione dati tra due PC in LAN/cartella condivisa e profili utente separati | [Dati e manutenzione](manutenzione.md#sincronizzazione-tra-pc), [Profili](libreria.md#profili-utente) |
-| **Integrazioni** | Presenza su Discord, avvisi di Windows, esportazione libreria in pagina web statica | [Giocare](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Avvisi](extra.md#avvisi-di-windows) |
+| **Integrazioni** | Presenza su Discord (anche netplay 1 di 2), avvisi di Windows, esportazione libreria web | [Giocare](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Avvisi](extra.md#avvisi-di-windows) |
 | **Assistenza & FAQ** | Risoluzione problemi passo-passo, autodiagnostica Salute, domande frequenti | [Centro Assistenza e FAQ](assistenza.md) |
+
+---
+
+## Webhook
+
+Impostazioni › Generale › **Webhook**: Pozzo può inviare una richiesta `POST` in JSON a un indirizzo che scegli, quando succede uno di questi eventi: `gioco_avviato`, `gioco_chiuso`, `download_finito`, `prezzo_sceso`. Ogni webhook ha un indirizzo `http://` o `https://`, gli eventi da inviare, un segreto facoltativo e il pulsante **Prova** per verificarlo. Puoi averne fino a 20.
+
+Esempio di corpo inviato (`event` è uno dei quattro nomi sopra, `time` è in UTC, `data` cambia a seconda dell'evento):
+
+```json
+{"event": "gioco_avviato", "time": "2026-11-04T20:30:00+00:00", "data": {"...": "stato del gioco, varia in base all'evento"}}
+```
+
+Se imposti un segreto, ogni richiesta porta l'intestazione `X-Pozzo-Signature: sha256=<HMAC-SHA256 del corpo>` per verificare che arrivi da Pozzo.
+
+Esempio per Home Assistant: crea un'automazione con trigger **Webhook** (ID, ad esempio `pozzo-gioco`), poi nel webhook di Pozzo usa `http://IP-DI-HOME-ASSISTANT:8123/api/webhook/pozzo-gioco` come indirizzo e seleziona solo gli eventi che ti servono. Il webhook di Home Assistant non richiede segreto.
 
 ---
 

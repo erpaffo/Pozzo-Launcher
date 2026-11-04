@@ -222,7 +222,7 @@
   font: inherit;
   font-size: .9rem;
   font-weight: 800;
-  transition: filter 160ms ease, transform 160ms ease;
+  transition: transform 160ms ease;
 }
 
 .gs-console-open[hidden] {

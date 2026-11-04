@@ -1,0 +1,21 @@
+[plugin]
+name = "Il mio PC ce la fa?"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "💻"
+screenshot = "screenshot.png"
+description = "Verifica se il tuo PC è abbastanza potente per far girare ogni gioco e suggerisce le impostazioni ottimali per gli emulatori."
+long_description = "Rileva automaticamente la configurazione hardware del tuo computer (processore, scheda video e memoria RAM) e la confronta con i requisiti del titolo selezionato. Per i giochi PC Steam verifica la compatibilità con i requisiti minimi e consigliati ufficiali; per i giochi su console emulata consulta una matrice di requisiti per piattaforma offrendo consigli mirati sulle impostazioni dell'emulatore (come l'uso di Vulkan, la risoluzione interna, il compilatore shader o il frameskip)."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Clicca su qualsiasi gioco nella libreria per aprire la scheda di dettaglio.\n3. Nella sezione «Il mio PC ce la fa?» visualizzerai il verdetto immediato a colori: «Gira bene», «Gira con queste impostazioni» o «Probabilmente troppo pesante».\n4. Consulta i motivi del giudizio e la checklist dei componenti hardware rilevati a confronto con i requisiti minimi e raccomandati.\n5. Se il gioco è emulato, segui i suggerimenti grafici indicati per massimizzare la fluidità senza scatti."
+features = [
+  "Rilevamento hardware trasparente di CPU, GPU e RAM tramite comandi di sistema",
+  "Verdetto prestazionale istantaneo con badge colorato ad alta leggibilità",
+  "Confronto analitico con requisiti minimi e consigliati ufficiali dello store Steam",
+  "Consigli specifici sulle impostazioni grafiche degli emulatori (Vulkan, upscale, ecc.)",
+  "Pannello a tendina espandibile con le specifiche dettagliate del tuo computer",
+  "Nessun impatto sulle prestazioni grazie alla cache in memoria delle verifiche"
+]
+permissions = ["rete:store.steampowered.com", "libreria:lettura", "avvio"]  # avvio: PowerShell per leggere CPU/GPU/RAM
+api = 1
+min_app = "0.7.1"
+load = "lazy"
