@@ -12,7 +12,7 @@ const diagFns = ["function skelInline", "function diagHtml"].map((sig) => {
   assert(m, sig + " non trovata");
   return m[0];
 });
-const toastFn = actionsSrc.match(/function launchErrorToast[\s\S]*?\n\}\n/);
+const toastFn = actionsSrc.match(/function launchErrorToast[\s\S]*?\r?\n\}\r?\n/);
 assert(toastFn, "launchErrorToast non trovata");
 
 const ctx = { window: { GSSkeleton: undefined } };
