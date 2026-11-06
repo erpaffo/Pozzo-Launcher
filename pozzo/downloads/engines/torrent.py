@@ -18,6 +18,7 @@ except ImportError:  # senza libtorrent i torrent non entrano in coda (e il dett
 POLL = 0.5
 RESUME_EVERY = 30
 META_TIMEOUT = 240  # secondi: un magnet senza peer non tiene occupato un posto della coda per sempre
+STALL_AFTER = 60  # secondi senza seed e senza dati prima di dichiarare il download «in stallo»
 PRIORITIES = (0, 1, 4, 7)  # salta, normale, alta, massima
 ENCRYPTION = {"prefer": (1, 3), "require": (0, 2), "disable": (2, 1)}  # -> (in/out_enc_policy, allowed_enc_level)
 
@@ -336,7 +337,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
         h.force_recheck()
         task.log("Ricontrollo dei file su disco")
     ready, last_save, start, seeding = False, time.monotonic(), time.monotonic(), 0.0
-    state, peers, meta, mile = None, False, False, None
+    state, peers, meta, mile, idle_since = None, False, False, None, None
     try:
         while True:
             eng._pump()
@@ -360,6 +361,13 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
             task.options.update(metadata=s.has_metadata, peers=s.num_peers, seeds=s.num_seeds, upload_rate=s.upload_rate,
                                 sequential=bool(task.options.get("sequential")), ratio=_ratio(s), trackers=len(h.trackers()),
                                 dead_trackers=list(eng.dead_trackers.get(task.id, set())))
+            # in stallo: scarica ma non c'e' nessun seed e non arriva un byte (i peer parziali non bastano)
+            idle = st == "downloading" and not s.num_seeds and s.download_rate < 1
+            idle_since = (idle_since or time.monotonic()) if idle else None
+            stalled = bool(idle_since and time.monotonic() - idle_since > STALL_AFTER)
+            if stalled != bool(task.options.get("stalled")):
+                task.log("Download in stallo: nessun seed disponibile" if stalled else "Il download è ripartito", "warn" if stalled else "info")
+            task.options["stalled"] = stalled
             if not s.has_metadata and time.monotonic() - start > META_TIMEOUT:
                 raise ValueError("Nessun peer ha mandato l'elenco dei file del torrent in 4 minuti: riprova più tardi con «Riprendi»")
             if s.has_metadata:

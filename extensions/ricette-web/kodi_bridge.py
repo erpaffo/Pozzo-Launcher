@@ -966,7 +966,7 @@ def _classify_channel(categories: list[str], name: str) -> list[str]:
     return sections
 
 
-def get_stream4me_sections(addon_dir: Path | str | None = None) -> dict[str, list[dict]]:
+def _get_stream4me_sections(addon_dir: Path | str | None = None) -> dict[str, list[dict]]:
     """Estrae o simula le categorie principali di Stream4me (film, serie, canali, animazione)."""
     sections: dict[str, list[dict]] = {k: [] for k in _STREAM4ME_SIMULATED}
     root = Path(addon_dir) if addon_dir is not None else None
@@ -1024,10 +1024,22 @@ def get_stream4me_sections(addon_dir: Path | str | None = None) -> dict[str, lis
     return sections
 
 
+def get_stream4me_sections(addon_dir: Path | str | None = None, force: bool = False) -> dict[str, list[dict]]:
+    """Come _get_stream4me_sections, ma con cache in memoria (10 min): la scansione dei canali non gira a ogni richiesta."""
+    key = str(addon_dir or "")
+    hit = _SECTIONS_CACHE.get(key)
+    if hit and not force and time.time() - hit[0] < _BROWSE_TTL:
+        return hit[1]
+    res = _get_stream4me_sections(addon_dir)
+    _SECTIONS_CACHE[key] = (time.time(), res)
+    return res
+
+
 # ---------------------------------------------------------------- provider browser e scraper Stream4me
 _PROVIDER_CACHE: dict[tuple[str, bool], list[dict]] = {}
 _BROWSE_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
 _BROWSE_TTL = 600.0
+_SECTIONS_CACHE: dict[str, tuple[float, dict]] = {}
 _SCRAPE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 _NAV_SKIP_RE = re.compile(
     r"^(?:home|contatti|dmca|privacy|login|registrati|avanti|indietro|pagina|next|prev|previous|cerca|search|menu|faq|disclaimer|cookie|terms|\d+|«|»|‹|›|\.\.\.)$",
@@ -1038,6 +1050,7 @@ _NAV_SKIP_RE = re.compile(
 def _clear_stream4me_caches() -> None:
     _PROVIDER_CACHE.clear()
     _BROWSE_CACHE.clear()
+    _SECTIONS_CACHE.clear()
 
 
 def find_stream4me_dir(addons_root: Path | str | None) -> Path | None:

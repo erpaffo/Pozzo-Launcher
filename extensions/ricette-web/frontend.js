@@ -73,31 +73,160 @@ export default function (gs, ctx) {
         }
       }
 
-      // Carica lista elementi
-      async function loadItems() {
-        loading = true;
-        const myToken = ++loadToken;
-        renderContent();
+      // Lista paginata: prima pagina subito, il resto con infinite scroll
+      const PAGE = 60;
+      let offset = 0;
+      let done = false;
+      let busy = false;
+      let observer = null;
 
-        const q = new URLSearchParams();
-        if (activeRecipeId) q.set("recipe", activeRecipeId);
-        if (currentQuery) q.set("query", currentQuery);
-        q.set("limit", "200");
+      const cardHtml = (it) => {
+        const poster = safeUrl(it.poster);
+        const metaParts = [];
+        if (it.year) metaParts.push(esc(it.year));
+        if (it.duration) metaParts.push(esc(formatDuration(it.duration)));
+        if (it.kind && it.kind !== 'film') metaParts.push(esc(it.kind));
+        const icon = it.kind === 'brano' ? '🎵' : '🎬';
+        return `
+          <article class="rw-card ${it.seen ? 'rw-seen' : ''}" data-item-id="${esc(it.id)}" tabindex="0" role="button">
+            <div class="rw-poster">
+              ${poster ? `<img class="rw-poster-img" src="${esc(poster)}" alt="" loading="lazy" decoding="async">` : `<div class="rw-poster-placeholder">${icon}</div>`}
+              ${it.seen ? `<span class="rw-seen-badge">✓ Visto</span>` : ''}
+            </div>
+            <div class="rw-card-body">
+              <h4 class="rw-title" title="${esc(it.title)}">${esc(it.title)}</h4>
+              ${metaParts.length ? `<div class="rw-meta">${metaParts.join(" · ")}</div>` : ''}
+            </div>
+          </article>`;
+      };
 
-        try {
-          const res = await gs.api(`${apiBase}/list?${q.toString()}`);
-          if (myToken !== loadToken) return;
-          items = Array.isArray(res) ? res : [];
-        } catch {
-          if (myToken !== loadToken) return;
-          items = [];
-        } finally {
-          if (myToken === loadToken) {
-            loading = false;
-            renderContent();
-          }
+      function appendCards(list) {
+        const grid = content.querySelector(".rw-grid");
+        if (!grid || !list.length) return;
+        const tpl = document.createElement("template");
+        tpl.innerHTML = list.map(cardHtml).join("");
+        const frag = document.createDocumentFragment();
+        frag.append(tpl.content);
+        grid.appendChild(frag);
+      }
+
+      function updateMore() {
+        const more = content.querySelector(".rw-more");
+        if (!more) return;
+        more.textContent = busy
+          ? "Caricamento in corso…"
+          : (items.length ? "" : (recipes.length
+            ? "Nessun elemento trovato per la ricerca o sorgente selezionata."
+            : "Nessuna ricetta disponibile o backend non raggiungibile. Verifica che il plugin ricette-web sia attivo."));
+        if (observer) { // riarma: se il sentinel è ancora visibile deve riscattare
+          observer.disconnect();
+          if (!done && !busy) observer.observe(more);
         }
       }
+
+      async function fetchMore() {
+        if (busy || done) return;
+        busy = true;
+        const myToken = loadToken;
+        updateMore();
+        const q = new URLSearchParams();
+        if (activeRecipeId) q.set("recipe", activeRecipeId);
+        if (currentQuery) q.set("q", currentQuery);
+        q.set("offset", String(offset));
+        q.set("limit", String(PAGE));
+        let page = [];
+        try {
+          const res = await gs.api(`${apiBase}/list?${q.toString()}`);
+          page = Array.isArray(res) ? res : [];
+        } catch {
+          done = true;
+        }
+        if (myToken !== loadToken) return; // risposta vecchia: ignora
+        busy = false;
+        offset += page.length;
+        if (page.length < PAGE) done = true;
+        items = items.concat(page);
+        if (!selectedItemId && activeTab === "items") {
+          appendCards(page);
+          updateMore();
+        }
+      }
+
+      function loadItems() {
+        ++loadToken;
+        items = [];
+        offset = 0;
+        done = false;
+        busy = false;
+        if (!selectedItemId && activeTab === "items") renderContent();
+        return fetchMore();
+      }
+
+      function setupItemsView() {
+        if (observer) observer.disconnect();
+        content.innerHTML = `<div class="rw-grid"></div><div class="rw-more muted"></div>`;
+        appendCards(items);
+        observer = new IntersectionObserver((en) => {
+          if (en.some((x) => x.isIntersecting)) fetchMore();
+        }, { rootMargin: "400px" });
+        updateMore();
+      }
+
+      // Catalogo: stato, aggiornamento e polling
+      let pollTimer = null;
+      let wasRefreshing = false;
+
+      function showStatus(st) {
+        const el = toolbar.querySelector(".rw-cat-status");
+        if (!el) return;
+        const refreshing = !!st?.refreshing;
+        let t;
+        if (refreshing) {
+          const pr = st.progress;
+          t = "Aggiornamento in corso…" + (pr != null && pr !== "" ? ` (${typeof pr === "number" && pr <= 1 ? Math.round(pr * 100) + "%" : pr})` : "");
+        } else if (st?.updated_at) {
+          t = `Aggiornato il ${new Date(Number(st.updated_at) * 1000).toLocaleString()}`;
+        } else {
+          t = "Catalogo non ancora aggiornato";
+        }
+        if (st?.last_error) t += ` · Errore: ${st.last_error}`;
+        el.textContent = t;
+        el.classList.toggle("rw-error", !!st?.last_error);
+        const b = toolbar.querySelector(".rw-refresh");
+        if (b) b.disabled = refreshing;
+      }
+
+      async function pollStatus() {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+        if (!root.isConnected || document.hidden) return; // pagina lasciata o nascosta (riparte da visibilitychange)
+        let st = null;
+        try {
+          st = await gs.api(`${apiBase}/catalog/status`);
+        } catch { /* backend non pronto */ }
+        if (!root.isConnected) return;
+        showStatus(st);
+        const refreshing = !!st?.refreshing;
+        if (wasRefreshing && !refreshing) loadItems();
+        wasRefreshing = refreshing;
+        if (refreshing) pollTimer = setTimeout(pollStatus, 2000);
+      }
+
+      async function refreshCatalog() {
+        try {
+          const st = await gs.api(`${apiBase}/catalog/refresh`, { body: {} });
+          wasRefreshing = true;
+          showStatus(st);
+        } catch (e) {
+          if (typeof gs?.toast === "function") gs.toast(`Aggiornamento non riuscito: ${e.message}`, true);
+          return;
+        }
+        pollStatus();
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && root.isConnected) pollStatus();
+      });
 
       // Carica dettaglio elemento
       async function loadDetail(itemId) {
@@ -134,21 +263,21 @@ export default function (gs, ctx) {
         }
       }
 
-      // Disegna barra strumenti principale
+      // Barra strumenti: costruita una volta (la ricerca non perde il focus)
+      toolbar.innerHTML = `
+        <div class="rw-tabs" role="tablist">
+          <button type="button" role="tab" class="rw-tab" data-tab="items">🎬 Contenuti</button>
+          <button type="button" role="tab" class="rw-tab" data-tab="recipe_preview">📋 Anteprima ricetta</button>
+        </div>
+        <div class="rw-search-box">
+          <input type="search" class="rw-search" placeholder="Cerca nelle ricette…" aria-label="Cerca nelle ricette">
+        </div>
+        <div class="rw-catalog">
+          <span class="rw-cat-status muted"></span>
+          <button type="button" class="rw-btn rw-sm rw-refresh" data-refresh>⟳ Aggiorna catalogo</button>
+        </div>`;
       function renderToolbar() {
-        toolbar.innerHTML = `
-          <div class="rw-tabs" role="tablist">
-            <button type="button" role="tab" class="rw-tab ${activeTab === 'items' ? 'rw-active' : ''}" data-tab="items">
-              🎬 Contenuti
-            </button>
-            <button type="button" role="tab" class="rw-tab ${activeTab === 'recipe_preview' ? 'rw-active' : ''}" data-tab="recipe_preview">
-              📋 Anteprima ricetta
-            </button>
-          </div>
-          <div class="rw-search-box">
-            <input type="search" class="rw-search" placeholder="Cerca nelle ricette…" value="${esc(currentQuery)}" aria-label="Cerca nelle ricette">
-          </div>
-        `;
+        toolbar.querySelectorAll(".rw-tab").forEach((b) => b.classList.toggle("rw-active", b.dataset.tab === activeTab));
       }
 
       // Disegna elenco sorgenti
@@ -173,53 +302,6 @@ export default function (gs, ctx) {
             `).join("")}
           </div>
           ${siteBtn}
-        `;
-      }
-
-      // Disegna catalogo / lista pulita
-      function renderItemsList() {
-        if (loading) {
-          return `<div class="rw-loading"><p class="muted">Caricamento in corso…</p></div>`;
-        }
-        if (!recipes.length) {
-          return `
-            <div class="rw-empty">
-              <p class="muted">Nessuna ricetta disponibile o backend non raggiungibile.<br>Verifica che il plugin ricette-web sia attivo.</p>
-            </div>
-          `;
-        }
-        if (!items.length) {
-          return `
-            <div class="rw-empty">
-              <p class="muted">Nessun elemento trovato per la ricerca o sorgente selezionata.</p>
-            </div>
-          `;
-        }
-
-        return `
-          <div class="rw-grid">
-            ${items.map((it) => {
-              const poster = safeUrl(it.poster);
-              const metaParts = [];
-              if (it.year) metaParts.push(esc(it.year));
-              if (it.duration) metaParts.push(esc(formatDuration(it.duration)));
-              if (it.kind && it.kind !== 'film') metaParts.push(esc(it.kind));
-              const icon = it.kind === 'brano' ? '🎵' : '🎬';
-
-              return `
-                <article class="rw-card ${it.seen ? 'rw-seen' : ''}" data-item-id="${esc(it.id)}" tabindex="0" role="button">
-                  <div class="rw-poster">
-                    ${poster ? `<img class="rw-poster-img" src="${esc(poster)}" alt="" loading="lazy">` : `<div class="rw-poster-placeholder">${icon}</div>`}
-                    ${it.seen ? `<span class="rw-seen-badge">✓ Visto</span>` : ''}
-                  </div>
-                  <div class="rw-card-body">
-                    <h4 class="rw-title" title="${esc(it.title)}">${esc(it.title)}</h4>
-                    ${metaParts.length ? `<div class="rw-meta">${metaParts.join(" · ")}</div>` : ''}
-                  </div>
-                </article>
-              `;
-            }).join("")}
-          </div>
         `;
       }
 
@@ -394,7 +476,7 @@ export default function (gs, ctx) {
         } else if (selectedItemId) {
           content.innerHTML = renderDetail();
         } else {
-          content.innerHTML = renderItemsList();
+          setupItemsView();
         }
       }
 
@@ -406,6 +488,12 @@ export default function (gs, ctx) {
           e.preventDefault();
           e.stopPropagation();
           await openUrl(openEl.dataset.openUrl);
+          return;
+        }
+
+        if (e.target.closest("[data-refresh]")) {
+          e.stopPropagation();
+          await refreshCatalog();
           return;
         }
 
@@ -483,12 +571,13 @@ export default function (gs, ctx) {
             selectedItemId = null;
             selectedItemDetail = null;
             loadItems();
-          }, 300);
+          }, 250);
         }
       };
 
       // Avvio: carica ricette e primo set di elementi
       await loadRecipes();
+      pollStatus();
       await loadItems();
     },
   });

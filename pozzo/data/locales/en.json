@@ -755,6 +755,7 @@
  "d.status.completed": "Completed",
  "d.status.error": "Error",
  "d.status.seeding": "Seeding",
+ "d.status.stalled": "Stalled",
  "d.prio.skip": "Skip",
  "d.prio.normal": "Normal",
  "d.prio.high": "High",

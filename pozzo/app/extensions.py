@@ -395,6 +395,8 @@ FIRST_USE_MS: dict[str, float] = {}  # {id plugin lazy: millisecondi di import +
 EAGER_NEEDED: dict[str, set] = {}    # {id plugin lazy: API non differibili usate in register()}
 LOAD_TOTAL_MS = 0.0              # tempo totale di load_backends all'avvio
 _HOOKED_APPS: set[int] = set()
+ERRORS: dict[str, str] = {}      # errori di backend per id (lo stesso dict di load_backends)
+LAZY: dict[str, "LazyPlugin"] = {}  # segnaposto lazy montati, per spegnerne gli eventi in hot_unload
 
 
 class Job:
@@ -562,18 +564,21 @@ class LazyPlugin:
 
     def __init__(self, app, cfg, p: dict, events, log, errors: dict):
         self.app, self.cfg, self.p, self.events, self.log, self.errors = app, cfg, p, events, log, errors
-        self.sub, self.error, self.done = APIRouter(), None, False
+        self.sub, self.error, self.done, self.dead = APIRouter(), None, False, False
         self.handlers: dict[str, list] = {}  # gs.on del plugin per gli eventi dichiarati in events
         self.lock = threading.Lock()
         self.route = Route(f"/plugin-api/{p['id']}/{{path:path}}", self)
 
     def mount(self):
+        LAZY[self.p["id"]] = self
         self.app.router.routes.append(self.route)
         for ev in self.p.get("events", []):
             self.events.on(ev, lambda data, ev=ev: self._on_event(ev, data))
 
     def _on_event(self, ev: str, data: dict):
         """Primo evento dichiarato: avvia il backend (che registra i suoi gs.on) e consegna l'evento ai suoi handler."""
+        if self.dead:
+            return
         self._load()
         for fn in list(self.handlers.get(ev, [])):
             fn(data)
@@ -615,8 +620,8 @@ class LazyPlugin:
 
 def load_backends(app, cfg, events: Events, log=print) -> dict[str, str]:
     """Carica i backend dei plugin abilitati (quelli lazy solo montati). Ritorna {id: errore} per quelli falliti."""
-    global LOAD_TOTAL_MS
-    errors = {}
+    global LOAD_TOTAL_MS, ERRORS
+    errors = ERRORS = {}  # lo stesso dict va a /api/extensions: hot_load lo aggiorna
     t_all = time.perf_counter()
     for p in list_plugins(cfg):
         if not p["enabled"] or not p["backend"]:
@@ -643,3 +648,47 @@ def load_backends(app, cfg, events: Events, log=print) -> dict[str, str]:
             log(f"Plugin {p['id']}: errore nel backend: {errors[p['id']]}")
     LOAD_TOTAL_MS = round((time.perf_counter() - t_all) * 1000, 1)
     return errors
+
+
+def hot_unload(app, pid: str):
+    """Toglie a caldo le route /plugin-api/<pid>/..., ferma i gs.job e silenzia gs.on dei lazy.
+    shortcut: gs.on di un plugin eager, gs.add_store/add_source/add_library_kind/add_player/add_scraper e i moduli
+    gia' importati restano fino al riavvio; ripulirli richiede un registro per plugin (se serve, aggiungilo qui)."""
+    prefix = f"/plugin-api/{pid}/"
+    app.router.routes[:] = [r for r in app.router.routes if not str(getattr(r, "path", "")).startswith(prefix)]
+    for j in [j for j in JOBS if j.pid == pid]:
+        j.stop()
+        JOBS.remove(j)
+    lz = LAZY.pop(pid, None)
+    if lz:
+        lz.dead = True
+
+
+def hot_load(app, cfg, events: Events, pid: str, log=print, errors: dict | None = None) -> bool:
+    """(Ri)carica a caldo il backend di `pid` dopo installazione/aggiornamento. True se non serve riavviare
+    (montato, o niente da montare); False se il montaggio e' fallito o il plugin ha bisogno dell'avvio."""
+    errors = {} if errors is None else errors
+    hot_unload(app, pid)
+    errors.pop(pid, None)
+    FIRST_USE_MS.pop(pid, None)
+    EAGER_NEEDED.pop(pid, None)
+    p = next((x for x in list_plugins(cfg) if x["id"] == pid), None)
+    if p is None:
+        return False
+    if not p["enabled"] or not p["backend"]:
+        return True
+    try:
+        if p["load"] == "lazy":
+            LazyPlugin(app, cfg, p, events, log, errors).mount()
+            return True
+        spec = importlib.util.spec_from_file_location(f"gs_plugin_{pid}", p["backend"])
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        if hasattr(mod, "register"):
+            mod.register(PluginAPI(app, cfg, pid, events, log))
+        return True
+    except Exception as e:
+        hot_unload(app, pid)  # niente mezze registrazioni
+        errors[pid] = f"{type(e).__name__}: {e}"
+        log(f"Plugin {pid}: errore nel backend: {errors[pid]}")
+        return False

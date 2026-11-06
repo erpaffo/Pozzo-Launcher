@@ -76,6 +76,10 @@
   document.getElementById("app").before(bar); // in cima alla finestra, sopra ogni esperienza
   document.documentElement.style.setProperty("--mb-h", `${bar.offsetHeight}px`);
 
+  // Amici: pannello gestito da js/friends.js (si aggancia a questo pulsante); sta a destra, prima di profilo e attivita'
+  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-friends" title="Amici e presenze online" aria-haspopup="dialog" aria-expanded="false">`
+    + `<span aria-hidden="true">👥</span><span>Amici</span><span id="friends-badge" hidden>0</span></button>`);
+
   // Utente attivo: il menu del profilo (cambia utente, nuovo profilo, icona e PIN), uguale a quello della barra laterale
   bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-profile" title="Utente attivo: clicca per cambiare" data-i18n-title="b.menu.profile.title" aria-haspopup="menu">`
     + `<span id="mb-profile-ico">👤</span><span id="mb-profile-name" data-i18n="b.menu.profile.default">Principale</span><span class="muted">▾</span></button>`);

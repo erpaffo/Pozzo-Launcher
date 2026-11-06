@@ -1,0 +1,46 @@
+/* Amici: pulsante nella barra in alto (menubar.js) e pannello a comparsa (js/friends.js). */
+
+/* A destra, subito prima di Profilo e Attività: il primo con margin-left:auto spinge il gruppo a destra */
+#mb-friends { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: var(--text); padding: 4px 10px; border-radius: 6px; cursor: pointer; font: inherit; }
+#mb-friends:hover, #mb-friends[aria-expanded="true"] { background: var(--bg-3); }
+#mb-friends + #mb-profile { margin-left: 2px; }
+#friends-badge { min-width: 18px; padding: 0 6px; border-radius: 9px; background: var(--good); color: var(--bg); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+#friends-badge[hidden] { display: none; }
+
+#fr-pop { position: fixed; z-index: 80; width: min(380px, calc(100vw - 16px)); max-height: min(600px, 82vh); display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.4); overflow: hidden; font-size: 13px; }
+#fr-pop .fr-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+#fr-pop .fr-body { display: flex; flex-direction: column; gap: 6px; padding: 12px; overflow-y: auto; }
+
+#fr-pop .fr-x, #fr-pop .fr-ib { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 8px; min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border-radius: 6px; font: inherit; line-height: 1.2; }
+@media (pointer: coarse) { #fr-pop .fr-x, #fr-pop .fr-ib { min-width: 44px; min-height: 44px; } }
+#fr-pop .fr-x:hover, #fr-pop .fr-ib:hover { background: var(--bg-3); color: var(--text); }
+#fr-pop .fr-ib.danger { color: var(--bad); font-size: 12px; }
+
+#fr-pop .fr-me, #fr-pop .fr-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; }
+#fr-pop .fr-me { background: var(--bg-2); border: 1px solid var(--line); }
+#fr-pop .fr-row:hover { background: var(--bg-2); }
+#fr-pop .fr-row.off { opacity: .7; }
+#fr-pop .fr-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#fr-pop .fr-who strong, #fr-pop .fr-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#fr-pop .fr-sub, #fr-pop .fr-code { color: var(--muted); font-size: 12px; }
+#fr-pop .fr-sub.game { color: var(--accent); }
+#fr-pop .fr-code { font-variant-numeric: tabular-nums; }
+#fr-pop .fr-who .field { padding: 3px 7px; }
+
+#fr-pop .fr-av { position: relative; flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
+  background: hsl(var(--h) 45% 30%); color: #fff; font-weight: 700; }
+#fr-pop .fr-dot { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; background: var(--muted); border: 2px solid var(--panel); }
+#fr-pop .fr-dot.on { background: var(--good); }
+
+#fr-pop .fr-add { display: flex; gap: 6px; }
+#fr-pop .fr-add .field { flex: 1; }
+#fr-pop .fr-msg { min-height: 16px; color: var(--muted); }
+#fr-pop .fr-msg.ok { color: var(--good); }
+#fr-pop .fr-msg.bad { color: var(--bad); }
+#fr-pop .fr-sec { margin-top: 8px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+#fr-pop .fr-n { margin-left: 4px; padding: 0 6px; border-radius: 9px; background: var(--bg-3); }
+#fr-pop .fr-empty { padding: 8px 10px; color: var(--muted); }
+#fr-pop .fr-join { white-space: nowrap; }
+#fr-pop .fr-share { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+#fr-pop :is(button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

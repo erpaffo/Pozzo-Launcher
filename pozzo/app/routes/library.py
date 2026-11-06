@@ -272,9 +272,14 @@ def build_router(ctx) -> APIRouter:
         if not g.get("install_uri"):
             raise HTTPException(400, I.tr("s.library.noInstallLink"))
         try:
-            L.open_uri(g["install_uri"])
+            L.open_uri(g["install_uri"])  # steam://install/<id>, com.epicgames.launcher://…?action=install: come il pulsante Installa del client
         except L.LaunchError as e:
-            raise HTTPException(409, str(e))
+            if not g.get("page"):
+                raise HTTPException(409, str(e))
+            try:  # client assente: almeno la pagina del gioco nello store
+                L.open_uri(g["page"])
+            except L.LaunchError:
+                raise HTTPException(409, str(e))
         return {"ok": True}
 
     def _single_magnet(g: dict) -> str | None:

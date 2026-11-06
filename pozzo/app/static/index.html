@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/static/maintenance.css?v={{v}}">
 <link rel="stylesheet" href="/static/resume.css?v={{v}}">
 <link rel="stylesheet" href="/static/a11y.css?v={{v}}">
+<link rel="stylesheet" href="/static/friends.css?v={{v}}">
 </head>
 <body>
 <a class="skip-link" href="#main" data-i18n="a.common.skip">Vai al contenuto</a>
@@ -106,7 +107,7 @@
         <button class="btn" id="scan-btn" data-i18n-title="a.toolbar.scanTitle"><span aria-hidden="true">⟳</span> <span data-i18n="a.toolbar.newGames">Nuovi giochi</span></button>
         <button class="btn" id="refresh-btn" data-i18n-title="a.toolbar.refreshTitle"><span aria-hidden="true">↻</span> <span data-i18n="a.common.refresh">Aggiorna</span></button>
         <button class="btn" id="random-btn" data-i18n-title="a.toolbar.randomTitle" data-i18n-aria="a.toolbar.random"><span data-icon="dice" aria-hidden="true"></span> <span data-i18n="a.toolbar.randomBtn">A caso</span></button>
-        <button class="btn" id="join-btn" data-i18n-title="a.toolbar.joinTitle"><span aria-hidden="true">👥</span> <span data-i18n="a.toolbar.hasInvite">Ho un invito</span></button>
+        <button class="btn" id="join-btn" data-i18n-title="a.toolbar.joinTitle"><span aria-hidden="true">✉</span> <span data-i18n="a.toolbar.hasInvite">Ho un invito</span></button>
         <button class="btn accent" id="bp-btn" data-i18n-title="a.toolbar.bpTitle"><span aria-hidden="true">🎮</span> Big Picture</button>
         <button class="btn" id="settings-btn" data-i18n-title="a.common.settings"><span aria-hidden="true">⚙</span> <span data-i18n="a.common.settings">Impostazioni</span></button>
       </div>
@@ -177,7 +178,7 @@
   <div id="running" hidden></div>
   <div id="lightbox" hidden></div>
   <dialog id="prof-dlg" role="dialog" aria-modal="true" aria-labelledby="pf-title">
-    <h3 id="pf-title"><span data-i18n="a.prof.title">Profilo di avvio</span> <span class="muted small" id="pf-game"></span></h3>
+    <h3 id="pf-title" role="heading" aria-level="2"><span data-i18n="a.prof.title">Profilo di avvio</span> <span class="muted small" id="pf-game"></span></h3>
     <p class="muted small" data-i18n="a.prof.help">Vale solo per questo gioco (tutte le sue versioni). I campi vuoti usano le impostazioni della console.</p>
     <div id="pf-emu-box">
     <div class="pf-grid">
@@ -471,5 +472,6 @@
 <script src="/static/js/detail-verify.js?v={{v}}"></script>
 <script src="/static/js/detail-emucfg.js?v={{v}}"></script>
 <script src="/static/js/profiles-exp.js?v={{v}}"></script>
+<script src="/static/js/friends.js?v={{v}}"></script>
 </body>
 </html>

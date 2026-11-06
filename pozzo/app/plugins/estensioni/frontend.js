@@ -66,6 +66,16 @@ export function scopri(entries, ctx = {}) {
 }
 
 export default function (gs) {
+  // Installa/rimuove e applica a caldo; il messaggio di riavvio resta solo se il server o il caricamento a caldo falliscono.
+  async function eseguiAzione(act, id, src) {
+    const r = await gs.api(`/plugin-api/estensioni/${act}`, { body: { id, fonte: src } });
+    let ok = !r.restart;
+    if (act === "installa") ok = ok && (!gs.hotLoadPlugin || await gs.hotLoadPlugin(id));
+    else if (gs.unloadPlugin) gs.unloadPlugin(id);
+    gs.toast(ok ? (act === "installa" ? "Estensione installata" : "Estensione rimossa")
+      : (act === "installa" ? "Estensione installata: riavvia l'app per usarla" : "Estensione rimossa: riavvia l'app per applicare"));
+  }
+
   gs.addSidebarItem({ id: "estensioni", label: "Store estensioni", icon: "🧩", view: "estensioni" });
 
   gs.registerView("estensioni", {
@@ -74,7 +84,7 @@ export default function (gs) {
       el.innerHTML = `
         <div class="es-page">
           <div class="es-header-desc">
-            <p class="muted">Esplora, installa e gestisci le estensioni per arricchire Pozzo Launcher. Clicca su qualsiasi estensione per vederne <b>screenshot</b>, <b>funzionalità</b> e la <b>guida dettagliata</b>. Dopo ogni installazione o rimozione riavvia l'app.</p>
+            <p class="muted">Esplora, installa e gestisci le estensioni per arricchire Pozzo Launcher. Clicca su qualsiasi estensione per vederne <b>screenshot</b>, <b>funzionalità</b> e la <b>guida dettagliata</b>. L'installazione e la rimozione sono immediate.</p>
           </div>
 
           <div class="es-toolbar">
@@ -342,7 +352,7 @@ export default function (gs) {
         // Specifiche tecniche
         el.querySelector("#es-m-id").textContent = x.id;
         let stLabel = "Non installata";
-        if (x.state === "installed") stLabel = "Installata ed attiva al riavvio";
+        if (x.state === "installed") stLabel = "Installata";
         else if (x.state === "update") stLabel = `Aggiornamento disponibile (installata: v${x.installed_version})`;
         else if (x.state === "incompatible") stLabel = `Non compatibile (richiede PozzoLauncher >= ${x.min_app})`;
         el.querySelector("#es-m-state").textContent = stLabel;
@@ -551,8 +561,7 @@ export default function (gs) {
           if (act === "installa" && !(await confermaPermessi(catalogData.items.find((x) => x.id === id) || {}))) return;
           actBtn.disabled = true;
           try {
-            await gs.api(`/plugin-api/estensioni/${act}`, { body: { id, fonte: src } });
-            gs.toast(act === "installa" ? "Estensione installata: riavvia l'app per usarla" : "Estensione rimossa: riavvia l'app per applicare");
+            await eseguiAzione(act, id, src);
           } catch (err) {
             gs.toast(err.message, true);
           }
@@ -598,8 +607,7 @@ export default function (gs) {
         if (act === "installa" && !(await confermaPermessi(activeDetailItem || {}))) return;
         actBtn.disabled = true;
         try {
-          await gs.api(`/plugin-api/estensioni/${act}`, { body: { id, fonte: src } });
-          gs.toast(act === "installa" ? "Estensione installata: riavvia l'app per usarla" : "Estensione rimossa: riavvia l'app per applicare");
+          await eseguiAzione(act, id, src);
           closeModal();
         } catch (err) {
           gs.toast(err.message, true);

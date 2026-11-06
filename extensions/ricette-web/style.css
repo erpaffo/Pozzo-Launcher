@@ -517,3 +517,10 @@
     transform: none;
   }
 }
+
+/* Catalogo paginato */
+.rw-card { content-visibility: auto; contain-intrinsic-size: auto 280px; }
+.rw-more { padding: 16px; text-align: center; min-height: 1px; }
+.rw-catalog { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 12px; }
+.rw-cat-status.rw-error { color: var(--danger, #e5484d); }
+.rw-refresh:disabled { opacity: .6; cursor: default; }

@@ -547,21 +547,70 @@ async function loadExtensions() {
   GS.extensions = ext;
   const prefetched = new Map(ext.plugins.filter((x) => x.enabled && x.frontend).map((p) => [p.id, import(p.frontend)]));
   prefetched.forEach((promise) => promise.catch(() => {}));
-  for (const p of ext.plugins.filter((x) => x.enabled)) {
-    if (p.style) {
-      const l = document.createElement("link");
-      l.rel = "stylesheet"; l.href = p.style; l.dataset.ext = "plugin";
-      document.head.appendChild(l);
-    }
-    if (p.frontend) {
-      try {
-        const m = await prefetched.get(p.id);
-        if (typeof m.default === "function") await m.default(GS, { id: p.id, settings: p.settings || {} });
-      } catch (e) {
-        console.error(`Plugin ${p.id}:`, e);
-        GS.toast(t("b.core.plugin.loadFail", {nome: p.name, errore: e.message}), true);
-      }
-    }
-  }
+  for (const p of ext.plugins.filter((x) => x.enabled)) await loadPlugin(p, prefetched.get(p.id));
   GS.emit("extensionsLoaded", ext);
 }
+
+/** Carica foglio di stile e frontend di un plugin (all'avvio e a caldo). `mod` = import gia' avviato. */
+async function loadPlugin(p, mod) {
+  if (p.style) {
+    const l = document.createElement("link");
+    l.rel = "stylesheet"; l.href = p.style; l.dataset.ext = "plugin"; l.dataset.plugin = p.id;
+    document.head.appendChild(l);
+  }
+  if (p.frontend) {
+    try {
+      const m = await (mod || import(p.frontend));
+      if (typeof m.default === "function") await m.default(GS, { id: p.id, settings: p.settings || {} });
+    } catch (e) {
+      console.error(`Plugin ${p.id}:`, e);
+      GS.toast(t("b.core.plugin.loadFail", {nome: p.name, errore: e.message}), true);
+    }
+  }
+}
+
+/** Toglie dall'interfaccia le voci registrate da un plugin (tracciate per differenza in hotLoadPlugin). */
+GS.unloadPlugin = (id) => {
+  const owned = GS._owned?.[id];
+  document.querySelectorAll(`link[data-plugin="${id}"]`).forEach((l) => l.remove());
+  if (owned) {
+    // sul posto: gli add*() tengono il riferimento all'array originale
+    for (const [k, ids] of Object.entries(owned.lists)) {
+      const keep = GS.ui[k].filter((x) => !ids.includes(x.id));
+      GS.ui[k].splice(0, GS.ui[k].length, ...keep);
+    }
+    owned.views.forEach((v) => GS.ui.views.delete(v));
+    delete GS._owned[id];
+  }
+  GS.plugins = (GS.plugins || []).filter((x) => x.id !== id);
+  GS.emit("uiChanged", { kind: "plugin" });
+};
+
+/** Dopo installazione/aggiornamento: carica il frontend del plugin senza ricaricare la pagina. Ritorna false se non riesce.
+ *  shortcut: gs.on del frontend, patch al DOM e moduli importati dal plugin restano fino al riavvio (un aggiornamento
+ *  rimuove le voci UI ma non gli handler registrati con gs.on). */
+GS.hotLoadPlugin = async (id) => {
+  try {
+    GS.unloadPlugin(id);
+    const ext = await api("/api/extensions");
+    const p = ext.plugins.find((x) => x.id === id);
+    if (!p) return false;
+    GS.plugins = ext.plugins; GS.extensions = ext;
+    if (!p.enabled || p.error) return !p.error;
+    const lists = ["gameActions", "detailSections", "tileBadges", "sidebarItems", "settingsTabs"];
+    const before = Object.fromEntries(lists.map((k) => [k, new Set(GS.ui[k].map((x) => x.id))]));
+    const viewsBefore = new Set(GS.ui.views.keys());
+    // ?v= evita il modulo in cache di una versione precedente
+    await loadPlugin(p, p.frontend ? import(`${p.frontend}?v=${Date.now()}`) : null);
+    GS._owned = GS._owned || {};
+    GS._owned[id] = {
+      lists: Object.fromEntries(lists.map((k) => [k, GS.ui[k].filter((x) => !before[k].has(x.id)).map((x) => x.id)])),
+      views: [...GS.ui.views.keys()].filter((v) => !viewsBefore.has(v)),
+    };
+    GS.emit("uiChanged", { kind: "plugin" });
+    return true;
+  } catch (e) {
+    console.warn(`Caricamento a caldo di ${id}:`, e);
+    return false;
+  }
+};

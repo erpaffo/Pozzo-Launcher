@@ -35,6 +35,7 @@ import shutil
 import sqlite3
 import subprocess
 import time
+import threading
 import tomllib
 import urllib.parse
 import urllib.robotparser
@@ -802,6 +803,10 @@ def _db_init(db_path: Path) -> None:
                 pass
         conn.execute("CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_episodes_parent ON episodes(parent_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_items_recipe ON items(recipe_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_items_source ON items(source)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_items_title ON items(title)")
+        conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
         for tbl in ("items", "episodes"):
             conn.execute(
                 f"UPDATE {tbl} SET stream_url='' WHERE stream_url LIKE '%a-ads.com%' OR stream_url LIKE '%size=300x250%' OR stream_url LIKE '%exoclick%' OR stream_url LIKE '%popads%'"
@@ -934,19 +939,10 @@ def register(gs) -> None:
                 log(f"ricette-web: errore scansione catalogo '{r.get('name')}': {e}")
 
     @gs.route("list")
-    def media_list(kind: str = "", query: str = "", q: str = "", recipe: str = "", limit: int = 200):
+    def media_list(kind: str = "", query: str = "", q: str = "", recipe: str = "", limit: int = 200, offset: int = 0):
         kind = kind.strip() if kind in KINDS else ""
         term = (query or q or "").strip()[:200]
-
-        # Popola DB se vuoto
-        conn = sqlite3.connect(db_path)
-        try:
-            count = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
-        finally:
-            conn.close()
-        if count == 0:
-            sync_catalog()
-
+        _auto_refresh()  # in background: la risposta legge solo il DB locale
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -968,8 +964,8 @@ def register(gs) -> None:
                 args.extend([like, like, like])
             if where:
                 sql += " WHERE " + " AND ".join(where)
-            sql += " ORDER BY CASE WHEN recipe_id='stream4me:pinned' THEN 0 ELSE 1 END, kind, title LIMIT ?"
-            args.append(max(1, min(limit, 1000)))
+            sql += " ORDER BY CASE WHEN recipe_id='stream4me:pinned' THEN 0 ELSE 1 END, kind, title LIMIT ? OFFSET ?"
+            args.extend([max(1, min(limit, 1000)), max(0, offset)])
             rows = conn.execute(sql, args).fetchall()
             # lo stesso titolo da più provider streaming: tiene quello con locandina
             best: dict[tuple, sqlite3.Row] = {}
@@ -1884,6 +1880,58 @@ def register(gs) -> None:
                 ],
             }
 
+        _store_sections(sec_map)
+
+        return {
+            "sections": [
+                {"id": "stream4me-film", "title": "Stream4me: Film in Streaming", "items": sec_map.get("film", [])},
+                {"id": "stream4me-serie", "title": "Stream4me: Serie TV", "items": sec_map.get("serie", [])},
+                {"id": "stream4me-live", "title": "Stream4me: Canali Live", "items": sec_map.get("canali", [])},
+                {"id": "stream4me-animazione", "title": "Stream4me: Anime e Cartoni", "items": sec_map.get("animazione", [])},
+            ]
+        }
+
+    @gs.route("recipes")
+    def get_recipes():
+        return {"recipes": recipes}
+
+    # ---------------------------------------------------------------- aggiornamento catalogo in background
+    refresh_lock = threading.Lock()
+    refresh_state = {"refreshing": False, "progress": ""}
+
+    def _meta_get(key: str) -> str | None:
+        conn = sqlite3.connect(db_path)
+        try:
+            r = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            return r[0] if r else None
+        finally:
+            conn.close()
+
+    def _meta_set(**kv) -> None:
+        conn = sqlite3.connect(db_path)
+        try:
+            for k, v in kv.items():
+                conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (k, None if v is None else str(v)))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _catalog_status() -> dict:
+        conn = sqlite3.connect(db_path)
+        try:
+            total = conn.execute("SELECT COUNT(*) FROM items WHERE recipe_id != 'stream4me'").fetchone()[0]
+        finally:
+            conn.close()
+        ts = _meta_get("updated_at")
+        return {
+            "updated_at": float(ts) if ts else None,
+            "refreshing": refresh_state["refreshing"],
+            "progress": refresh_state["progress"],
+            "last_error": _meta_get("last_error") or None,
+            "total": total,
+        }
+
+    def _store_sections(sec_map: dict) -> None:
         conn = sqlite3.connect(db_path)
         try:
             for sec_items in sec_map.values():
@@ -1907,17 +1955,79 @@ def register(gs) -> None:
         finally:
             conn.close()
 
-        return {
-            "sections": [
-                {"id": "stream4me-film", "title": "Stream4me: Film in Streaming", "items": sec_map.get("film", [])},
-                {"id": "stream4me-serie", "title": "Stream4me: Serie TV", "items": sec_map.get("serie", [])},
-                {"id": "stream4me-live", "title": "Stream4me: Canali Live", "items": sec_map.get("canali", [])},
-                {"id": "stream4me-animazione", "title": "Stream4me: Anime e Cartoni", "items": sec_map.get("animazione", [])},
-            ]
-        }
+    def _do_refresh() -> None:
+        t0 = time.time()
+        err = None
+        try:
+            refresh_state["progress"] = "Catalogo ricette"
+            sync_catalog()
+            bridge = kodi_bridge_module()
+            s4me_dir = _find_s4me_dir(bridge)
+            can_browse = bridge is not None and hasattr(bridge, "browse_stream4me_channel")
+            ok_tags: list[str] = []
+            if bridge is not None and hasattr(bridge, "get_stream4me_sections"):
+                refresh_state["progress"] = "Sezioni Stream4me"
+                sec_map = bridge.get_stream4me_sections(s4me_dir if (s4me_dir and s4me_dir.is_dir()) else None, force=True)
+                _store_sections(sec_map)
+            if can_browse:
+                custom = _load_prov_cfg().get("custom") or []
+                providers, _ = _build_providers_state(bridge, s4me_dir)
+                for i, p in enumerate(providers, 1):
+                    refresh_state["progress"] = f"Provider {i}/{len(providers)}: {p.get('id')}"
+                    try:
+                        found = bridge.browse_stream4me_channel(s4me_dir, p["id"], timeout=8.0, custom_providers=custom).get("items") or []
+                    except Exception as e:
+                        gs.log(f"ricette-web: refresh, scansione {p.get('id')} fallita: {e}")
+                        continue
+                    if found:  # un provider vuoto/in errore non cancella nulla di suo
+                        _save_s4me_items(found, f"s4me:{p['id']}")
+                        ok_tags.append(f"s4me:{p['id']}")
+            if ok_tags:  # elimina i titoli non rivisti in questa run (updated < t0)
+                conn = sqlite3.connect(db_path)
+                try:
+                    conn.execute(
+                        "DELETE FROM items WHERE source='stream4me' AND recipe_id IN (" + ",".join("?" * len(ok_tags)) + ") AND updated < ?",
+                        [*ok_tags, t0],
+                    )
+                    conn.execute("DELETE FROM episodes WHERE parent_id NOT IN (SELECT id FROM items)")
+                    conn.commit()
+                finally:
+                    conn.close()
+            elif can_browse:
+                err = "nessun titolo Stream4me ricevuto: catalogo precedente mantenuto"
+        except Exception as e:
+            err = str(e) or e.__class__.__name__
+            gs.log(f"ricette-web: refresh catalogo fallito: {e}")
+        finally:
+            try:
+                _meta_set(last_error=err, **({} if err else {"updated_at": time.time()}))
+            finally:
+                refresh_state.update(refreshing=False, progress="")
 
-    @gs.route("recipes")
-    def get_recipes():
-        return {"recipes": recipes}
+    def _start_refresh(wait: bool = False) -> dict:
+        """Idempotente: se un refresh e' in corso non ne avvia un altro."""
+        with refresh_lock:
+            th = None
+            if not refresh_state["refreshing"]:
+                refresh_state.update(refreshing=True, progress="Avvio")
+                th = threading.Thread(target=_do_refresh, daemon=True, name="ricette-refresh")
+                th.start()
+        if wait and th is not None:
+            th.join()
+        return _catalog_status()
 
-    gs.job("sync-ricette", sync_catalog, every=6 * 3600)
+    def _auto_refresh() -> None:
+        st = _catalog_status()
+        if not st["refreshing"] and (not st["total"] or not st["updated_at"] or time.time() - st["updated_at"] > 86400):
+            _start_refresh()
+
+    @gs.route("catalog/status")
+    def catalog_status():
+        _auto_refresh()
+        return _catalog_status()
+
+    @gs.route("catalog/refresh", methods=("POST",))
+    def catalog_refresh(body: dict | None = Body(None)):
+        return _start_refresh()
+
+    gs.job("sync-ricette", lambda log=gs.log: _start_refresh(wait=True), every=6 * 3600)

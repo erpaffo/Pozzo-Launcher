@@ -11,7 +11,7 @@ from fastapi import Body, HTTPException
 
 
 def register(gs):
-    from pozzo.app import extstore
+    from pozzo.app import extensions as X, extstore
 
     def guard(fn, *a):
         try:
@@ -29,12 +29,16 @@ def register(gs):
     def installa(body: dict = Body(...)):
         r = guard(extstore.install, str(body.get("id") or ""), body.get("fonte") or None)
         gs.log(f"Estensione installata: {r['id']} {r.get('version') or ''}")
+        r["restart"] = not X.hot_load(gs.app, gs.cfg, gs.events, r["id"], gs.log, X.ERRORS)  # True solo se il montaggio fallisce
         return r
 
     @gs.route("rimuovi", methods=("POST",))
     def rimuovi(body: dict = Body(...)):
         r = guard(extstore.remove, str(body.get("id") or ""))
         gs.log(f"Estensione rimossa: {r['id']}")
+        X.hot_unload(gs.app, r["id"])
+        X.ERRORS.pop(r["id"], None)
+        r["restart"] = False
         return r
 
     @gs.route("fonti/aggiungi", methods=("POST",))

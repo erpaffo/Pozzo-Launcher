@@ -340,3 +340,48 @@ def test_rotte_kodi_addons(tmp, monkeypatch):
         gs.post("kodi_addons", {"remove": "../../etc"})
     assert err.value.status_code == 400
 
+
+
+def test_catalog_refresh_diff_e_cancellazione(tmp, monkeypatch):
+    class Bridge:
+        found = [{"id": "s4me:a:new", "title": "Nuovo", "kind": "film"}]
+
+        def find_stream4me_dir(self, root):
+            return None
+
+        def list_stream4me_providers(self, d, only_active=True):
+            return [{"id": "a", "name": "A"}]
+
+        def get_stream4me_sections(self, d, force=False):
+            return {}
+
+        def browse_stream4me_channel(self, d, pid, **kw):
+            return {"items": self.found}
+
+    b = Bridge()
+    gs = make_gs(tmp, monkeypatch)
+    (tmp / "ricette-web-cache" / "kodi-addons" / "stream4me").mkdir(parents=True)
+    monkeypatch.setattr(rw, "kodi_bridge_module", lambda: b)
+    monkeypatch.setattr(rw, "fetch_url", lambda *a, **k: (b"", {}))
+    monkeypatch.setattr(rw.threading.Thread, "start", lambda self: self.run())  # refresh sincrono
+    conn = sqlite3.connect(db(tmp))
+    for i in ("old", "pin"):
+        conn.execute("INSERT INTO items (id, recipe_id, kind, title, source, updated) VALUES (?, ?, 'film', ?, 'stream4me', 1)",
+                     (f"s4me:a:{i}", "s4me:a" if i == "old" else "stream4me:pinned", i))
+    conn.commit()
+    conn.close()
+
+    def ids():
+        return {r[0] for r in sqlite3.connect(db(tmp)).execute("SELECT id FROM items WHERE source='stream4me'")}
+
+    # scansione vuota: non cancella nulla, salva l'errore
+    b.found = []
+    st = gs.post("catalog/refresh")
+    assert st["refreshing"] is False and st["last_error"] and st["updated_at"] is None
+    assert ids() == {"s4me:a:old", "s4me:a:pin"}
+
+    # scansione valida: upsert del nuovo, via il non visto, i preferiti restano
+    b.found = [{"id": "s4me:a:new", "title": "Nuovo", "kind": "film"}]
+    st = gs.post("catalog/refresh")
+    assert st["last_error"] is None and st["updated_at"]
+    assert ids() == {"s4me:a:new", "s4me:a:pin"}

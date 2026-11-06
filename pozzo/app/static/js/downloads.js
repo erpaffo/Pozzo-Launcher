@@ -29,7 +29,7 @@ const DLU = (() => {
     return tr("d.time.dh", "{d} g {h} h", { d: Math.floor(s / 86400), h: Math.floor(s / 3600) % 24 });
   }
   const STATUS = { queued: ["d.status.queued", "In coda"], running: ["d.status.running", "In corso"], paused: ["d.status.paused", "In pausa"], completed: ["d.status.completed", "Completato"], error: ["d.status.error", "Errore"] };
-  const status = (s) => (STATUS[s] ? tr(...STATUS[s]) : s || "—");
+  const status = (s, t) => (t && t.status === "running" && (t.options || {}).stalled ? tr("d.status.stalled", "In stallo") : STATUS[s] ? tr(...STATUS[s]) : s || "—");
   const FILE_PRIO = [[0, "d.prio.skip", "Salta"], [1, "d.prio.normal", "Normale"], [4, "d.prio.high", "Alta"], [7, "d.prio.max", "Massima"]];
   // stesso ordine del server: priorità più alta prima, poi i più vecchi
   const order = (a, b) => (b.priority || 0) - (a.priority || 0) || (a.created || 0) - (b.created || 0);
@@ -730,7 +730,7 @@ function dlRow(t, member = false) {
   const btn = (act, ico, label, extra = "") => `<button class="icon-btn" type="button" data-act="${act}" title="${label}" aria-label="${label}: ${esc(name)}"${extra}>${ico}</button>`;
   const live = t.status === "running" || t.status === "queued";
   const install = !!o.setup && t.status === "completed"; // repack estratto: il setup si avvia da qui
-  const st = o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status);
+  const st = o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status, t);
   const note = t.status === "error" ? t.error || t.phase : t.phase; // errore corto in riga, completo nel title
   return `<tr class="dl-row${member ? " dl-member" : ""}" tabindex="0" data-id="${esc(t.id)}" data-status="${esc(t.status)}"${o.seeding ? ' data-seed="1"' : ""}>
     <td class="c-name"><span class="dl-ico" aria-hidden="true" title="${tor ? "Torrent" : "HTTP"}">${tor ? "🧲" : "🌐"}</span>${tor ? btn("toggle", "▸", tr("d.files.details", "File e dettagli")) : ""}<b title="${esc(t.source)}">${esc(name)}</b>${o.start_at ? `<span class="dl-type" title="${tr("d.sched.tt", "Avvio pianificato")}">⏰ ${esc(o.start_at)}</span>` : ""}${dlReadyHtml(t)}</td>
@@ -869,7 +869,7 @@ function dlPanelGeneral(t) {
   const o = t.options || {}, tor = t.type === "torrent";
   const when = (s) => (s ? new Date(s * 1000).toLocaleString(LOC()) : "");
   const kv = [[tr("d.col.name", "Nome"), t.name], [tr("d.kv.src", "Sorgente"), t.source], [tr("d.kv.folder", "Cartella"), t.save_path],
-    [tr("d.col.status", "Stato"), `${o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status)}${t.phase ? " · " + t.phase : ""}`],
+    [tr("d.col.status", "Stato"), `${o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status, t)}${t.phase ? " · " + t.phase : ""}`],
     [tr("d.col.size", "Dimensione"), tr("d.of", "{a} di {b}", { a: DLU.bytes(t.done), b: t.size ? DLU.bytes(t.size) : "?" })],
     [tr("d.kv.via", "Via"), o.resolved_by ? DLU.debridName(o.resolved_by) : ""], [tr("d.kv.sched", "Pianificazione"), o.start_at ? tr("d.sched.start", "Avvio alle {time}", { time: o.start_at }) : ""],
     [tr("d.limit", "Limite"), DLU.limit(o.limit)], [tr("d.col.prio", "Priorità"), DLU.prio(t.priority)],
@@ -1124,7 +1124,7 @@ function dlLogHead() {
   const t = dlTask(DL.log.id), d = $("#dl-log-dlg");
   d.dataset.status = t ? t.status : "";
   $("#dl-log-title").textContent = t ? tr("d.log.title", "Registro: {name}", { name: t.name || t.source }) : tr("d.log.removed", "Registro: download rimosso");
-  $("#dl-log-st").textContent = !t ? "" : (t.options || {}).seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status);
+  $("#dl-log-st").textContent = !t ? "" : (t.options || {}).seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status, t);
   dlLogSummary();
 }
 

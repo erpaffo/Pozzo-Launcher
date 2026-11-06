@@ -755,6 +755,7 @@
  "d.status.completed": "Completato",
  "d.status.error": "Errore",
  "d.status.seeding": "In condivisione",
+ "d.status.stalled": "In stallo",
  "d.prio.skip": "Salta",
  "d.prio.normal": "Normale",
  "d.prio.high": "Alta",
