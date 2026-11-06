@@ -28,7 +28,7 @@
     { id: "favorite", get label() { return L("a.sc.favorite", "Preferito (gioco aperto)"); }, group: "Libreria", keys: ["F"], scope: "desktop" },
     { id: "hide", get label() { return L("a.sc.hide", "Nascondi/mostra (gioco aperto)"); }, group: "Libreria", keys: ["H"], scope: "desktop" },
     { id: "random", get label() { return L("a.toolbar.random", "Gioco a caso"); }, group: "Libreria", keys: ["R"], scope: "desktop" },
-    { id: "refresh", get label() { return L("a.sc.refresh", "Aggiorna la libreria"); }, group: "Libreria", keys: ["Mod+R"], scope: "desktop" },
+    { id: "refresh", get label() { return L("a.sc.refresh", "Aggiorna la libreria"); }, group: "Libreria", keys: ["Mod+Shift+R"], scope: "desktop" },
     { id: "bigPicture", get label() { return L("a.sc.bigPicture", "Big Picture (entra / esci)"); }, group: "Aspetto", keys: ["Mod+Shift+B", "F11"], scope: "both" },
     { id: "nextExperience", get label() { return L("a.sc.nextExperience", "Grafica successiva"); }, group: "Aspetto", keys: ["Mod+Shift+E"], scope: "desktop" },
     { id: "nextTheme", get label() { return L("a.sc.nextTheme", "Tema successivo"); }, group: "Aspetto", keys: ["Mod+Shift+T"], scope: "desktop" },

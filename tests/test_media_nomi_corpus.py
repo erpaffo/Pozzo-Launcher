@@ -65,11 +65,11 @@ CASI = [
     ("Serie/Season 01/Serie.S01E02.Titolo.1080p.WEB-DL.mkv", "episodio", "Titolo", None, "Serie", 1, 2),
     ("Serie (2019)/Season 01/S01E02.mkv", "episodio", "Episodio 2", 2019, "Serie", 1, 2),
     ("Serie/Season 01/Titolo - 02.mkv", "episodio", "Titolo", None, "Serie", 1, 2),
-    ("Anime/Season 01/[SubsPlease] Titolo - 02 (1080p) [ABC].mkv", "film", "Titolo - 02", None, None, None, None),
+    ("Anime/Season 01/[SubsPlease] Titolo - 02 (1080p) [ABC].mkv", "episodio", "Episodio 2", None, "Titolo", 1, 2),
     # ambiguo: convenzione anime «Titolo - 02 (1080p)» non riconosciuta; senza stagione nel nome resta un film
     ("Serie.S01E02.1080p.mkv", "episodio", "Serie", None, None, 1, 2),
     # ambiguo: senza titolo dell'episodio resta il nome della serie nel file
-    ("Serie/02 - Titolo.mkv", "film", "02 - Titolo", None, None, None, None),
+    ("Serie/02 - Titolo.mkv", "episodio", "Titolo", None, "Serie", 1, 2),
     # ambiguo: numero senza cartella di stagione: non si può sapere che è un episodio
     # ---------------------------------------------------------- musica
     ("Artista/Album/01 - Titolo.flac", "brano", "Titolo", None, "Artista", None, None),

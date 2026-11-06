@@ -21,6 +21,7 @@ Copia, incolla, ricarica e le altre combinazioni del browser restano intatte.
 | Barra laterale Esplora (apri/chiudi) | `Ctrl+B` | `⌘B` |
 | Indietro / chiudi | `Alt+←`, `Ctrl+[` o `Esc` | `⌥←`, `⌘[` o `Esc` |
 | Cerca nuovi giochi | `Ctrl+Shift+S` | `⌘⇧S` |
+| Aggiorna la libreria | `Ctrl+Shift+R` | `⌘⇧R` |
 | Avvia il gioco aperto | `Enter` | `Enter` |
 | Preferito (gioco aperto) | `F` | `F` |
 | Nascondi/mostra (gioco aperto) | `H` | `H` |

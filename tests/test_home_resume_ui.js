@@ -29,6 +29,9 @@ assert.strictEqual(resumeSaveText({ time: at(2026, 10, 1, 7, 0), name: "x" }, no
 // il confine e' il giorno di calendario, non le 24 ore
 assert.strictEqual(resumeSaveText({ time: at(2026, 10, 3, 23, 59), name: "x" }, at(2026, 10, 4, 0, 1)), "salvataggio di ieri 23:59");
 
+// resumeHtml legge l'ora corrente: la si ferma a `now`, altrimenti «ieri» dipende dal giorno in cui gira il test
+Date.now = () => now * 1000;
+
 // HTML: primo elemento grande, gli altri righe piccole con ▶
 const items = [
   { id: 7, key: "k7", title: "Zelda <3", platform: "switch", cover: true, played_secs: 100, hltb_main_secs: null,
