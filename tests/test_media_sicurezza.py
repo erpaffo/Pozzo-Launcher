@@ -93,7 +93,7 @@ def metti_item_fuori(tmp: Path, root: Path, path: str) -> str:
     db_file = next((tmp / "media-locale-cache").glob("media.db"))
     conn = sqlite3.connect(db_file)
     conn.execute("INSERT OR REPLACE INTO items(id, kind, title, path, poster, root, seen, pos)"
-                 " VALUES('x1','film','Intruso',?,?,?,0,0)", (path, path, str(root)))
+                 " VALUES('x1','film','Intruso',?,?,?,0,0)", (path, path, str(root.resolve())))
     conn.commit()
     conn.close()
     return "x1"
