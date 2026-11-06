@@ -2,12 +2,14 @@
    l'installazione «un clic». Si aggancia da solo alle righe tr[data-p] (la tabella viene ridisegnata spesso). */
 (function (global) {
   "use strict";
+  // t() viene da i18n.js nel browser; nei test in node manca e resta il testo italiano
+  const trad = (k, it, p) => (global.t ? global.t(k, p) : it.replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? p[n] : m)));
 
   const STATI = {
-    ok: { cls: "xe-ok", icona: "✓", testo: "trovato" },
-    missing: { cls: "xe-bad", icona: "✗", testo: "mancante" },
-    mismatch: { cls: "xe-bad", icona: "✗", testo: "non corrisponde" },
-    unknown: { cls: "xe-warn", icona: "?", testo: "hash non riconosciuto" },
+    ok: { cls: "xe-ok", icona: "✓", testo: () => trad("k.emu.st.ok", "trovato") },
+    missing: { cls: "xe-bad", icona: "✗", testo: () => trad("k.emu.st.missing", "mancante") },
+    mismatch: { cls: "xe-bad", icona: "✗", testo: () => trad("k.emu.st.mismatch", "non corrisponde") },
+    unknown: { cls: "xe-warn", icona: "?", testo: () => trad("k.emu.st.unknown", "hash non riconosciuto") },
   };
 
   // found/ok/sha1 arrivano da bios.check; mismatch/status espliciti (se il backend li aggiunge) hanno la precedenza
@@ -36,25 +38,25 @@
 
     async function json(url, init) {
       let r;
-      try { r = await doFetch(url, init); } catch (e) { throw new Error("Rete non raggiungibile"); }
-      if (r.status === 404 || r.status === 405) throw new Error("Funzione non disponibile in questa versione");
+      try { r = await doFetch(url, init); } catch (e) { throw new Error(trad("k.emu.net", "Rete non raggiungibile")); }
+      if (r.status === 404 || r.status === 405) throw new Error(trad("k.emu.nofn", "Funzione non disponibile in questa versione"));
       let d = null;
       try { d = await r.json(); } catch (e) { /* corpo non JSON */ }
-      if (!r.ok) throw new Error((d && (d.detail || d.message)) || `Errore ${r.status}`);
+      if (!r.ok) throw new Error((d && (d.detail || d.message)) || trad("k.emu.http", "Errore {status}", {status: r.status}));
       return d || {};
     }
 
     const q = (c) => "?console=" + encodeURIComponent(c);
 
     // «Impostazioni consigliate» per console: legge /api/emu-presets, salva al cambio
-    const SCELTE = [["leave", "Non toccare"], ["quality", "Qualità"], ["performance", "Prestazioni"], ["faithful", "Fedele"]];
+    const SCELTE = () => [["leave", trad("k.emu.pre.leave", "Non toccare")], ["quality", trad("k.emu.pre.quality", "Qualità")], ["performance", trad("k.emu.common.perf", "Prestazioni")], ["faithful", trad("k.emu.pre.faithful", "Fedele")]];
     let presetCorrenti = null;
     function rigaPreset(consoleId, nome) {
       const riga = el("div", "xe-preset");
       const sel = el("select", "field xe-preset-sel");
       sel.id = "xe-preset-" + consoleId;
-      SCELTE.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.appendChild(o); });
-      const lab = el("label", "small", "Impostazioni consigliate ");
+      SCELTE().forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.appendChild(o); });
+      const lab = el("label", "small", trad("k.emu.pre.label", "Impostazioni consigliate") + " ");
       lab.setAttribute("for", sel.id);
       riga.appendChild(lab); riga.appendChild(sel);
       presetCorrenti = presetCorrenti || json("/api/emu-presets");
@@ -63,7 +65,7 @@
         try {
           await json("/api/emu-presets/console", { method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ platform: consoleId, preset: sel.value }) });
-          if (global.toast) global.toast(`Impostazioni consigliate salvate per ${nome}`);
+          if (global.toast) global.toast(trad("k.emu.pre.saved", "Impostazioni consigliate salvate per {nome}", {nome}));
         } catch (e) { if (global.toast) global.toast(e.message, true); }
       });
       return riga;
@@ -79,7 +81,7 @@
       td.setAttribute("colspan", "5");
       const box = el("div", "xe-box");
       box.setAttribute("role", "group");
-      box.setAttribute("aria-label", `Emulatore consigliato e BIOS per ${nome}`);
+      box.setAttribute("aria-label", trad("k.emu.group_aria", "Emulatore consigliato e BIOS per {nome}", {nome}));
       const rec = el("div", "xe-rec");
       const bios = el("div", "xe-bios");
       const stato = el("div", "xe-state");
@@ -99,27 +101,27 @@
     }
 
     async function carica(v) {
-      v.rec.textContent = "Cerco il consiglio…";
+      v.rec.textContent = trad("k.emu.rec.search", "Cerco il consiglio…");
       const [r, b] = await Promise.allSettled([
         json("/api/emulators/recommend" + q(v.consoleId)),
         json("/api/emulators/bios" + q(v.consoleId)),
       ]);
       v.rec.textContent = "";
       if (r.status === "fulfilled") disegnaConsiglio(v, r.value);
-      else v.rec.appendChild(el("span", "muted small", "Consiglio non disponibile: " + r.reason.message));
+      else v.rec.appendChild(el("span", "muted small", trad("k.emu.rec.unavail", "Consiglio non disponibile: {msg}", {msg: r.reason.message})));
       if (b.status === "fulfilled") disegnaBios(v, b.value);
-      else v.bios.appendChild(el("span", "muted small", "BIOS non verificabili: " + b.reason.message));
+      else v.bios.appendChild(el("span", "muted small", trad("k.emu.bios.unavail", "BIOS non verificabili: {msg}", {msg: b.reason.message})));
     }
 
     function disegnaConsiglio(v, d) {
       const t = el("div", "xe-title");
-      t.appendChild(el("b", null, d.emulator || "Nessun emulatore"));
-      if (d.installed) t.appendChild(el("span", "xe-tag xe-ok", " ✓ installato"));
+      t.appendChild(el("b", null, d.emulator || trad("k.emu.none", "Nessun emulatore")));
+      if (d.installed) t.appendChild(el("span", "xe-tag xe-ok", trad("k.emu.installed_tag", " ✓ installato")));
       v.rec.appendChild(t);
       if (d.reason) v.rec.appendChild(el("div", "muted small", d.reason));
       if (d.reasons) {  // fedeltà / prestazioni / controller: chip con il testo nel tooltip
         const chips = el("div", "xe-chips");
-        [["fedelta", "Fedeltà"], ["prestazioni", "Prestazioni"], ["controller", "Controller"]].forEach(([k, t]) => {
+        [["fedelta", trad("k.emu.chip.fedelta", "Fedeltà")], ["prestazioni", trad("k.emu.common.perf", "Prestazioni")], ["controller", trad("k.emu.common.controller", "Controller")]].forEach(([k, t]) => {
           if (!d.reasons[k]) return;
           const c = el("span", "xe-chip small", t);
           c.tabIndex = 0;
@@ -129,34 +131,34 @@
         v.rec.appendChild(chips);
       }
       if (d.supported === false) {
-        v.rec.appendChild(el("div", "xe-warn small", "Pozzo non sa installare questo emulatore: scegline uno a mano."));
+        v.rec.appendChild(el("div", "xe-warn small", trad("k.emu.unsupported", "Pozzo non sa installare questo emulatore: scegline uno a mano.")));
         return;
       }
       if (d.installed) return;
-      const btn = el("button", "btn xe-install", "⬇ Installa");
+      const btn = el("button", "btn xe-install", trad("k.emu.install", "⬇ Installa"));
       btn.type = "button";
-      btn.setAttribute("aria-label", `Installa ${d.emulator} per ${v.nome}`);
+      btn.setAttribute("aria-label", trad("k.emu.install_aria", "Installa {emu} per {nome}", {emu: d.emulator, nome: v.nome}));
       btn.addEventListener("click", () => installa(v, btn));
       v.rec.appendChild(btn);
     }
 
     function disegnaBios(v, d) {
       const items = d.items || [];
-      if (!items.length) { v.bios.appendChild(el("span", "muted small", "Nessun BIOS richiesto.")); return; }
+      if (!items.length) { v.bios.appendChild(el("span", "muted small", trad("k.emu.bios.none", "Nessun BIOS richiesto."))); return; }
       const ul = el("ul", "xe-list");
       items.forEach((it) => {
         const s = STATI[statoBios(it)];
         const li = el("li", "xe-item " + s.cls);
         li.appendChild(el("span", "xe-ico", s.icona));
         li.appendChild(el("span", "xe-file", " " + it.file));
-        li.appendChild(el("span", "xe-txt small", ` — ${s.testo}${it.required ? "" : " (facoltativo)"}`));
-        li.setAttribute("aria-label", `${it.file}: ${s.testo}${it.required ? ", richiesto" : ""}`);
+        li.appendChild(el("span", "xe-txt small", ` — ${s.testo()}${it.required ? "" : trad("k.emu.optional", " (facoltativo)")}`));
+        li.setAttribute("aria-label", `${it.file}: ${s.testo()}${it.required ? trad("k.emu.required", ", richiesto") : ""}`);
         if (it.help_url) {
-          const a = el("a", "xe-help small", " Come procurarlo");
+          const a = el("a", "xe-help small", trad("k.emu.help_link", " Come procurarlo"));
           a.setAttribute("href", it.help_url);
           a.setAttribute("target", "_blank");
           a.setAttribute("rel", "noopener noreferrer");
-          a.setAttribute("aria-label", `Come procurare ${it.file} (si apre in una nuova scheda)`);
+          a.setAttribute("aria-label", trad("k.emu.help_aria", "Come procurare {file} (si apre in una nuova scheda)", {file: it.file}));
           li.appendChild(a);
         }
         ul.appendChild(li);
@@ -176,7 +178,7 @@
       btn.disabled = true;
       v.barra.hidden = false;
       v.stato.className = "xe-state";
-      v.stato.textContent = "Installazione in corso…";
+      v.stato.textContent = trad("k.emu.installing", "Installazione in corso…");
       v.fill.style.transform = "scaleX(0)";
       let finita = false;
       const post = json("/api/emulators/install-recommended", {
@@ -201,7 +203,7 @@
       if (res.ok && res.x.ok !== false) {
         v.fill.style.transform = "scaleX(1)";
         v.stato.className = "xe-state xe-ok";
-        v.stato.textContent = "✓ " + (res.x.message || "Installato");
+        v.stato.textContent = "✓ " + (res.x.message || trad("k.emu.installed_ok", "Installato"));
         btn.hidden = true;
       } else {
         v.stato.className = "xe-state xe-bad";
@@ -246,12 +248,14 @@
   const doc = global.document;
   if (!doc) return; // test in node: niente DOM
   const campo = (id) => doc.getElementById(id);
+  // t() viene da i18n.js nel browser; nei test in node manca e resta il testo italiano
+  const trad = (k, it, p) => (global.t ? global.t(k, p) : it.replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? p[n] : m)));
 
   function mostra(d) {
     campo("fc-dir").value = d.dir || "";
     campo("fc-dir").placeholder = d.default_dir || "";
     campo("fc-del").checked = !!d.delete_after;
-    campo("fc-free").textContent = d.free_gb == null ? "" : `Spazio libero: ${Number(d.free_gb).toFixed(1)} GB`;
+    campo("fc-free").textContent = d.free_gb == null ? "" : trad("k.emu.fc.free", "Spazio libero: {gb} GB", {gb: Number(d.free_gb).toFixed(1)});
   }
 
   async function carica() {
@@ -274,7 +278,7 @@
     const body = { dir: campo("fc-dir").value.trim(), delete_after: campo("fc-del").checked };
     try {
       mostra(await global.api("/api/app/fastcopy", { body }));
-      global.toast("Impostazioni del disco veloce salvate");
+      global.toast(trad("k.emu.fc.saved", "Impostazioni del disco veloce salvate"));
     } catch (e) { global.toast(e.message, true); }  // il server dice il motivo (es. cartella non valida)
   }
 
@@ -300,12 +304,15 @@
   if (!doc) return; // test in node: niente DOM
   const campo = (id) => doc.getElementById(id);
   const MODI = ["off", "notify", "install"];
+  // t() viene da i18n.js nel browser; nei test in node manca e resta il testo italiano
+  const trad = (k, it, p) => (global.t ? global.t(k, p) : it.replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? p[n] : m)));
+
 
   function mostra(d) {
     campo("emu-au-mode").value = MODI.includes(d.mode) ? d.mode : "off";
     const box = campo("emu-upd");
     box.textContent = "";
-    if (!d.updates || !d.updates.length) { box.textContent = "Nessun aggiornamento disponibile."; return; }
+    if (!d.updates || !d.updates.length) { box.textContent = trad("k.emu.upd.none", "Nessun aggiornamento disponibile."); return; }
     d.updates.filter((u) => u.update).forEach((u) => {
       const riga = doc.createElement("div");
       riga.className = "row";
@@ -316,8 +323,8 @@
       btn.className = "btn";
       btn.type = "button";
       btn.dataset.upd = u.id;
-      btn.textContent = "Aggiorna";
-      btn.setAttribute("aria-label", `Aggiorna ${u.name} a ${u.latest}`);
+      btn.textContent = trad("k.emu.upd.btn", "Aggiorna");
+      btn.setAttribute("aria-label", trad("k.emu.upd.aria", "Aggiorna {name} a {latest}", {name: u.name, latest: u.latest}));
       riga.appendChild(testo); riga.appendChild(btn);
       box.appendChild(riga);
     });
@@ -325,7 +332,7 @@
 
   async function carica() {
     if (!campo("emu-upd")) return;
-    campo("emu-upd").textContent = "Controllo gli aggiornamenti…";
+    campo("emu-upd").textContent = trad("k.emu.upd.checking", "Controllo gli aggiornamenti…");
     try { mostra(await global.api("/api/emulators/updates")); }
     catch (e) { campo("emu-upd").textContent = e.message; }
   }
@@ -334,7 +341,7 @@
     if (!ev.target || ev.target.id !== "emu-au-mode") return;
     try {
       await global.api("/api/emulators/autoupdate", { body: { mode: ev.target.value } });
-      global.toast("Aggiornamento automatico degli emulatori salvato");
+      global.toast(trad("k.emu.upd.saved", "Aggiornamento automatico degli emulatori salvato"));
     } catch (e) { global.toast(e.message, true); }
     carica();
   });
@@ -344,15 +351,15 @@
     const btn = ev.target.closest && ev.target.closest("[data-upd]");
     if (!btn) return;
     btn.disabled = true;
-    btn.textContent = "Aggiorno…";
+    btn.textContent = trad("k.emu.upd.updating", "Aggiorno…");
     try {
       const r = await global.api("/api/emulators/update/" + encodeURIComponent(btn.dataset.upd), { method: "POST" });
-      global.toast(`Aggiornato ${btn.dataset.upd} (${r.path})`);
+      global.toast(trad("k.emu.upd.done", "Aggiornato {id} ({path})", {id: btn.dataset.upd, path: r.path}));
       carica();
     } catch (e) {
       global.toast(e.message, true);
       btn.disabled = false;
-      btn.textContent = "Aggiorna";
+      btn.textContent = trad("k.emu.upd.btn", "Aggiorna");
     }
   });
 

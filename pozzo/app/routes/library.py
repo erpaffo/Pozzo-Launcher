@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, Response
 
-from ... import config as C, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
+from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
 from ...downloads.engines import torrent as TOR
 from ...downloads.engines.http import safe_name as _safe_name
 from ...library import launcher as L
@@ -134,19 +134,19 @@ def build_router(ctx) -> APIRouter:
                     for g in (lib.by_id.get(i) for i in ids) if g and OW.visible(g, pid)]
         return {"rev": lib.meta_rev, "games": rows}
 
-    FIELD_LABELS = {"title": "dati del gioco", "description": "descrizione", "developer": "sviluppatore",
-                    "publisher": "editore", "genres": "generi", "release_date": "data di uscita",
-                    "players": "giocatori", "rating": "valutazione"}
-    MEDIA_LABELS = {"cover": "copertina", "screenshot": "screenshot", "title": "schermata del titolo",
-                    "wheel": "logo (wheel)", "marquee": "marquee", "video": "video", "box3d": "box 3D",
-                    "fanart": "fanart"}
+    FIELD_LABELS = {"title": "s.library.field.title", "description": "s.library.field.description", "developer": "s.library.field.developer",
+                    "publisher": "s.library.field.publisher", "genres": "s.library.field.genres", "release_date": "s.library.field.release_date",
+                    "players": "s.library.field.players", "rating": "s.library.field.rating"}
+    MEDIA_LABELS = {"cover": "s.library.media.cover", "screenshot": "s.library.media.screenshot", "title": "s.library.media.title",
+                    "wheel": "s.library.media.wheel", "marquee": "s.library.media.marquee", "video": "s.library.media.video", "box3d": "s.library.media.box3d",
+                    "fanart": "s.library.media.fanart"}
 
     def _missing(g: dict) -> list[str]:
         if not g["found"]:
-            return [FIELD_LABELS["title"]]
-        out = [FIELD_LABELS.get(f, f) for f in cfg.fields
+            return [I.tr(FIELD_LABELS["title"])]
+        out = [I.tr(FIELD_LABELS.get(f, f)) for f in cfg.fields
                if f != "title" and (g.get(f) in (None, "", []) if f in g else False)]
-        out += [MEDIA_LABELS.get(m, m) for m in cfg.media if m not in g["media"]]
+        out += [I.tr(MEDIA_LABELS.get(m, m)) for m in cfg.media if m not in g["media"]]
         return out
 
     @router.get("/api/home/resume")
@@ -239,18 +239,18 @@ def build_router(ctx) -> APIRouter:
     def api_flag(gid: int, body: dict = Body(...)):
         field, value = body.get("field"), body.get("value")
         if field not in ("favorite", "hidden", "status", "last_played", "note", "my_rating"):
-            raise HTTPException(400, "campo non valido")
+            raise HTTPException(400, I.tr("s.library.badField"))
         if field == "note":
             value = str(value or "").strip()[:4000] or None
         elif field == "my_rating":
             if value not in (None, "", 0, 1, 2, 3, 4, 5):
-                raise HTTPException(400, "voto non valido (1-5)")
+                raise HTTPException(400, I.tr("s.library.badRating"))
             value = int(value) if value else None
         elif field == "last_played":  # "rimuovi da Giocati di recente": si azzera solo l'ultima partita, tempo e avvii restano
             value = None
         elif field == "status":
             if value not in ("", None, "backlog", "playing", "done", "dropped"):
-                raise HTTPException(400, "stato non valido")
+                raise HTTPException(400, I.tr("s.library.badStatus"))
             value = value or None
         else:
             value = 1 if value else 0
@@ -270,7 +270,7 @@ def build_router(ctx) -> APIRouter:
     def api_install(gid: int):
         g = lib.game(gid)
         if not g.get("install_uri"):
-            raise HTTPException(400, "Questo gioco non ha un collegamento per l'installazione")
+            raise HTTPException(400, I.tr("s.library.noInstallLink"))
         try:
             L.open_uri(g["install_uri"])
         except L.LaunchError as e:
@@ -303,7 +303,7 @@ def build_router(ctx) -> APIRouter:
         g = lib.game(gid)
         mag = (g.get("launch") or {}).get("magnet")
         if not mag:
-            raise HTTPException(400, "Nessun link magnet per questo gioco")
+            raise HTTPException(400, I.tr("s.library.noMagnet"))
         single = _single_magnet(g)
         file = g.get("canonical") or g["title"]
         mgr = getattr(ctx, "downloads", None)  # costruito dopo questo modulo (ultimo in ORDER)
@@ -321,7 +321,7 @@ def build_router(ctx) -> APIRouter:
         try:
             L.open_uri(single or mag)
         except L.LaunchError:
-            raise HTTPException(409, "Nessun client torrent installato per aprire i link magnet")
+            raise HTTPException(409, I.tr("s.library.noTorrentClient"))
         return {"ok": True, "single": bool(single) or "&so=" in mag or bool(re.search(r"dn=[^&]*\.", mag)),
                 "file": g.get("canonical") or g["title"]}
 
@@ -343,7 +343,7 @@ def build_router(ctx) -> APIRouter:
     def api_store_page(gid: int):
         g = lib.game(gid)
         if not g.get("page"):
-            raise HTTPException(400, "Nessuna pagina dello store")
+            raise HTTPException(400, I.tr("s.library.noStorePage"))
         try:
             L.open_uri(g["page"])
         except L.LaunchError as e:
@@ -367,7 +367,7 @@ def build_router(ctx) -> APIRouter:
         g = lib.game(gid)
         pages = _download_pages(g)
         if not pages:
-            raise HTTPException(404, "Questo gioco non ha una pagina con i link di download")
+            raise HTTPException(404, I.tr("s.library.noDownloadPage"))
         from ...cache import Cache
         c = Cache(cfg.cache)
         try:
@@ -394,7 +394,7 @@ def build_router(ctx) -> APIRouter:
     def api_game_paste(gid: int, url: str, refresh: int = 0):
         """Link contenuti in un paste dei filehoster (lo store linka il paste al posto dei file): si legge al clic."""
         if not url.startswith(("http://", "https://")):
-            raise HTTPException(400, "Link non valido")
+            raise HTTPException(400, I.tr("s.library.badLink"))
         from ...cache import Cache
         c = Cache(cfg.cache)
         try:
@@ -412,7 +412,7 @@ def build_router(ctx) -> APIRouter:
         g = lib.game(gid)
         urls = [str(u) for u in body.get("links") or [] if str(u).startswith(("http", "magnet:"))][:80]
         if not urls:
-            raise HTTPException(400, "Nessun link da scaricare")
+            raise HTTPException(400, I.tr("s.library.noLinks"))
         mgr = getattr(ctx, "downloads", None)
         if not mgr:  # solo scansione da terminale: niente coda, si apre il browser
             try:
@@ -431,7 +431,7 @@ def build_router(ctx) -> APIRouter:
             except ValueError as e:
                 failed.append({"link": u, "error": str(e)})
         if not tasks:
-            raise HTTPException(409, failed[0]["error"] if failed else "Nessun link aggiunto")
+            raise HTTPException(409, failed[0]["error"] if failed else I.tr("s.library.noLinkAdded"))
         return {"ok": True, "tasks": tasks, "failed": failed}
 
     @router.post("/api/game/{gid}/play")
@@ -440,7 +440,7 @@ def build_router(ctx) -> APIRouter:
         fast = isinstance(body, dict) and bool(body.get("fast"))  # chiamata diretta (API v1): body e' il default di Body  # «gioca da disco veloce»
         if g.get("store"):
             if not g.get("installed"):
-                raise HTTPException(409, "Il gioco non e' installato: usa «Installa»")
+                raise HTTPException(409, I.tr("s.library.notInstalledUseInstall"))
             launch = g["launch"]
             if g["store"] == "ports":  # i port chiedono come aprire la finestra, se non c'e' una scelta salvata
                 from ... import ports as PT
@@ -458,7 +458,7 @@ def build_router(ctx) -> APIRouter:
         path = next((Path(f) for f in g["files"] if Path(f).exists()), None)
         if not p or not path:
             folders = [str(Path(f).parent) for f in g["files"]]
-            raise ApiError(404, "File del gioco non trovato (disco scollegato?)", "rom_folder_missing",
+            raise ApiError(404, I.tr("s.library.romMissing"), "rom_folder_missing",
                            {"path": folders[0] if folders else ""})
         try:
             fb = body.get("fallback") if isinstance(body, dict) else None  # candidato proposto dopo un crash
@@ -474,7 +474,7 @@ def build_router(ctx) -> APIRouter:
         from ...remote.sunshine import launcher_cmd
         g = lib.game(gid)  # serve "launch" (icona dell'exe), che non sta in memoria
         if g.get("store") == "online":
-            raise HTTPException(400, "Il gioco non e' installato")
+            raise HTTPException(400, I.tr("s.library.notInstalled"))
         launch = g.get("launch") or {}
         icon = launch.get("target") if g.get("store") and launch.get("type") != "uri" else None
         if not icon or not Path(icon).is_file():  # icona dalla copertina
@@ -494,11 +494,11 @@ def build_router(ctx) -> APIRouter:
         g = lib.get(gid)
         p = P.PLATFORMS.get(g["platform"])
         if g.get("store") == "online":
-            raise HTTPException(400, "Il gioco non e' installato")
+            raise HTTPException(400, I.tr("s.library.notInstalled"))
         if g.get("store"):  # giochi PC: solo gli script prima/dopo
             return {"profile": user.profile(g["key"]) or {}, "pc": True, "platform": STORE_NAMES.get(g["store"], "PC")}
         if not p:
-            raise HTTPException(400, "Console sconosciuta")
+            raise HTTPException(400, I.tr("s.library.unknownConsole"))
         base = L.plan(cfg, p)
         try:
             cur = L.plan(cfg, p, user.profile(g["key"]))
@@ -526,14 +526,14 @@ def build_router(ctx) -> APIRouter:
         if data.get("companion"):
             data["companion"] = data["companion"].strip('"')
             if not Path(data["companion"]).is_file():
-                raise HTTPException(400, "Applicazione abbinata non trovata")
+                raise HTTPException(400, I.tr("s.library.companionMissing"))
         data = {k: v for k, v in data.items() if v}
         if data.get("preset") not in (None, "inherit", "leave", "quality", "performance", "faithful"):
-            raise HTTPException(400, "Preset non valido")
+            raise HTTPException(400, I.tr("s.library.badPreset"))
         if data.get("emulator") and data["emulator"] not in L.EMULATOR_NAMES:
-            raise HTTPException(400, "Emulatore sconosciuto")
+            raise HTTPException(400, I.tr("s.library.unknownEmu"))
         if data.get("exe") and not Path(data["exe"].strip('"')).is_file():
-            raise HTTPException(400, "Eseguibile non trovato")
+            raise HTTPException(400, I.tr("s.library.exeMissing"))
         if data.get("exe"):
             data["exe"] = data["exe"].strip('"')
         user.set_profile(_member_keys(gid), data or None)
@@ -549,7 +549,7 @@ def build_router(ctx) -> APIRouter:
         g = lib.get(gid)
         f = next((Path(x) for x in g["files"] if Path(x).exists()), None)
         if not f:
-            raise HTTPException(404, "File non trovato")
+            raise HTTPException(404, I.tr("s.library.fileMissing"))
         if sys.platform == "win32":
             subprocess.Popen(["explorer", "/select,", str(f)])
         else:
@@ -560,7 +560,7 @@ def build_router(ctx) -> APIRouter:
     def api_coll_create(body: dict = Body(...)):
         name = (body.get("name") or "").strip()
         if not name:
-            raise HTTPException(400, "nome mancante")
+            raise HTTPException(400, I.tr("s.library.nameMissing"))
         slug = user.create_collection(name)
         if body.get("game"):
             for k in _member_keys(int(body["game"])):
@@ -584,7 +584,7 @@ def build_router(ctx) -> APIRouter:
     def api_coll_members(slug: str, body: dict = Body(...)):
         action = body.get("action")
         if action not in ("add", "remove"):
-            raise HTTPException(400, "azione non valida")
+            raise HTTPException(400, I.tr("s.library.badAction"))
         for k in _member_keys(int(body["game"])):
             user.edit_membership(slug, k, action)
         return {"ok": True}

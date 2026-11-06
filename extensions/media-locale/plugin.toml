@@ -1,0 +1,20 @@
+[plugin]
+name = "Media locale"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "🎬"
+description = "Film, serie e musica che hai già sul disco, sfogliati come una libreria: nomi riconosciuti alla maniera di Jellyfin/Plex, poster locali, ripresa da dove eri rimasto."
+long_description = "Trasforma una o più cartelle del tuo PC in una libreria di film, serie e musica dentro Pozzo Launcher. La scansione riconosce i nomi più comuni («Film (2020).mkv», «Serie/Season 01/S01E02 - Titolo.mkv», «Artista/Album/01 - Titolo.flac») e i poster locali (poster.jpg, folder.jpg). I contenuti che la finestra sa leggere partono nel lettore integrato, gli altri si aprono nel lettore predefinito del sistema. La posizione di riproduzione e lo stato «visto» restano sul tuo PC, in un archivio separato dalla libreria dei giochi: nessun dato viene inviato in rete."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Media locale» dalla barra laterale e aggiungi le cartelle di film, serie o musica.\n3. Avvia la scansione: i file vengono riconosciuti dal nome e dalle cartelle.\n4. Apri un contenuto per riprodurlo; la posizione si salva da sola e riaprendo riprendi da dove eri.\n5. Per i formati che la finestra non legge (es. mkv) il pulsante apre il lettore esterno del sistema (mpv, VLC o quello predefinito)."
+features = [
+  "Più cartelle di film, serie e musica, scelte da te",
+  "Riconoscimento dei nomi alla maniera di Jellyfin/Plex, con stagioni ed episodi",
+  "Poster locali (poster.jpg, folder.jpg) mostrati nella griglia",
+  "Ripresa automatica da dove eri rimasto e stato «visto» oltre il 90%",
+  "Lettore integrato per i formati del browser, lettore esterno per gli altri",
+  "Archivio separato: i media non entrano nella libreria dei giochi",
+  "Nessuna rete e nessun dato inviato fuori dal PC"
+]
+api = 2
+min_app = "0.15.0"
+permissions = ["media:lettura", "avvio", "impostazioni"]

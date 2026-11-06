@@ -6,26 +6,26 @@ function watchToastText(ev) {
   const n = Number(ev?.count) || 0, titles = (ev?.titles || []).filter(Boolean);
   if (n < 1) return null;
   const shown = titles.slice(0, 3), more = n - shown.length;
-  const list = shown.join(", ") + (shown.length && more > 0 ? ` e altri ${more}` : "");
-  return `${n} ${n === 1 ? "nuovo gioco" : "nuovi giochi"}${ev.platform ? ` in ${ev.platform}` : ""}${list ? `: ${list}` : ""}`;
+  const list = shown.join(", ") + (shown.length && more > 0 ? ` ${t("i.watch.andMore", { n: more })}` : "");
+  return `${n} ${n === 1 ? t("i.watch.new.one") : t("i.watch.new.many")}${ev.platform ? ` ${t("i.watch.in", { p: ev.platform })}` : ""}${list ? `: ${list}` : ""}`;
 }
 
 // Riga di stato dalla risposta di GET /api/library/watch.
 function watchStatusText(w, nowSec) {
   if (!w) return "";
-  if (!w.enabled) return "Disattivato";
+  if (!w.enabled) return t("i.watch.off");
   let s;
   const wait = Array.isArray(w.pending) ? w.pending : [], n = Array.isArray(w.pending) ? w.pending.length : Number(w.pending) || 0;
-  if (wait.length) s = `Aspetto che finisca la copia di: ${wait.join(", ")}`;
-  else if (n) s = `Aspetto che finisca la copia di ${n} file`;
+  if (wait.length) s = t("i.watch.waitingNames", { list: wait.join(", ") });
+  else if (n) s = t("i.watch.waitingCount", { n });
   else {
-    s = "In ascolto";
+    s = t("i.watch.listening");
     if (w.last_scan) {
       const ago = Math.max(0, Math.round(nowSec - w.last_scan));
-      s += ` · ultima verifica ${ago < 60 ? `${ago} s` : `${Math.round(ago / 60)} min`} fa`;
+      s += ` · ${t("i.watch.lastCheck", { ago: ago < 60 ? `${ago} s` : `${Math.round(ago / 60)} min` })}`;
     }
   }
-  return w.errors ? `${s} · ${w.errors} ${w.errors === 1 ? "errore" : "errori"}` : s;
+  return w.errors ? `${s} · ${w.errors} ${w.errors === 1 ? t("i.watch.err.one") : t("i.watch.err.many")}` : s;
 }
 
 if (typeof module !== "undefined") module.exports = { watchToastText, watchStatusText };

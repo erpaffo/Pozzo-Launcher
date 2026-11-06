@@ -6,7 +6,7 @@
   "use strict";
   const KEY = "gs.motion";
   const VALUES = ["normal", "reduced", "off"];
-  const LABELS = { normal: "Complete", reduced: "Ridotte", off: "Nessuna" };
+  const LABELS = { normal: "i.motion.complete", reduced: "i.motion.reduced", off: "i.motion.none" };
   const root = document.documentElement;
   const system = typeof matchMedia === "function"
     ? matchMedia("(prefers-reduced-motion: reduce)")
@@ -58,11 +58,10 @@
     const row = document.createElement("div");
     row.className = "srow";
     row.dataset.gsMotion = "1";
-    row.innerHTML = `<div class="srow-txt"><div class="srow-title">Animazioni</div>
-      <div class="srow-desc">Movimento di copertine, pannelli e finestre. Senza una scelta vale
-      l'impostazione di sistema (Windows: «Effetti di animazione»).</div></div>
-      <div class="row" role="radiogroup" aria-label="Animazioni">`
-      + VALUES.map((v) => `<label class="chk"><input type="radio" name="gs-motion" value="${v}"> ${LABELS[v]}</label>`).join("")
+    row.innerHTML = `<div class="srow-txt"><div class="srow-title">${t("i.motion.title")}</div>
+      <div class="srow-desc">${t("i.motion.desc")}</div></div>
+      <div class="row" role="radiogroup" aria-label="${t("i.motion.title")}">`
+      + VALUES.map((v) => `<label class="chk"><input type="radio" name="gs-motion" value="${v}"> ${t(LABELS[v])}</label>`).join("")
       + `</div>`;
     inputs.push(...row.querySelectorAll("input"));
     row.addEventListener("change", (e) => { if (e.target.name === "gs-motion") set(e.target.value); });
@@ -76,7 +75,7 @@
     const pane = body.querySelector('[data-pane="aspetto"]');
     if (!pane || pane.querySelector("[data-gs-motion]")) return;
     const title = document.createElement("h3");
-    title.textContent = "Animazioni";
+    title.textContent = t("i.motion.title");
     pane.append(title, panel());
   }
 

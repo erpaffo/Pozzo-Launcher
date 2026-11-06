@@ -156,6 +156,71 @@
       ]
     },
     {
+      "id": "media-locale",
+      "name": "Media locale",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Film, serie e musica che hai già sul disco, sfogliati come una libreria: nomi riconosciuti alla maniera di Jellyfin/Plex, poster locali, ripresa da dove eri rimasto.",
+      "min_app": "0.15.0",
+      "base": "media-locale/",
+      "files": {
+        "backend.py": "da87825d6f07975f3adcc8d51640b79132a7c969614206117d1b886ee4113a12",
+        "frontend.js": "41c61cf9d530e374f0b76970a524c9b64c0f6fd7824585b295ce4402d52e6bee",
+        "hls.min.js": "484054e8cd03d3f6d1781fb7f402bdc318d8a4c527f933a95c624e27cc9a9470",
+        "logica.js": "1af9cd2a7a1ab7f1f595e9dd288597b6bbc218c9f5dff7320b35523412545237",
+        "metadata.py": "e87ac5119cab84b2acbb9d4b7081a7aa59c13087320ddab65fac1e68ed8c43de",
+        "player.js": "6948ac5797eee071af53a3628068734e3c77d998eabbd955c0b9d285dbf2e4dc",
+        "plugin.toml": "47a28bf29854df13096737889d81a4f2caad173b83254e3e39938b3c18f76b88",
+        "style.css": "15e70f850e9c252466374bff50e2edb9c78056c486767807cf39a26696c7c617"
+      },
+      "icon": "🎬",
+      "long_description": "Trasforma una o più cartelle del tuo PC in una libreria di film, serie e musica dentro Pozzo Launcher. La scansione riconosce i nomi più comuni («Film (2020).mkv», «Serie/Season 01/S01E02 - Titolo.mkv», «Artista/Album/01 - Titolo.flac») e i poster locali (poster.jpg, folder.jpg). I contenuti che la finestra sa leggere partono nel lettore integrato, gli altri si aprono nel lettore predefinito del sistema. La posizione di riproduzione e lo stato «visto» restano sul tuo PC, in un archivio separato dalla libreria dei giochi: nessun dato viene inviato in rete.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Media locale» dalla barra laterale e aggiungi le cartelle di film, serie o musica.\n3. Avvia la scansione: i file vengono riconosciuti dal nome e dalle cartelle.\n4. Apri un contenuto per riprodurlo; la posizione si salva da sola e riaprendo riprendi da dove eri.\n5. Per i formati che la finestra non legge (es. mkv) il pulsante apre il lettore esterno del sistema (mpv, VLC o quello predefinito).",
+      "features": [
+        "Più cartelle di film, serie e musica, scelte da te",
+        "Riconoscimento dei nomi alla maniera di Jellyfin/Plex, con stagioni ed episodi",
+        "Poster locali (poster.jpg, folder.jpg) mostrati nella griglia",
+        "Ripresa automatica da dove eri rimasto e stato «visto» oltre il 90%",
+        "Lettore integrato per i formati del browser, lettore esterno per gli altri",
+        "Archivio separato: i media non entrano nella libreria dei giochi",
+        "Nessuna rete e nessun dato inviato fuori dal PC"
+      ],
+      "permissions": [
+        "media:lettura",
+        "avvio",
+        "impostazioni"
+      ]
+    },
+    {
+      "id": "media-server",
+      "name": "Media server",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Le librerie del tuo Jellyfin o Plex dentro Pozzo Launcher: stessa griglia, stessa ricerca, «continua a guardare» e «visto» sincronizzati col server.",
+      "min_app": "0.15.0",
+      "base": "media-server/",
+      "files": {
+        "backend.py": "39eedbb5e18d04043c2c9a4f0fb40fbb5ecd3e5efe82e10a8e498759fb31a6c3",
+        "plugin.toml": "2d10d877b1c405424cfc54173e72bd360599ff8e26009aba6ee4a15cc3f53d86"
+      },
+      "icon": "📡",
+      "long_description": "Collega un server Jellyfin (indirizzo, utente e password oppure chiave API) o un server Plex (indirizzo e token dell'account) e sfoglia film, serie e musica direttamente da Pozzo. Il server resta la fonte di verità: la posizione di riproduzione e lo stato «visto» vengono letti dal server e aggiornati su di lui. Lo stream è diretto, senza transcodifica: i formati che la finestra non legge si aprono nel lettore esterno. Indirizzo e token restano soltanto su questo PC, in locale; la password serve solo al primo accesso e non viene salvata.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Media server» dalla barra laterale e inserisci l'indirizzo del tuo server.\n3. Jellyfin: accedi con utente e password (oppure incolla una chiave API dalle impostazioni del server). Plex: incolla il token del tuo account.\n4. Premi «Prova» per verificare il collegamento, poi sfoglia film, serie e musica.\n5. Riprendi da dove eri rimasto: la posizione arriva dal server e viene aggiornata su di lui.",
+      "features": [
+        "Jellyfin con utente e password o chiave API",
+        "Plex con il token del tuo account, salvato solo in locale",
+        "Stessa griglia e stessa ricerca dei contenuti locali",
+        "«Continua a guardare» e «visto» sincronizzati col server",
+        "Stream diretto (niente transcodifica, niente HLS)",
+        "Immagini servite da Pozzo, senza esporre il token al frontend"
+      ],
+      "permissions": [
+        "rete:*",
+        "avvio",
+        "impostazioni"
+      ]
+    },
+    {
       "id": "minerva",
       "name": "Store Minerva + Switch",
       "version": "1.4",
@@ -368,6 +433,42 @@
         "rete:store.steampowered.com",
         "libreria:lettura",
         "impostazioni"
+      ]
+    },
+    {
+      "id": "ricette-web",
+      "name": "Ricette web",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Estrae film, serie e podcast da siti web leciti e feed aperti tramite ricette dichiarative TOML, senza codice eseguito.",
+      "min_app": "0.15.0",
+      "base": "ricette-web/",
+      "files": {
+        "backend.py": "f7dbe88a4af318f476ea761a37a3c6731a267f4945d1a6ed0545d510c7058a49",
+        "frontend.js": "e3baad69e6730b1b47a53cdc5931e7d7eb8c81f07e4fcbbdecdd0ac34de53107",
+        "kodi_bridge.py": "7998d638fcd4beca79c6369e55cafe3086d78bcf76933924c0c638f208a8ff11",
+        "plugin.toml": "99acb48e81fda020b024151d8a30584e36c98bd89845976e99afb081d10755e5",
+        "RECIPE.md": "37677b659b25fed6f6f2fbde4428f1d918217da7512b38445a7676aa82d40d9f",
+        "recipe.toml": "fbc9e5bcff5a6c6e59f461b22a7d9f90b56380cf20d14dfe68b3198346205b5d",
+        "recipes-podcast.toml": "8da44a25708fc6c63c15302b96dff3ac6ea1998e03c9e4c14216144413ee62f7",
+        "style.css": "2ce88e376204daeb4252e4c2830cec15d5ccef607bee96ca800829cba8431756"
+      },
+      "icon": "🌐",
+      "long_description": "Aggiunge a Pozzo Media la possibilità di consultare cataloghi online tramite «ricette» dichiarative in formato TOML. Include ricette per i film classici di pubblico dominio di Internet Archive e i podcast della NASA, con supporto per pagine HTML, feed RSS/XML e dati JSON. Le richieste rispettano il file robots.txt e usano cache su disco con ETag e rate limiting. I contenuti si integrano nella pagina dedicata con griglia, dettagli, episodi e ripresa della riproduzione. Per motivi di sicurezza, nessun codice eseguibile è consentito nelle ricette e le chiamate di rete sono limitate ai soli domini autorizzati.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri la pagina «Ricette web» dalla barra laterale sinistra.\n3. Esplora i cataloghi inclusi (Internet Archive e NASA Podcast) o usa la barra di ricerca.\n4. Seleziona una scheda per visualizzare descrizione, copertina ed elenco degli episodi.\n5. Avvia la riproduzione dal player integrato o dal lettore esterno.\n6. Dalla scheda «Anteprima ricetta» puoi visualizzare la definizione TOML delle fonti attive.",
+      "features": [
+        "Cataloghi multimediali da fonti web lecite tramite ricette TOML dichiarative",
+        "Ricette di esempio incluse: film classici di pubblico dominio da Internet Archive e podcast NASA",
+        "Supporto per sorgenti HTML (selettori CSS), feed podcast RSS/XML e API JSON",
+        "Pagina dedicata con griglia filtrabile per ricetta, ricerca testuale e schede dettaglio",
+        "Supporto per contenuti a episodi con riproduzione diretta e salvataggio posizione",
+        "Scheda «Anteprima ricetta» per ispezionare la struttura dichiarativa delle fonti attive",
+        "Cache locale su disco con ETag, rate limiting e rispetto del file robots.txt",
+        "Massima sicurezza: nessun codice eseguibile consentito e chiamate limitate all'host dichiarato"
+      ],
+      "permissions": [
+        "rete:archive.org",
+        "rete:www.nasa.gov"
       ]
     },
     {

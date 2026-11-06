@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 
-ADAPTER_MODULES = ("retroarch", "dolphin", "pcsx2", "duckstation", "rpcs3", "cemu", "ryujinx")
+ADAPTER_MODULES = ("retroarch", "dolphin", "pcsx2", "duckstation", "rpcs3", "cemu", "ryujinx", "eden")
 
 
 def get(name: str):

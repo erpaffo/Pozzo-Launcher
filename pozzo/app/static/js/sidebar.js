@@ -37,12 +37,39 @@ function toggleFavPlat(id) {
   renderSidebar();
 }
 
+/* estensioni preferite: salvate in store ("favExts") */
+const favExt = (id) => (store.get("favExts", []).includes(id) ? 1 : 0);
+function toggleFavExt(id) {
+  const cur = store.get("favExts", []);
+  store.set("favExts", cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  renderSidebar();
+}
+window.favExt = favExt;
+window.toggleFavExt = toggleFavExt;
+
+function openExtCtx(e, id) {
+  if (id === "estensioni") return;
+  closeCtx();
+  const m = document.createElement("div");
+  m.id = "ctxmenu";
+  m.innerHTML = `<div class="ci">${favExt(id) ? "★ " + t("h.fav.removeExt") : "☆ " + t("h.fav.addExt")}</div>`;
+  document.body.appendChild(m);
+  m.style.left = Math.max(6, Math.min(e.clientX, innerWidth - m.offsetWidth - 8)) + "px";
+  m.style.top = Math.max(6, Math.min(e.clientY, innerHeight - m.offsetHeight - 8)) + "px";
+  m.onclick = (ev) => {
+    const it = ev.target.closest(".ci");
+    if (!it) return;
+    closeCtx();
+    toggleFavExt(id);
+  };
+}
+
 function openPlatCtx(e, id) {
   closeCtx();
   const m = document.createElement("div");
   m.id = "ctxmenu";
-  m.innerHTML = `<div class="ci">${favPlat(id) ? "★ Togli dalle console preferite" : "☆ Aggiungi alle console preferite"}</div>`
-    + `<div class="ci" data-scan>⟳ Cerca nuovi giochi</div>`;
+  m.innerHTML = `<div class="ci">${favPlat(id) ? "★ " + t("h.fav.removePlat") : "☆ " + t("h.fav.addPlat")}</div>`
+    + `<div class="ci" data-scan>⟳ ${t("h.scan.newGames")}</div>`;
   document.body.appendChild(m);
   m.style.left = Math.max(6, Math.min(e.clientX, innerWidth - m.offsetWidth - 8)) + "px";
   m.style.top = Math.max(6, Math.min(e.clientY, innerHeight - m.offsetHeight - 8)) + "px";
@@ -52,14 +79,14 @@ function openPlatCtx(e, id) {
     closeCtx();
     if (!("scan" in it.dataset)) return toggleFavPlat(id);
     try { await api("/api/scan", { body: { platforms: [id], mode: "new" } }); } catch (err) { return toast(err.message, true); }
-    toast("Cerco i giochi nuovi: compaiono subito, i dati arrivano dopo");
+    toast(t("h.scan.started"));
     SET.lastStatus = "running"; setScanRunning(true); pollScan();
   };
 }
 
 function renderSidebar() {
   const c = counts();
-  $("#cnt-all").textContent = c.all.toLocaleString("it");
+  $("#cnt-all").textContent = c.all.toLocaleString(GSI18n.lang);
   $("#cnt-fav").textContent = c.fav || "";
   $("#cnt-recent").textContent = c.recent || "";
   $("#cnt-apps").textContent = c.apps || "";
@@ -67,7 +94,7 @@ function renderSidebar() {
   // preferiti per console: una sotto-voce per le console che ne hanno almeno uno
   const favPlats = [...c.favPlat.entries()].sort((a, b) => collator.compare(platName(a[0]), platName(b[0])));
   $("#fav-plat-list").innerHTML = favPlats.map(([p, n]) =>
-    `<a class="nav-item" data-view="favorites" data-plat="${esc(p)}" style="padding-left:28px" title="Preferiti · ${esc(platName(p))}">`
+    `<a class="nav-item" data-view="favorites" data-plat="${esc(p)}" style="padding-left:28px" title="${t("h.nav.favTitle", {p: esc(platName(p))})}">`
     + `<span class="ico">${platIcon(p)}</span><span class="lbl">${esc(platName(p))}</span><span class="cnt">${n}</span></a>`).join("");
   renderStatusList();
   renderSmartList();
@@ -79,21 +106,31 @@ function renderSidebar() {
   const plats = [...S.plats.values()].filter((p) => (c.plat.get(p.id) || S.catalogs[p.id]?.length) && p.id !== "windows").sort((a, b) => (favPlat(b.id) - favPlat(a.id)) || collator.compare(a.name, b.name)); // prima le preferite, poi A–Z
   $("#platform-list").innerHTML = plats.map((p) =>
     `<a class="nav-item" data-view="platform" data-id="${esc(p.id)}"><span class="ico">${platIcon(p.id)}</span>`
-    + `<span class="lbl">${favPlat(p.id) ? "★ " : ""}${esc(p.name)}</span><span class="cnt">${c.plat.get(p.id)?.toLocaleString("it") || ""}</span></a>`).join("");
+    + `<span class="lbl">${favPlat(p.id) ? "★ " : ""}${esc(p.name)}</span><span class="cnt">${c.plat.get(p.id)?.toLocaleString(GSI18n.lang) || ""}</span></a>`).join("");
   S.collCounts = c.coll;
   // PC: tutti + uno per store (installati / posseduti)
   const st = c.store;
   const pcTotal = [...st.values()].reduce((a, x) => a + x.total, 0);
   const pcInst = [...st.values()].reduce((a, x) => a + x.inst, 0);
   $("#store-list").innerHTML = (pcTotal ? `<a class="nav-item" data-view="store" data-id="all"><span class="ico">${platIcon("windows")}</span>`
-    + `<span class="lbl">Tutti i giochi PC</span><span class="cnt" title="installati / totali">${pcInst} / ${pcTotal}</span></a>` : "")
+    + `<span class="lbl">${t("h.nav.allPc")}</span><span class="cnt" title="${t("h.nav.instTotal")}">${pcInst} / ${pcTotal}</span></a>` : "")
     + S.stores.filter((x) => st.get(x.id)?.total).map((x) => `<a class="nav-item" data-view="store" data-id="${esc(x.id)}">`
       + `<span class="ico"><img class="pico" src="/icons/store/${esc(x.id)}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${STORE_ICON[x.id] || "•"}'))"></span><span class="lbl">${esc(x.name)}</span>`
-      + `<span class="cnt" title="installati / totali">${st.get(x.id).inst} / ${st.get(x.id).total}</span></a>`).join("")
-    || `<div class="muted small" style="padding:6px 8px">Nessuno store collegato: vedi Impostazioni › Account</div>`;
-  $("#plugin-nav").innerHTML = GS.ui.sidebarItems.map((x) => `<a class="nav-item" data-plugin-item="${esc(x.id)}"`
+      + `<span class="cnt" title="${t("h.nav.instTotal")}">${st.get(x.id).inst} / ${st.get(x.id).total}</span></a>`).join("")
+    || `<div class="muted small" style="padding:6px 8px">${t("h.nav.noStore")}</div>`;
+  // Store estensioni sempre in cima alla sezione e non considerato tra i plugin ordinabili/preferiti
+  const storeExt = GS.ui.sidebarItems.find((x) => x.id === "estensioni");
+  const otherExts = GS.ui.sidebarItems.filter((x) => x.id !== "estensioni")
+    .sort((a, b) => (favExt(b.id) - favExt(a.id)) || collator.compare(a.label || a.id, b.label || b.id));
+
+  const storeHtml = storeExt ? `<a class="nav-item store-nav-item" data-plugin-item="estensioni" data-view="plugin" data-id="${esc(storeExt.view || 'estensioni')}"><span class="ico">${esc(storeExt.icon || "🧩")}</span><span class="lbl">${esc(storeExt.label || t("h.nav.storeExt"))}</span></a>` : "";
+
+  const extsHtml = otherExts.map((x) => `<a class="nav-item" data-plugin-item="${esc(x.id)}"`
     + (x.view ? ` data-view="plugin" data-id="${esc(x.view)}"` : "") + `><span class="ico">${esc(x.icon || "✦")}</span>`
-    + `<span class="lbl">${esc(x.label)}</span></a>`).join("");
+    + `<span class="lbl">${esc(x.label)}</span>`
+    + `<button type="button" class="fav-star ${favExt(x.id) ? "is-fav" : ""}" data-toggle-fav-ext="${esc(x.id)}" title="${favExt(x.id) ? t("h.fav.remove") : t("h.fav.add")}" aria-label="${favExt(x.id) ? t("h.fav.remove") : t("h.fav.add")}">${favExt(x.id) ? "★" : "☆"}</button></a>`).join("");
+
+  $("#plugin-nav").innerHTML = storeHtml + extsHtml;
   $("#plugin-nav-section").hidden = !GS.ui.sidebarItems.length;
   renderCollList();
   markActive();
@@ -111,7 +148,7 @@ function renderSmartList() {
   $("#smart-list").innerHTML = S.smart.map((x) => `<a class="nav-item" data-view="smart" data-id="${esc(x.id)}">`
     + `<span class="ico">${esc(x.icon || "⚡")}</span><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span>`
     + `<span class="cnt">${smartGames(S.games, x.rules).length}</span></a>`).join("")
-    || `<div class="muted" style="padding:2px 8px 6px;font-size:12px">Regole salvate che si aggiornano da sole</div>`;
+    || `<div class="muted" style="padding:2px 8px 6px;font-size:12px">${t("h.smart.help")}</div>`;
   markActive();
 }
 
@@ -121,7 +158,7 @@ function openSmart(id = null) {
   const sc = S.smart.find((x) => x.id === id) || { id: "", name: "", icon: "⚡", rules: {} };
   smEdit = JSON.parse(JSON.stringify(sc));
   const r = smEdit.rules;
-  $("#sm-title").textContent = id ? "Modifica collezione intelligente" : "Nuova collezione intelligente";
+  $("#sm-title").textContent = id ? t("h.smart.editTitle") : t("h.smart.newTitle");
   $("#sm-name").value = sc.name;
   $("#sm-icon").value = sc.icon || "⚡";
   $("#sm-delete").hidden = !id;
@@ -130,10 +167,10 @@ function openSmart(id = null) {
   };
   const plats = [...S.plats.values()].filter((p) => p.id !== "windows").sort((a, b) => collator.compare(a.name, b.name))
     .map((p) => ({ id: p.id, label: p.name }));
-  chips("#sm-plats", plats.concat([{ id: "windows", label: "PC (tutti gli store)" }]), "platforms");
+  chips("#sm-plats", plats.concat([{ id: "windows", label: t("h.smart.pcAll") }]), "platforms");
   chips("#sm-genres", Object.entries(RECO.GENRE_LABEL).map(([id, label]) => ({ id, label }))
     .sort((a, b) => collator.compare(a.label, b.label)), "genres");
-  chips("#sm-status", Object.entries(STATUS).map(([k, s]) => ({ id: k, label: `${s.icon} ${s.label}` })).concat([{ id: "none", label: "Senza stato" }]), "status");
+  chips("#sm-status", Object.entries(STATUS).map(([k, s]) => ({ id: k, label: `${s.icon} ${s.label}` })).concat([{ id: "none", label: t("h.smart.noStatus") }]), "status");
   for (const k of ["minRating", "minCritics", "minPlayers", "yearFrom", "yearTo", "maxHours", "minHours"]) $(`#sm-${k}`).value = r[k] ?? "";
   for (const k of ["installed", "favorites", "unplayed"]) $(`#sm-${k}`).checked = !!r[k];
   smCount();
@@ -148,12 +185,12 @@ function smRead() {
   for (const k of ["installed", "favorites", "unplayed"]) { if ($(`#sm-${k}`).checked) r[k] = true; else delete r[k]; }
   return r;
 }
-function smCount() { $("#sm-count").textContent = `${smartGames(S.games, smRead()).length.toLocaleString("it")} giochi`; }
+function smCount() { $("#sm-count").textContent = t("h.smart.count", {n: smartGames(S.games, smRead()).length.toLocaleString(GSI18n.lang)}); }
 async function saveSmart(remove = false) {
   smRead();
   smEdit.name = $("#sm-name").value.trim();
   smEdit.icon = $("#sm-icon").value.trim() || "⚡";
-  if (!remove && !smEdit.name) return toast("Dai un nome alla collezione", true);
+  if (!remove && !smEdit.name) return toast(t("h.smart.nameReq"), true);
   let items = S.smart.filter((x) => x.id !== smEdit.id);
   if (!remove) {
     if (!smEdit.id) smEdit.id = "s" + Date.now().toString(36);
@@ -178,8 +215,8 @@ function renderCollBanner() {
   const slug = encodeURIComponent(c.slug);
   b.innerHTML = `<div class="cb-bg" style="background-image:url('/coll-img/${slug}/cover?w=1600')"></div>
     <div class="cb-content"><img class="cb-icon" src="/coll-img/${slug}/icon?w=256" alt="" onerror="this.remove()">
-      <div><div class="cb-kicker">${c.custom ? "La tua collezione" : "Collezione"}</div><h2>${esc(c.name)}</h2>
-      <div class="muted">${S.items.length.toLocaleString("it")} ${S.items.length === 1 ? "gioco" : "giochi"}</div></div></div>`;
+      <div><div class="cb-kicker">${c.custom ? t("h.coll.yours") : t("h.coll.coll")}</div><h2>${esc(c.name)}</h2>
+      <div class="muted">${S.items.length.toLocaleString(GSI18n.lang)} ${S.items.length === 1 ? t("h.game.one") : t("h.game.many")}</div></div></div>`;
 }
 
 function renderCollList() {
@@ -189,8 +226,8 @@ function renderCollList() {
   else list.sort((a, b) => collator.compare(a.name, b.name));
   $("#coll-list").innerHTML = list.map((x) =>
     `<a class="nav-item" data-view="collection" data-id="${esc(x.slug)}"><span class="ico">${collIcon(x.slug)}</span><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span>`
-    + (x.custom ? `<span class="tag">mia</span>` : "") + `<span class="cnt">${S.collCounts.get(x.idx) || 0}</span></a>`).join("")
-    || `<div class="muted" style="padding:6px 8px;font-size:12px">Nessuna collezione</div>`;
+    + (x.custom ? `<span class="tag">${t("h.coll.mine")}</span>` : "") + `<span class="cnt">${S.collCounts.get(x.idx) || 0}</span></a>`).join("")
+    || `<div class="muted" style="padding:6px 8px;font-size:12px">${t("h.coll.none")}</div>`;
   markActive();
 }
 
@@ -223,9 +260,9 @@ function setDrawer(open, restoreFocus = true) {
 function renderDiscTools() {
   const f = S.disc, opt = (v, l, sel, t = "") => `<option value="${esc(v)}"${String(v) === String(sel) ? " selected" : ""}${t ? ` title="${esc(t)}"` : ""}>${esc(l)}</option>`;
   const nCrit = S.games.filter((g) => g.critics != null).length;
-  $("#disc-preset").innerHTML = PRESETS.map((p) => opt(p.id, p.id === "critics" ? `${p.label} (${nCrit} con voto)` : p.label, f.preset, p.hint)).join("");
-  $("#disc-genre").innerHTML = opt("", "Tutti i generi", f.genre) + genreList(S.games).map((x) => opt(x.id, x.label, f.genre)).join("");
-  $("#disc-decade").innerHTML = opt("", "Tutti gli anni", f.decade) + decadeList(S.games).map((d) => opt(d, `Anni ${String(d).slice(2)} (${d})`, f.decade)).join("");
+  $("#disc-preset").innerHTML = PRESETS.map((p) => opt(p.id, p.id === "critics" ? t("h.disc.withScore", {l: p.label, n: nCrit}) : p.label, f.preset, p.hint)).join("");
+  $("#disc-genre").innerHTML = opt("", t("h.disc.allGenres"), f.genre) + genreList(S.games).map((x) => opt(x.id, x.label, f.genre)).join("");
+  $("#disc-decade").innerHTML = opt("", t("h.disc.allYears"), f.decade) + decadeList(S.games).map((d) => opt(d, t("h.disc.decade", {y: String(d).slice(2), full: d}), f.decade)).join("");
   for (const k of ["preset", "genre", "decade"]) $(`#disc-${k}`).classList.toggle("on", !!f[k]);
   $("#disc-reset").hidden = !(f.preset || f.genre || f.decade);
 }
@@ -236,25 +273,25 @@ function renderShopTools() {
   $("#group").hidden = $("#one-version").parentElement.hidden = on;
   if (!on) return;
   const f = S.shopF, opt = (v, l, sel) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${esc(l)}</option>`;
-  $("#shop-src").innerHTML = opt("", "Tutti gli store", f.src)
+  $("#shop-src").innerHTML = opt("", t("h.shop.allStores"), f.src)
     + shopSources(S.shop, S.stores, platName).map((s) => opt(s.id, `${s.label} (${s.n})`, f.src)).join("");
   const pl = [...new Set(S.shop.map((g) => g.platform))].sort((a, b) => collator.compare(platName(a), platName(b)));
-  $("#shop-plat").innerHTML = opt("", "Tutte le piattaforme", f.plat) + pl.map((p) => opt(p, platName(p), f.plat)).join("");
+  $("#shop-plat").innerHTML = opt("", t("h.shop.allPlat"), f.plat) + pl.map((p) => opt(p, platName(p), f.plat)).join("");
   $("#shop-size").innerHTML = SHOP_SIZES.map((s) => opt(s.id, s.label, f.size)).join("");
 }
 
 function viewTitle() {
   const v = S.view;
-  if (v.type === "favorites" && v.plat) return `★ Preferiti · ${platName(v.plat)}`;
-  if (v.type === "apps") return "🧩 Applicazioni";
-  return { shots: "Schermate", free: "Giochi gratis", ports: "Port e app", wishlist: "Lista desideri", stats: "Statistiche", downloads: "Download",
-    top: !v.id || v.id === "all" ? "🏆 Migliori giochi" : `🏆 Top 100 · ${platName(v.id)}`,
+  if (v.type === "favorites" && v.plat) return `★ ${t("h.app.navFavorites")} · ${platName(v.plat)}`;
+  if (v.type === "apps") return "🧩 " + t("h.title.apps");
+  return { shots: t("h.title.shots"), free: t("h.title.free"), ports: t("h.title.ports"), wishlist: t("h.wl.title"), stats: t("h.title.stats"), downloads: t("h.title.downloads"),
+    top: !v.id || v.id === "all" ? "🏆 " + t("h.title.topBest") : `🏆 ${t("h.title.top100Of", {p: platName(v.id)})}`,
     status: `${STATUS[v.id]?.icon || ""} ${STATUS[v.id]?.label || ""}`,
-    smart: `${S.smart.find((x) => x.id === v.id)?.icon || "⚡"} ${S.smart.find((x) => x.id === v.id)?.name || "Collezione"}`,
-    home: "Home", foryou: "Per te", multi: "Multigiocatore in locale", shop: "Store · da installare", all: "Tutti i giochi", favorites: "Preferiti", recent: "Giocati di recente", missing: "Senza dati",
-    hidden: "Nascosti", dups: "Duplicati", platform: platName(v.id), collection: S.collBySlug.get(v.id)?.name || "Collezione",
-    store: v.id === "all" ? "Giochi PC" : `PC · ${S.stores.find((x) => x.id === v.id)?.name || v.id}`,
-    plugin: GS.ui.views.get(v.id)?.title || "Estensione" }[v.type] || "Giochi";
+    smart: `${S.smart.find((x) => x.id === v.id)?.icon || "⚡"} ${S.smart.find((x) => x.id === v.id)?.name || t("h.coll.coll")}`,
+    home: t("h.app.navHome"), foryou: t("h.title.foryou"), multi: t("h.title.multi"), shop: t("h.title.shop"), all: t("h.app.navAllGames"), favorites: t("h.app.navFavorites"), recent: t("h.title.recent"), missing: t("h.title.noData"),
+    hidden: t("h.title.hidden"), dups: t("h.title.dups"), platform: platName(v.id), collection: S.collBySlug.get(v.id)?.name || t("h.coll.coll"),
+    store: v.id === "all" ? t("h.title.pcGames") : t("h.title.pcStore", {n: S.stores.find((x) => x.id === v.id)?.name || v.id}),
+    plugin: GS.ui.views.get(v.id)?.title || t("h.title.plugin") }[v.type] || t("h.title.games");
 }
 
 function updateHeader() {
@@ -263,38 +300,38 @@ function updateHeader() {
   let extra = "";
   if (S.view.type === "collection") {
     const plats = new Set(S.items.map((g) => g.platform)).size;
-    extra = ` su ${plats} ${plats === 1 ? "console" : "console"}`;
+    extra = ` ${t("h.hdr.onPlatforms", {n: plats})}`;
   }
-  $("#view-count").textContent = S.view.type === "plugin" ? "" : `${n.toLocaleString("it")} ${n === 1 ? "gioco" : "giochi"}${extra}`;
+  $("#view-count").textContent = S.view.type === "plugin" ? "" : `${n.toLocaleString(GSI18n.lang)} ${n === 1 ? t("h.game.one") : t("h.game.many")}${extra}`;
   renderShopTools();
   $("#group").disabled = S.view.type === "all" && S.allLocal; // la vista «Sul PC» e' gia' divisa per console
   $("#inst-filter").hidden = !(S.view.type === "store" || (S.view.type === "platform" && (S.view.id === "windows" || S.hasOnline.has(S.view.id))));
   const c = S.view.type === "collection" ? S.collBySlug.get(S.view.id) : null;
   $("#view-actions").innerHTML = c
-    ? `<button class="icon-btn" id="coll-rename" title="Rinomina">✎ Rinomina</button>`
-      + `<button class="icon-btn" id="coll-delete" title="${c.custom ? "Elimina" : "Nascondi"}">${c.custom ? "🗑 Elimina" : "⊘ Nascondi"}</button>`
+    ? `<button class="icon-btn" id="coll-rename" title="${t("h.coll.rename")}">✎ ${t("h.coll.rename")}</button>`
+      + `<button class="icon-btn" id="coll-delete" title="${c.custom ? t("h.lb.delete") : t("h.coll.hide")}">${c.custom ? "🗑 " + t("h.lb.delete") : "⊘ " + t("h.coll.hide")}</button>`
     : S.view.type === "dups"
-      ? `<button class="icon-btn" id="dup-toggle" title="Le versioni duplicate prendono i metadati dalla versione principale">`
-        + `${S.skipDup ? "✓ Esclusi dallo scraping" : "✗ Inclusi nello scraping"} (clic per cambiare)</button>`
+      ? `<button class="icon-btn" id="dup-toggle" title="${t("h.dups.help")}">`
+        + `${S.skipDup ? "✓ " + t("h.dups.excluded") : "✗ " + t("h.dups.included")} ${t("h.dups.clickChange")}</button>`
     : S.view.type === "all"
-      ? `<button class="icon-btn${S.allLocal ? " on" : ""}" id="all-local" title="Solo i giochi scaricati sul PC (ROM e giochi PC installati), divisi per console">`
-        + `💾 Sul PC · per console${S.allLocal ? " ✓" : ""}</button>`
+      ? `<button class="icon-btn${S.allLocal ? " on" : ""}" id="all-local" title="${t("h.all.localHelp")}">`
+        + `💾 ${t("h.all.localBtn")}${S.allLocal ? " ✓" : ""}</button>`
     : S.view.type === "smart"
-      ? `<button class="icon-btn" id="smart-edit" title="Modifica le regole">✎ Regole</button>`
+      ? `<button class="icon-btn" id="smart-edit" title="${t("h.smart.editRules")}">✎ ${t("h.smart.rules")}</button>`
     : S.view.type === "store"
-      ? `<button class="icon-btn" id="plat-scan" title="Rilegge ${S.view.id === "all" ? "gli store PC" : "questo store"} e i giochi aggiunti a mano: i giochi nuovi compaiono subito">⟳ Cerca nuovi giochi</button>`
+      ? `<button class="icon-btn" id="plat-scan" title="${t("h.scan.storeHelp", {w: S.view.id === "all" ? t("h.scan.pcStores") : t("h.scan.thisStore")})}">⟳ ${t("h.scan.newGames")}</button>`
     : S.view.type === "shop"
-      ? `<button class="icon-btn${S.shopF.hideDlc ? " on" : ""}" id="shop-hide-dlc" title="Esclude le voci classificate come DLC">`
-        + `${S.shopF.hideDlc ? "✓ DLC escluse" : "⊘ Escludi DLC"}</button>`
-        + `<button class="btn smeta-btn" id="smeta-open" title="Cerca descrizioni, generi, giocatori e valutazioni dei giochi degli store SOLO nei database offline (LaunchBox, TheGamesDB): nessuna richiesta online">📚 Scraping metadati store <span class="pill">offline</span></button>`
+      ? `<button class="icon-btn${S.shopF.hideDlc ? " on" : ""}" id="shop-hide-dlc" title="${t("h.shop.excludeHelp")}">`
+        + `${S.shopF.hideDlc ? "✓ " + t("h.shop.dlcOut") : "⊘ " + t("h.shop.excludeDlc")}</button>`
+        + `<button class="btn smeta-btn" id="smeta-open" title="${t("h.shop.smetaHelp")}">📚 ${t("h.shop.smeta")} <span class="pill">${t("h.common.offline")}</span></button>`
     : S.view.type === "platform" && S.view.id !== "windows"
-      ? `<label class="icon-btn" title="Nascondi DLC, temi e avatar di questa console: le DLC restano comunque tra i download del gioco base">`
-        + `<input type="checkbox" id="hide-dlc"${S.hideDlc?.has(S.view.id) ? " checked" : ""}> Nascondi DLC</label>`
-        + `<button class="icon-btn" id="plat-scan" title="Cerca nuovi giochi nella cartella di questa console: compaiono subito, i dati arrivano dopo">⟳ Cerca nuovi giochi</button>`
-        + `<button class="icon-btn" id="top-open" title="I 100 migliori giochi di questa console, posseduti e scaricabili">🏆 Top 100</button>`
-        + `<button class="icon-btn" id="cat-open" title="Collega pagine web con i giochi di questa console">`
+      ? `<label class="icon-btn" title="${t("h.plat.hideDlcHelp")}">`
+        + `<input type="checkbox" id="hide-dlc"${S.hideDlc?.has(S.view.id) ? " checked" : ""}> ${t("h.plat.hideDlc")}</label>`
+        + `<button class="icon-btn" id="plat-scan" title="${t("h.scan.consoleHelp")}">⟳ ${t("h.scan.newGames")}</button>`
+        + `<button class="icon-btn" id="top-open" title="${t("h.plat.topHelp")}">🏆 Top 100</button>`
+        + `<button class="icon-btn" id="cat-open" title="${t("h.plat.catHelp")}">`
         + ((S.catalogs[S.view.id] || []).map((u) => `<img class="sico" src="/icons/site?url=${encodeURIComponent(u)}" alt="">`).join("") || "🌐")
-        + ` Store online${(S.catalogs[S.view.id] || []).length ? ` (${S.catalogs[S.view.id].length})` : ""}</button>` : "";
+        + ` ${t("h.plat.onlineStore")}${(S.catalogs[S.view.id] || []).length ? ` (${S.catalogs[S.view.id].length})` : ""}</button>` : "";
 }
 
 function setView(v) {
@@ -303,6 +340,7 @@ function setView(v) {
   S.view = v;
   setDrawer(false, false);
   store.set("view", v);
+  try { localStorage.setItem("gs.last_session", JSON.stringify({ view: v, gameId: S.selected || null, timestamp: Date.now() })); } catch {}
   GS.emit("viewChanged", v);
   document.body.classList.toggle("experience-home-mode", v.type === "home");
   const pv = $("#plugin-view");
@@ -345,8 +383,8 @@ function setView(v) {
     pv.innerHTML = "";
     markActive();
     updateHeader();
-    Promise.resolve(view ? view.render(pv, GS) : (pv.textContent = "Vista non disponibile"))
-      .catch((e) => { pv.textContent = "Errore nella vista: " + e.message; });
+    Promise.resolve(view ? view.render(pv, GS) : (pv.textContent = t("h.view.unavailable")))
+      .catch((e) => { pv.textContent = t("h.view.error", {msg: e.message}); });
     return;
   }
   $("#grid-scroll").hidden = false;

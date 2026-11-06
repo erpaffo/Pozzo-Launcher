@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, emuinstall as EI, platforms as P
+from ... import config as C, emuinstall as EI, i18n as I, platforms as P
 from ...library import launcher as L
 
 
@@ -28,20 +28,20 @@ def build_router(ctx) -> APIRouter:
             if emu:
                 exe = over.get("exe") or cfg.emulators.get(emu)
                 if not exe:
-                    problem = f"manca il percorso di {emu}"
+                    problem = I.tr("s.emulators.pathMissing", emu=emu)
                 elif not Path(exe).exists():
-                    problem = "eseguibile non trovato"
+                    problem = I.tr("s.emulators.exeMissing")
                 elif emu == L.RA:
-                    problem = f"core RetroArch non trovato: {over.get('core') or default_core}"
+                    problem = I.tr("s.emulators.coreMissing", core=over.get('core') or default_core)
             else:
                 ra_ok = cfg.emulators.get(L.RA) and Path(cfg.emulators[L.RA]).exists()
                 ra_cores = [c for e, c in presets if e == L.RA and c]
                 if ra_ok and ra_cores:
-                    problem = f"RetroArch c'e', manca il core {' o '.join(ra_cores)} (scaricalo da RetroArch: Core > Scarica core)"
+                    problem = I.tr("s.emulators.raCoreMissing", cores=" o ".join(ra_cores))
                 elif presets:
-                    problem = "installa uno tra: " + ", ".join(dict.fromkeys(e for e, _ in presets))
+                    problem = I.tr("s.emulators.installOneOf", emus=", ".join(dict.fromkeys(e for e, _ in presets)))
                 else:
-                    problem = "scegli un emulatore"
+                    problem = I.tr("s.emulators.choose")
         if emu == L.RA:
             dargs = "-L {core} {rom}"
         else:
@@ -92,7 +92,7 @@ def build_router(ctx) -> APIRouter:
     def api_emulators_detect(body: dict = Body(...)):
         folder = (body.get("folder") or "").strip()
         if not folder or not Path(folder).is_dir():
-            raise HTTPException(400, "Cartella non valida")
+            raise HTTPException(400, I.tr("s.emulators.folderInvalid"))
         found = L.detect_emulators(Path(folder))
         if found:
             C.save_settings(cfg, emulators=found)
@@ -109,11 +109,11 @@ def build_router(ctx) -> APIRouter:
                 fn(lambda done, total: emu_job.update(done=done, total=total), say)
                 emu_job["status"] = "done"
             except Exception as e:
-                say(f"Errore: {type(e).__name__}: {e}")
+                say(I.tr("s.emulators.error", kind=type(e).__name__, msg=str(e)))
                 emu_job["status"] = "error"
         with emu_lock:
             if emu_job["status"] == "running":
-                raise HTTPException(409, "C'e' gia' un'installazione in corso")
+                raise HTTPException(409, I.tr("s.emulators.jobBusy"))
             emu_job.update(status="running", log=[], emu=name, done=0, total=0)
         threading.Thread(target=run, daemon=True).start()
         return emu_job
@@ -135,16 +135,26 @@ def build_router(ctx) -> APIRouter:
     def api_emulators_install(body: dict = Body(...)):
         emu, folder = str(body.get("emu") or ""), (body.get("folder") or "").strip().strip('"')
         if emu not in EI.SOURCES:
-            raise HTTPException(400, "Emulatore sconosciuto")
+            raise HTTPException(400, I.tr("s.emulators.unknown"))
         if folder and not Path(folder).is_absolute():
-            raise HTTPException(400, "Indica un percorso completo (es. D:\\Emulatori)")
+            raise HTTPException(400, I.tr("s.emulators.fullPath"))
         return _start_emu_job(emu, lambda progress, say: EI.install(cfg, emu, folder, progress, say))
+
+    @router.post("/api/emulators/{emu}/uninstall")
+    def api_emulators_uninstall(emu: str, body: dict = Body(default={})):
+        try:
+            EI.uninstall(cfg, emu, bool(body.get("keep_data", True)))
+        except EI.EmulatorRunning as e:
+            raise HTTPException(409, str(e))
+        except RuntimeError as e:
+            raise HTTPException(400, str(e))
+        return api_emulators()
 
     @router.post("/api/emulators/cores")
     def api_emulators_cores():
         cores = EI.missing_cores(cfg, _lib_pids())
         if not cores:
-            raise HTTPException(400, "Nessun core da scaricare: le console della libreria hanno gia' un emulatore")
+            raise HTTPException(400, I.tr("s.emulators.noCores"))
         return _start_emu_job("retroarch-cores", lambda progress, say: EI.install_cores(cfg, cores, progress, say))
 
     vars(ctx).update(_emu_row=_emu_row)

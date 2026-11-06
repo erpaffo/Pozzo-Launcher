@@ -26,7 +26,7 @@ def _config_dir(exe: str | None) -> Path:
 
 def target(exe, game_id, *, core=None, game_name=None) -> Path | None:
     if not isinstance(game_id, str) or not _SERIAL.fullmatch(game_id):
-        return None  # il serial PS3 non è ancora fornito da gamekey
+        return None  # seriale PS3 fornito da gamekey
     base = _config_dir(exe)
     if base == Path():
         return None

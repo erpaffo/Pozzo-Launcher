@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 "use strict";
 // Avviso e riga di stato del rilevamento automatico dei giochi. Eseguito da test_js_harness.py.
 const assert = require("assert");

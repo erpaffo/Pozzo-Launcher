@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 "use strict";
 // Card «Riprendi» della home: testi di tempo e salvataggio, HTML della card. Eseguito con node.
 const assert = require("assert");

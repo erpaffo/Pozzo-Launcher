@@ -27,34 +27,35 @@
   <div id="bp-running" hidden></div>
   <div id="bp-attract" hidden aria-hidden="true"><div class="at-slide"></div><div class="at-slide"></div><div class="at-info"><b></b><span></span></div></div>
   <div id="bp-toast" role="status" aria-live="polite" hidden></div>
-  <section id="bp-media-widget" aria-label="Musica e chiamate" hidden>
-    <h2 class="media-title">Musica e chiamate</h2>
+  <section id="bp-media-widget" data-i18n-aria="a.bp.media" hidden>
+    <h2 class="media-title" data-i18n="a.bp.media">Musica e chiamate</h2>
     <div class="media-now">
       <img id="bp-media-cover" alt="" hidden>
       <div class="media-track"><b id="bp-media-title">Nessun brano</b><span id="bp-media-artist" class="muted">Spotify non collegato</span></div>
     </div>
     <div class="media-progress"><span id="bp-media-progress"></span></div>
     <div class="media-controls">
-      <button class="media-action" data-media-action="prev" type="button" aria-label="Brano precedente">&#9198;&#xFE0E;</button>
-      <button class="media-action primary" data-media-action="play" type="button" aria-label="Riproduci o metti in pausa">&#9654;&#xFE0E; / &#10074;&#10074;</button>
-      <button class="media-action" data-media-action="next" type="button" aria-label="Brano successivo">&#9197;&#xFE0E;</button>
-      <button class="media-action" data-media-action="volume-down" type="button" aria-label="Abbassa volume">&minus;</button>
-      <button class="media-action" data-media-action="volume-up" type="button" aria-label="Alza volume">+</button>
-      <label class="media-volume">Volume Spotify <input id="bp-media-volume" type="range" min="0" max="100" value="50" aria-label="Volume Spotify"></label>
+      <button class="media-action" data-media-action="prev" type="button" data-i18n-aria="a.bp.prevTrack">&#9198;&#xFE0E;</button>
+      <button class="media-action primary" data-media-action="play" type="button" data-i18n-aria="a.bp.playPause">&#9654;&#xFE0E; / &#10074;&#10074;</button>
+      <button class="media-action" data-media-action="next" type="button" data-i18n-aria="a.bp.nextTrack">&#9197;&#xFE0E;</button>
+      <button class="media-action" data-media-action="volume-down" type="button" data-i18n-aria="a.bp.volDown">&minus;</button>
+      <button class="media-action" data-media-action="volume-up" type="button" data-i18n-aria="a.bp.volUp">+</button>
+      <label class="media-volume"><span data-i18n="a.bp.spotifyVolume">Volume Spotify</span> <input id="bp-media-volume" type="range" min="0" max="100" value="50" data-i18n-aria="a.bp.spotifyVolume"></label>
     </div>
     <div class="media-call">
       <span id="bp-discord-channel">Discord non connesso</span>
       <span id="bp-discord-participants" class="muted"></span>
-      <button class="media-action" data-media-action="mute" type="button">Microfono</button>
-      <button class="media-action" data-media-action="deafen" type="button">Audio</button>
-      <button class="media-action" data-media-action="leave" type="button">Esci dalla chiamata</button>
+      <button class="media-action" data-media-action="mute" type="button" data-i18n="a.bp.mic">Microfono</button>
+      <button class="media-action" data-media-action="deafen" type="button" data-i18n="a.bp.audio">Audio</button>
+      <button class="media-action" data-media-action="leave" type="button" data-i18n="a.bp.leave">Esci dalla chiamata</button>
     </div>
     <p id="bp-media-message" class="muted" role="status" aria-live="polite"></p>
   </section>
   <div id="bp-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
-  <div id="bp-loading"><div class="logo big">◆</div><p>Caricamento della libreria…</p></div>
+  <div id="bp-loading"><div class="logo big">◆</div><p data-i18n="a.bp.loading">Caricamento della libreria…</p></div>
 </div>
 <script src="/static/core.js?v={{v}}"></script>
+<script src="/static/i18n.js?v={{v}}"></script>
 <script src="/static/icons.js?v={{v}}"></script>
 <script src="/static/reco.js"></script>
 <script src="/static/shortcuts.js?v={{v}}"></script>
@@ -70,6 +71,5 @@
 <script src="/static/palette.js?v={{v}}"></script>
 <script src="/static/onboarding.js?v={{v}}"></script>
 <script src="/static/hints.js?v={{v}}"></script>
-<script src="/static/i18n.js?v={{v}}"></script>
 </body>
 </html>

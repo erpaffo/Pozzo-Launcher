@@ -8,7 +8,7 @@
 
 (() => {
   const KEY = "gs.onboarding";
-  const STEPS = ["Cartella ROM", "Console", "Store", "Aspetto"];
+  const STEPS = ["b.onb.step.roms", "b.common.console", "b.common.store", "b.onb.step.look"];
   const DEFAULT = { step: 0, roms: "", stores: null, theme: "", experience: "", skipped: [] };
 
   const clean = (raw) => {
@@ -43,7 +43,7 @@
     if (body !== undefined) init.body = JSON.stringify(body);
     const r = await fetch(path, init);
     if (!r.ok) {
-      let m = r.status === 404 ? "Funzione non disponibile in questa versione" : r.statusText;
+      let m = r.status === 404 ? t("b.onb.err.notAvailable") : r.statusText;
       try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
       throw new Error(m);
     }
@@ -74,12 +74,12 @@
   function render() {
     const i = st.step;
     root.querySelector(".onb-steps").innerHTML = STEPS.map((n, k) =>
-      `<li class="${k === i ? "on" : ""}${st.skipped.includes(k) ? " skip" : ""}" ${k === i ? 'aria-current="step"' : ""}>${k + 1}. ${n}${st.skipped.includes(k) ? " (saltato)" : ""}</li>`).join("");
-    root.querySelector("#onb-title").textContent = `Passo ${i + 1} di ${STEPS.length}: ${STEPS[i]}`;
+      `<li class="${k === i ? "on" : ""}${st.skipped.includes(k) ? " skip" : ""}" ${k === i ? 'aria-current="step"' : ""}>${k + 1}. ${t(n)}${st.skipped.includes(k) ? " " + t("b.onb.skipped") : ""}</li>`).join("");
+    root.querySelector("#onb-title").textContent = `${t("b.common.stepOf", {n: i + 1, tot: STEPS.length})}: ${t(STEPS[i])}`;
     [stepRoms, stepConsoles, stepStores, stepLook][i]();
-    root.querySelector(".onb-nav").innerHTML = `<button class="btn" data-a="back" ${i === 0 ? "disabled" : ""}>Indietro</button>
-      <button class="btn" data-a="skip">Salta questo passo</button>
-      <button class="btn primary" data-a="next">${i === STEPS.length - 1 ? "Fine" : "Avanti"}</button>`;
+    root.querySelector(".onb-nav").innerHTML = `<button class="btn" data-a="back" ${i === 0 ? "disabled" : ""}>${t("b.common.back")}</button>
+      <button class="btn" data-a="skip">${t("b.onb.skip")}</button>
+      <button class="btn primary" data-a="next">${i === STEPS.length - 1 ? t("b.common.end") : t("b.common.next")}</button>`;
     focusFirst();
   }
 
@@ -91,25 +91,25 @@
   // 1 - cartella ROM: percorso incollato o scelto (se l'app lo permette) e anteprima delle console
   function stepRoms() {
     const list = ui.found ? ui.found.map((p) => `<li>${esc(p.name)}</li>`).join("") : "";
-    body().innerHTML = `<p>Dove tieni le ROM? La libreria è una sola e vale per tutti i profili.</p>
-      <label for="onb-roms">Percorso della cartella</label>
+    body().innerHTML = `<p>${t("b.onb.roms.intro")}</p>
+      <label for="onb-roms">${t("b.onb.roms.label")}</label>
       <div class="onb-row"><input id="onb-roms" type="text" value="${esc(st.roms)}" placeholder="D:\\Giochi\\ROM" spellcheck="false" autocomplete="off">
-      <button class="btn" data-a="pick" ${window.pywebview?.api?.pick_folder ? "" : "hidden"}>Sfoglia…</button>
-      <button class="btn" data-a="check">Verifica</button></div>
+      <button class="btn" data-a="pick" ${window.pywebview?.api?.pick_folder ? "" : "hidden"}>${t("b.common.pick")}</button>
+      <button class="btn" data-a="check">${t("b.common.check")}</button></div>
       <p class="onb-msg" role="status">${esc(ui.romsMsg)}</p>
-      ${list ? `<p>Console trovate: ${ui.found.length}</p><ul class="onb-list">${list}</ul>` : ""}`;
+      ${list ? `<p>${t("b.onb.roms.found", {n: ui.found.length})}</p><ul class="onb-list">${list}</ul>` : ""}`;
   }
 
   async function checkRoms() {
     const v = body().querySelector("#onb-roms").value.trim();
     st.roms = v; persist();
-    if (!v) { ui.found = null; ui.romsMsg = "Scrivi o incolla un percorso, oppure salta il passo."; return stepRoms(); }
-    ui.romsMsg = "Controllo in corso…"; live(ui.romsMsg);
+    if (!v) { ui.found = null; ui.romsMsg = t("b.onb.roms.empty"); return stepRoms(); }
+    ui.romsMsg = t("b.onb.roms.checking"); live(ui.romsMsg);
     try {
       const r = await call("/api/setup/check-roms", { path: v });
       ui.found = r.platforms; st.roms = r.path; persist();
-      ui.romsMsg = r.platforms.length ? `Trovate ${r.platforms.length} console.` : "Cartella valida, ma nessuna console riconosciuta.";
-    } catch (e) { ui.found = null; ui.romsMsg = `${e.message}. Puoi andare avanti comunque.`; }
+      ui.romsMsg = r.platforms.length ? t("b.onb.roms.foundCount", {n: r.platforms.length}) : t("b.onb.roms.validNone");
+    } catch (e) { ui.found = null; ui.romsMsg = t("b.onb.roms.canContinue", {errore: e.message}); }
     stepRoms(); live(ui.romsMsg);
     body().querySelector("#onb-roms").focus();
   }
@@ -118,12 +118,12 @@
     try {
       const p = await window.pywebview.api.pick_folder();
       if (p) { body().querySelector("#onb-roms").value = p; await checkRoms(); }
-    } catch { ui.romsMsg = "Selezione cartella non disponibile: incolla il percorso."; stepRoms(); }
+    } catch { ui.romsMsg = t("b.onb.roms.pickUnavailable"); stepRoms(); }
   }
 
   // anteprima silenziosa del percorso già salvato, per mostrare le console senza chiedere di nuovo
   async function previewSaved() {
-    try { const r = await call("/api/setup/check-roms", { path: st.roms }); ui.found = r.platforms; ui.romsMsg = `Trovate ${r.platforms.length} console.`; } catch { ui.found = null; }
+    try { const r = await call("/api/setup/check-roms", { path: st.roms }); ui.found = r.platforms; ui.romsMsg = t("b.onb.roms.foundCount", {n: r.platforms.length}); } catch { ui.found = null; }
     if (root && st.step <= 1) render();
   }
 
@@ -141,21 +141,21 @@
 
   function consoleRow(p) {
     const r = ui.rows[p.id] || {};
-    let info = "Controllo…";
+    let info = t("b.onb.console.checking");
     if (r.loaded) {
       const parts = [];
-      if (r.rec) parts.push(r.rec.supported ? `${esc(r.rec.emulator)}${r.rec.installed ? " (già installato)" : ""}` : "nessuna installazione automatica");
-      if (r.bios) parts.push(biosMissing(r.bios) ? "BIOS mancanti" : r.bios.items.length ? "BIOS a posto" : "nessun BIOS richiesto");
-      info = parts.join(" · ") || esc(r.err || "informazioni non disponibili");
+      if (r.rec) parts.push(r.rec.supported ? `${esc(r.rec.emulator)}${r.rec.installed ? " " + t("b.onb.console.installed") : ""}` : t("b.onb.console.noAuto"));
+      if (r.bios) parts.push(biosMissing(r.bios) ? t("b.onb.bios.missing") : r.bios.items.length ? t("b.onb.bios.ok") : t("b.onb.bios.none"));
+      info = parts.join(" · ") || esc(r.err || t("b.onb.console.noInfo"));
     }
     const can = r.rec && r.rec.supported && !r.rec.installed;
     // perche' questo emulatore: una frase e tre motivi (fedeltà, prestazioni, controller) con il testo nel tooltip
     const m = r.rec && r.rec.reasons;
     const why = r.rec && r.rec.reason ? `<span class="onb-why">${esc(r.rec.reason)}</span>` : "";
-    const chips = m ? [["fedelta", "Fedeltà"], ["prestazioni", "Prestazioni"], ["controller", "Controller"]]
+    const chips = m ? [["fedelta", t("b.onb.chip.fidelity")], ["prestazioni", t("b.onb.chip.perf")], ["controller", t("b.onb.chip.controller")]]
       .filter(([k]) => m[k]).map(([k, t]) => `<span class="onb-chip" tabindex="0" title="${esc(m[k])}">${t}</span>`).join(" ") : "";
     return `<li data-id="${esc(p.id)}"><span class="onb-name">${esc(p.name)}</span> <span class="onb-info">${info}</span>
-      ${can ? `<button class="btn" data-a="install" data-id="${esc(p.id)}" ${r.busy ? "disabled" : ""}>${r.busy ? "Installo…" : "Installa"}</button>` : ""}
+      ${can ? `<button class="btn" data-a="install" data-id="${esc(p.id)}" ${r.busy ? "disabled" : ""}>${r.busy ? t("b.onb.console.installing") : t("b.common.install")}</button>` : ""}
       <span class="onb-prog" role="status">${esc(r.msg || "")}</span>
       ${why || chips ? `<div class="onb-motivi">${why} ${chips}</div>` : ""}</li>`;
   }
@@ -169,17 +169,17 @@
   function stepConsoles() {
     const list = consoles(ui.found);
     if (!list.length) {
-      body().innerHTML = `<p>Nessuna console da configurare ora: torna al primo passo e verifica la cartella, oppure salta. Potrai installare gli emulatori anche dopo, da Impostazioni.</p>`;
+      body().innerHTML = `<p>${t("b.onb.console.none")}</p>`;
       return;
     }
-    body().innerHTML = `<p>Emulatori consigliati e BIOS per le console trovate. Installa solo ciò che ti serve.</p>
+    body().innerHTML = `<p>${t("b.onb.console.intro")}</p>
       <ul class="onb-list">${list.map(consoleRow).join("")}</ul>`;
     list.filter((p) => !(ui.rows[p.id] && ui.rows[p.id].loaded)).forEach((p) => loadConsole(p.id));
   }
 
   async function install(id) {
     const r = ui.rows[id]; if (!r || r.busy) return;
-    r.busy = true; r.msg = "Avvio…"; paintConsole(id);
+    r.busy = true; r.msg = t("b.common.starting"); paintConsole(id);
     let stop = false;
     const poll = (async () => {
       while (!stop) {
@@ -195,43 +195,43 @@
     })();
     try {
       const out = await call("/api/emulators/install-recommended", { console: id });
-      r.msg = out.message || "Installato"; if (r.rec) r.rec.installed = true;
-    } catch (e) { r.msg = `Non riuscito: ${e.message}`; }
+      r.msg = out.message || t("b.onb.install.done"); if (r.rec) r.rec.installed = true;
+    } catch (e) { r.msg = t("b.onb.install.failed", {errore: e.message}); }
     stop = true; await poll; r.busy = false;
     if (root && st.step === 1) { paintConsole(id); live(r.msg); }
   }
 
   // 3 - store: l'elenco viene da /api/accounts; le credenziali si inseriscono poi da Impostazioni
   async function stepStores() {
-    body().innerHTML = `<p role="status">Cerco gli store installati…</p>`;
+    body().innerHTML = `<p role="status">${t("b.onb.stores.searching")}</p>`;
     try {
       ui.stores = (await call("/api/accounts")).stores.filter((s) => !["manual", "ports"].includes(s.id));
     } catch (e) {
-      if (root && st.step === 2) body().innerHTML = `<p class="onb-msg" role="status">Elenco degli store non disponibile (${esc(e.message)}). Puoi saltare e collegarli da Impostazioni.</p>`;
+      if (root && st.step === 2) body().innerHTML = `<p class="onb-msg" role="status">${t("b.onb.stores.unavailable", {errore: esc(e.message)})}</p>`;
       return;
     }
     if (!root || st.step !== 2) return;
     if (!st.stores) st.stores = Object.fromEntries(ui.stores.map((s) => [s.id, !!(s.detected && s.enabled)]));
-    body().innerHTML = `<p>Importa i giochi degli store trovati su questo PC. Se serve un accesso, lo fai dopo da Impostazioni › Account.</p>
+    body().innerHTML = `<p>${t("b.onb.stores.intro")}</p>
       <ul class="onb-list">${ui.stores.map((s) => `<li><label><input type="checkbox" data-store="${esc(s.id)}" ${st.stores[s.id] ? "checked" : ""}>
-      ${esc(s.name)} <span class="onb-info">${s.detected ? "trovato" : s.login ? "accesso richiesto" : "non trovato"}</span></label></li>`).join("")}</ul>`;
+      ${esc(s.name)} <span class="onb-info">${s.detected ? t("b.onb.stores.found") : s.login ? t("b.onb.stores.login") : t("b.onb.stores.notFound")}</span></label></li>`).join("")}</ul>`;
     focusFirst();
   }
 
   // 4 - tema ed esperienza, applicati subito e annullati se si salta il passo
   async function stepLook() {
-    body().innerHTML = `<p role="status">Carico temi ed esperienze…</p>`;
+    body().innerHTML = `<p role="status">${t("b.onb.look.loading")}</p>`;
     try { ui.ext = ui.ext || await call("/api/extensions"); } catch (e) {
-      if (root && st.step === 3) body().innerHTML = `<p class="onb-msg" role="status">Temi non disponibili (${esc(e.message)}). Puoi cambiarli da Impostazioni.</p>`;
+      if (root && st.step === 3) body().innerHTML = `<p class="onb-msg" role="status">${t("b.onb.look.unavailable", {errore: esc(e.message)})}</p>`;
       return;
     }
     if (!root || st.step !== 3) return;
     const x = ui.ext, themes = x.themes || [], exps = (x.experiences || []).filter((e) => e.available);
     if (!ui.origTheme) { ui.origTheme = x.active_theme || "default"; ui.origExp = x.active_experience || ""; }
     const radios = (name, items, cur) => items.map((t) => `<label class="onb-opt"><input type="radio" name="${name}" value="${esc(t.id)}" ${t.id === cur ? "checked" : ""}> ${esc(t.name || t.id)}</label>`).join("");
-    body().innerHTML = `<fieldset><legend>Tema</legend>${radios("onb-theme", themes, st.theme || x.active_theme)}</fieldset>
-      ${exps.length ? `<fieldset><legend>Esperienza</legend>${radios("onb-exp", exps, st.experience || x.active_experience)}</fieldset>` : ""}
-      <p class="onb-info">Le animazioni seguono le impostazioni di movimento (Impostazioni › Aspetto) e il tuo sistema.</p>
+    body().innerHTML = `<fieldset><legend>${t("b.onb.look.theme")}</legend>${radios("onb-theme", themes, st.theme || x.active_theme)}</fieldset>
+      ${exps.length ? `<fieldset><legend>${t("b.onb.look.experience")}</legend>${radios("onb-exp", exps, st.experience || x.active_experience)}</fieldset>` : ""}
+      <p class="onb-info">${t("b.onb.look.motion")}</p>
       <p class="onb-msg" role="status">${esc(ui.msg)}</p>`;
     focusFirst();
   }
@@ -242,7 +242,7 @@
       st[kind] = id; persist();
       if (typeof loadExtensions === "function") await loadExtensions();
       ui.msg = "";
-    } catch (e) { ui.msg = `Anteprima non riuscita: ${e.message}`; live(ui.msg); }
+    } catch (e) { ui.msg = t("b.onb.look.previewFailed", {errore: e.message}); live(ui.msg); }
   }
 
   async function restoreLook() {
@@ -254,7 +254,7 @@
   // fine: /api/setup imposta app.setup_done e importa/crea la libreria, condivisa da tutti i profili
   async function conclude() {
     const romsOk = !!(ui.found || (srv && srv.roms && srv.roms === st.roms));
-    body().innerHTML = `<p role="status">Preparo la libreria…</p>`;
+    body().innerHTML = `<p role="status">${t("b.onb.conclude.preparing")}</p>`;
     root.querySelector(".onb-nav").innerHTML = "";
     const payload = { start: true, scrape: true };
     if (st.roms && romsOk) payload.roms = st.roms;
@@ -263,7 +263,7 @@
       await call("/api/setup", payload);
       for (let n = 0; n < 1800 && root; n++) {
         const s = (await call("/api/setup")).state;
-        if (root) body().innerHTML = `<p role="status">${esc(s.phase || "Preparazione")}</p>`;
+        if (root) body().innerHTML = `<p role="status">${esc(s.phase || t("b.onb.conclude.default"))}</p>`;
         if (s.status === "done") break;
         if (s.status === "error") throw new Error(s.phase);
         await wait(1000);
@@ -272,8 +272,8 @@
       close();
     } catch (e) {
       if (!root) return;
-      body().innerHTML = `<p class="onb-msg" role="alert">Non è stato possibile completare: ${esc(e.message)}</p>`;
-      root.querySelector(".onb-nav").innerHTML = `<button class="btn primary" data-a="retry">Riprova</button><button class="btn" data-a="close">Chiudi comunque</button>`;
+      body().innerHTML = `<p class="onb-msg" role="alert">${t("b.onb.conclude.failed", {errore: esc(e.message)})}</p>`;
+      root.querySelector(".onb-nav").innerHTML = `<button class="btn primary" data-a="retry">${t("b.common.retry")}</button><button class="btn" data-a="close">${t("b.onb.conclude.closeAnyway")}</button>`;
       focusFirst();
     }
   }
@@ -334,8 +334,8 @@
     root = document.createElement("div");
     root.className = "onb";
     root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "true"); root.setAttribute("aria-labelledby", "onb-title");
-    root.innerHTML = `<div class="onb-card"><header><h2 id="onb-title"></h2><button class="btn" data-a="all">Salta tutto</button></header>
-      <ol class="onb-steps" aria-label="Passi"></ol><div class="onb-body"></div><div class="onb-nav"></div>
+    root.innerHTML = `<div class="onb-card"><header><h2 id="onb-title"></h2><button class="btn" data-a="all">${t("b.onb.skipAll")}</button></header>
+      <ol class="onb-steps" aria-label="${t("b.onb.steps.aria")}"></ol><div class="onb-body"></div><div class="onb-nav"></div>
       <div class="onb-live" role="status" aria-live="polite"></div></div>`;
     root.addEventListener("click", onClick);
     root.addEventListener("change", onChange);

@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 "use strict";
 // Evento «game_downloaded» letto da /api/status: avviso una sola volta e apertura del gioco posseduto al posto della voce online. Eseguito da test_js_harness.py.
 const assert = require("assert");

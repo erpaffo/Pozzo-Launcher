@@ -9,34 +9,37 @@
   const isMacPlatform = (nav) => /mac|iphone|ipad/i.test(nav?.userAgentData?.platform || nav?.platform || nav?.userAgent || "");
   const MAC = typeof navigator !== "undefined" && isMacPlatform(navigator);
 
+  /* etichette dal catalogo i18n: il catalogo arriva dopo, quindi si legge a ogni uso (in node resta il testo) */
+  const L = (k, it) => (root.t ? root.t(k) : it);
   /* ---- registro: id, etichetta, gruppo, keys (personalizzabili), fixed (gia' gestiti altrove), scope, typing */
   const REGISTRY = [
-    { id: "search", label: "Cerca", group: "Navigazione", keys: ["/"], scope: "desktop" },
-    { id: "palette", label: "Palette comandi (giochi, console, impostazioni, azioni)", group: "Navigazione", keys: ["Mod+K"], scope: "desktop", typing: true },
-    { id: "settings", label: "Impostazioni", group: "Navigazione", keys: ["Mod+,"], scope: "desktop", typing: true },
-    { id: "viewAll", label: "Libreria", group: "Navigazione", keys: ["Mod+1"], scope: "desktop" },
-    { id: "viewFav", label: "Preferiti", group: "Navigazione", keys: ["Mod+2"], scope: "desktop" },
+    { id: "search", get label() { return L("a.toolbar.search", "Cerca"); }, group: "Navigazione", keys: ["/"], scope: "desktop" },
+    { id: "palette", get label() { return L("a.sc.palette", "Palette comandi (giochi, console, impostazioni, azioni)"); }, group: "Navigazione", keys: ["Mod+K"], scope: "desktop", typing: true },
+    { id: "settings", get label() { return L("a.common.settings", "Impostazioni"); }, group: "Navigazione", keys: ["Mod+,"], scope: "desktop", typing: true },
+    { id: "viewAll", get label() { return L("a.nav.library", "Libreria"); }, group: "Navigazione", keys: ["Mod+1"], scope: "desktop" },
+    { id: "viewFav", get label() { return L("a.nav.favorites", "Preferiti"); }, group: "Navigazione", keys: ["Mod+2"], scope: "desktop" },
     { id: "viewShop", label: "Store", group: "Navigazione", keys: ["Mod+3"], scope: "desktop" },
-    { id: "viewWishlist", label: "Lista desideri", group: "Navigazione", keys: ["Mod+4"], scope: "desktop" },
-    { id: "viewStats", label: "Statistiche", group: "Navigazione", keys: ["Mod+5"], scope: "desktop" },
-    { id: "sidebar", label: "Apri/chiudi la barra laterale Esplora", group: "Navigazione", keys: ["Mod+B"], scope: "desktop" },
-    { id: "back", label: "Indietro / chiudi", group: "Navigazione", keys: ["Alt+ArrowLeft", "Mod+["], fixed: ["Escape"], scope: "desktop" },
-    { id: "scanNew", label: "Cerca nuovi giochi", group: "Libreria", keys: ["Mod+Shift+S"], scope: "desktop" },
-    { id: "play", label: "Avvia il gioco aperto", group: "Libreria", keys: [], fixed: ["Enter"], scope: "desktop" },
-    { id: "favorite", label: "Preferito (gioco aperto)", group: "Libreria", keys: ["F"], scope: "desktop" },
-    { id: "hide", label: "Nascondi/mostra (gioco aperto)", group: "Libreria", keys: ["H"], scope: "desktop" },
-    { id: "random", label: "Gioco a caso", group: "Libreria", keys: ["R"], scope: "desktop" },
-    { id: "bigPicture", label: "Big Picture (entra / esci)", group: "Aspetto", keys: ["Mod+Shift+B", "F11"], scope: "both" },
-    { id: "nextExperience", label: "Grafica successiva", group: "Aspetto", keys: ["Mod+Shift+E"], scope: "desktop" },
-    { id: "nextTheme", label: "Tema successivo", group: "Aspetto", keys: ["Mod+Shift+T"], scope: "desktop" },
-    { id: "profile", label: "Cambia utente (schermata «Chi gioca?»)", group: "Aspetto", keys: ["Mod+P"], scope: "both" },
-    { id: "legend", label: "Mostra/nascondi la legenda dei comandi", group: "Big Picture", keys: ["Mod+Shift+H"], scope: "bp" },
-    { id: "help", label: "Elenco delle scorciatoie", group: "Aiuto", keys: ["Mod+/", "?"], scope: "both", typing: true },
-    { id: "playPause", label: "Musica: play/pausa", group: "Musica e Discord", keys: ["Mod+Alt+P"], scope: "both", typing: true },
-    { id: "next", label: "Musica: brano successivo", group: "Musica e Discord", keys: ["Mod+Alt+ArrowRight"], scope: "both", typing: true },
-    { id: "prev", label: "Musica: brano precedente", group: "Musica e Discord", keys: ["Mod+Alt+ArrowLeft"], scope: "both", typing: true },
-    { id: "muteMic", label: "Discord: microfono muto", group: "Musica e Discord", keys: ["Mod+Alt+M"], scope: "both", typing: true },
-    { id: "deafen", label: "Discord: audio disattivato (sordo)", group: "Musica e Discord", keys: ["Mod+Alt+D"], scope: "both", typing: true },
+    { id: "viewWishlist", get label() { return L("a.nav.wishlist", "Lista desideri"); }, group: "Navigazione", keys: ["Mod+4"], scope: "desktop" },
+    { id: "viewStats", get label() { return L("a.nav.stats", "Statistiche"); }, group: "Navigazione", keys: ["Mod+5"], scope: "desktop" },
+    { id: "sidebar", get label() { return L("a.sc.sidebar", "Apri/chiudi la barra laterale Esplora"); }, group: "Navigazione", keys: ["Mod+B"], scope: "desktop" },
+    { id: "back", get label() { return L("a.sc.back", "Indietro / chiudi"); }, group: "Navigazione", keys: ["Alt+ArrowLeft", "Mod+["], fixed: ["Escape"], scope: "desktop" },
+    { id: "scanNew", get label() { return L("a.sc.scanNew", "Cerca nuovi giochi"); }, group: "Libreria", keys: ["Mod+Shift+S"], scope: "desktop" },
+    { id: "play", get label() { return L("a.sc.play", "Avvia il gioco aperto"); }, group: "Libreria", keys: [], fixed: ["Enter"], scope: "desktop" },
+    { id: "favorite", get label() { return L("a.sc.favorite", "Preferito (gioco aperto)"); }, group: "Libreria", keys: ["F"], scope: "desktop" },
+    { id: "hide", get label() { return L("a.sc.hide", "Nascondi/mostra (gioco aperto)"); }, group: "Libreria", keys: ["H"], scope: "desktop" },
+    { id: "random", get label() { return L("a.toolbar.random", "Gioco a caso"); }, group: "Libreria", keys: ["R"], scope: "desktop" },
+    { id: "refresh", get label() { return L("a.sc.refresh", "Aggiorna la libreria"); }, group: "Libreria", keys: ["Mod+R"], scope: "desktop" },
+    { id: "bigPicture", get label() { return L("a.sc.bigPicture", "Big Picture (entra / esci)"); }, group: "Aspetto", keys: ["Mod+Shift+B", "F11"], scope: "both" },
+    { id: "nextExperience", get label() { return L("a.sc.nextExperience", "Grafica successiva"); }, group: "Aspetto", keys: ["Mod+Shift+E"], scope: "desktop" },
+    { id: "nextTheme", get label() { return L("a.sc.nextTheme", "Tema successivo"); }, group: "Aspetto", keys: ["Mod+Shift+T"], scope: "desktop" },
+    { id: "profile", get label() { return L("a.sc.profile", "Cambia utente (schermata «Chi gioca?»)"); }, group: "Aspetto", keys: ["Mod+P"], scope: "both" },
+    { id: "legend", get label() { return L("a.sc.legend", "Mostra/nascondi la legenda dei comandi"); }, group: "Big Picture", keys: ["Mod+Shift+H"], scope: "bp" },
+    { id: "help", get label() { return L("a.sc.help", "Elenco delle scorciatoie"); }, group: "Aiuto", keys: ["Mod+/", "?"], scope: "both", typing: true },
+    { id: "playPause", get label() { return L("a.sc.playPause", "Musica: play/pausa"); }, group: "Musica e Discord", keys: ["Mod+Alt+P"], scope: "both", typing: true },
+    { id: "next", get label() { return L("a.sc.next", "Musica: brano successivo"); }, group: "Musica e Discord", keys: ["Mod+Alt+ArrowRight"], scope: "both", typing: true },
+    { id: "prev", get label() { return L("a.sc.prev", "Musica: brano precedente"); }, group: "Musica e Discord", keys: ["Mod+Alt+ArrowLeft"], scope: "both", typing: true },
+    { id: "muteMic", get label() { return L("a.sc.muteMic", "Discord: microfono muto"); }, group: "Musica e Discord", keys: ["Mod+Alt+M"], scope: "both", typing: true },
+    { id: "deafen", get label() { return L("a.sc.deafen", "Discord: audio disattivato (sordo)"); }, group: "Musica e Discord", keys: ["Mod+Alt+D"], scope: "both", typing: true },
   ];
   const MEDIA_IDS = ["playPause", "next", "prev", "muteMic", "deafen"];
 
@@ -44,13 +47,13 @@
   const PAD_BTN = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, select: 8, start: 9, l3: 10, r3: 11,
     up: 12, down: 13, left: 14, right: 15, guide: 16 };
   const PAD_CHORDS = { a: "playPause", rb: "next", lb: "prev", x: "muteMic", y: "deafen", b: "exitBigPicture" }; // con Select/Guide
-  const PAD_HELP = [
-    [["a"], "Conferma / apri"], [["b"], "Indietro"], [["x"], "Preferito"], [["y"], "Cerca"],
-    [["lb", "rb"], "Categoria precedente / successiva"], [["lt", "rt"], "Pagina su / giù"],
-    [["start"], "Menu della schermata"], [["l3"], "Torna alla Home"], [["r3"], "Mostra/nascondi la legenda"],
-    [["back"], "Elenco delle scorciatoie (tieni premuto 1 s: esci da Big Picture)"],
-    [["back", "a"], "Musica: play/pausa"], [["back", "rb"], "Musica: brano successivo"], [["back", "lb"], "Musica: brano precedente"],
-    [["back", "x"], "Discord: microfono muto"], [["back", "y"], "Discord: audio disattivato"], [["back", "b"], "Esci da Big Picture"],
+  const padHelp = () => [
+    [["a"], L("a.sc.pad.confirm", "Conferma / apri")], [["b"], L("a.sc.pad.back", "Indietro")], [["x"], L("a.sc.pad.favorite", "Preferito")], [["y"], L("a.toolbar.search", "Cerca")],
+    [["lb", "rb"], L("a.sc.pad.category", "Categoria precedente / successiva")], [["lt", "rt"], L("a.sc.pad.page", "Pagina su / giù")],
+    [["start"], L("a.sc.pad.menu", "Menu della schermata")], [["l3"], L("a.sc.pad.home", "Torna alla Home")], [["r3"], L("a.sc.pad.legend", "Mostra/nascondi la legenda")],
+    [["back"], L("a.sc.pad.shortcuts", "Elenco delle scorciatoie (tieni premuto 1 s: esci da Big Picture)")],
+    [["back", "a"], L("a.sc.playPause", "Musica: play/pausa")], [["back", "rb"], L("a.sc.next", "Musica: brano successivo")], [["back", "lb"], L("a.sc.prev", "Musica: brano precedente")],
+    [["back", "x"], L("a.sc.muteMic", "Discord: microfono muto")], [["back", "y"], L("a.sc.pad.deafen", "Discord: audio disattivato")], [["back", "b"], L("a.sc.pad.exit", "Esci da Big Picture")],
   ];
   const PAD_DEADZONE = 0.25, PAD_THRESHOLD = 0.55;
 
@@ -155,7 +158,7 @@
     return true;
   }
 
-  const PS = { REGISTRY, MEDIA_IDS, PAD_BTN, PAD_CHORDS, PAD_HELP, PAD_DEADZONE, PAD_THRESHOLD, isMacPlatform, MAC, padState,
+  const PS = { REGISTRY, MEDIA_IDS, PAD_BTN, PAD_CHORDS, get PAD_HELP() { return padHelp(); }, PAD_DEADZONE, PAD_THRESHOLD, isMacPlatform, MAC, padState,
     padStateAll, isPlayStation, comboFromEvent, formatCombo, findAction, conflictOf, keysOf, isTyping, allowedWhileTyping,
     dispatch, bind, runMedia, saveOverrides, run: (id, scope = "desktop") => handlers[scope]?.[id]?.(), getOverrides: () => overrides,
     keyLabel: (id) => { const en = REGISTRY.find((x) => x.id === id); const k = en && (keysOf(en)[0] || en.fixed?.[0]); return k ? formatCombo(k) : ""; } };
@@ -179,25 +182,25 @@
     #mb-drop .ac { margin-left: auto; padding-left: 24px; color: var(--muted, #8b92a5); }`;
   document.head.appendChild(Object.assign(document.createElement("style"), { textContent: STYLE }));
 
+  const GROUP_KEY = { Navigazione: "a.sc.group.nav", Libreria: "a.sc.group.lib", Aspetto: "a.sc.group.look", "Big Picture": "a.sc.group.bp", Aiuto: "a.sc.group.help", "Musica e Discord": "a.sc.group.media" };
   const kbds = (keys) => keys.map((k) => `<kbd>${h(formatCombo(k))}</kbd>`).join("");
   function panelHtml() {
     const rows = REGISTRY.filter((en) => inScope(en, "desktop"));
     const groups = [...new Set(rows.map((en) => en.group))];
-    const body = groups.map((g) => `<h3>${h(g)}</h3><table>${rows.filter((en) => en.group === g).map((en) => {
+    const body = groups.map((g) => `<h3>${h(t(GROUP_KEY[g]))}</h3><table>${rows.filter((en) => en.group === g).map((en) => {
       const keys = keysOf(en), custom = Array.isArray(overrides[en.id]);
-      return `<tr><td>${h(en.label)}${MEDIA_IDS.includes(en.id) && !root.PozzoMedia ? ' <span style="color:var(--muted)">(non disponibile)</span>' : ""}</td>
+      return `<tr><td>${h(en.label)}${MEDIA_IDS.includes(en.id) && !root.PozzoMedia ? `<span style="color:var(--muted)">${t("a.sc.unavailable")}</span>` : ""}</td>
         <td>${kbds([...keys, ...(en.fixed || [])]) || "—"}</td>
-        <td class="sc-act">${en.keys.length ? `<button type="button" data-sc-edit="${en.id}">Cambia</button>` : ""}
-        ${custom ? `<button type="button" data-sc-reset="${en.id}">Ripristina</button>` : ""}</td></tr>`;
+        <td class="sc-act">${en.keys.length ? `<button type="button" data-sc-edit="${en.id}">${t("a.sc.edit")}</button>` : ""}
+        ${custom ? `<button type="button" data-sc-reset="${en.id}">${t("a.sc.reset")}</button>` : ""}</td></tr>`;
     }).join("")}</table>`).join("");
-    const pad = `<h3>Controller (Big Picture)</h3><table>${PAD_HELP.map(([k, l]) =>
+    const pad = `<h3>${t("a.sc.pad.heading")}</h3><table>${padHelp().map(([k, l]) =>
       `<tr><td>${k.map((x) => `<kbd>${h(({ back: "Select / View", lb: "LB", rb: "RB", lt: "LT", rt: "RT", start: "Start", l3: "L3", r3: "R3" }[x]) || x.toUpperCase())}</kbd>`).join("+")}</td><td>${h(l)}</td></tr>`).join("")}</table>`;
     return `<div class="sc-in"><div style="display:flex;justify-content:space-between;align-items:center">
-      <b style="font-size:16px">Scorciatoie da tastiera · ${MAC ? "macOS (⌘ = Cmd)" : "Windows (Ctrl)"}</b>
+      <b style="font-size:16px">${t("a.sc.panelTitle")} · ${MAC ? "macOS (⌘ = Cmd)" : "Windows (Ctrl)"}</b>
       <button type="button" data-sc-close>✕</button></div>
-      <p style="color:var(--muted);font-size:12px;margin:6px 0 0">«Cambia» imposta una nuova combinazione (Esc annulla). Le scorciatoie non scattano mentre scrivi in un campo.
-      In Big Picture valgono anche il controller e queste tastiere.</p>${body}${pad}
-      <p style="margin-top:12px"><button type="button" data-sc-reset-all>Ripristina tutte</button></p></div>`;
+      <p style="color:var(--muted);font-size:12px;margin:6px 0 0">${t("a.sc.panelHelp")}</p>${body}${pad}
+      <p style="margin-top:12px"><button type="button" data-sc-reset-all>${t("a.sc.resetAll")}</button></p></div>`;
   }
 
   function closePanel() { document.getElementById("sc-dlg")?.close(); }
@@ -223,7 +226,7 @@
 
   function capture(dlg, id, btn) {
     capturing = true;
-    btn.textContent = "Premi i tasti…";
+    btn.textContent = t("a.sc.pressKeys");
     const done = () => { capturing = false; document.removeEventListener("keydown", onKey, true); dlg.innerHTML = panelHtml(); };
     const onKey = (ev) => {
       if (MODIFIER_KEYS.includes(ev.key)) return;
@@ -231,8 +234,8 @@
       if (ev.key === "Escape") return done();
       const combo = comboFromEvent(ev);
       const other = combo && conflictOf(id, combo);
-      if (!combo || /^(Enter|Tab|Backspace|Space)$/.test(combo)) { btn.textContent = "Combinazione non valida"; return; }
-      if (other) { btn.textContent = `Già usata: ${other.label}`; return; }
+      if (!combo || /^(Enter|Tab|Backspace|Space)$/.test(combo)) { btn.textContent = t("a.sc.invalid"); return; }
+      if (other) { btn.textContent = t("a.sc.usedBy", { name: other.label }); return; }
       saveOverrides({ ...overrides, [id]: [combo] });
       done();
     };
@@ -256,7 +259,7 @@
     viewWishlist: () => { leaveLayers(); setView({ type: "wishlist" }); },
     viewStats: () => { leaveLayers(); setView({ type: "stats" }); },
     sidebar: () => {
-      if (!usesDrawer()) { toast("In questa grafica la barra laterale è sempre visibile"); return true; }
+      if (!usesDrawer()) { toast(t("a.sc.sidebarAlways")); return true; }
       setDrawer(!$("#sidebar").classList.contains("drawer-open"));
     },
     back: () => {
@@ -268,6 +271,7 @@
     favorite: () => { if (!S.detail || !$("#d-fav")) return false; $("#d-fav").click(); },
     hide: () => { if (!S.detail || !$("#d-hide")) return false; $("#d-hide").click(); },
     random: () => { const b = $("#random-btn"); if (!b) return false; leaveLayers(); b.click(); },
+    refresh: () => { const b = $("#refresh-btn"); if (!b) return false; leaveLayers(); b.click(); },
     bigPicture: () => enterBigPicture(),
     help: () => openPanel(),
     profile: () => { if (typeof GSProfilePicker === "undefined") return false; GSProfilePicker.open({ onChange: applyProfile, toast }); },
@@ -275,7 +279,7 @@
       const ext = await api("/api/extensions"), next = cycle(ext.themes, ext.active_theme);
       await api("/api/app/theme", { body: { theme: next.id } });
       await loadExtensions();
-      toast(`Tema: ${next.name}`);
+      toast(t("a.sc.theme", { name: next.name }));
     },
     nextExperience: async () => {
       const ext = await api("/api/extensions");

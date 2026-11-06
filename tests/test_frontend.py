@@ -7,6 +7,7 @@ registrazione del tempo di gioco.
 
 Esegui: python tests/test_frontend.py
 """
+import _i18n_text  # noqa: F401
 import json
 import os
 import re
@@ -87,7 +88,10 @@ def test_experience_ui():
     assert "Interfaccia originale" in app and "experience-preview--${esc(experience.id)}" in app
     assert "Scegli il tuo prossimo gioco" in console and "ArrowRight" in console and "onFocus(game)" in console
     assert "Guida rapida" in dashboard and "gs-dashboard__tiles" in dashboard
-    assert 'rail("Continua a giocare"' in cinema and 'detail: "modal"' in cinema
+    # i testi stanno in it.json: verifico la forma del codice e il testo della chiave a parte
+    it_json = json.loads((root.parents[1] / "data/locales/it.json").read_text(encoding="utf-8"))
+    assert 'rail(t("c.shelf.continue"' in cinema and it_json["c.shelf.continue"] == "Continua a giocare"
+    assert 'detail: "modal"' in cinema
     assert "Esplora per piattaforma" in storefront and "data-vetrina-filter" in storefront
     assert 'aria-hidden="true"' in app
     assert "const usesDrawer" in app and "isShelves" not in app
@@ -1091,7 +1095,10 @@ def test_random_button_uses_dice_icon():
     html = (root / "index.html").read_text(encoding="utf-8")
     icons = (root / "icons.js").read_text(encoding="utf-8")
     button = html[html.index('id="random-btn"'):html.index("</button>", html.index('id="random-btn"'))]
-    assert 'aria-label="Gioco a caso"' in button and 'data-icon="dice"' in button
+    # aria-label ora è data-i18n-aria="a.toolbar.random" (testo in it.json)
+    it_json = json.loads((root.parents[1] / "data/locales/it.json").read_text(encoding="utf-8"))
+    assert 'data-i18n-aria="a.toolbar.random"' in button and it_json["a.toolbar.random"] == "Gioco a caso"
+    assert 'data-icon="dice"' in button
     assert "dice:" in icons
 
 

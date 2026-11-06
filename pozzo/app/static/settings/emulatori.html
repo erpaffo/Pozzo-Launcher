@@ -1,55 +1,55 @@
-<h3>Installa emulatori</h3>
-<p class="muted small">Scarica l'ultima versione ufficiale dalle release dei progetti e la imposta da sola. Gli emulatori
+<h3 data-i18n="j.emu.inst.title">Installa emulatori</h3>
+<p class="muted small" data-i18n="j.emu.inst.desc">Scarica l'ultima versione ufficiale dalle release dei progetti e la imposta da sola. Gli emulatori
   sono dei loro sviluppatori: il link porta a ciascun progetto. Vanno nella cartella qui sotto, se indicata.</p>
 <div id="emu-inst"></div>
 <div id="emu-inst-job"></div>
-<h3>Aggiornamenti degli emulatori</h3>
-<label class="small" for="emu-au-mode">Aggiornamento automatico emulatori</label>
+<h3 data-i18n="j.emu.upd.title">Aggiornamenti degli emulatori</h3>
+<label class="small" for="emu-au-mode" data-i18n="j.emu.upd.auto">Aggiornamento automatico emulatori</label>
 <div class="row"><select id="emu-au-mode" class="field grow">
-  <option value="off">Disattivato</option>
-  <option value="notify">Solo avviso</option>
-  <option value="install">Installa automaticamente</option>
+  <option value="off" data-i18n="j.emu.upd.off">Disattivato</option>
+  <option value="notify" data-i18n="j.emu.upd.notify">Solo avviso</option>
+  <option value="install" data-i18n="j.emu.upd.install">Installa automaticamente</option>
 </select></div>
-<p class="muted small">Controlla una volta al giorno. Un emulatore aperto non viene aggiornato: si riprova il giorno dopo.</p>
-<div class="row"><button class="btn" id="emu-upd-check" type="button">🔄 Controlla ora</button></div>
+<p class="muted small" data-i18n="j.emu.upd.desc">Controlla una volta al giorno. Un emulatore aperto non viene aggiornato: si riprova il giorno dopo.</p>
+<div class="row"><button class="btn" id="emu-upd-check" type="button">🔄 <span data-i18n="j.emu.upd.check">Controlla ora</span></button></div>
 <div id="emu-upd" class="small" role="status" aria-live="polite"></div>
-<h3>Emulatori già installati</h3>
+<h3 data-i18n="j.emu.det.title">Emulatori già installati</h3>
 <div class="row">
-  <input id="emu-folder" class="field grow" placeholder="Cartella che contiene gli emulatori, es. C:\Emulatori">
-  <button class="btn" id="emu-folder-pick">Sfoglia…</button>
-  <button class="btn" id="emu-detect">🔍 Trova emulatori</button>
+  <input id="emu-folder" class="field grow" placeholder="Cartella che contiene gli emulatori, es. C:\Emulatori" data-i18n-placeholder="j.emu.det.folder.ph">
+  <button class="btn" id="emu-folder-pick" data-i18n="j.common.browse">Sfoglia…</button>
+  <button class="btn" id="emu-detect">🔍 <span data-i18n="j.emu.det.find">Trova emulatori</span></button>
 </div>
-<div class="row"><button class="btn" id="emu-scan" onclick="(async (b) => { const box = $('#emu-found'); b.disabled = true; box.textContent = 'Cerco…'; try { const d = await api('/api/emulators/detected'); window._emuFound = d.found; const k = Object.keys(d.found); box.innerHTML = k.length ? k.map((e) => `<div class=&quot;row&quot;><span class=&quot;grow&quot;><b>${esc(e)}</b> <span class=&quot;muted small&quot;>${esc(d.found[e].path)} (${esc(d.found[e].source)})</span></span><button class=&quot;btn&quot; data-e=&quot;${esc(e)}&quot;>Usa questo</button></div>`).join('') : 'Nessun emulatore trovato'; } catch (e) { box.textContent = e.message; } b.disabled = false; })(this)">Cerca emulatori già installati</button></div>
+<div class="row"><button class="btn" id="emu-scan" data-i18n="j.emu.det.scan" onclick="(async (b) => { const box = $('#emu-found'); b.disabled = true; box.textContent = t('j.emu.scan.searching'); try { const d = await api('/api/emulators/detected'); window._emuFound = d.found; const k = Object.keys(d.found); box.innerHTML = k.length ? k.map((e) => `<div class=&quot;row&quot;><span class=&quot;grow&quot;><b>${esc(e)}</b> <span class=&quot;muted small&quot;>${esc(d.found[e].path)} (${esc(d.found[e].source)})</span></span><button class=&quot;btn&quot; data-e=&quot;${esc(e)}&quot;>${t('j.emu.scan.use')}</button></div>`).join('') : t('j.emu.scan.none'); } catch (e) { box.textContent = e.message; } b.disabled = false; })(this)">Cerca emulatori già installati</button></div>
 <div id="emu-found" class="small" onclick="const b = event.target.closest('[data-e]'); if (b) (async () => { const x = collectEmu(); x.emulators[b.dataset.e] = window._emuFound[b.dataset.e].path; await saveEmu(x); })()"></div>
-<h3>Programmi</h3>
-<p class="muted small">Un percorso per emulatore: vale per tutte le console che lo usano.</p>
+<h3 data-i18n="j.emu.prog.title">Programmi</h3>
+<p class="muted small" data-i18n="j.emu.prog.desc">Un percorso per emulatore: vale per tutte le console che lo usano.</p>
 <div id="emu-paths"></div>
-<div class="row"><button class="btn" id="emu-add">＋ Aggiungi un altro emulatore</button></div>
-<h3>Emulatore per console</h3>
-<p class="muted small">«Automatico» usa il primo emulatore installato tra quelli consigliati. Negli argomenti
+<div class="row"><button class="btn" id="emu-add">＋ <span data-i18n="j.emu.prog.add">Aggiungi un altro emulatore</span></button></div>
+<h3 data-i18n="j.emu.table.title">Emulatore per console</h3>
+<p class="muted small" data-i18n-html="j.emu.table.desc">«Automatico» usa il primo emulatore installato tra quelli consigliati. Negli argomenti
   <code>{rom}</code> è il file del gioco, <code>{core}</code> il core di RetroArch.</p>
 <div id="emu-table"></div>
 <div class="row end">
   <span class="muted small" id="emu-saved-to"></span>
-  <button class="btn primary" id="emu-save">Salva</button>
+  <button class="btn primary" id="emu-save" data-i18n="j.common.save">Salva</button>
 </div>
-<h3>Avvio dei giochi</h3>
-<p class="muted small">Script eseguiti per <b>tutti</b> i giochi (console e PC), ad esempio per cambiare risoluzione o
+<h3 data-i18n="j.emu.launch.title">Avvio dei giochi</h3>
+<p class="muted small" data-i18n-html="j.emu.launch.desc">Script eseguiti per <b>tutti</b> i giochi (console e PC), ad esempio per cambiare risoluzione o
   attivare l'HDR. Un comando o un file <code>.bat</code>/<code>.ps1</code>; ricevono <code>POZZO_TITLE</code> e
   <code>POZZO_KEY</code>. Ogni gioco può averne di propri in «⚙ Profilo di avvio».</p>
 <div class="pf-grid">
-  <label class="wide">Prima dell'avvio <input class="field" id="ln-before" placeholder="es. C:\Script\prima.bat"></label>
-  <label class="wide">Dopo la chiusura <input class="field" id="ln-after" placeholder="es. C:\Script\dopo.bat"></label>
+  <label class="wide"><span data-i18n="j.emu.launch.before">Prima dell'avvio</span> <input class="field" id="ln-before" placeholder="es. C:\Script\prima.bat" data-i18n-placeholder="j.emu.launch.before.ph"></label>
+  <label class="wide"><span data-i18n="j.emu.launch.after">Dopo la chiusura</span> <input class="field" id="ln-after" placeholder="es. C:\Script\dopo.bat" data-i18n-placeholder="j.emu.launch.after.ph"></label>
 </div>
-<label class="chk"><input type="checkbox" id="ln-close"> Chiudi il launcher dello store (Steam, Epic, GOG Galaxy,
-  Battle.net, Amazon) a fine partita, se l'aveva aperto il gioco</label>
-<div class="row end"><button class="btn primary" id="ln-save" type="button">Salva</button></div>
-<h3>Disco veloce</h3>
-<p class="muted small">Copia il gioco su un disco veloce (SSD) prima di avviarlo, per caricamenti più rapidi se la libreria sta su un HDD.</p>
-<label class="small" for="fc-dir">Cartella delle copie temporanee</label>
-<div class="row"><input id="fc-dir" class="field grow" placeholder="" aria-describedby="fc-free"><button class="btn" id="fc-pick" type="button">Scegli…</button></div>
+<label class="chk"><input type="checkbox" id="ln-close"> <span data-i18n="j.emu.launch.close">Chiudi il launcher dello store (Steam, Epic, GOG Galaxy,
+  Battle.net, Amazon) a fine partita, se l'aveva aperto il gioco</span></label>
+<div class="row end"><button class="btn primary" id="ln-save" type="button" data-i18n="j.common.save">Salva</button></div>
+<h3 data-i18n="j.emu.fast.title">Disco veloce</h3>
+<p class="muted small" data-i18n="j.emu.fast.desc">Copia il gioco su un disco veloce (SSD) prima di avviarlo, per caricamenti più rapidi se la libreria sta su un HDD.</p>
+<label class="small" for="fc-dir" data-i18n="j.emu.fast.dir">Cartella delle copie temporanee</label>
+<div class="row"><input id="fc-dir" class="field grow" placeholder="" aria-describedby="fc-free"><button class="btn" id="fc-pick" type="button" data-i18n="j.emu.fast.pick">Scegli…</button></div>
 <p class="muted small" id="fc-free"></p>
-<label class="chk"><input type="checkbox" id="fc-del"> Elimina la copia quando chiudi il gioco</label>
-<p class="muted small">Se la disattivi, la copia resta sul disco veloce e occupa spazio finché non la cancelli tu.</p>
-<div class="row end"><button class="btn primary" id="fc-save" type="button">Salva</button></div>
-<label class="chk"><input type="checkbox" id="pl-proto"> Registra il link pozzo:// su Windows <span class="muted small">Permette di aprire un invito ricevuto da un amico cliccando il link. Si puo' disattivare in ogni momento.</span></label>
+<label class="chk"><input type="checkbox" id="fc-del"> <span data-i18n="j.emu.fast.del">Elimina la copia quando chiudi il gioco</span></label>
+<p class="muted small" data-i18n="j.emu.fast.keep">Se la disattivi, la copia resta sul disco veloce e occupa spazio finché non la cancelli tu.</p>
+<div class="row end"><button class="btn primary" id="fc-save" type="button" data-i18n="j.common.save">Salva</button></div>
+<label class="chk"><input type="checkbox" id="pl-proto"> <span data-i18n="j.emu.proto.label">Registra il link pozzo:// su Windows</span> <span class="muted small" data-i18n="j.emu.proto.desc">Permette di aprire un invito ricevuto da un amico cliccando il link. Si può disattivare in ogni momento.</span></label>

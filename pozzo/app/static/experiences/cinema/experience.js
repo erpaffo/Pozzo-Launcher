@@ -15,7 +15,7 @@
   function home(element, context) {
     const all = (context.state?.games || []).filter((g) => g.grp && g.id === g.grp.primary && !g.grp.hidden);
     if (!all.length) {
-      element.innerHTML = `<div class="cnx"><div class="cnx-empty"><h1>Nessun gioco</h1><p>Aggiungi una libreria per vedere qui i tuoi titoli.</p></div></div>`;
+      element.innerHTML = `<div class="cnx"><div class="cnx-empty"><h1>${t("c.cinema.empty.title")}</h1><p>${t("c.cinema.empty.text")}</p></div></div>`;
       return;
     }
     const played = all.filter((g) => g.grp.last > 0).sort((a, b) => b.grp.last - a.grp.last);
@@ -29,10 +29,10 @@
       + `<header class="cnx-hero" style="--cnx-img:url('${cover(hero)}')"><div class="cnx-hero-body">`
       + `<h1>${esc(hero.title)}</h1>`
       + `<p class="cnx-meta">${esc([hero.year, genresOf(hero).slice(0, 3).join(" · ")].filter(Boolean).join(" · "))}</p>`
-      + `<button type="button" class="cnx-play" data-cnx-id="${esc(hero.id)}">▶ Apri</button></div></header>`
-      + rail("Continua a giocare", played.slice(0, 30))
+      + `<button type="button" class="cnx-play" data-cnx-id="${esc(hero.id)}">▶ ${t("c.action.open")}</button></div></header>`
+      + rail(t("c.shelf.continue"), played.slice(0, 30))
       + genres.map(([n, list]) => rail(n, list.slice(0, 30))).join("")
-      + rail("Recenti", recent)
+      + rail(t("c.shelf.recent"), recent)
       + `</div>`;
 
     element.querySelector(".cnx")?.addEventListener("click", (e) => {

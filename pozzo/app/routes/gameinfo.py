@@ -11,6 +11,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from ... import platforms as P
 from ... import profilecfg as PC
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -138,11 +139,11 @@ def build_router(ctx) -> APIRouter:
         from ... import frontends
         fmt = body.get("format")
         if fmt not in ("esde", "pegasus", "html"):
-            raise HTTPException(400, "formato non valido (esde, pegasus o html)")
+            raise HTTPException(400, I.tr("s.gameinfo.formatInvalid"))
         raw = str(body.get("out_dir") or "").strip().strip('"')
         out = Path(os.path.expandvars(os.path.expanduser(raw))) if raw else Path(cfg.output) / fmt
         if export_state["running"]:
-            raise HTTPException(409, "Esportazione gia' in corso")
+            raise HTTPException(409, I.tr("s.gameinfo.exportBusy"))
         export_state["running"] = True
         try:
             out.mkdir(parents=True, exist_ok=True)
@@ -154,7 +155,7 @@ def build_router(ctx) -> APIRouter:
                 fn = frontends.export_esde if fmt == "esde" else frontends.export_pegasus
                 summary = fn(Path(cfg.cache), out, plats)
         except OSError as e:
-            raise HTTPException(400, f"Cartella non scrivibile: {e}")
+            raise HTTPException(400, I.tr("s.gameinfo.folderNotWritable", err=e))
         finally:
             export_state["running"] = False
         return {"ok": True, "summary": summary, "games": sum(summary.values()), "out_dir": str(out),

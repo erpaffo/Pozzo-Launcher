@@ -19,7 +19,7 @@ async function api(path, opts = {}) {
   if (opts.cache) init.cache = opts.cache;
   if (opts.body !== undefined) { init.body = JSON.stringify(opts.body); init.method = opts.method || "POST"; }
   const r = await fetch(path, init);
-  if (r.status === 401) { if (GUEST.on) { location.href = "/g/"; throw new Error("Invito scaduto"); } showPair(); throw new Error("Telefono non abbinato"); }
+  if (r.status === 401) { if (GUEST.on) { location.href = "/g/"; throw new Error(t("k.m.invite_expired")); } showPair(); throw new Error(t("k.m.not_paired")); }
   if (!r.ok) { let m = r.statusText; try { m = (await r.json()).detail || m; } catch { /* */ } throw new Error(m); }
   return r.status === 204 ? null : r.json();
 }
@@ -41,7 +41,7 @@ function showPair() {
   if (code) $("#pair-code").value = code;
   const ua = navigator.userAgent;
   $("#pair-name").value = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua)
-    ? ((ua.match(/Android[^;]*;\s*([^;)]+)/) || [])[1] || "Android").replace(/Build.*$/, "").trim() : "Telefono";
+    ? ((ua.match(/Android[^;]*;\s*([^;)]+)/) || [])[1] || "Android").replace(/Build.*$/, "").trim() : t("k.m.phone");
 }
 $("#pair-go").onclick = async () => {
   $("#pair-err").textContent = "";
@@ -88,13 +88,13 @@ function renderHome() {
   const favs = L.games.filter((g) => g.fav).sort((a, b) => a.sort.localeCompare(b.sort)).slice(0, 30);
   const pc = L.games.filter((g) => g.store && g.installed).sort((a, b) => (b.last || 0) - (a.last || 0)).slice(0, 20);
   const row = (t, list) => (list.length ? `<h2 class="sec">${t}</h2><div class="row-scroll">${list.map(card).join("")}</div>` : "");
-  const rows = row("▶ In corso", playing) + row("◷ Giocati di recente", recent) + row("★ Preferiti", favs)
-    + row("🖥 Giochi PC installati", pc);
+  const rows = row(t("k.m.playing"), playing) + row(t("k.m.recent_row"), recent) + row(t("k.m.fav"), favs)
+    + row(t("k.m.pc_row"), pc);
   // senza partite recenti, preferiti o giochi PC la Home non deve dire «libreria vuota»: si mostrano i titoli
   $("#v-home").innerHTML = rows || (L.games.length
-    ? row("🎲 Tutti i giochi", L.games.slice().sort((a, b) => a.sort.localeCompare(b.sort)).slice(0, 30))
-      + `<p class="empty small">${L.games.length} giochi: aprine uno o cerca in <b>🔍 Libreria</b>.</p>`
-    : `<p class="empty">Libreria vuota: aggiungi i giochi dall'app sul PC.</p>`);
+    ? row(t("k.m.all_games"), L.games.slice().sort((a, b) => a.sort.localeCompare(b.sort)).slice(0, 30))
+      + `<p class="empty small">${t("k.m.home_count", {n: L.games.length})}</p>`
+    : `<p class="empty">${t("k.m.lib_empty")}</p>`);
 }
 
 function filterLib() {
@@ -117,7 +117,7 @@ function filterLib() {
   };
   it = it.slice().sort(sorters[L.sort] || byTitle);
   L.items = it; L.shown = 0;
-  $("#grid").innerHTML = it.length ? "" : `<p class="empty">Nessun gioco trovato.</p>`;
+  $("#grid").innerHTML = it.length ? "" : `<p class="empty">${t("k.m.no_game")}</p>`;
   moreLib();
 }
 function moreLib() {
@@ -129,16 +129,16 @@ new IntersectionObserver((e) => { if (e[0].isIntersecting && L.shown < L.items.l
 
 function renderLibTools() {
   const plats = [...new Set(L.games.filter((g) => !g.store).map((g) => g.platform))].sort((a, b) => (L.plats.get(a) || a).localeCompare(L.plats.get(b) || b));
-  $("#plat").innerHTML = `<option value="">Tutte</option>` + (L.games.some((g) => g.store) ? `<option value="pc">PC</option>` : "")
+  $("#plat").innerHTML = `<option value="">${t("k.m.all_f")}</option>` + (L.games.some((g) => g.store) ? `<option value="pc">PC</option>` : "")
     + plats.map((p) => `<option value="${esc(p)}">${esc(L.plats.get(p) || p)}</option>`).join("");
   // il filtro salvato puo' non esistere piu' (console tolta, libreria ricostruita): si torna a «Tutte»
   if (![...$("#plat").options].some((o) => o.value === L.plat)) { L.plat = ""; store.set("plat", ""); }
   $("#plat").value = L.plat;
-  const chips = [["all", "Tutti"], ["recent", "Recenti"], ["fav", "★ Preferiti"], ["playing", "▶ In corso"], ["backlog", "📋 Da giocare"]];
+  const chips = [["all", t("k.common.all")], ["recent", t("k.m.chip.recent")], ["fav", t("k.m.fav")], ["playing", t("k.m.playing")], ["backlog", t("k.m.backlog")]];
   $("#lib-chips").innerHTML = chips.map(([k, l]) => `<button data-chip="${k}" class="${L.chip === k ? "on" : ""}">${l}</button>`).join("");
   // ordinamento: titolo, anno, voto, tempo di gioco, ultimo avviato
-  const SORTS = [["title", "Titolo A–Z"], ["-year", "Anno ↓"], ["year", "Anno ↑"], ["-rating", "Valutazione"],
-    ["playtime", "Tempo di gioco"], ["last", "Ultimo avviato"]];
+  const SORTS = [["title", t("k.m.sort.title")], ["-year", t("k.m.sort.year_desc")], ["year", t("k.m.sort.year_asc")], ["-rating", t("k.m.sort.rating")],
+    ["playtime", t("k.m.sort.playtime")], ["last", t("k.m.sort.last")]];
   $("#sort").innerHTML = SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
   $("#sort").value = L.sort;
 }
@@ -156,17 +156,17 @@ async function openGame(id) {
   try { d = await api(`/api/game/${id}`); } catch (e) { return toast(e.message, true); }
   const pc = !!d.store;
   $("#g-meta").innerHTML = esc([pc ? d.store_name : d.platform_name, d.year].filter(Boolean).join(" · "))
-    + (d.user.playtime ? `<br>${Math.round(d.user.playtime / 3600 * 10) / 10} h giocate` : "")
+    + (d.user.playtime ? `<br>${Math.round(d.user.playtime / 3600 * 10) / 10} ${t("k.m.hours")}` : "")
     + (d.emulator ? `<br><span class="small">${esc(d.emulator)}</span>` : "");
   const canPlay = pc ? d.installed : !!d.emulator;
   $("#g-btns").innerHTML = canPlay
-    ? `<button class="btn primary big" data-act="play">▶ Gioca sul PC</button><button class="btn big" data-act="playpad">🎮 Gioca con il telefono come controller</button>`
-      + `<button class="btn big" data-act="here">📱 Gioca su questo telefono (Moonlight)</button>`
-    : `<p class="muted">${pc ? "Non installato sul PC" : "Nessun emulatore configurato per questa console"}</p>`;
-  const ST = { backlog: "📋 Da giocare", playing: "▶ In corso", done: "✔ Finito", dropped: "✖ Abbandonato" };
-  $("#g-btns").insertAdjacentHTML("beforeend", `<button class="btn" data-act="fav">${d.user.favorite ? "★ Nei preferiti" : "☆ Aggiungi ai preferiti"}</button>`
+    ? `<button class="btn primary big" data-act="play">${t("k.m.play")}</button><button class="btn big" data-act="playpad">${t("k.m.play_pad")}</button>`
+      + `<button class="btn big" data-act="here">${t("k.m.play_here")}</button>`
+    : `<p class="muted">${pc ? t("k.m.not_installed") : t("k.m.no_emu_console")}</p>`;
+  const ST = { backlog: t("k.m.backlog"), playing: t("k.m.playing"), done: t("k.m.done_status"), dropped: t("k.m.dropped") };
+  $("#g-btns").insertAdjacentHTML("beforeend", `<button class="btn" data-act="fav">${d.user.favorite ? t("k.m.unfav") : t("k.m.fav_add")}</button>`
     + `<div class="g-status">${Object.entries(ST).map(([k, l]) => `<button class="btn${d.user.status === k ? " primary" : ""}" data-act="status" data-st="${k}">${l}</button>`).join("")}</div>`
-    + (d.user.last_played ? `<button class="btn" data-act="unrecent">✖ Togli da «Giocati di recente»</button>` : ""));
+    + (d.user.last_played ? `<button class="btn" data-act="unrecent">${t("k.m.unrecent")}</button>` : ""));
   $("#g-desc").textContent = d.description || "";
   $("#g-btns").onclick = async (e) => {
     const a = e.target.dataset.act;
@@ -176,7 +176,7 @@ async function openGame(id) {
       showMoonlightSteps(d.title);
     } else if (a === "play" || a === "playpad") {
       try { await api(`/api/game/${id}/play`, { body: {} }); } catch (err) { return toast(err.message, true); }
-      toast(`Avvio di «${d.title}» sul PC…`);
+      toast(t("k.m.starting", {title: d.title}));
       closeSheet();
       pollRun(true);
       if (a === "playpad") openPad();
@@ -192,7 +192,7 @@ async function openGame(id) {
     } else if (a === "unrecent") {
       try { await api(`/api/game/${id}/flag`, { body: { field: "last_played", value: null } }); } catch (err) { return toast(err.message, true); }
       if (g) g.last = 0;
-      toast("Tolto da «Giocati di recente»");
+      toast(t("k.m.unrecent_done"));
       openGame(id);
     }
   };
@@ -205,15 +205,14 @@ function showMoonlightSteps(title) {
   const store = android ? "https://play.google.com/store/apps/details?id=com.limelight"
     : "https://apps.apple.com/app/moonlight-game-streaming/id1000551566";
   $(".sheet-box").innerHTML = `<h2>📱 ${esc(title)}</h2>
-    <p>Il gioco si sta avviando sul PC. Per giocarlo qui:</p>
+    <p>${t("k.m.moon.intro")}</p>
     <ol class="steps">
-      <li>Apri <b>Moonlight</b>${android ? ` (<a href="intent://#Intent;package=com.limelight;S.browser_fallback_url=${encodeURIComponent(store)};end">apri</a>)` : ""}.</li>
-      <li>Tocca il tuo <b>PC</b>.</li>
-      <li>Scegli <b>▶ Gioco in corso</b>: sei nel gioco. Comandi: tasti a schermo di Moonlight o un controller Bluetooth collegato al telefono.</li>
+      <li>${t("k.m.moon.open", {link: android ? ` (<a href="intent://#Intent;package=com.limelight;S.browser_fallback_url=${encodeURIComponent(store)};end">${t("k.m.open_lc")}</a>)` : ""})}</li>
+      <li>${t("k.m.moon.tap")}</li>
+      <li>${t("k.m.moon.pick")}</li>
     </ol>
-    <p class="muted small">La prima volta: in Pozzo Launcher sul PC premi «📡 Pubblica in Moonlight» (Impostazioni › Telefono e streaming),
-      altrimenti «▶ Gioco in corso» non compare. Non hai Moonlight? <a href="${store}" target="_blank" rel="noopener">Installalo</a>.</p>
-    <button class="btn primary big" id="moon-ok">Ok</button>`;
+    <p class="muted small">${t("k.m.moon.first", {store})}</p>
+    <button class="btn primary big" id="moon-ok">${t("k.m.ok")}</button>`;
   $("#moon-ok").onclick = closeSheet;
 }
 function showSheet(html) { $("#sheet").hidden = false; $(".sheet-box").innerHTML = html; }
@@ -238,8 +237,8 @@ async function pollRun(soon = false) {
 $("#run-mini").onclick = async (e) => {
   const a = e.target.dataset.run;
   if (a === "pad") openPad();
-  else if (a === "shot") { await api("/api/running/screenshot", { body: {} }); toast("📷 Schermata salvata sul PC"); }
-  else if (a === "stop" && confirm(`Chiudere «${RUN.title}» sul PC?`)) { await api("/api/running/stop", { body: {} }); pollRun(); }
+  else if (a === "shot") { await api("/api/running/screenshot", { body: {} }); toast(t("k.m.shot_saved")); }
+  else if (a === "stop" && confirm(t("k.m.confirm_close", {title: RUN.title}))) { await api("/api/running/stop", { body: {} }); pollRun(); }
 };
 
 /* ------------------------------------------------------------------ controller */
@@ -346,12 +345,12 @@ function selectEdit(k) {
   EDIT.sel = k;
   document.querySelectorAll("#pad .edit-sel").forEach((e) => e.classList.remove("edit-sel"));
   $("#pe-size").disabled = !k;
-  if (!k) { $("#pe-sel").textContent = "Trascina un tasto per spostarlo"; return; }
+  if (!k) { $("#pe-sel").textContent = t("k.m.edit.hint"); return; }
   const el = $(MOVABLE[k], $("#pad"));
   el.classList.add("edit-sel");
   $("#pe-size").value = customPos($("#pad").dataset.lay)[k]?.k || 1;
-  $("#pe-sel").textContent = { l2: "Grilletto sinistro", l1: "Dorsale sinistro", r1: "Dorsale destro", r2: "Grilletto destro",
-    ls: "Levetta sinistra", rs: "Levetta destra", dpad: "Croce", face: "Tasti azione", mid: "Tasti centrali" }[k];
+  $("#pe-sel").textContent = { l2: t("k.m.edit.l2"), l1: t("k.m.edit.l1"), r1: t("k.m.edit.r1"), r2: t("k.m.edit.r2"),
+    ls: t("k.m.edit.ls"), rs: t("k.m.edit.rs"), dpad: t("k.m.edit.dpad"), face: t("k.m.edit.face"), mid: t("k.m.edit.mid") }[k];
 }
 // in modifica i tocchi spostano i tasti invece di premerli (ascoltatori in fase di cattura: arrivano prima del gioco)
 function editDown(e) {
@@ -406,7 +405,7 @@ function applyLayout() {
   pad.classList.toggle("portrait", !!(sp && sp.portrait));
   pad.classList.toggle("free", !!(sp && sp.both));  // nessun blocco di rotazione: vanno bene verticale e orizzontale
   document.querySelectorAll("#pad .sp").forEach((e) => e.classList.toggle("on", e.id === `sp-${lay}`));
-  $("#pad-rotate").textContent = sp && sp.portrait ? "Tieni il telefono in verticale 🔄" : "Ruota il telefono in orizzontale 🔄";
+  $("#pad-rotate").textContent = sp && sp.portrait ? t("k.m.rotate_portrait") : t("k.m.rotate_land");
   if (prev !== lay) {
     releaseAll();
     showSource();
@@ -419,7 +418,7 @@ function applyLayout() {
     if (prev === "ds") dsStop();
     if (lay === "ds") dsStart();
   }
-  if (lay === "gun") { gunFit(); $("#gun-click").textContent = `👆 Clic al tocco: ${GUN.click ? "sì" : "no"}`; }
+  if (lay === "gun") { gunFit(); $("#gun-click").textContent = t(GUN.click ? "k.m.gun.click_on" : "k.m.gun.click_off"); }
   if (sp) return;
   const L = LAYOUTS[lay] || LAYOUTS.xbox;
   for (const [pos, label] of Object.entries(L.face)) {
@@ -440,8 +439,8 @@ function releaseAll() {
   PAD.buttons = 0; PAD.lt = PAD.rt = PAD.lx = PAD.ly = PAD.rx = PAD.ry = 0; PAD.dirty = true;
   if (GUN.down) gunSend(GUN.x, GUN.y, false);
 }
-const GYRO_LABEL = { off: "🌀 Off", dsu: "🌀 Mov", aim: "🎯 Mira" };
-const SRC_LABEL = { auto: "🎮 Auto", touch: "👆 Dito", gamepad: "🎮 Pad" };
+const GYRO_LABEL = { off: "k.m.gyro.off", dsu: "k.m.gyro.dsu", aim: "k.m.gyro.aim" };
+const SRC_LABEL = { auto: "k.m.src.auto", touch: "k.m.src.touch", gamepad: "k.m.src.gamepad" };
 
 /* ---- controller vero collegato al telefono/iPad (Bluetooth): Gamepad API, schema "standard" */
 const GP_MAP = [["a", 0], ["b", 1], ["x", 2], ["y", 3], ["lb", 4], ["rb", 5], ["back", 8], ["start", 9], ["ls", 10], ["rs", 11],
@@ -461,20 +460,20 @@ function readGamepad(gp) {
 function hwActive() { return (SET.src === "gamepad" || (SET.src === "auto" && !SPECIAL[$("#pad").dataset.lay])) && !!firstGamepad(); }
 function showSource() {
   const gp = hwActive() ? firstGamepad() : null;
-  $("#pad-src").textContent = SRC_LABEL[SET.src];
+  $("#pad-src").textContent = t(SRC_LABEL[SET.src]);
   $("#pad").classList.toggle("hw", !!gp);
   $("#pad-hw").hidden = !gp;
-  if (gp) $("#pad-hw-name").textContent = gp.id.replace(/\s*\(.*?\)\s*/g, " ").trim() || "Controller collegato";
-  else if (SET.src === "gamepad" && !$("#pad").hidden) $("#pad-info").textContent = "Collega un controller al telefono (Bluetooth) e premi un tasto";
+  if (gp) $("#pad-hw-name").textContent = gp.id.replace(/\s*\(.*?\)\s*/g, " ").trim() || t("k.m.pad.connected");
+  else if (SET.src === "gamepad" && !$("#pad").hidden) $("#pad-info").textContent = t("k.m.gp.hint");
 }
-window.addEventListener("gamepadconnected", (e) => { if (SET.src !== "touch") toast(`🎮 ${e.gamepad.id.split("(")[0].trim()} collegato`); showSource(); PAD.dirty = true; });
+window.addEventListener("gamepadconnected", (e) => { if (SET.src !== "touch") toast(t("k.m.gp.connected", {name: e.gamepad.id.split("(")[0].trim()})); showSource(); PAD.dirty = true; });
 window.addEventListener("gamepaddisconnected", () => { showSource(); PAD.buttons = 0; PAD.lt = PAD.rt = PAD.lx = PAD.ly = PAD.rx = PAD.ry = 0; PAD.dirty = true; });
 
 async function openPad() {
   $("#pad").hidden = false;
   document.body.classList.add("pad-on");  // il gioco non deve scorrere sotto il controller
   $("#pad").style.setProperty("--s", SET.scale);
-  $("#pad-gyro").textContent = GYRO_LABEL[SET.gyro];
+  $("#pad-gyro").textContent = t(GYRO_LABEL[SET.gyro]);
   try { await document.documentElement.requestFullscreen?.({ navigationUI: "hide" }); } catch { /* iOS non lo supporta */ }
   const sp = SPECIAL[effLayout()];
   lockOrientation(sp);
@@ -504,27 +503,27 @@ function closePad() {
 function connectPad() {
   const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/m/ws`);
   PAD.ws = ws;
-  $("#pad-info").textContent = "Collegamento…";
+  $("#pad-info").textContent = t("k.m.connecting");
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.t === "ok") {
       PAD.player = m.player; PAD.retry = 0;
       if (m.screen) { GUN.ratio = m.screen[0] / m.screen[1]; if ($("#pad").dataset.lay === "gun") gunFit(); }
       showPlayer();
-      if (gyroMode() === "dsu" && !m.dsu) toast(m.dsu_error || "Giroscopio non disponibile sul PC", true);
+      if (gyroMode() === "dsu" && !m.dsu) toast(m.dsu_error || t("k.m.gyro_unavail"), true);
       PAD.dirty = true;
     } else if (m.t === "players") {
       const moved = PAD.player && PAD.player !== m.me;
       PAD.player = m.me; PAD.slot = m.slot; PAD.list = m.list;
       showPlayer();
-      if (moved) { toast(`Ora sei il giocatore ${m.me}`); vib(); }
+      if (moved) { toast(t("k.m.now_player", {n: m.me})); vib(); }
       if (!$("#pad-lobby").hidden) renderLobby();
     } else if (m.t === "rumble") rumble(m.l || 0, m.s || 0);
     else if (m.t === "err") toast(m.msg, true);
   };
   ws.onclose = () => {
     if ($("#pad").hidden) return;
-    $("#pad-info").textContent = "Scollegato: nuovo tentativo…";
+    $("#pad-info").textContent = t("k.m.reconnecting");
     setTimeout(() => { if (!$("#pad").hidden) connectPad(); }, Math.min(5000, 500 * ++PAD.retry));
   };
 }
@@ -570,7 +569,7 @@ function renderLobby() {
     const me = slot === PAD.slot;
     const n = p ? p.player : slot + 1;
     return `<button data-slot="${slot}" class="${me ? "me" : ""}" style="border-color:${PCOLOR[(n - 1) % 4]}">`
-      + `<b style="color:${PCOLOR[(n - 1) % 4]}">Giocatore ${n}</b><br>${p ? esc(p.name) + (me ? " (tu)" : "") : `<span class="muted">libero</span>`}</button>`;
+      + `<b style="color:${PCOLOR[(n - 1) % 4]}">${t("k.m.player", {n})}</b><br>${p ? esc(p.name) + (me ? t("k.m.you") : "") : `<span class="muted">${t("k.m.free")}</span>`}</button>`;
   }).join("");
 }
 $("#pad-players").onclick = () => { renderLobby(); $("#pad-lobby").hidden = false; };
@@ -591,7 +590,7 @@ function wheelSteer(gx, gy) {
   PAD.lx = Math.abs(v) < 0.03 ? 0 : v; PAD.dirty = true;
   $("#wh-rim").style.transform = `rotate(${PAD.lx * WHEEL.max}deg)`;
 }
-$("#wh-center").onclick = () => { WHEEL.base = null; toast("Volante centrato"); };
+$("#wh-center").onclick = () => { WHEEL.base = null; toast(t("k.m.wheel_centered")); };
 
 /* ---- cursori (pedali del volante, leva della chitarra): piu' in alto si tocca, piu' e' premuto */
 function sliderMove(p, y) {
@@ -677,23 +676,23 @@ function gunPos(e) {
 }
 $("#gun-click").onclick = () => {
   GUN.click = !GUN.click; store.set("gunclick", GUN.click);
-  $("#gun-click").textContent = `👆 Clic al tocco: ${GUN.click ? "sì" : "no"}`;
+  $("#gun-click").textContent = t(GUN.click ? "k.m.gun.click_on" : "k.m.gun.click_off");
 };
 
 /* ---- microfono (SingStar): PCM 16 bit mono a 16 kHz verso il PC, che lo suona nel cavo audio virtuale */
 const MIC = { ws: null, stream: null, ctx: null, node: null };
 async function micStart() {
-  if (!navigator.mediaDevices?.getUserMedia) return toast("Questo browser non dà accesso al microfono (serve HTTPS)", true);
+  if (!navigator.mediaDevices?.getUserMedia) return toast(t("k.m.mic_nohttps"), true);
   try {
     MIC.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-  } catch (e) { return toast("Permesso del microfono negato", true); }
+  } catch (e) { return toast(t("k.m.mic_denied"), true); }
   const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/m/mic`);
   ws.binaryType = "arraybuffer";
   MIC.ws = ws;
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
     if (m.t === "err") { toast(m.msg, true); micStop(); }
-    else if (m.t === "ok") $("#mic-info").textContent = `🎤 Il PC suona la tua voce su «${m.device}». In PCSX2 scegli come microfono l'altro capo del cavo.`;
+    else if (m.t === "ok") $("#mic-info").textContent = t("k.m.mic.ok", {device: m.device});
   };
   ws.onclose = () => { if (MIC.ws === ws) micStop(); };
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -720,7 +719,7 @@ async function micStart() {
   node.connect(ctx.destination);  // serve perche' il nodo lavori; l'uscita resta muta (non si scrive nell'output)
   MIC.node = node;
   $("#mic-btn").classList.add("on");
-  $("#mic-btn").innerHTML = "⏹<br>Ferma";
+  $("#mic-btn").innerHTML = t("k.m.mic.stop");
 }
 function micStop() {
   const ws = MIC.ws;
@@ -731,7 +730,7 @@ function micStop() {
   MIC.stream && MIC.stream.getTracks().forEach((t) => t.stop());
   MIC.stream = MIC.ctx = MIC.node = null;
   $("#mic-btn").classList.remove("on");
-  $("#mic-btn").innerHTML = "🎤<br>Inizia a cantare";
+  $("#mic-btn").innerHTML = t("k.m.mic.start");
   $("#mic-level").style.width = "0";
 }
 $("#mic-btn").onclick = () => (MIC.ws ? micStop() : micStart());
@@ -889,13 +888,13 @@ area.addEventListener("contextmenu", (e) => e.preventDefault());
 /* ---- giroscopio: assi del telefono -> assi di un controller (X destra, Y su dalla faccia, Z verso il giocatore) */
 let motionOn = false;
 async function enableMotion() {
-  if (typeof DeviceMotionEvent === "undefined") { toast("Questo telefono non ha sensori di movimento", true); return false; }
+  if (typeof DeviceMotionEvent === "undefined") { toast(t("k.m.no_sensors"), true); return false; }
   if (typeof DeviceMotionEvent.requestPermission === "function") {  // iOS: serve il permesso esplicito
     try {
-      if ((await DeviceMotionEvent.requestPermission()) !== "granted") { toast("Permesso dei sensori negato", true); return false; }
-    } catch (e) { toast("Tocca di nuovo il pulsante del giroscopio per dare il permesso", true); return false; }
+      if ((await DeviceMotionEvent.requestPermission()) !== "granted") { toast(t("k.m.sensors_denied"), true); return false; }
+    } catch (e) { toast(t("k.m.gyro_again"), true); return false; }
   }
-  if (!window.isSecureContext) { toast("Il giroscopio richiede la connessione HTTPS", true); return false; }
+  if (!window.isSecureContext) { toast(t("k.m.gyro_https"), true); return false; }
   if (!motionOn) { window.addEventListener("devicemotion", onMotion); motionOn = true; }
   return true;
 }
@@ -935,20 +934,20 @@ $("#pad-exit").onclick = closePad;
 $("#pad-src").onclick = () => {
   SET.src = { auto: "touch", touch: "gamepad", gamepad: "auto" }[SET.src];
   store.set("src", SET.src);
-  toast({ auto: "Controller collegato se c'è, altrimenti tasti a schermo", touch: "Solo tasti a schermo",
-    gamepad: "Solo il controller collegato al telefono" }[SET.src]);
+  toast({ auto: t("k.m.src.msg_auto"), touch: t("k.m.src.msg_touch"),
+    gamepad: t("k.m.src.msg_gamepad") }[SET.src]);
   showSource(); PAD.dirty = true;
 };
 $("#pad-hw-touch").onclick = () => { SET.src = "touch"; store.set("src", "touch"); showSource(); PAD.dirty = true; };
-$("#pad-shot").onclick = async () => { try { await api("/api/running/screenshot", { body: {} }); toast("📷 Schermata salvata sul PC"); } catch (e) { toast(e.message, true); } };
+$("#pad-shot").onclick = async () => { try { await api("/api/running/screenshot", { body: {} }); toast(t("k.m.shot_saved")); } catch (e) { toast(e.message, true); } };
 $("#pad-gyro").onclick = async () => {
   const order = ["off", "dsu", "aim"];
   SET.gyro = order[(order.indexOf(SET.gyro) + 1) % order.length];
   if (SET.gyro !== "off" && !(await enableMotion())) SET.gyro = "off";
   PAD.aim.x = PAD.aim.y = 0;
   store.set("gyro", SET.gyro);
-  $("#pad-gyro").textContent = GYRO_LABEL[SET.gyro];
-  toast({ off: "Giroscopio spento", dsu: "Movimento inviato agli emulatori (DSU)", aim: "Mira con il giroscopio (levetta destra)" }[SET.gyro]);
+  $("#pad-gyro").textContent = t(GYRO_LABEL[SET.gyro]);
+  toast({ off: t("k.m.gyro.msg_off"), dsu: t("k.m.gyro.msg_dsu"), aim: t("k.m.gyro.msg_aim") }[SET.gyro]);
 };
 $("#pad-set").onclick = () => {
   $("#ps-gyro").value = SET.gyro; $("#ps-sens").value = SET.sens; $("#ps-invx").checked = SET.invx; $("#ps-invy").checked = SET.invy;
@@ -960,22 +959,21 @@ $("#pad-set").onclick = () => {
   $("#pad-settings").hidden = false;
 };
 const LAYOUT_HELP = {
-  buzz: "Buzz!: ogni telefono è un giocatore. Sul PC: Impostazioni › Telefono e streaming › «Configura PCSX2 per Buzz!» (una volta, con PCSX2 chiuso).",
-  wii: "Wii Remote: tasti, inclinazione, scuotimento e puntatore (giroscopio) arrivano a Dolphin dal server DSU. Sul PC: «Configura Dolphin per il Wii Remote».",
-  wiis: "Wii Remote di lato (come un NES): tienilo in orizzontale, 1 e 2 a destra. Sul PC: «Configura Dolphin per il Wii Remote».",
-  nunchuk: "Nunchuk: levetta, C e Z a sinistra; Wii Remote a destra. Inclinazione e scuotimento col giroscopio. Sul PC: «Configura Dolphin per il Wii Remote».",
-  wheel: "Volante: inclina il telefono come un volante (levetta sinistra), pedali a pressione: più in alto tocchi, più premi. «Centra» se lo sterzo tira da una parte. La sensibilità regola quanto girare.",
-  guitar: "Chitarra: tieni i tasti colorati e muovi il plettro; ⭐ = Star Power. Sul PC: «Configura PCSX2 per la chitarra».",
-  arcade: "Arcade: 6 tasti come uno stick da sala (LP/MP/HP sopra, LK/MK/HK sotto).",
-  gun: "Pistola / touchpad: muove il mouse del PC (va permesso sul PC in Impostazioni › Telefono e streaming). In DuckStation/PCSX2 scegli la GunCon con il mouse; in melonDS il pennino è il mouse.",
-  mic: "Microfono: serve un cavo audio virtuale sul PC (es. VB-Cable). In PCSX2 aggiungi il microfono USB SingStar e scegli «CABLE Output».",
-  gc: "GameCube: i tasti mandano la loro lettera (A = A, B = B…): in Dolphin il controller XInput si associa senza sorprese.",
+  buzz: "k.m.help.buzz",
+  wii: "k.m.help.wii",
+  wiis: "k.m.help.wiis",
+  nunchuk: "k.m.help.nunchuk",
+  wheel: "k.m.help.wheel",
+  guitar: "k.m.help.guitar",
+  arcade: "k.m.help.arcade",
+  gun: "k.m.help.gun",
+  mic: "k.m.help.mic",
+  gc: "k.m.help.gc",
 };
 function layoutHelp() {
   const lay = $("#ps-layout").value;
-  $("#ps-help").innerHTML = esc(LAYOUT_HELP[lay] || "") + (LAYOUT_HELP[lay] ? "<br>" : "")
-    + "Movimento: nell'emulatore scegli come sorgente del movimento <b>DSU / cemuhook</b>, server 127.0.0.1, porta 26760, "
-    + `slot ${Math.max(0, (PAD.slot ?? PAD.player - 1))} (Cemu, Ryujinx, Dolphin, Azahar). Mira: per i giochi senza giroscopio.`;
+  $("#ps-help").innerHTML = esc(LAYOUT_HELP[lay] ? t(LAYOUT_HELP[lay]) : "") + (LAYOUT_HELP[lay] ? "<br>" : "")
+    + t("k.m.help.motion", {slot: Math.max(0, (PAD.slot ?? PAD.player - 1))});
 }
 $("#ps-close").onclick = async () => {
   SET.gyro = $("#ps-gyro").value; SET.sens = +$("#ps-sens").value; SET.invx = $("#ps-invx").checked; SET.invy = $("#ps-invy").checked;
@@ -986,14 +984,14 @@ $("#ps-close").onclick = async () => {
   for (const k of Object.keys(SET)) store.set(k, SET[k]);
   pushPad();  // aspetto, sensibilità e inversione valgono anche sugli altri telefoni
   if (SET.gyro !== "off" && !(await enableMotion())) SET.gyro = "off";
-  $("#pad-gyro").textContent = GYRO_LABEL[SET.gyro];
+  $("#pad-gyro").textContent = t(GYRO_LABEL[SET.gyro]);
   $("#pad").style.setProperty("--s", SET.scale);
   applyLayout();
   $("#pad-settings").hidden = true;
 };
 $("#ps-edit").onclick = async () => {
   await $("#ps-close").onclick();
-  if (SPECIAL[$("#pad").dataset.lay]) return toast("Si possono spostare i tasti di Xbox, PlayStation, Switch e GameCube", true);
+  if (SPECIAL[$("#pad").dataset.lay]) return toast(t("k.m.edit_only"), true);
   startEdit();
 };
 $("#pe-done").onclick = stopEdit;
@@ -1004,7 +1002,7 @@ $("#pe-size").oninput = (e) => {
   saveCustom(EDIT.sel, { k });
 };
 $("#pe-reset").onclick = () => {
-  if (!confirm("Rimettere tutti i tasti nella posizione e dimensione originale per questo aspetto?")) return;
+  if (!confirm(t("k.m.reset_confirm"))) return;
   store.set(`padpos_${$("#pad").dataset.lay}`, {});
   applyCustom($("#pad").dataset.lay);
   pushPad();
@@ -1029,21 +1027,21 @@ function renderActivity(d) {
   const run = d.running || {};
   const live = ["starting", "extracting", "running"].includes(run.status);
   $("#act-run").innerHTML = live
-    ? `<div class="act-run"><div class="grow"><b>▶ ${esc(run.title || "Gioco")}</b>
+    ? `<div class="act-run"><div class="grow"><b>▶ ${esc(run.title || t("k.m.game_default"))}</b>
         <span class="muted small">${esc(run.emulator || "")}${run.message ? " · " + esc(run.message) : ""}</span></div>
-        <button class="btn" data-act="stop-game">⏹ Chiudi</button></div>`
-    : `<p class="muted small">Nessun gioco in esecuzione sul PC.</p>`;
+        <button class="btn" data-act="stop-game">${t("k.m.close_game")}</button></div>`
+    : `<p class="muted small">${t("k.m.no_running")}</p>`;
   const jobs = (d.jobs || []).filter((j) => j.status !== "idle");
   $("#act-jobs").innerHTML = jobs.length ? jobs.map(actJob).join("")
-    : `<p class="muted small">Nessuna operazione in corso (store, copertine, libreria…).</p>`;
+    : `<p class="muted small">${t("k.m.no_jobs")}</p>`;
   const scanning = (d.jobs || []).some((j) => j.id === "scan" && j.status === "running");
   $("#act-btns").innerHTML = `
-    <button class="btn" data-act="stores">🌐 Aggiorna store</button>
-    <button class="btn" data-act="scan">🔍 Cerca nuovi giochi</button>
-    <button class="btn" data-act="rebuild">▦ Ricostruisci libreria</button>
-    ${scanning ? `<button class="btn" data-act="stop-scan">■ Interrompi ricerca</button>` : ""}`;
+    <button class="btn" data-act="stores">${t("k.m.act_stores")}</button>
+    <button class="btn" data-act="scan">${t("k.m.act_scan")}</button>
+    <button class="btn" data-act="rebuild">${t("k.m.act_rebuild")}</button>
+    ${scanning ? `<button class="btn" data-act="stop-scan">${t("k.m.act_stop_scan")}</button>` : ""}`;
   const c = d.counts || {};
-  $("#act-info").textContent = `${(c.groups || 0).toLocaleString("it")} giochi unici · ${(c.online || 0).toLocaleString("it")} dagli store`;
+  $("#act-info").textContent = t("k.m.act_info", {a: (c.groups || 0).toLocaleString(GSI18n.lang), b: (c.online || 0).toLocaleString(GSI18n.lang)});
 }
 
 async function loadActivity() {
@@ -1059,7 +1057,7 @@ $("#v-act").onclick = async (e) => {
   const b = e.target.closest("[data-act]");
   if (!b) return;
   const action = b.dataset.act;
-  if (action === "stop-game" && !confirm("Chiudere il gioco sul PC?")) return;
+  if (action === "stop-game" && !confirm(t("k.m.confirm_stop"))) return;
   b.disabled = true;
   try {
     const body = { action };
@@ -1078,13 +1076,13 @@ function extractLinks(text) {
 }
 async function sendLinks() {
   const links = extractLinks($("#paste-links").value);
-  if (!links.length) return toast("Nessun link trovato: serve un indirizzo http(s):// o magnet:?", true);
+  if (!links.length) return toast(t("k.m.no_link"), true);
   $("#paste-go").disabled = true;
   try {
     const r = await api("/m/api/downloads", { body: { links } });
     const n = r?.tasks?.length ?? links.length;  // risposta di POST /api/downloads: {ok, tasks}
     $("#paste-links").value = "";
-    toast(`${n} ${n === 1 ? "download aggiunto" : "download aggiunti"} alla coda del PC`);
+    toast(t(n === 1 ? "k.m.dl_one" : "k.m.dl_many", {n}));
   } catch (e) { toast(e.message, true); }
   $("#paste-go").disabled = false;
 }
@@ -1093,10 +1091,10 @@ $("#paste-clip").hidden = !navigator.clipboard?.readText;  // il browser non sem
 $("#paste-clip").onclick = async () => {
   try {
     const t = (await navigator.clipboard.readText()).trim();
-    if (!t) return toast("Negli appunti non c'è nulla", true);
+    if (!t) return toast(window.t("k.m.clip_empty"), true);
     const ta = $("#paste-links");
     ta.value = [ta.value.trim(), t].filter(Boolean).join("\n");
-  } catch { toast("Il browser non dà accesso agli appunti: incolla nel campo", true); }
+  } catch { toast(t("k.m.clip_denied"), true); }
 };
 // Web Share Target: «Condividi» da un'altra app apre /m/?share=1&title=&text=&url= (letto una volta, poi l'URL si ripulisce)
 let SHARE = (() => {
@@ -1170,7 +1168,7 @@ async function start() {
   try { decode(await api("/api/library?part=owned")); }
   catch (e) {  // senza rete e senza cache: la Home lo dice, invece di restare vuota
     if (!$("#pair").hidden) return;
-    $("#v-home").innerHTML = `<p class="empty">Libreria non disponibile: ${esc(e.message)}</p>`;
+    $("#v-home").innerHTML = `<p class="empty">${t("k.m.lib_unavail", {msg: esc(e.message)})}</p>`;
     toast(e.message, true); return;
   }
   shownLibrary();
@@ -1194,7 +1192,7 @@ function installUI() {
   $("#install-btn").hidden = isStandalone() || !(INSTALL.ev || isIOS());
 }
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); INSTALL.ev = e; installUI(); });
-window.addEventListener("appinstalled", () => { INSTALL.ev = null; $("#install-btn").hidden = true; toast("App installata 🎉"); });
+window.addEventListener("appinstalled", () => { INSTALL.ev = null; $("#install-btn").hidden = true; toast(t("k.m.installed")); });
 $("#install-btn").onclick = async () => {
   if (INSTALL.ev) {
     INSTALL.ev.prompt();
@@ -1202,15 +1200,14 @@ $("#install-btn").onclick = async () => {
     INSTALL.ev = null;
     return;
   }
-  showSheet(`<h2>⬇ Installa Pozzo Launcher</h2>
+  showSheet(`<h2>${t("k.m.inst.title")}</h2>
     <ol class="steps">
-      <li>Tocca <b>Condividi</b> (il quadrato con la freccia) in basso in Safari.</li>
-      <li>Scegli <b>Aggiungi alla schermata Home</b>.</li>
-      <li>Apri l'icona <b>Pozzo Launcher</b>: parte a tutto schermo, senza la barra del browser.</li>
+      <li>${t("k.m.inst.s1")}</li>
+      <li>${t("k.m.inst.s2")}</li>
+      <li>${t("k.m.inst.s3")}</li>
     </ol>
-    <p class="muted small">Se l'app non si installa o compare ancora l'avviso «non privata», manca il certificato del PC:
-      sul PC, Impostazioni › 📱 Telefono e streaming › 🔒 Certificato del PC.</p>
-    <button class="btn primary big" id="in-ok">Ok</button>`);
+    <p class="muted small">${t("k.m.inst.help")}</p>
+    <button class="btn primary big" id="in-ok">${t("k.m.ok")}</button>`);
   $("#in-ok").onclick = closeSheet;
 };
 
@@ -1222,7 +1219,7 @@ async function registerSW() {
   } catch {
     if (!store.get("swWarned", false)) {  // una volta sola: poi diventa fastidioso
       store.set("swWarned", true);
-      setTimeout(() => toast("Per installare l'app serve il certificato del PC: Impostazioni › Telefono e streaming", true), 3000);
+      setTimeout(() => toast(t("k.m.sw_warn"), true), 3000);
     }
   }
 }
@@ -1231,7 +1228,7 @@ async function registerSW() {
   registerSW();  // senza await: la pagina non aspetta il service worker
   installUI();
   if (!window.isSecureContext) {  // pagina aperta in chiaro: niente service worker, niente installazione
-    setTimeout(() => toast("Apri l'indirizzo https del PC: senza HTTPS l'app non si installa e il giroscopio non funziona", true), 1500);
+    setTimeout(() => toast(t("k.m.https_warn"), true), 1500);
   }
   if (store.get("paired", false) && !/code=\d{6}/.test(location.hash)) {
     // gia' abbinato: si parte subito, senza aspettare la rete; l'esito dell'abbinamento si verifica dopo
@@ -1257,7 +1254,7 @@ function startGuest() {
   document.querySelector(".tabbar").hidden = true;
   $("#pad-players").hidden = true;
   $("#pad-shot").hidden = true;
-  $("#pad-exit").title = "Istruzioni per il video";
+  $("#pad-exit").title = t("k.m.guest_help");
   $("#pad-exit").onclick = () => { closePad(); location.href = "/g/"; };
   openPad();
 }

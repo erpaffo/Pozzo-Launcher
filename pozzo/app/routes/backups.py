@@ -8,6 +8,7 @@ import threading
 from fastapi import APIRouter, Body, HTTPException
 
 from ... import backup as BK
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -34,7 +35,7 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/backups/restore")
     def api_backup_restore(body: dict = Body(...)):
         if launcher.running().get("status") in ("starting", "extracting", "running"):
-            raise HTTPException(409, "Chiudi il gioco in corso prima di ripristinare")  # registrerebbe la partita sui dati vecchi
+            raise HTTPException(409, I.tr("s.backups.close_game_first"))  # registrerebbe la partita sui dati vecchi
         try:
             return BK.restore(cfg, body.get("name") or "", user=user_of("default"),
                               profiles={k: v for k, v in users.items() if k != "default"})

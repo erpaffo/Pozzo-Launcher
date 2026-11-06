@@ -7,6 +7,8 @@ import html
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import HTMLResponse
 
+from ... import i18n as I
+
 
 
 def build_router(ctx) -> APIRouter:
@@ -46,7 +48,7 @@ def build_router(ctx) -> APIRouter:
     def api_spotify_callback(code: str = "", state: str = "", error: str = ""):
         try:
             spotify.callback(code, state, error)
-            message = "Spotify collegato. Puoi chiudere questa finestra e tornare a Pozzo Launcher."
+            message = I.tr("s.integrations.spotifyLinked")
         except SpotifyError as problem:
             message = str(problem)
         return HTMLResponse("<!doctype html><html lang='it'><meta charset='utf-8'><title>Spotify - Pozzo</title>"

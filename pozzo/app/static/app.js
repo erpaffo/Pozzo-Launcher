@@ -25,15 +25,31 @@ window.gsNotifyAction = (a) => {
 (async function main() {
   try { await loadSettingsMarkup(); } catch (e) {
     loading(null);
-    toast(`Errore nel caricamento delle impostazioni: ${e.message}`, true);
+    toast(t("a.app.errSettings", { msg: e.message }), true);
     return;
   }
+  const resumeEl = $("#resume-session-start");
+  if (resumeEl) {
+    resumeEl.checked = !!store.get("resumeSession", true);
+    resumeEl.addEventListener("change", () => store.set("resumeSession", resumeEl.checked));
+  }
   bind();
-  loading("Caricamento dei tuoi giochi…");
+  loading(t("a.app.loadingGames"));
   await loadExtensions(); // prima della libreria: l'attesa si vede gia' col tema scelto
   const settingsHash = location.hash.match(/^#settings(?:\/([a-z0-9:_-]+))?$/i);
   if (settingsHash) showTab(settingsHash[1] || "generale");
-  if (GS.experience.home && !store.get("view", null)) S.view = { type: "home" };
+  const resumeEnabled = !!store.get("resumeSession", true);
+  let lastSession = null;
+  if (resumeEnabled) {
+    try {
+      const raw = localStorage.getItem("gs.last_session");
+      if (raw) lastSession = JSON.parse(raw);
+    } catch {}
+    if (lastSession?.view && typeof lastSession.view === "object" && lastSession.view.type) {
+      S.view = lastSession.view;
+    }
+  }
+  if (GS.experience.home && !store.get("view", null) && (!resumeEnabled || !lastSession?.view)) S.view = { type: "home" };
   loadProfile();
   try {
     await SETUP.open();  // primo avvio: configurazione guidata (non fa nulla se gia' configurato)
@@ -43,7 +59,7 @@ window.gsNotifyAction = (a) => {
     }
   } catch (e) {
     loading(null);
-    toast("Errore nel caricamento della libreria: " + e.message, true);
+    toast(t("a.app.errLibrary", { msg: e.message }), true);
     return;
   }
   if (S.view.type === "collection" && !S.collBySlug.has(S.view.id)) S.view = { type: "all" };
@@ -51,6 +67,9 @@ window.gsNotifyAction = (a) => {
   if (S.view.type === "plugin" && !GS.ui.views.has(S.view.id)) S.view = { type: "all" };
   renderSidebar();
   setView(S.view);
+  if (resumeEnabled && lastSession?.gameId && S.games.some((g) => g.id === lastSession.gameId)) {
+    openDetail(lastSession.gameId);
+  }
   pollRunning();
   pollScan(); // se uno scraping era gia' in corso, ne mostra lo stato
 })();

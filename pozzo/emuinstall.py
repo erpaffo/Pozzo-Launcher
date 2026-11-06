@@ -14,6 +14,7 @@ Solo Windows x64.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import time
@@ -162,6 +163,65 @@ def rollback(emu_id: str, cfg) -> str:
     C.save_settings(cfg, emulators={emu_id: exe},
                     app={"emu_installed": {**(cfg.app.get("emu_installed") or {}), emu_id: {"version": "", "dir": str(dest)}}})
     return exe
+
+
+# Dati dell'utente: voci dentro la cartella dell'emulatore (modalita' portatile) e cartella in %APPDATA%.
+_USER_ENTRIES = {"portable", "portable.txt", "portable.ini", "user", "config", "saves", "sstates", "states",
+                 "memcards", "dev_hdd0", "cache", "shaders", "gameprofiles", "games", "sys", "bis", "profiles"}
+APPDATA_DIRS = {"ryujinx": "Ryujinx", "eden": "eden", "cemu": "Cemu", "dolphin": "Dolphin Emulator",
+                "duckstation": "DuckStation", "pcsx2": "PCSX2", "ppsspp": "PPSSPP", "melonds": "melonDS"}
+# file/cartella che fa leggere i dati accanto all'eseguibile: (nome, e' cartella)
+PORTABLE = {"dolphin": ("portable.txt", False), "duckstation": ("portable.txt", False), "pcsx2": ("portable.ini", False),
+            "ryujinx": ("portable", True), "cemu": ("portable", True), "eden": ("user", True),
+            "ppsspp": ("memstick", True), "melonds": ("portable.txt", False)}
+
+
+def uninstall(cfg, emu_id: str, keep_data: bool = True) -> None:
+    """Toglie un emulatore installato da Pozzo. keep_data=True lascia config, salvataggi e shader cache
+    (dentro la cartella o in %APPDATA%); False cancella anche quelli."""
+    prev = installed(cfg).get(emu_id) or {}
+    if not prev.get("dir"):
+        raise RuntimeError(f"{emu_id} non e' installato da Pozzo")
+    dest = Path(prev["dir"])
+    if dest.exists() and PT._running(dest):
+        raise EmulatorRunning(f"chiudi {emu_id} prima di disinstallarlo")
+    shutil.rmtree(_bak(dest), ignore_errors=True)
+    if keep_data and dest.is_dir():  # via tutto tranne i dati dell'utente
+        for f in dest.iterdir():
+            if f.name.lower() not in _USER_ENTRIES:
+                shutil.rmtree(f, ignore_errors=True) if f.is_dir() else f.unlink(missing_ok=True)
+        if not any(dest.iterdir()):
+            dest.rmdir()
+    else:
+        shutil.rmtree(dest, ignore_errors=True)
+        if APPDATA_DIRS.get(emu_id):
+            appdata = os.environ.get("APPDATA")
+            if appdata:
+                shutil.rmtree(Path(appdata) / APPDATA_DIRS[emu_id], ignore_errors=True)
+    C.save_settings(cfg, emulators={emu_id: None}, app={"emu_installed": {emu_id: None}})  # None = rimuovi
+    _vsave(cfg, lambda d: d.setdefault("installed", {}).pop(emu_id, None))
+
+
+def make_portable(cfg, emu_id: str) -> Path:
+    """Dati accanto all'eseguibile (backup e spostamento facili): crea il marcatore che l'emulatore riconosce.
+    I dati gia' in %APPDATA% si copiano (non si spostano) nella nuova cartella. Ritorna il marcatore."""
+    exe, spec = cfg.emulators.get(emu_id), PORTABLE.get(emu_id)
+    if not spec:
+        raise ValueError(f"{emu_id} non ha una modalita' portatile")
+    if not exe or not Path(exe).exists():
+        raise RuntimeError(f"{emu_id} non e' installato")
+    if PT._running(Path(exe).parent):
+        raise EmulatorRunning(f"chiudi {emu_id} prima di renderlo portatile")
+    name, is_dir = spec
+    mark = Path(exe).parent / name
+    old = os.environ.get("APPDATA") and Path(os.environ["APPDATA"]) / APPDATA_DIRS.get(emu_id, "-")
+    if is_dir:
+        if old and old.is_dir() and not mark.exists():
+            shutil.copytree(old, mark)
+        mark.mkdir(exist_ok=True)
+    else:
+        mark.touch()
+    return mark
 
 
 def check_updates(cfg) -> list[dict]:

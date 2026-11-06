@@ -13,20 +13,20 @@
 const RECO = (() => {
   // generi canonici: le fonti usano nomi diversi (Role-Playing, Role-playing (RPG), Gioco di Ruolo...)
   const GENRES = [
-    ["action", "Azione", /action|azione/], ["platform", "Piattaforme", /platform|piattaform/],
-    ["adventure", "Avventura", /adventure|avventura/], ["rpg", "Gioco di ruolo", /role|rpg|ruolo|jrpg/],
-    ["shmup", "Sparatutto a scorrimento", /shoot.?.?em|shmup|scrolling shooter/],
-    ["shooter", "Sparatutto", /shooter|sparatutto|sparo|fps|lightgun/], ["racing", "Corse", /racing|corsa|guida|driving|kart/],
-    ["sports", "Sport", /sport|calcio|football|soccer|tennis|golf|basket|hockey|baseball|wrestling|boxing/],
-    ["puzzle", "Rompicapo", /puzzle|thinking|rompicapo|logic/], ["strategy", "Strategia", /strateg|tactic|tattic|rts|tbs|4x/],
-    ["fighting", "Picchiaduro", /fight|picchiaduro|combattimento|versus/],
-    ["beatemup", "Picchiaduro a scorrimento", /beat.?.?em|hack and slash|beat.?em all/],
-    ["simulation", "Simulazione", /simul|management|construction|gestional|farming|tycoon/],
-    ["horror", "Horror", /horror|survival horror/], ["music", "Musica e ritmo", /music|danc|rhythm|ritm/],
-    ["party", "Party e giochi da tavolo", /party|board|card|quiz|trivia|casino|pinball|tavolo|gambling/],
-    ["stealth", "Stealth", /stealth/], ["sandbox", "Sandbox e mondo aperto", /sandbox|open world|mondo aperto|survival/],
-    ["story", "Narrativi", /visual novel|point.?and.?click|interactive|narrative/], ["arcade", "Arcade", /arcade/],
-    ["indie", "Indie", /indie/], ["roguelike", "Roguelike", /rogue/],
+    ["action", "i.reco.genre.action", /action|azione/], ["platform", "i.reco.genre.platform", /platform|piattaform/],
+    ["adventure", "i.reco.genre.adventure", /adventure|avventura/], ["rpg", "i.reco.genre.rpg", /role|rpg|ruolo|jrpg/],
+    ["shmup", "i.reco.genre.shmup", /shoot.?.?em|shmup|scrolling shooter/],
+    ["shooter", "i.reco.genre.shooter", /shooter|sparatutto|sparo|fps|lightgun/], ["racing", "i.reco.genre.racing", /racing|corsa|guida|driving|kart/],
+    ["sports", "i.reco.genre.sports", /sport|calcio|football|soccer|tennis|golf|basket|hockey|baseball|wrestling|boxing/],
+    ["puzzle", "i.reco.genre.puzzle", /puzzle|thinking|rompicapo|logic/], ["strategy", "i.reco.genre.strategy", /strateg|tactic|tattic|rts|tbs|4x/],
+    ["fighting", "i.reco.genre.fighting", /fight|picchiaduro|combattimento|versus/],
+    ["beatemup", "i.reco.genre.beatemup", /beat.?.?em|hack and slash|beat.?em all/],
+    ["simulation", "i.reco.genre.simulation", /simul|management|construction|gestional|farming|tycoon/],
+    ["horror", "i.reco.genre.horror", /horror|survival horror/], ["music", "i.reco.genre.music", /music|danc|rhythm|ritm/],
+    ["party", "i.reco.genre.party", /party|board|card|quiz|trivia|casino|pinball|tavolo|gambling/],
+    ["stealth", "i.reco.genre.stealth", /stealth/], ["sandbox", "i.reco.genre.sandbox", /sandbox|open world|mondo aperto|survival/],
+    ["story", "i.reco.genre.story", /visual novel|point.?and.?click|interactive|narrative/], ["arcade", "i.reco.genre.arcade", /arcade/],
+    ["indie", "i.reco.genre.indie", /indie/], ["roguelike", "i.reco.genre.roguelike", /rogue/],
   ];
   const GENRE_LABEL = Object.fromEntries(GENRES.map(([id, l]) => [id, l]));
   const genreCache = new Map();
@@ -117,46 +117,46 @@ const RECO = (() => {
     const recent = games.filter((g) => g.id === g.grp.primary && g.grp.last && !g.grp.hidden).sort((a, b) => b.grp.last - a.grp.last);
     const playing = games.filter((g) => g.id === g.grp.primary && g.grp.status === "playing" && !g.grp.hidden)
       .sort((a, b) => (b.grp.last || 0) - (a.grp.last || 0));
-    if (playing.length) out.push({ id: "playing", title: "▶ Riprendi: giochi in corso", items: playing.slice(0, 20) });
+    if (playing.length) out.push({ id: "playing", title: t("i.reco.row.playing"), items: playing.slice(0, 20) });
     const rest = recent.filter((g) => g.grp.status !== "playing");
-    if (rest.length) out.push({ id: "continue", title: "Giocati di recente", items: rest.slice(0, 20) });
+    if (rest.length) out.push({ id: "continue", title: t("i.reco.row.recent"), items: rest.slice(0, 20) });
     const backlog = games.filter((g) => g.id === g.grp.primary && g.grp.status === "backlog" && !g.grp.hidden);
-    if (backlog.length) out.push({ id: "backlog", title: "📋 Dalla tua lista da giocare", why: "i più brevi prima",
+    if (backlog.length) out.push({ id: "backlog", title: t("i.reco.row.backlog"), why: t("i.reco.why.shortest"),
       items: backlog.sort((a, b) => (a.hltb ?? 999) - (b.hltb ?? 999)).slice(0, 30) });
     if (prof.size) {
-      out.push({ id: "foryou", title: sd.length ? "Consigliati per te" : "In base ai tuoi gusti",
-        why: sd.length ? "In base ai giochi che hai giocato" : "In base alle risposte al questionario",
+      out.push({ id: "foryou", title: sd.length ? t("i.reco.title") : t("i.reco.foryou.byTastes"),
+        why: sd.length ? t("i.reco.foryou.whyPlayed") : t("i.reco.foryou.whyQuiz"),
         items: ranked(notOnline, (g) => affinity(g, prof) * 2 + quality(g), 30) });
     }
     for (const { g } of sd.slice(0, 4)) {
       const items = similar(g, notOnline);
-      if (items.length >= 4) out.push({ id: "because:" + g.id, title: `Perché hai giocato ${g.title}`, items, seed: g.id });
+      if (items.length >= 4) out.push({ id: "because:" + g.id, title: t("i.reco.because", { title: g.title }), items, seed: g.id });
     }
     // generi preferiti
     const topGenres = [...prof.entries()].filter(([k]) => k.startsWith("g:")).sort((a, b) => b[1] - a[1]).slice(0, 3);
     for (const [k] of topGenres) {
       const id = k.slice(2);
       const items = ranked(notOnline.filter((g) => canonGenres(g.genres).includes(id)), (g) => quality(g) + affinity(g, prof) * 0.5, 30);
-      if (items.length >= 4) out.push({ id: "genre:" + id, title: `Il meglio di: ${GENRE_LABEL[id]}`, items });
+      if (items.length >= 4) out.push({ id: "genre:" + id, title: t("i.reco.bestOf", { g: t(GENRE_LABEL[id]) }), items });
     }
     const add = (id, title, list, score, why) => { const items = ranked(list, score, 30); if (items.length >= 4) out.push({ id, title, items, why }); };
-    add("multi", "👥 Da giocare in compagnia (stesso schermo)", notOnline.filter((g) => g.players >= 2),
-      (g) => quality(g) + affinity(g, prof) * 0.5 + Math.min(g.players, 4) * 0.03, "Multigiocatore in locale");
-    add("top", "⭐ Capolavori che non hai ancora giocato", notOnline.filter((g) => g.critics >= 0.88 || (g.rating >= 0.85 && g.votes >= 50)),
+    add("multi", t("i.reco.row.multi"), notOnline.filter((g) => g.players >= 2),
+      (g) => quality(g) + affinity(g, prof) * 0.5 + Math.min(g.players, 4) * 0.03, t("i.reco.why.localMulti"));
+    add("top", t("i.reco.row.top"), notOnline.filter((g) => g.critics >= 0.88 || (g.rating >= 0.85 && g.votes >= 50)),
       (g) => quality(g) + affinity(g, prof) * 0.3);
-    add("gems", "💎 Gemme nascoste", notOnline.filter((g) => g.rating >= 0.8 && g.votes >= 5 && g.votes < 200),
-      (g) => quality(g) + affinity(g, prof) * 0.6, "Voti alti, pochi giocatori");
-    add("classics", "🕹 Grandi classici", notOnline.filter((g) => g.year && g.year < 2000),
+    add("gems", t("i.reco.row.gems"), notOnline.filter((g) => g.rating >= 0.8 && g.votes >= 5 && g.votes < 200),
+      (g) => quality(g) + affinity(g, prof) * 0.6, t("i.reco.why.gems"));
+    add("classics", t("i.reco.row.classics"), notOnline.filter((g) => g.year && g.year < 2000),
       (g) => (quality(g) > 0.72 ? quality(g) + affinity(g, prof) * 0.4 : 0));
     // console piu' giocate
     const platW = new Map();
     for (const { g, w } of sd) platW.set(g.platform, (platW.get(g.platform) || 0) + w);
     for (const [pid] of [...platW.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2)) {
-      add("plat:" + pid, `Il meglio per ${GS_platName(pid)}`, notOnline.filter((g) => g.platform === pid),
+      add("plat:" + pid, t("i.reco.row.platform", { p: GS_platName(pid) }), notOnline.filter((g) => g.platform === pid),
         (g) => quality(g) + affinity(g, prof) * 0.4);
     }
-    add("new", "🆕 Usciti di recente", notOnline.filter((g) => g.year >= new Date().getFullYear() - 3), (g) => g.year / 3000 + quality(g));
-    add("shop", "🛒 Da installare: potrebbero piacerti", cands.filter((g) => g.store && !g.installed),
+    add("new", t("i.reco.row.new"), notOnline.filter((g) => g.year >= new Date().getFullYear() - 3), (g) => g.year / 3000 + quality(g));
+    add("shop", t("i.reco.row.shop"), cands.filter((g) => g.store && !g.installed),
       (g) => affinity(g, prof) * 2 + quality(g));
     // niente ripetizioni troppo vicine: lo stesso gioco al massimo in 2 righe
     const seen = new Map();
@@ -186,55 +186,55 @@ const RECO = (() => {
     });
     const rows = [];
     const cont = info.filter((x) => x.played && x.played < x.games.length).sort((a, b) => b.minutes - a.minutes).slice(0, 15)
-      .map((x) => ({ ...x, why: `${x.played} di ${x.games.length} giocati` }));
-    if (cont.length) rows.push({ id: "c-continue", title: "🧩 Continua le tue saghe", items: cont });
+      .map((x) => ({ ...x, why: t("i.reco.coll.played", { a: x.played, b: x.games.length }) }));
+    if (cont.length) rows.push({ id: "c-continue", title: t("i.reco.coll.continue"), items: cont });
     const seen = new Set(cont.map((x) => x.coll.slug));
     const fit = info.filter((x) => !seen.has(x.coll.slug) && x.affinity > 0)
       .sort((a, b) => b.affinity * Math.log(2 + b.games.length) - a.affinity * Math.log(2 + a.games.length)).slice(0, 15)
-      .map((x) => ({ ...x, why: `${x.games.length} giochi · simile a quello che giochi` }));
-    if (fit.length >= 3) rows.push({ id: "c-fit", title: "📚 Collezioni che potrebbero piacerti", items: fit });
+      .map((x) => ({ ...x, why: t("i.reco.coll.similar", { n: x.games.length }) }));
+    if (fit.length >= 3) rows.push({ id: "c-fit", title: t("i.reco.coll.fit"), items: fit });
     fit.forEach((x) => seen.add(x.coll.slug));
     const best = info.filter((x) => !seen.has(x.coll.slug) && x.games.length >= 3).sort((a, b) => b.quality - a.quality).slice(0, 15)
-      .map((x) => ({ ...x, why: `${x.games.length} giochi · voto medio ${Math.round(x.quality * 100)}%` }));
-    if (best.length >= 3) rows.push({ id: "c-best", title: "🏆 Le saghe meglio valutate", items: best });
+      .map((x) => ({ ...x, why: t("i.reco.coll.avg", { n: x.games.length, v: Math.round(x.quality * 100) }) }));
+    if (best.length >= 3) rows.push({ id: "c-best", title: t("i.reco.coll.best"), items: best });
     const big = info.filter((x) => !seen.has(x.coll.slug)).sort((a, b) => b.games.length - a.games.length).slice(0, 15)
-      .map((x) => ({ ...x, why: `${x.games.length} giochi` }));
-    if (big.length >= 3) rows.push({ id: "c-big", title: "🗂 Le collezioni più grandi", items: big });
+      .map((x) => ({ ...x, why: t("i.reco.coll.count", { n: x.games.length }) }));
+    if (big.length >= 3) rows.push({ id: "c-big", title: t("i.reco.coll.big"), items: big });
     return rows;
   }
 
   /* ------------------------------------------------------------ questionario */
   const MOODS = {
-    relax: { label: "😌 Rilassante", genres: ["puzzle", "simulation", "party", "sandbox", "music"] },
-    action: { label: "💥 Azione", genres: ["action", "shooter", "beatemup", "platform", "fighting", "shmup"] },
-    story: { label: "📖 Una bella storia", genres: ["rpg", "adventure", "story"] },
-    challenge: { label: "🔥 Una sfida", genres: ["roguelike", "shmup", "platform", "fighting", "arcade"] },
-    compete: { label: "🏁 Competizione", genres: ["racing", "sports", "fighting", "party"] },
-    brain: { label: "🧠 Far lavorare il cervello", genres: ["puzzle", "strategy"] },
-    scary: { label: "👻 Paura", genres: ["horror"] },
-    explore: { label: "🗺 Esplorare", genres: ["adventure", "sandbox", "rpg"] },
+    relax: { label: t("i.reco.mood.relax"), genres: ["puzzle", "simulation", "party", "sandbox", "music"] },
+    action: { label: t("i.reco.mood.action"), genres: ["action", "shooter", "beatemup", "platform", "fighting", "shmup"] },
+    story: { label: t("i.reco.mood.story"), genres: ["rpg", "adventure", "story"] },
+    challenge: { label: t("i.reco.mood.challenge"), genres: ["roguelike", "shmup", "platform", "fighting", "arcade"] },
+    compete: { label: t("i.reco.mood.compete"), genres: ["racing", "sports", "fighting", "party"] },
+    brain: { label: t("i.reco.mood.brain"), genres: ["puzzle", "strategy"] },
+    scary: { label: t("i.reco.mood.scary"), genres: ["horror"] },
+    explore: { label: t("i.reco.mood.explore"), genres: ["adventure", "sandbox", "rpg"] },
   };
   function moodGenres(moods) { return moods.flatMap((m) => MOODS[m]?.genres || []); }
   const TIME = {
-    short: { label: "⏱ 15–30 minuti", genres: ["arcade", "puzzle", "racing", "fighting", "sports", "shmup", "party", "platform"], avoid: ["rpg", "strategy"] },
-    medium: { label: "🕐 Circa un'ora", genres: [], avoid: [] },
-    long: { label: "🌙 Tutta la serata", genres: ["rpg", "adventure", "strategy", "sandbox", "simulation"], avoid: ["arcade", "party"] },
+    short: { label: t("i.reco.time.short"), genres: ["arcade", "puzzle", "racing", "fighting", "sports", "shmup", "party", "platform"], avoid: ["rpg", "strategy"] },
+    medium: { label: t("i.reco.time.medium"), genres: [], avoid: [] },
+    long: { label: t("i.reco.time.long"), genres: ["rpg", "adventure", "strategy", "sandbox", "simulation"], avoid: ["arcade", "party"] },
   };
 
-  const QUESTIONS = [
-    { id: "time", title: "Quanto tempo hai?", options: Object.entries(TIME).map(([id, x]) => ({ id, label: x.label })) },
-    { id: "people", title: "Con quante persone giochi (sullo stesso schermo)?", options: [
-      { id: "1", label: "🙋 Da solo" }, { id: "2", label: "👫 In due" }, { id: "3", label: "👨‍👩‍👧 In tre o quattro" }] },
-    { id: "moods", multi: true, title: "Che cosa cerchi?", sub: "Scegline quante vuoi",
-      options: Object.entries(MOODS).map(([id, x]) => ({ id, label: x.label })) },
-    { id: "genres", multi: true, title: "Generi che ti piacciono", sub: "Facoltativo: aiuta anche i consigli futuri",
-      options: GENRES.map(([id, l]) => ({ id, label: l })) },
-    { id: "era", title: "Che epoca?", options: [{ id: "retro", label: "👾 Retro (prima del 2000)" },
-      { id: "mid", label: "📀 2000 – 2012" }, { id: "modern", label: "✨ Moderni" }, { id: "any", label: "🤷 Indifferente" }] },
-    { id: "where", title: "Dove vuoi giocare?", options: [{ id: "any", label: "🤷 Ovunque" }, { id: "pc", label: "🖥 Sul PC" },
-      { id: "console", label: "🎮 Console (emulatori)" }, { id: "installed", label: "✅ Solo giochi già pronti" }] },
-    { id: "novelty", title: "Qualcosa di nuovo?", options: [{ id: "new", label: "🆕 Mai giocato" },
-      { id: "again", label: "🔁 Un gioco che ho amato" }, { id: "any", label: "🎲 Sorprendimi" }] },
+  const questions = () => [
+    { id: "time", title: t("i.reco.q.time"), options: Object.entries(TIME).map(([id, x]) => ({ id, label: t(x.label) })) },
+    { id: "people", title: t("i.reco.q.people"), options: [
+      { id: "1", label: "🙋 " + t("i.reco.people.solo") }, { id: "2", label: "👫 " + t("i.reco.people.two") }, { id: "3", label: "👨‍👩‍👧 " + t("i.reco.people.more") }] },
+    { id: "moods", multi: true, title: t("i.reco.q.moods"), sub: t("i.reco.q.moodsSub"),
+      options: Object.entries(MOODS).map(([id, x]) => ({ id, label: t(x.label) })) },
+    { id: "genres", multi: true, title: t("i.reco.q.genres"), sub: t("i.reco.q.genresSub"),
+      options: GENRES.map(([id, l]) => ({ id, label: t(l) })) },
+    { id: "era", title: t("i.reco.q.era"), options: [{ id: "retro", label: "👾 " + t("i.reco.era.retro") },
+      { id: "mid", label: "📀 " + t("i.reco.era.mid") }, { id: "modern", label: "✨ " + t("i.reco.era.modern") }, { id: "any", label: "🤷 " + t("i.reco.era.any") }] },
+    { id: "where", title: t("i.reco.q.where"), options: [{ id: "any", label: "🤷 " + t("i.reco.where.any") }, { id: "pc", label: "🖥 " + t("i.reco.where.pc") },
+      { id: "console", label: "🎮 " + t("i.reco.where.console") }, { id: "installed", label: "✅ " + t("i.reco.where.ready") }] },
+    { id: "novelty", title: t("i.reco.q.novelty"), options: [{ id: "new", label: "🆕 " + t("i.reco.novelty.new") },
+      { id: "again", label: "🔁 " + t("i.reco.novelty.again") }, { id: "any", label: "🎲 " + t("i.reco.novelty.any") }] },
   ];
 
   /** Suggerimenti "da giocare adesso", con il motivo di ciascuno. */
@@ -266,13 +266,13 @@ const RECO = (() => {
       if (q < 0.65) s -= (0.65 - q) * 3; // giochi mediocri in fondo
       s += Math.random() * 0.35; // un po' di varieta' a ogni richiesta
       const why = [];
-      if (hit.length) why.push(hit.map((x) => GENRE_LABEL[x]).slice(0, 2).join(", "));
-      if (people >= 2) why.push(`fino a ${g.players} giocatori`);
+      if (hit.length) why.push(hit.map((x) => t(GENRE_LABEL[x])).slice(0, 2).join(", "));
+      if (people >= 2) why.push(t("i.reco.why.upTo", { n: g.players }));
       if (g.hltb != null) why.push(`⏱ ${fmtHours(g.hltb)}`);
-      if (g.critics >= 0.85) why.push(`critica ${Math.round(g.critics * 100)}`);
+      if (g.critics >= 0.85) why.push(t("i.reco.why.critics", { n: Math.round(g.critics * 100) }));
       else if (g.rating >= 0.8 && g.votes >= 10) why.push(`★ ${Math.round(g.rating * 100)}%`);
-      if (affinity(g, prof) > 0.9) why.push("simile a quelli che giochi");
-      if (g.store && !g.installed) why.push("da installare");
+      if (affinity(g, prof) > 0.9) why.push(t("i.reco.why.similar"));
+      if (g.store && !g.installed) why.push(t("i.reco.why.install"));
       return { g, s, why: why.join(" · ") };
     }).sort((x, y) => y.s - x.s);
     // varieta': al massimo 3 giochi per console
@@ -294,6 +294,6 @@ const RECO = (() => {
   }
 
   let GS_platName = (id) => id;
-  return { rows, collectionRows, suggest, QUESTIONS, saveTastes, tastes: () => store.get("tastes", null), canonGenres, GENRE_LABEL,
+  return { rows, collectionRows, suggest, get QUESTIONS() { return questions(); }, saveTastes, tastes: () => store.get("tastes", null), canonGenres, GENRE_LABEL,
     setPlatName(fn) { GS_platName = fn; }, quality };
 })();

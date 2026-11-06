@@ -13,6 +13,7 @@ STATIC = ROOT / "pozzo" / "app" / "static"
 HARNESS = r"""
 const fs = require("fs");
 const vm = require("vm");
+require(process.argv[2]);
 global.window = global;
 global.location = { pathname: "/", href: "http://localhost/" };
 global.document = { documentElement: { dataset: {} }, body: null };
@@ -38,7 +39,7 @@ def run_js() -> dict:
     if not node:
         return {}
     result = subprocess.run(
-        [node, "-e", HARNESS, str(STATIC / "splash.js")],
+        [node, "-e", HARNESS, str(STATIC / "splash.js"), str(Path(__file__).with_name("_i18n_stub.js"))],
         capture_output=True,
         text=True,
         encoding="utf-8",

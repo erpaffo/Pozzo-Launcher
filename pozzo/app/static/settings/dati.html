@@ -1,84 +1,84 @@
-<h3>Esporta per altri frontend</h3>
-<p class="muted small">Metadati e immagini nel formato di <b>ES-DE</b> (EmulationStation), <b>Pegasus</b>, oppure
+<h3 data-i18n="j.dat.exp.title">Esporta per altri frontend</h3>
+<p class="muted small" data-i18n-html="j.dat.exp.desc">Metadati e immagini nel formato di <b>ES-DE</b> (EmulationStation), <b>Pegasus</b>, oppure
   come <b>pagina web statica</b> (un solo <i>index.html</i> con copertine nella cartella <i>covers</i>): si apre
   nel browser anche senza server, da un NAS o da un disco di rete, con ricerca, filtro per console e scheda del gioco.</p>
 <div class="row wrap">
-  <select class="field" id="xf-format"><option value="esde">ES-DE (gamelist.xml)</option><option value="pegasus">Pegasus (metadata.pegasus.txt)</option><option value="html">Pagina web (index.html)</option></select>
-  <input class="field grow" id="xf-out" placeholder="Cartella di destinazione (vuoto = cartella output)">
+  <select class="field" id="xf-format"><option value="esde">ES-DE (gamelist.xml)</option><option value="pegasus">Pegasus (metadata.pegasus.txt)</option><option value="html" data-i18n="j.dat.exp.fmt.html">Pagina web (index.html)</option></select>
+  <input class="field grow" id="xf-out" placeholder="Cartella di destinazione (vuoto = cartella output)" data-i18n-placeholder="j.dat.exp.out.ph">
   <button class="btn" id="xf-pick" type="button">📁</button>
-  <button class="btn" id="xf-go">Esporta</button>
+  <button class="btn" id="xf-go" data-i18n="j.dat.exp.go">Esporta</button>
 </div>
 <div class="row wrap" id="xf-title-row" hidden>
-  <label class="lbl-field grow">Titolo della pagina
-    <input class="field" id="xf-title" placeholder="La mia libreria" maxlength="80">
+  <label class="lbl-field grow"><span data-i18n="j.dat.exp.title.label">Titolo della pagina</span>
+    <input class="field" id="xf-title" placeholder="La mia libreria" data-i18n-placeholder="j.dat.exp.title.ph" maxlength="80">
   </label>
 </div>
 <p class="muted small" id="xf-info"></p>
 
-<h3>Sincronizzazione tra PC</h3>
-<p class="muted small">Tiene allineati due PC, per ogni profilo: preferiti, tempo di gioco, stati, note, voti,
+<h3 data-i18n="j.dat.sync.title">Sincronizzazione tra PC</h3>
+<p class="muted small" data-i18n="j.dat.sync.desc">Tiene allineati due PC, per ogni profilo: preferiti, tempo di gioco, stati, note, voti,
   collezioni e lista desideri. Avviene da sola ogni 5 minuti e con «Sincronizza ora».</p>
-<label class="chk"><input type="radio" name="sync-what" value="personal"> Solo i dati personali</label>
-<label class="chk" style="white-space:normal;align-items:flex-start"><input type="radio" name="sync-what" value="all"> Dati personali e impostazioni dell'app
-  <span class="muted small">(store online, fonti, tema, collezioni intelligenti, lista desideri; mai cartelle,
+<label class="chk"><input type="radio" name="sync-what" value="personal"> <span data-i18n="j.dat.sync.personal">Solo i dati personali</span></label>
+<label class="chk" style="white-space:normal;align-items:flex-start"><input type="radio" name="sync-what" value="all"> <span data-i18n="j.dat.sync.all">Dati personali e impostazioni dell'app</span>
+  <span class="muted small" data-i18n="j.dat.sync.all.note">(store online, fonti, tema, collezioni intelligenti, lista desideri; mai cartelle,
   emulatori, account degli store e telefono)</span></label>
-<h4>Cartella condivisa</h4>
-<p class="muted small">Una cartella sincronizzata da OneDrive, Dropbox, Google Drive, un NAS o Syncthing: scegli la
+<h4 data-i18n="j.dat.sync.folder.title">Cartella condivisa</h4>
+<p class="muted small" data-i18n="j.dat.sync.folder.desc">Una cartella sincronizzata da OneDrive, Dropbox, Google Drive, un NAS o Syncthing: scegli la
   stessa cartella su tutti e due i PC. Funziona anche se non sono accesi insieme.</p>
-<div class="row"><input class="field grow" id="sync-folder" placeholder="es. C:\Users\nome\OneDrive\PozzoLauncher">
-  <button class="btn" id="sync-folder-pick" type="button">📁</button><button class="btn" id="sync-folder-save">Salva</button></div>
-<h4>Rete locale</h4>
-<p class="muted small">Su un PC premi «Mostra codice»; sull'altro scrivi indirizzo e codice e premi «Abbina». Da quel
+<div class="row"><input class="field grow" id="sync-folder" placeholder="es. C:\Users\nome\OneDrive\PozzoLauncher" data-i18n-placeholder="j.dat.sync.folder.ph">
+  <button class="btn" id="sync-folder-pick" type="button">📁</button><button class="btn" id="sync-folder-save" data-i18n="j.common.save">Salva</button></div>
+<h4 data-i18n="j.dat.sync.lan.title">Rete locale</h4>
+<p class="muted small" data-i18n="j.dat.sync.lan.desc">Su un PC premi «Mostra codice»; sull'altro scrivi indirizzo e codice e premi «Abbina». Da quel
   momento i due PC si scambiano i dati, nei due sensi, quando sono accesi sulla stessa rete.</p>
-<div class="row wrap"><button class="btn" id="sync-code">🔑 Mostra codice per un altro PC</button><span id="sync-code-out" class="small"></span></div>
-<div class="row wrap"><input class="field grow" id="sync-peer-url" placeholder="Indirizzo dell'altro PC (es. 192.168.1.20)">
-  <input class="field" id="sync-peer-code" placeholder="Codice" size="8" inputmode="numeric">
-  <button class="btn" id="sync-peer-add">Abbina</button></div>
+<div class="row wrap"><button class="btn" id="sync-code">🔑 <span data-i18n="j.dat.sync.code">Mostra codice per un altro PC</span></button><span id="sync-code-out" class="small"></span></div>
+<div class="row wrap"><input class="field grow" id="sync-peer-url" placeholder="Indirizzo dell'altro PC (es. 192.168.1.20)" data-i18n-placeholder="j.dat.sync.peer.ph">
+  <input class="field" id="sync-peer-code" placeholder="Codice" data-i18n-placeholder="j.dat.sync.code.ph" size="8" inputmode="numeric">
+  <button class="btn" id="sync-peer-add" data-i18n="j.dat.sync.add">Abbina</button></div>
 <div id="sync-peers"></div>
-<div class="row"><button class="btn primary" id="sync-now">⟳ Sincronizza ora</button><span class="muted small" id="sync-last"></span></div>
+<div class="row"><button class="btn primary" id="sync-now">⟳ <span data-i18n="j.dat.sync.now">Sincronizza ora</span></button><span class="muted small" id="sync-last"></span></div>
 
-<h4>Salvataggi dei giochi</h4>
-<p class="muted small">Allinea anche i file di salvataggio dei giochi scelti qui sotto, oltre ai dati personali.
+<h4 data-i18n="j.dat.saves.title">Salvataggi dei giochi</h4>
+<p class="muted small" data-i18n="j.dat.saves.sync.desc">Allinea anche i file di salvataggio dei giochi scelti qui sotto, oltre ai dati personali.
   Se ha cambiato un solo PC vince la versione più recente (la precedente resta tra le copie del gioco); se hanno
   cambiato tutti e due, il salvataggio locale non si tocca e l'altro finisce tra le copie. Mai mentre il gioco è in
   esecuzione.</p>
-<label class="chk"><input type="checkbox" id="sync-saves"> Sincronizza anche i file di salvataggio</label>
+<label class="chk"><input type="checkbox" id="sync-saves"> <span data-i18n="j.dat.saves.sync.on">Sincronizza anche i file di salvataggio</span></label>
 <div id="sync-saves-list"></div>
 <p class="muted small" id="sync-saves-info"></p>
 
-<h3>Copie di sicurezza dei tuoi dati</h3>
-<p class="muted small">Preferiti, tempi di gioco, stati, collezioni personali e impostazioni (emulatori, cartelle).
+<h3 data-i18n="j.dat.backup.title">Copie di sicurezza dei tuoi dati</h3>
+<p class="muted small" data-i18n="j.dat.backup.desc">Preferiti, tempi di gioco, stati, collezioni personali e impostazioni (emulatori, cartelle).
   Metadati e immagini non servono: si riscaricano. Una copia automatica ogni settimana, si tengono le ultime 10.</p>
-<button class="btn" id="backup-now">💾 Crea una copia adesso</button>
+<button class="btn" id="backup-now">💾 <span data-i18n="j.dat.backup.now">Crea una copia adesso</span></button>
 <div id="backup-list"></div>
 
-<h3>Salvataggi dei giochi</h3>
-<p class="muted small">Le versioni dei salvataggi sono nel formato di <a href="#" data-open="https://github.com/mtkennerly/ludusavi">Ludusavi</a>.
+<h3 data-i18n="j.dat.saves.title">Salvataggi dei giochi</h3>
+<p class="muted small" data-i18n-html="j.dat.ludusavi.desc">Le versioni dei salvataggi sono nel formato di <a href="#" data-open="https://github.com/mtkennerly/ludusavi">Ludusavi</a>.
   Scegli la stessa cartella di Ludusavi (Ludusavi › Backup mode › Backup target) per vedere e ripristinare le copie
   con entrambi i programmi. Le copie già fatte restano nella cartella di prima.</p>
 <div class="row">
   <input id="save-dir" class="field grow" placeholder="">
-  <button class="btn" id="save-dir-pick" type="button">Sfoglia…</button>
-  <button class="btn primary" id="save-dir-save" type="button">Salva</button>
+  <button class="btn" id="save-dir-pick" type="button" data-i18n="j.common.browse">Sfoglia…</button>
+  <button class="btn primary" id="save-dir-save" type="button" data-i18n="j.common.save">Salva</button>
 </div>
-<h3>Manutenzione programmata</h3>
-<p class="muted small">Una volta alla settimana, a giorno e ora scelti, Pozzo controlla la libreria (ROM, BIOS, copertine,
+<h3 data-i18n="j.dat.maint.title">Manutenzione programmata</h3>
+<p class="muted small" data-i18n="j.dat.maint.desc">Una volta alla settimana, a giorno e ora scelti, Pozzo controlla la libreria (ROM, BIOS, copertine,
   spazio liberabile) e scrive un rapporto. Confronta ogni rapporto con il precedente.</p>
 <div id="mt-box">
   <div class="row wrap maint-row">
-    <label class="chk"><input type="checkbox" id="mt-on"> Attiva</label>
-    <label class="lbl-field">Giorno
-      <select class="field" id="mt-day"><option value="0">Lunedì</option><option value="1">Martedì</option><option value="2">Mercoledì</option><option value="3">Giovedì</option><option value="4">Venerdì</option><option value="5">Sabato</option><option value="6">Domenica</option></select>
+    <label class="chk"><input type="checkbox" id="mt-on"> <span data-i18n="j.common.active">Attiva</span></label>
+    <label class="lbl-field"><span data-i18n="j.dat.maint.day">Giorno</span>
+      <select class="field" id="mt-day"><option value="0" data-i18n="j.common.day.0">Lunedì</option><option value="1" data-i18n="j.common.day.1">Martedì</option><option value="2" data-i18n="j.common.day.2">Mercoledì</option><option value="3" data-i18n="j.common.day.3">Giovedì</option><option value="4" data-i18n="j.common.day.4">Venerdì</option><option value="5" data-i18n="j.common.day.5">Sabato</option><option value="6" data-i18n="j.common.day.6">Domenica</option></select>
     </label>
-    <label class="lbl-field">Ora
+    <label class="lbl-field"><span data-i18n="j.dat.maint.time">Ora</span>
       <input class="field" type="time" id="mt-time" value="03:00">
     </label>
-    <button class="btn" id="mt-run" type="button">Esegui ora</button>
+    <button class="btn" id="mt-run" type="button" data-i18n="j.dat.maint.run">Esegui ora</button>
   </div>
   <p class="small" id="mt-state" role="status"></p>
   <p class="small muted" id="mt-last"></p>
   <details class="maint-panel">
-    <summary>Rapporto</summary>
+    <summary data-i18n="j.dat.maint.report">Rapporto</summary>
     <div id="mt-detail"></div>
   </details>
 </div>

@@ -4,9 +4,9 @@
 [![Release](https://img.shields.io/github/v/release/erpaffo/Pozzo-Launcher)](https://github.com/erpaffo/Pozzo-Launcher/releases/latest)
 [![Manuale](https://img.shields.io/badge/manuale-online-blue)](https://erpaffo.github.io/Pozzo-Launcher/)
 
-La tua libreria di giochi in un posto solo: ROM di ogni console e giochi PC dagli store, con copertine, descrizioni, valutazioni e durate recuperate in automatico. Si gioca dal desktop, da Big Picture con il controller, dal telefono o in streaming.
+Pozzo Launcher mette insieme le ROM di ogni console e i giochi PC degli store. Copertine, descrizioni, valutazioni e durate le recupera da solo. Poi giochi dal desktop, da Big Picture con il controller, dal telefono o in streaming.
 
-📖 **[Manuale completo](https://erpaffo.github.io/Pozzo-Launcher/)** · ⬇ **[Download](https://github.com/erpaffo/Pozzo-Launcher/releases)** · 📝 **[Changelog](changelog.md)**
+**[Manuale completo](https://erpaffo.github.io/Pozzo-Launcher/)** · **[Download](https://github.com/erpaffo/Pozzo-Launcher/releases)** · **[Changelog](changelog.md)**
 
 <p align="center">
   <img src="docs/img/libreria.jpg" width="49%" alt="La libreria">
@@ -20,7 +20,7 @@ La tua libreria di giochi in un posto solo: ROM di ogni console e giochi PC dagl
 
 ### Grafiche
 
-Ogni grafica cambia il modo di sfogliare la libreria, non solo i colori: si sceglie da **Impostazioni › Aspetto**.
+Una grafica non cambia solo i colori ma il modo in cui sfogli la libreria. Si sceglie da **Impostazioni › Aspetto**.
 
 <p align="center">
   <img src="docs/img/esp-catalogo.jpg" width="49%" alt="Grafica Catalogo">
@@ -54,15 +54,15 @@ I temi sono indipendenti dalla grafica e si possono combinare.
 
 ## Cosa fa
 
-- **Scraping veloce**: riconosce le ROM offline (CRC e nome sui DAT No-Intro/Redump) e interroga le fonti online solo per ciò che manca, rispettando i loro limiti. Riprende da dove si era fermato.
-- **Libreria in stile Playnite**: console e store insieme, versioni regionali unite, preferiti (anche per console), stati, collezioni, ricerca e filtri, anche con decine di migliaia di giochi. Una barra dei menu in alto dà accesso rapido alle azioni e alle impostazioni più usate.
-- **Giochi PC**: Steam, Epic, GOG, Amazon, Battle.net, Xbox e altri, accanto alle ROM. Puoi aggiungere a mano qualsiasi `.exe` (gioco o applicazione): compare subito e copertina e dati arrivano dopo. Ogni gioco può avviare con sé altre applicazioni (per esempio un deck tracker).
-- **Big Picture**: schermo intero pensato per il controller, anche da divano.
-- **Telefono e streaming**: sfoglia e avvia i giochi dal telefono, che diventa anche un controller (giroscopio compreso); streaming con Sunshine e Moonlight.
-- **Store online**: elenchi di giochi di altri siti, aggiunti come «store» di ogni console.
-- **Grafiche e temi**: sette grafiche (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale) e temi chiaro, notte blu, OLED, retrò, combinabili a piacere.
-- **Estensioni**: le estensioni si installano da uno store dentro l'app (cosa gioco stasera, obiettivi, calendario uscite, diario di gioco…).
-- **Extra**: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord (anche muto, sordo ed esci dalla chiamata), Spotify e tasti multimediali, scorciatoie da tastiera, esportazione per ES-DE e Pegasus.
+- **Scraping veloce**. Le ROM vengono riconosciute offline (CRC e nome sui DAT No-Intro/Redump), e le fonti online si interrogano solo per quello che manca, rispettando i loro limiti. Se si interrompe, riprende da dove era rimasto.
+- Una libreria in stile Playnite, con console e store insieme. Le versioni regionali vengono unite, ci sono preferiti (anche per console), stati, collezioni, ricerca e filtri, e regge anche decine di migliaia di giochi. In alto c'è una barra dei menu per arrivare subito alle azioni e alle impostazioni più usate.
+- **Giochi PC** da Steam, Epic, GOG, Amazon, Battle.net, Xbox e altri, accanto alle ROM. Puoi aggiungere a mano qualsiasi `.exe`, gioco o applicazione che sia: compare subito, copertina e dati arrivano dopo. Ogni gioco può anche avviare altre applicazioni insieme a sé, per esempio un deck tracker.
+- **Big Picture**: schermo intero pensato per il controller, anche dal divano.
+- Dal telefono sfogli e avvii i giochi, e il telefono fa anche da controller (giroscopio compreso). Per lo streaming ci sono Sunshine e Moonlight.
+- Gli **store online** sono elenchi di giochi presi da altri siti, che compaiono come «store» di ogni console.
+- Sette grafiche (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale) e i temi chiaro, notte blu, OLED e retrò, da combinare come vuoi.
+- **Estensioni** da installare dallo store dentro l'app: cosa gioco stasera, obiettivi, calendario uscite, diario di gioco…
+- Poi gli extra: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord (anche muto, sordo ed esci dalla chiamata), Spotify e tasti multimediali, scorciatoie da tastiera, esportazione per ES-DE e Pegasus.
 
 ## Download
 
@@ -76,7 +76,7 @@ Gli eseguibili sono nella pagina **[Releases](https://github.com/erpaffo/Pozzo-L
 
 Gli eseguibili non sono firmati: su Windows SmartScreen chiede conferma (*Ulteriori informazioni › Esegui comunque*), su macOS la prima volta apri l'app con clic destro › Apri.
 
-**Aggiornamenti**: quando esce una versione nuova compare un avviso, e da **Impostazioni › Info** si installa con un clic (**⬇ Installa e riavvia**). I tuoi dati restano.
+Quando esce una versione nuova compare un avviso. La installi con un clic da **Impostazioni › Info** (**⬇ Installa e riavvia**) e i tuoi dati restano dove sono.
 
 ## Per iniziare
 

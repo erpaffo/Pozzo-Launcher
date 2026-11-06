@@ -1,0 +1,17 @@
+{
+  "MediaContainer": {
+    "Metadata": [
+      {
+        "ratingKey": "201",
+        "type": "movie",
+        "title": "Film Plex",
+        "year": 2019,
+        "duration": 5400000,
+        "summary": "Trama",
+        "thumb": "/library/metadata/201/thumb/1",
+        "viewOffset": 60000,
+        "Media": [{ "Part": [{ "key": "/library/parts/9/file.mkv", "container": "mkv" }] }]
+      }
+    ]
+  }
+}

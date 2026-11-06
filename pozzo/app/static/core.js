@@ -78,25 +78,25 @@ const GSUi = (() => {
 
   /** Valida un tema utente: solo token noti con colori #rrggbb, nessun URL o CSS libero. Lancia Error in italiano. */
   const checkTheme = (o) => {
-    if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error("Tema non valido");
-    if (Object.keys(o).some((k) => !THEME_KEYS.includes(k))) throw new Error("Il tema contiene campi sconosciuti");
-    if (o.format !== "pozzo-theme" || o.version !== 1) throw new Error("Formato o versione del tema non supportati");
+    if (!o || typeof o !== "object" || Array.isArray(o)) throw new Error(t("b.core.theme.invalid"));
+    if (Object.keys(o).some((k) => !THEME_KEYS.includes(k))) throw new Error(t("b.core.theme.unknownFields"));
+    if (o.format !== "pozzo-theme" || o.version !== 1) throw new Error(t("b.core.theme.unsupported"));
     const name = typeof o.name === "string" ? o.name.trim() : "";
-    if (!name || name.length > 40 || /[\u0000-\u001f<>]/.test(name)) throw new Error("Nome del tema non valido");
-    const t = o.tokens;
-    if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("Colori mancanti");
-    if (Object.keys(t).some((k) => !TOKENS.includes(k))) throw new Error("Il tema contiene colori sconosciuti");
+    if (!name || name.length > 40 || /[\u0000-\u001f<>]/.test(name)) throw new Error(t("b.core.theme.badName"));
+    const tk = o.tokens;
+    if (!tk || typeof tk !== "object" || Array.isArray(tk)) throw new Error(t("b.core.theme.noColors"));
+    if (Object.keys(tk).some((k) => !TOKENS.includes(k))) throw new Error(t("b.core.theme.unknownColors"));
     const tokens = {};
     for (const k of TOKENS) {
-      if (typeof t[k] !== "string" || !HEX.test(t[k])) throw new Error(`Colore non valido: ${k}`);
-      tokens[k] = t[k].toLowerCase();
+      if (typeof tk[k] !== "string" || !HEX.test(tk[k])) throw new Error(t("b.core.theme.badColor", {nome: k}));
+      tokens[k] = tk[k].toLowerCase();
     }
     return { name, tokens };
   };
   const parseTheme = (text) => {
-    if (typeof text !== "string" || text.length > 4096) throw new Error("File non valido o troppo grande");
+    if (typeof text !== "string" || text.length > 4096) throw new Error(t("b.core.theme.tooBig"));
     let o;
-    try { o = JSON.parse(text); } catch { throw new Error("Il file non e' JSON valido"); }
+    try { o = JSON.parse(text); } catch { throw new Error(t("b.core.theme.notJson")); }
     return checkTheme(o);
   };
   const serializeTheme = (name, tokens) => JSON.stringify({ format: "pozzo-theme", version: 1, name, tokens }, null, 2);
@@ -179,21 +179,21 @@ function fmtSize(n) {
  * un'altra versione installata/sul disco. */
 const GB = 1024 ** 3;
 const SHOP_SIZES = [
-  { id: "", label: "Qualsiasi dimensione", ok: () => true },
-  { id: "s", label: "Meno di 1 GB", ok: (g) => g.size > 0 && g.size < GB },
+  { id: "", get label() { return t("b.core.shop.size.any"); }, ok: () => true },
+  { id: "s", get label() { return t("b.core.shop.size.lt1"); }, ok: (g) => g.size > 0 && g.size < GB },
   { id: "m", label: "1 – 10 GB", ok: (g) => g.size >= GB && g.size < 10 * GB },
   { id: "l", label: "10 – 50 GB", ok: (g) => g.size >= 10 * GB && g.size < 50 * GB },
-  { id: "xl", label: "Oltre 50 GB", ok: (g) => g.size >= 50 * GB },
-  { id: "u", label: "Dimensione sconosciuta", ok: (g) => !g.size },
+  { id: "xl", get label() { return t("b.core.shop.size.gt50"); }, ok: (g) => g.size >= 50 * GB },
+  { id: "u", get label() { return t("b.core.shop.size.unknown"); }, ok: (g) => !g.size },
 ];
 const SHOP_SORTS = [
-  { id: "title", label: "Titolo A–Z", cmp: (a, b) => collator.compare(a.sort, b.sort) },
-  { id: "-rating", label: "Valutazione", cmp: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || collator.compare(a.sort, b.sort) },
-  { id: "-year", label: "Più recenti", cmp: (a, b) => (b.year || 0) - (a.year || 0) || collator.compare(a.sort, b.sort) },
-  { id: "year", label: "Più vecchi", cmp: (a, b) => (a.year || 9999) - (b.year || 9999) || collator.compare(a.sort, b.sort) },
-  { id: "size", label: "Più leggeri", cmp: (a, b) => (a.size || Infinity) - (b.size || Infinity) || collator.compare(a.sort, b.sort) },
-  { id: "-size", label: "Più pesanti", cmp: (a, b) => (b.size || 0) - (a.size || 0) || collator.compare(a.sort, b.sort) },
-  { id: "store", label: "Store", cmp: (a, b) => collator.compare(shopSource(a), shopSource(b)) || collator.compare(a.sort, b.sort) },
+  { id: "title", get label() { return t("b.core.shop.sort.title"); }, cmp: (a, b) => collator.compare(a.sort, b.sort) },
+  { id: "-rating", get label() { return t("b.common.rating"); }, cmp: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || collator.compare(a.sort, b.sort) },
+  { id: "-year", get label() { return t("b.core.shop.sort.newest"); }, cmp: (a, b) => (b.year || 0) - (a.year || 0) || collator.compare(a.sort, b.sort) },
+  { id: "year", get label() { return t("b.core.shop.sort.oldest"); }, cmp: (a, b) => (a.year || 9999) - (b.year || 9999) || collator.compare(a.sort, b.sort) },
+  { id: "size", get label() { return t("b.core.shop.sort.lightest"); }, cmp: (a, b) => (a.size || Infinity) - (b.size || Infinity) || collator.compare(a.sort, b.sort) },
+  { id: "-size", get label() { return t("b.core.shop.sort.heaviest"); }, cmp: (a, b) => (b.size || 0) - (a.size || 0) || collator.compare(a.sort, b.sort) },
+  { id: "store", get label() { return t("b.common.store"); }, cmp: (a, b) => collator.compare(shopSource(a), shopSource(b)) || collator.compare(a.sort, b.sort) },
 ];
 const shopSource = (g) => (g.store === "online" ? "online:" + g.platform : g.store);
 
@@ -208,7 +208,7 @@ function shopSources(items, stores, platName) {
   for (const g of items) n.set(shopSource(g), (n.get(shopSource(g)) || 0) + 1);
   const pc = stores.filter((s) => n.has(s.id)).map((s) => ({ id: s.id, label: s.name, n: n.get(s.id) }));
   const on = [...n.keys()].filter((k) => k.startsWith("online:"))
-    .map((k) => ({ id: k, label: `Online · ${platName(k.slice(7))}`, n: n.get(k) }))
+    .map((k) => ({ id: k, label: t("b.core.shop.online", {nome: platName(k.slice(7))}), n: n.get(k) }))
     .sort((a, b) => collator.compare(a.label, b.label));
   return pc.concat(on);
 }
@@ -233,31 +233,31 @@ const THIS_YEAR = new Date().getFullYear();
 const byScore = (f) => (a, b) => (f(b) ?? -1) - (f(a) ?? -1) || collator.compare(a.sort, b.sort);
 const best = (g) => Math.max(g.critics ?? 0, g.votes >= 20 ? g.rating ?? 0 : 0);
 const PRESETS = [
-  { id: "", label: "Tutti i giochi" },
-  { id: "critics", label: "🏆 Migliori per la critica", hint: "voto Metacritic (RAWG) o della critica (IGDB) almeno 75",
+  { id: "", get label() { return t("b.core.preset.all"); } },
+  { id: "critics", get label() { return "🏆 " + t("b.core.preset.critics"); }, get hint() { return t("b.core.preset.critics.hint"); },
     ok: (g) => g.critics >= 0.75, cmp: byScore((g) => g.critics), score: "critics" },
-  { id: "loved", label: "❤️ Più amati dal pubblico", hint: "voto dei giocatori almeno 75% con almeno 20 voti",
+  { id: "loved", get label() { return "❤️ " + t("b.core.preset.loved"); }, get hint() { return t("b.core.preset.loved.hint"); },
     ok: (g) => g.rating >= 0.75 && g.votes >= 20, cmp: byScore((g) => g.rating), score: "rating" },
-  { id: "top", label: "⭐ Capolavori", hint: "critica almeno 90 oppure pubblico almeno 85% con almeno 50 voti",
+  { id: "top", get label() { return "⭐ " + t("b.core.preset.top"); }, get hint() { return t("b.core.preset.top.hint"); },
     ok: (g) => g.critics >= 0.9 || (g.rating >= 0.85 && g.votes >= 50), cmp: byScore(best), score: "best" },
-  { id: "popular", label: "🔥 Più votati", hint: "ordinati per numero di voti dei giocatori",
+  { id: "popular", get label() { return "🔥 " + t("b.core.preset.popular"); }, get hint() { return t("b.core.preset.popular.hint"); },
     ok: (g) => g.votes > 0, cmp: byScore((g) => g.votes), score: "votes" },
-  { id: "gems", label: "💎 Gemme nascoste", hint: "voto alto (almeno 80%) ma pochi voti (da 5 a 200)",
+  { id: "gems", get label() { return "💎 " + t("b.core.preset.gems"); }, get hint() { return t("b.core.preset.gems.hint"); },
     ok: (g) => g.rating >= 0.8 && g.votes >= 5 && g.votes < 200, cmp: byScore((g) => g.rating), score: "rating" },
-  { id: "classics", label: "🕹 Grandi classici", hint: "usciti prima del 2000 con voto almeno 75%",
+  { id: "classics", get label() { return "🕹 " + t("b.core.preset.classics"); }, get hint() { return t("b.core.preset.classics.hint"); },
     ok: (g) => g.year && g.year < 2000 && Math.max(g.rating ?? 0, g.critics ?? 0) >= 0.75, cmp: byScore((g) => Math.max(g.rating ?? 0, g.critics ?? 0)), score: "best" },
-  { id: "new", label: "🆕 Usciti negli ultimi 3 anni", ok: (g) => g.year >= THIS_YEAR - 3,
+  { id: "new", get label() { return "🆕 " + t("b.core.preset.new"); }, ok: (g) => g.year >= THIS_YEAR - 3,
     cmp: (a, b) => (b.year || 0) - (a.year || 0) || collator.compare(a.sort, b.sort) },
-  { id: "multi", label: "👥 Multigiocatore in locale", hint: "almeno 2 giocatori sullo stesso schermo", ok: (g) => g.players >= 2,
+  { id: "multi", get label() { return "👥 " + t("b.core.preset.multi"); }, get hint() { return t("b.core.preset.multi.hint"); }, ok: (g) => g.players >= 2,
     cmp: byScore((g) => g.rating) },
-  { id: "short", label: "⏱ Brevi (meno di 5 ore)", hint: "storia principale entro 5 ore (HowLongToBeat)",
+  { id: "short", get label() { return "⏱ " + t("b.core.preset.short"); }, get hint() { return t("b.core.preset.short.hint"); },
     ok: (g) => g.hltb != null && g.hltb <= 5, cmp: (a, b) => a.hltb - b.hltb || collator.compare(a.sort, b.sort), score: "hltb" },
-  { id: "long", label: "🏔 Lunghi (oltre 40 ore)", hint: "storia principale di almeno 40 ore (HowLongToBeat)",
+  { id: "long", get label() { return "🏔 " + t("b.core.preset.long"); }, get hint() { return t("b.core.preset.long.hint"); },
     ok: (g) => g.hltb >= 40, cmp: (a, b) => b.hltb - a.hltb || collator.compare(a.sort, b.sort), score: "hltb" },
-  { id: "unplayed", label: "⏳ Mai giocati", ok: (g) => !g.grp.last && !g.grp.playtime, cmp: byScore((g) => g.rating) },
-  { id: "worst", label: "👎 Peggio valutati", hint: "voto sotto il 50% con almeno 10 voti",
+  { id: "unplayed", get label() { return "⏳ " + t("b.core.preset.unplayed"); }, ok: (g) => !g.grp.last && !g.grp.playtime, cmp: byScore((g) => g.rating) },
+  { id: "worst", get label() { return "👎 " + t("b.core.preset.worst"); }, get hint() { return t("b.core.preset.worst.hint"); },
     ok: (g) => g.rating != null && g.rating < 0.5 && g.votes >= 10, cmp: (a, b) => a.rating - b.rating || collator.compare(a.sort, b.sort), score: "rating" },
-  { id: "unrated", label: "❔ Senza valutazione", ok: (g) => g.rating == null && g.critics == null },
+  { id: "unrated", get label() { return "❔ " + t("b.core.preset.unrated"); }, ok: (g) => g.rating == null && g.critics == null },
 ];
 
 /** Applica preset, genere e decennio; restituisce null come ordine se il preset non ne impone uno. */
@@ -292,20 +292,20 @@ function decadeList(games) {
 /** Testo del punteggio da mostrare sotto la copertina per il preset attivo. */
 function scoreText(g, kind) {
   const pct = (v) => Math.round(v * 100);
-  if (kind === "critics" && g.critics != null) return `Critica ${pct(g.critics)}`;
-  if (kind === "rating" && g.rating != null) return `★ ${pct(g.rating)}%${g.votes ? ` (${g.votes.toLocaleString("it")})` : ""}`;
-  if (kind === "votes") return `${g.votes.toLocaleString("it")} voti`;
+  if (kind === "critics" && g.critics != null) return t("b.core.score.critics", {n: pct(g.critics)});
+  if (kind === "rating" && g.rating != null) return `★ ${pct(g.rating)}%${g.votes ? ` (${g.votes.toLocaleString(GSI18n.lang)})` : ""}`;
+  if (kind === "votes") return t("b.core.votes.count", {n: g.votes.toLocaleString(GSI18n.lang)});
   if (kind === "hltb") return g.hltb != null ? `⏱ ${fmtHours(g.hltb)}` : "";
-  if (kind === "best") return g.critics != null ? `Critica ${pct(g.critics)}` : g.rating != null ? `★ ${pct(g.rating)}%` : "";
+  if (kind === "best") return g.critics != null ? t("b.core.score.critics", {n: pct(g.critics)}) : g.rating != null ? `★ ${pct(g.rating)}%` : "";
   return "";
 }
 
 /* ---- stato del gioco */
 const STATUS = {
-  backlog: { label: "Da giocare", icon: "📋" }, playing: { label: "In corso", icon: "▶" },
-  done: { label: "Finito", icon: "✔" }, dropped: { label: "Abbandonato", icon: "✖" },
+  backlog: { get label() { return t("b.core.status.backlog"); }, icon: "📋" }, playing: { get label() { return t("b.core.status.playing"); }, icon: "▶" },
+  done: { get label() { return t("b.core.status.done"); }, icon: "✔" }, dropped: { get label() { return t("b.core.status.dropped"); }, icon: "✖" },
 };
-const fmtHours = (h) => (h == null ? "" : h < 1 ? `${Math.round(h * 60)} min` : `${String(Math.round(h * 10) / 10).replace(".", ",")} h`);
+const fmtHours = (h) => (h == null ? "" : h < 1 ? t("b.core.time.minutes", {n: Math.round(h * 60)}) : t("b.core.time.hours", {n: String(Math.round(h * 10) / 10).replace(".", ",")}));
 
 /* ---- collezioni intelligenti: regole salvate, valutate sui dati della libreria */
 const SMART_RULES = ["platforms", "stores", "genres", "status", "minRating", "minCritics", "minPlayers", "yearFrom", "yearTo",
@@ -353,9 +353,9 @@ async function api(path, opts = {}) {
   if (opts.body !== undefined) { init.body = JSON.stringify(opts.body); init.method = opts.method || "POST"; }
   let r;
   try { r = await fetch(path, init); }
-  catch { throw new Error("Pozzo Launcher non risponde: l'app è stata chiusa o si sta riavviando?"); }  // fetch dice solo «Failed to fetch»
+  catch { throw new Error(t("b.core.api.noResponse")); }  // fetch dice solo «Failed to fetch»
   if (!r.ok) {
-    let m = r.statusText || `Errore ${r.status}`;
+    let m = r.statusText || t("b.core.api.error", {n: r.status});
     try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
     throw new Error(m);
   }
@@ -405,7 +405,7 @@ function decodeLibrary(lib) {
 const GS = (() => {
   const handlers = new Map();
   const experiences = new Map();
-  experiences.set("catalog", { id: "catalog", name: "Catalogo", description: "Interfaccia classica con navigazione laterale.",
+  experiences.set("catalog", { id: "catalog", get name() { return t("b.core.exp.catalog.name"); }, get description() { return t("b.core.exp.catalog.desc"); },
     nav: "sidebar", home: null, card: null, detail: "panel", onFocus: null });
   const ui = { gameActions: [], detailSections: [], tileBadges: [], sidebarItems: [], views: new Map(), settingsTabs: [] };
   const add = (list) => (item) => {
@@ -420,7 +420,7 @@ const GS = (() => {
     mode: document.documentElement.dataset.mode || "desktop",
     _loadingExperience: null,
     experiences,
-    experience: { id: "catalog", name: "Catalogo", description: "Interfaccia classica con navigazione laterale.",
+    experience: { id: "catalog", get name() { return t("b.core.exp.catalog.name"); }, get description() { return t("b.core.exp.catalog.desc"); },
       nav: "sidebar", home: null, card: null, detail: "panel", onFocus: null },
     api, esc, fold, store, ui, fmtSize,
     registerExperience(experience) {
@@ -432,7 +432,7 @@ const GS = (() => {
           || (experience.home != null && typeof experience.home !== "function")
           || (experience.card != null && typeof experience.card !== "function")
           || (experience.onFocus != null && typeof experience.onFocus !== "function")) {
-        throw new Error("Contratto esperienza non valido");
+        throw new Error(t("b.core.exp.invalid"));
       }
       const registered = {
         id: experience.id, name: experience.name, description: String(experience.description || ""),
@@ -489,7 +489,7 @@ async function loadExtensions() {
       try {
         GS._loadingExperience = experience.id;
         await import(experience.script);
-        if (!GS.experiences.has(experience.id)) throw new Error("Lo script non ha registrato l'esperienza");
+        if (!GS.experiences.has(experience.id)) throw new Error(t("b.core.exp.notRegistered"));
       } catch (e) {
         GS.experienceErrors[experience.id] = `${e.name}: ${e.message}`;
         console.warn(`Esperienza ${experience.id}:`, e);
@@ -507,7 +507,7 @@ async function loadExtensions() {
       })();
     }
     GS.experience = GS.experiences.get(ext.active_experience) || GS.experiences.get("catalog")
-      || { id: "catalog", name: "Catalogo", description: "Interfaccia classica con navigazione laterale.",
+      || { id: "catalog", get name() { return t("b.core.exp.catalog.name"); }, get description() { return t("b.core.exp.catalog.desc"); },
         nav: "sidebar", home: null, card: null, detail: "panel", onFocus: null };
     document.documentElement.dataset.experienceId = GS.experience.id;
     // Keep the legacy CSS selector stable so the Originale preset keeps its pre-registry layout.
@@ -559,7 +559,7 @@ async function loadExtensions() {
         if (typeof m.default === "function") await m.default(GS, { id: p.id, settings: p.settings || {} });
       } catch (e) {
         console.error(`Plugin ${p.id}:`, e);
-        GS.toast(`Il plugin «${p.name}» non si e' caricato: ${e.message}`, true);
+        GS.toast(t("b.core.plugin.loadFail", {nome: p.name, errore: e.message}), true);
       }
     }
   }

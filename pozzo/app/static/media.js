@@ -8,7 +8,7 @@
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store",
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || data.message || `Richiesta non riuscita (${response.status})`);
+    if (!response.ok) throw new Error(data.detail || data.message || t("i.media.requestFailed", { status: response.status }));
     return data;
   }
 
@@ -20,8 +20,8 @@
   function renderSpotify(data) {
     spotifyState = data;
     const title = $("#bp-media-title"), artist = $("#bp-media-artist"), cover = $("#bp-media-cover");
-    if (title) title.textContent = data.track || (data.state === "no_device" ? "Nessun dispositivo attivo" : "Nessun brano in riproduzione");
-    if (artist) artist.textContent = (data.artists || []).join(", ") || data.message || "Spotify non collegato";
+    if (title) title.textContent = data.track || (data.state === "no_device" ? t("i.media.noDevice") : t("i.media.noTrack"));
+    if (artist) artist.textContent = (data.artists || []).join(", ") || data.message || t("i.media.spotifyNotLinked");
     if (cover) { cover.hidden = !data.cover; if (data.cover) cover.src = data.cover; else cover.removeAttribute("src"); }
     const progress = $("#bp-media-progress");
     if (progress) progress.style.width = `${data.duration_ms ? Math.min(100, 100 * data.progress_ms / data.duration_ms) : 0}%`;
@@ -32,15 +32,15 @@
   function renderDiscord(data) {
     discordState = data;
     const channel = $("#bp-discord-channel"), participants = $("#bp-discord-participants");
-    if (channel) channel.textContent = data.in_call ? `Voce: ${data.channel}` : (data.message || "Nessuna chiamata Discord");
+    if (channel) channel.textContent = data.in_call ? t("i.media.voice", { c: data.channel }) : (data.message || t("i.media.noCall"));
     if (participants) {
       const names = (data.participants || []).map((p) => `${p.speaking ? "?? " : ""}${p.name}`).join(" ? ");
-      const speakers = data.speakers?.length ? ` ? Parla: ${data.speakers.join(", ")}` : "";
+      const speakers = data.speakers?.length ? ` ? ${t("i.media.speaking", { list: data.speakers.join(", ") })}` : "";
       participants.textContent = `${names}${speakers}`;
     }
     const mute = $("[data-media-action='mute']"), deaf = $("[data-media-action='deafen']");
-    if (mute) mute.textContent = data.muted ? "Attiva microfono" : "Muta microfono";
-    if (deaf) deaf.textContent = data.deafened ? "Riattiva audio" : "Disattiva audio";
+    if (mute) mute.textContent = data.muted ? t("i.media.unmuteMic") : t("i.media.muteMic");
+    if (deaf) deaf.textContent = data.deafened ? t("i.media.undeafen") : t("i.media.deafen");
   }
 
   async function refresh() {
@@ -83,7 +83,7 @@
 
   async function key(action) {
     const result = await api("/api/media/keys", { action });
-    if (!result.ok) throw new Error(result.message || "Tasto multimediale non disponibile.");
+    if (!result.ok) throw new Error(result.message || t("i.media.keyUnavailable"));
     return result;
   }
 
@@ -106,13 +106,13 @@
     try {
       if (!discordState || !discordState.connected) discordState = await api("/api/discord/status");
       const result = await api(`/api/discord/${path}`, { enabled: !discordState[field] });
-      feedback(result.ok ? "Impostazione voce aggiornata." : "Comando non riuscito.");
+      feedback(result.ok ? t("i.media.voiceUpdated") : t("i.media.commandFailed"));
       await refresh();
     } catch (error) { feedback(error.message, true); }
   }
 
   async function leaveCall() {
-    try { await api("/api/discord/leave", {}); feedback("Uscito dalla chiamata."); await refresh(); }
+    try { await api("/api/discord/leave", {}); feedback(t("i.media.left")); await refresh(); }
     catch (error) { feedback(error.message, true); }
   }
 
@@ -180,12 +180,12 @@
       const spotify = await api("/api/spotify/status");
       $("#media-spotify-id").value = spotify.client_id || "";
       $("#media-spotify-redirect").textContent = spotify.redirect_uri;
-      $("#media-spotify-state").textContent = spotify.authenticated ? "Spotify collegato." : "Spotify non collegato.";
+      $("#media-spotify-state").textContent = spotify.authenticated ? t("i.media.spotifyLinked") : t("i.media.spotifyNotLinkedDot");
     } catch (error) { const el = $("#media-spotify-state"); if (el) el.textContent = error.message; }
     try {
       const discord = await api("/api/discord/config");
       $("#media-discord-id").value = discord.client_id || "";
-      $("#media-discord-state").textContent = discord.client_secret_set ? "Credenziali Discord salvate." : "Inserisci le credenziali dell'app Discord.";
+      $("#media-discord-state").textContent = discord.client_secret_set ? t("i.media.discordSaved") : t("i.media.discordEnter");
     } catch (error) { const el = $("#media-discord-state"); if (el) el.textContent = error.message; }
   }
 
@@ -196,25 +196,25 @@
     try {
       if (button.id === "media-spotify-save") {
         const result = await api("/api/spotify/settings", { client_id: $("#media-spotify-id").value.trim() });
-        spotifyStateEl.textContent = result.authenticated ? "Client ID salvato; account collegato." : "Client ID salvato.";
+        spotifyStateEl.textContent = result.authenticated ? t("i.media.clientSavedLinked") : t("i.media.clientSaved");
         $("#media-spotify-redirect").textContent = result.redirect_uri;
       } else if (button.id === "media-spotify-login") {
         const result = await api("/api/spotify/settings", { client_id: $("#media-spotify-id").value.trim() });
         $("#media-spotify-redirect").textContent = result.redirect_uri;
         const login = await api("/api/spotify/login");
         await api("/api/open", { url: login.url }); // browser di sistema: nell'app about:blank non ha un'applicazione
-        spotifyStateEl.textContent = "Completa l'accesso nella finestra aperta.";
+        spotifyStateEl.textContent = t("i.media.loginPrompt");
       } else if (button.id === "media-spotify-logout") {
-        await api("/api/spotify/logout", {}); spotifyStateEl.textContent = "Account Spotify disconnesso.";
+        await api("/api/spotify/logout", {}); spotifyStateEl.textContent = t("i.media.loggedOut");
       } else if (button.id === "media-discord-save") {
         const result = await api("/api/discord/settings", { client_id: $("#media-discord-id").value.trim(), client_secret: $("#media-discord-secret").value });
         $("#media-discord-secret").value = "";
-        discordStateEl.textContent = result.client_secret_set ? "Credenziali Discord salvate." : result.message;
+        discordStateEl.textContent = result.client_secret_set ? t("i.media.discordSaved") : result.message;
       } else if (button.id === "media-discord-test") {
         await api("/api/discord/settings", { client_id: $("#media-discord-id").value.trim(), client_secret: $("#media-discord-secret").value });
         $("#media-discord-secret").value = "";
         const result = await api("/api/discord/test", {});
-        discordStateEl.textContent = result.in_call ? `Connesso ? ${result.channel}` : "Connessione a Discord riuscita.";
+        discordStateEl.textContent = result.in_call ? t("i.media.connected", { c: result.channel }) : t("i.media.discordOk");
       }
     } catch (error) {
       const target = button.id.startsWith("media-spotify") ? spotifyStateEl : discordStateEl;

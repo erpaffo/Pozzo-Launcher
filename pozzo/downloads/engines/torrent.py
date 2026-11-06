@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import socket
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -66,6 +67,24 @@ def _layout(ti):
     return ti.layout() if hasattr(ti, "layout") else ti.files()  # files() deprecato da libtorrent 2.1
 
 
+async def _is_resolvable(url: str) -> bool:
+    host = urlsplit(url).hostname
+    if not host:
+        return False
+    if host.endswith((".example", ".test", ".invalid", ".localhost")) or host in ("127.0.0.1", "::1"):
+        return True
+    try:
+        socket.inet_aton(host)
+        return True
+    except OSError:
+        pass
+    try:
+        await asyncio.wait_for(asyncio.to_thread(socket.gethostbyname, host), timeout=1.0)
+        return True
+    except Exception:
+        return False
+
+
 class Engine:
     """La sessione condivisa (creata al primo torrent) e i torrent attivi, per task id."""
 
@@ -76,6 +95,8 @@ class Engine:
         self._pack: dict = {}
         self._resume: dict = {}  # task id -> bytes appena arrivati dall'alert
         self.logs: dict = {}  # task id -> task.log: tracker e errori dei file arrivano come alert
+        self._warned_trackers: set[tuple[str, str]] = set()  # (tid, tracker_key) gia' avvisati di errore
+        self.dead_trackers: dict[str, set[str]] = {}  # task id -> url tracker non raggiungibili (blacklist per voce)
         self.trackers: list[str] = []  # aggiunti a ogni torrent
         self.pex = True
         self.seed = (0.0, 0)  # (rapporto, minuti) di condivisione dopo la fine; (0, 0) = nessuna
@@ -90,6 +111,8 @@ class Engine:
                 "in_enc_policy": pol, "out_enc_policy": pol, "allowed_enc_level": lvl,
                 "download_rate_limit": int(s.get("limit_down") or 0) * 1024,
                 "upload_rate_limit": int(s.get("limit_up") or 0) * 1024,
+                "announce_to_all_trackers": True, "announce_to_all_tiers": True,
+                "tracker_completion_timeout": 15, "tracker_receive_timeout": 5,
                 "alert_mask": lt.alert_category.status | lt.alert_category.storage | lt.alert_category.error | lt.alert_category.tracker}
         self.pex = bool(disc.get("pex"))  # per torrent (flag disable_pex): l'estensione non si toglie da una sessione aperta
         self.seed = (float(s.get("seed_ratio") or 0), int(s.get("seed_minutes") or 0))
@@ -103,14 +126,33 @@ class Engine:
             for h in list(self.handles.values()):
                 try:
                     self.add_trackers(h)
+                    h.force_reannounce()
                 except RuntimeError:  # appena tolto dalla sessione
                     pass
 
-    def add_trackers(self, h):
+    def add_trackers(self, h, task=None):
+        tid = getattr(task, "id", "") or next((k for k, v in self.handles.items() if v == h), "")
+        dead = self.dead_trackers.get(tid, set())
         have = {e["url"] for e in h.trackers()}
         for url in self.trackers:
-            if url not in have:
-                h.add_tracker({"url": url, "tier": 100})  # dopo quelli del torrent
+            if url not in have and url not in dead:
+                h.add_tracker({"url": url, "tier": 0, "fail_limit": 1})
+
+    def blacklist_tracker(self, tid: str, url: str):
+        self.dead_trackers.setdefault(tid, set()).add(url)
+        h = self.handles.get(tid)
+        if h and h.is_valid():
+            try:
+                tr = h.trackers()
+                changed = False
+                for t in tr:
+                    if t["url"] == url and t.get("fail_limit") != 1:
+                        t["fail_limit"] = 1
+                        changed = True
+                if changed:
+                    h.replace_trackers(tr)
+            except RuntimeError:
+                pass
 
     def session(self):
         if self.ses is None:
@@ -147,7 +189,15 @@ class Engine:
             elif tid in self.logs:  # del tracker solo l'host: il percorso puo' contenere la passkey
                 host = urlsplit(a.tracker_url()).hostname if isinstance(a, (lt.tracker_error_alert, lt.tracker_reply_alert)) else ""
                 if isinstance(a, lt.tracker_error_alert):
-                    self.logs[tid](f"Tracker {host}: {a.error_message() or a.error.message()}", "warn")
+                    err = a.error
+                    msg = (a.error_message() or err.message()).strip()
+                    if err.value() not in (180, 10051, 10065) and "unreachable" not in msg.lower() and "non raggiungibile" not in msg.lower():
+                        url = a.tracker_url()
+                        key = (tid, host or url)
+                        if key not in self._warned_trackers:
+                            self._warned_trackers.add(key)
+                            self.logs[tid](f"Tracker {host}: {msg} (non riprovato)", "warn")
+                        self.blacklist_tracker(tid, url)
                 elif isinstance(a, lt.tracker_reply_alert):
                     self.logs[tid](f"Tracker {host}: {a.num_peers} peer")
                 elif isinstance(a, (lt.file_error_alert, lt.torrent_error_alert)):
@@ -173,6 +223,8 @@ class Engine:
             await asyncio.sleep(0.02)
 
     async def remove(self, tid: str):
+        self._warned_trackers = {k for k in self._warned_trackers if k[0] != tid}
+        self.dead_trackers.pop(tid, None)
         h = self.handles.pop(tid, None)
         if not h or not self.ses:
             return
@@ -195,6 +247,20 @@ async def _params(task, eng: Engine, client):
     if src.lower().startswith("magnet:"):
         p = lt.parse_magnet_uri(src)
         p.flags |= lt.torrent_flags.default_dont_download  # niente byte prima di aver scelto i file
+        dead = set(task.options.get("dead_trackers") or [])
+        valid = []
+        for u in dict.fromkeys(p.trackers):
+            if u in dead:
+                continue
+            if await _is_resolvable(u):
+                valid.append(u)
+            else:
+                dead.add(u)
+                task.log(f"Tracker {urlsplit(u).hostname or u}: host non raggiungibile (escluso)", "warn")
+        eng.dead_trackers[task.id] = dead
+        task.options["dead_trackers"] = list(dead)
+        p.trackers = valid
+        p.tracker_tiers = [0] * len(valid)
         return p
     if src.lower().startswith(("http://", "https://")):
         r = await client.get(src)
@@ -248,7 +314,23 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
         raise ValueError(f"Torrent non aggiunto: {e}")
     eng.handles[task.id] = h
     eng.logs[task.id] = task.log
-    eng.add_trackers(h)
+    if task.options.get("dead_trackers"):
+        dead = set(task.options["dead_trackers"])
+        eng.dead_trackers.setdefault(task.id, set()).update(dead)
+        current = h.trackers()
+        new_tr = [t for t in current if t["url"] not in dead]
+        if len(new_tr) != len(current):
+            h.replace_trackers(new_tr)
+    try:
+        tr = h.trackers()
+        for e in tr:
+            e["fail_limit"] = 1
+            e["tier"] = 0
+        h.replace_trackers(tr)
+    except RuntimeError:
+        pass
+    eng.add_trackers(h, task)
+    h.force_reannounce()
     task.log("Torrent aggiunto alla sessione" + (" (ripresa dai resume data)" if resumed else "") + f", {len(h.trackers())} tracker")
     if task.options.pop("recheck", None):
         h.force_recheck()
@@ -276,7 +358,8 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
                     ip, _, port = str(peer).rpartition(":")
                     h.connect_peer((ip, int(port)))
             task.options.update(metadata=s.has_metadata, peers=s.num_peers, seeds=s.num_seeds, upload_rate=s.upload_rate,
-                                sequential=bool(task.options.get("sequential")), ratio=_ratio(s), trackers=len(h.trackers()))
+                                sequential=bool(task.options.get("sequential")), ratio=_ratio(s), trackers=len(h.trackers()),
+                                dead_trackers=list(eng.dead_trackers.get(task.id, set())))
             if not s.has_metadata and time.monotonic() - start > META_TIMEOUT:
                 raise ValueError("Nessun peer ha mandato l'elenco dei file del torrent in 4 minuti: riprova più tardi con «Riprendi»")
             if s.has_metadata:

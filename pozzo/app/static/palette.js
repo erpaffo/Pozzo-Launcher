@@ -46,10 +46,10 @@
     const q = normalize(query);
     const lab = (x) => `${x.label} ${x.hint || ""}`;
     const groups = [
-      { id: "games", label: "Giochi", items: q ? rank(sources.games || [], q, lab, MAX_GAMES) : [] },
-      { id: "consoles", label: "Console", items: rank(sources.consoles || [], q, lab, MAX_OTHER) },
-      { id: "settings", label: "Impostazioni", items: rank(sources.settings || [], q, lab, MAX_OTHER) },
-      { id: "actions", label: "Azioni", items: rank(sources.actions || [], q, lab, q ? MAX_OTHER : 8) },
+      { id: "games", label: t("b.palette.group.games"), items: q ? rank(sources.games || [], q, lab, MAX_GAMES) : [] },
+      { id: "consoles", label: t("b.common.console"), items: rank(sources.consoles || [], q, lab, MAX_OTHER) },
+      { id: "settings", label: t("b.common.settings"), items: rank(sources.settings || [], q, lab, MAX_OTHER) },
+      { id: "actions", label: t("b.palette.group.actions"), items: rank(sources.actions || [], q, lab, q ? MAX_OTHER : 8) },
     ];
     return groups.filter((g) => g.items.length);
   }
@@ -68,8 +68,8 @@
       if (g.grp && (g.id !== g.grp.primary || g.grp.hidden)) continue;
       games.push({ label: g.title, hint: st.plats?.get(g.platform)?.name || g.platform || "", run: () => GS.openGame(g.id) });
     }
-    const consoles = [...(st?.plats?.values() || [])].map((p) => ({ label: p.name || p.id, hint: "Console", run: () => { closeOverlays(); setView({ type: "platform", id: p.id }); } }));
-    const settings = (typeof SETTINGS_CATS !== "undefined" ? SETTINGS_CATS : []).map(([id, label]) => ({ label, hint: "Impostazioni", run: () => openSettings(id) }));
+    const consoles = [...(st?.plats?.values() || [])].map((p) => ({ label: p.name || p.id, hint: t("b.common.console"), run: () => { closeOverlays(); setView({ type: "platform", id: p.id }); } }));
+    const settings = (typeof SETTINGS_CATS !== "undefined" ? SETTINGS_CATS : []).map(([id, label]) => ({ label, hint: t("b.common.settings"), run: () => openSettings(id) }));
     const actions = (SC()?.REGISTRY || []).filter((en) => (en.scope === "desktop" || en.scope === "both") && en.id !== "palette")
       .map((en) => ({ label: en.label, hint: SC().keyLabel(en.id), run: () => SC().run(en.id) }));
     return { games, consoles, settings, actions };
@@ -88,7 +88,7 @@
     flat = [];
     list.innerHTML = groups.map((g) => `<li role="presentation" class="pal-group"><span id="pal-g-${g.id}">${g.label}</span><ul role="group" aria-labelledby="pal-g-${g.id}">`
       + g.items.map((it) => { const i = flat.push(it) - 1; return `<li role="option" id="pal-o-${i}" data-i="${i}" aria-selected="false" class="pal-item"><span class="pal-l">${esc2(it.label)}</span>${it.hint ? `<kbd class="pal-h">${esc2(it.hint)}</kbd>` : ""}</li>`; }).join("")
-      + "</ul></li>").join("") || '<li role="presentation" class="pal-empty">Nessun risultato</li>';
+      + "</ul></li>").join("") || '<li role="presentation" class="pal-empty">' + t("b.palette.empty") + '</li>';
     select(0);
   }
   function select(i) {
@@ -113,10 +113,10 @@
     data = sources();
     box = document.createElement("div");
     box.className = "pal-overlay";
-    box.innerHTML = '<div class="pal" role="dialog" aria-modal="true" aria-label="Palette comandi">'
-      + '<input class="pal-input" type="text" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list" aria-activedescendant="" autocomplete="off" spellcheck="false" placeholder="Cerca giochi, console, impostazioni, azioni…" aria-label="Cerca nella palette">'
-      + '<ul class="pal-list" id="pal-list" role="listbox" aria-label="Risultati"></ul>'
-      + '<div class="pal-foot muted">↑↓ per scegliere · Invio per aprire · Esc per chiudere</div></div>';
+    box.innerHTML = '<div class="pal" role="dialog" aria-modal="true" aria-label="' + t("b.palette.dialog") + '">'
+      + '<input class="pal-input" type="text" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list" aria-activedescendant="" autocomplete="off" spellcheck="false" placeholder="' + t("b.palette.placeholder") + '" aria-label="' + t("b.palette.inputLabel") + '">'
+      + '<ul class="pal-list" id="pal-list" role="listbox" aria-label="' + t("b.palette.results") + '"></ul>'
+      + '<div class="pal-foot muted">' + t("b.palette.footer") + '</div></div>';
     document.body.appendChild(box);
     input = $(".pal-input", box);
     list = $(".pal-list", box);

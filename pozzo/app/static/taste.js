@@ -53,11 +53,11 @@
     host.textContent = "";
     host.classList && host.classList.add("taste");
     host.setAttribute("role", "region");
-    host.setAttribute("aria-label", "Il tuo gusto");
-    host.appendChild(el(doc, "h2", "taste-title", "Il tuo gusto"));
-    if (generi.length) host.appendChild(colonna(doc, "Generi", generi));
-    if (decenni.length) host.appendChild(colonna(doc, "Decenni", decenni, "s"));
-    if (d.reliable === false) host.appendChild(el(doc, "p", "taste-note", "Ancora pochi giochi giocati: il gusto e' indicativo."));
+    host.setAttribute("aria-label", t("i.taste.title"));
+    host.appendChild(el(doc, "h2", "taste-title", t("i.taste.title")));
+    if (generi.length) host.appendChild(colonna(doc, t("i.taste.genres"), generi));
+    if (decenni.length) host.appendChild(colonna(doc, t("i.taste.decades"), decenni, "s"));
+    if (d.reliable === false) host.appendChild(el(doc, "p", "taste-note", t("i.taste.note")));
     host.hidden = false;
     return true;
   }

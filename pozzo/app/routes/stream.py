@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from ... import config as C
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -18,7 +19,7 @@ def build_router(ctx) -> APIRouter:
     def api_play_key(body: dict = Body(...)):
         g = lib.by_key.get(str(body.get("key") or ""))
         if not g:
-            raise HTTPException(404, "Gioco non trovato in libreria")
+            raise HTTPException(404, I.tr("s.stream.gameNotInLibrary"))
         api_play(g["id"])
         return {"ok": True, "title": g["title"], "id": g["id"]}
 
@@ -62,7 +63,7 @@ def build_router(ctx) -> APIRouter:
                 finally:
                     s.close()
             except Exception as e:
-                st["error"] = str(e) if isinstance(e, PermissionError) else f"Sunshine non risponde ({type(e).__name__})"
+                st["error"] = str(e) if isinstance(e, PermissionError) else I.tr("s.stream.sunshineDown", kind=type(e).__name__)
         st["preview"] = [g["title"] for g in _stream_games(int(st["count"]))]
         return st
 
@@ -80,7 +81,7 @@ def build_router(ctx) -> APIRouter:
         if not body.get("publish"):
             return api_sunshine()
         if not (conf.get("user") and conf.get("password")):
-            raise HTTPException(400, "Servono utente e password dell'interfaccia web di Sunshine")
+            raise HTTPException(400, I.tr("s.stream.credsRequired"))
 
         def cover_of(g):
             m = lib.by_id[g["id"]]["media"]
@@ -92,7 +93,7 @@ def build_router(ctx) -> APIRouter:
         except PermissionError as e:
             raise HTTPException(401, str(e))
         except Exception as e:
-            raise HTTPException(502, f"Sunshine non risponde: avvialo e riprova ({type(e).__name__}: {e})")
+            raise HTTPException(502, I.tr("s.stream.sunshineStart", err=f"{type(e).__name__}: {e}"))
         conf["last"] = {"time": time.time(), **r}
         C.save_settings(cfg, app={"sunshine": conf})
         return api_sunshine()
@@ -103,12 +104,12 @@ def build_router(ctx) -> APIRouter:
         try:
             return {"checks": SUN.optimize_checks()}
         except Exception as e:
-            return {"checks": [{"level": "warn", "title": "Controllo non riuscito", "detail": f"{type(e).__name__}: {e}"}]}
+            return {"checks": [{"level": "warn", "title": I.tr("s.stream.checkFailed"), "detail": f"{type(e).__name__}: {e}"}]}
 
     @router.post("/api/sunshine/start")
     def api_sunshine_start():
         if not SUN.start_service():
-            raise HTTPException(409, "Avvio annullato o non possibile")
+            raise HTTPException(409, I.tr("s.stream.startFailed"))
         return {"ok": True}
 
     @router.get("/api/running")

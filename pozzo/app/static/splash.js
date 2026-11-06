@@ -20,8 +20,8 @@
     const progress = boot?.ready ? 1 : Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : steps.length ? done / steps.length : 0;
     return {
       progress,
-      error: err ? `Errore: ${err.message || err.label || err.id}` : "",
-      label: run ? `${run.state === "pending" ? "In attesa" : "In corso"}: ${run.label || run.id}` : "Avvio…",
+      error: err ? t("b.splash.error", {nome: err.message || err.label || err.id}) : "",
+      label: run ? t("b.splash.step", {stato: run.state === "pending" ? t("b.splash.waiting") : t("b.core.status.playing"), nome: run.label || run.id}) : t("b.common.starting"),
     };
   }
 
@@ -39,9 +39,9 @@
   el.innerHTML = `<div class="bs-box">
       <img class="bs-logo" src="/static/m/icon.png" alt="" width="96" height="96">
       <div class="bs-name">Pozzo Launcher</div>
-      <div class="bs-bar" role="progressbar" aria-label="Avvio di Pozzo Launcher" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i class="bs-fill"></i></div>
+      <div class="bs-bar" role="progressbar" aria-label="Avvio di Pozzo Launcher" data-i18n-aria="b.splash.aria" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i class="bs-fill"></i></div>
       <p class="bs-msg" role="status" aria-live="polite" aria-atomic="true"></p>
-      <button type="button" class="bs-ok" hidden>Continua</button>
+      <button type="button" class="bs-ok" data-i18n="b.splash.continue" hidden>Continua</button>
     </div>`;
   const bar = el.querySelector(".bs-bar"), fill = el.querySelector(".bs-fill"), msg = el.querySelector(".bs-msg"), ok = el.querySelector(".bs-ok");
 
@@ -101,13 +101,13 @@
         }
         paint({
           progress: 0,
-          label: last || (status.building ? "Preparazione della libreria…" : "In attesa della prima libreria…"),
+          label: last || (status.building ? t("b.splash.preparing") : t("b.splash.waitingFirst")),
           error: "",
         });
       } catch {
         failures += 1;
         if (failures >= 3) {
-          showError("Stato di avvio non disponibile.");
+          showError(t("b.splash.statusUnavailable"));
           return;
         }
       }
@@ -144,7 +144,7 @@
     if (done || hasError) return;
     stopped = true;
     clearTimeout(timer);
-    showError("Timeout: la libreria non è pronta. Puoi continuare e riprovare.");
+    showError(t("b.splash.timeout"));
   }, MAX_MS);
   poll();
 })();

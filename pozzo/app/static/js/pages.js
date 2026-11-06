@@ -24,45 +24,45 @@ async function renderWishlist(pv) {
   pageSkeleton(pv, "wishlist");
   let d;
   try { d = await api("/api/wishlist"); } catch (e) { pv.innerHTML = `<div class="page"><p>${esc(e.message)}</p></div>`; return; }
-  const money = (v, cur = "EUR") => (v == null ? "—" : v === 0 ? "Gratis" : v.toLocaleString("it", { style: "currency", currency: cur || "EUR" }));
+  const money = (v, cur = "EUR") => (v == null ? "—" : v === 0 ? t("h.wl.free") : v.toLocaleString(GSI18n.lang, { style: "currency", currency: cur || "EUR" }));
   // header.jpg esiste per ogni gioco Steam; senza codice Steam (o se manca) si usa la copertina salvata alla ricerca
   const steamImg = (w) => remoteImg(w.steam_appid ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${w.steam_appid}/header.jpg` : w.cover);
   const imgTag = (w) => (steamImg(w) ? `<img src="${steamImg(w)}" alt="" data-fb="${w.steam_appid && w.cover ? remoteImg(w.cover) : ""}" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=''}else this.remove()">` : "");
   const s = d.settings;
   pv.innerHTML = `<div class="page" data-view="wishlist">
-    <div class="page-head"><div><h2>♡ Lista desideri</h2>
-      <p class="muted small">Prezzi degli store ufficiali${s.has_key ? " (IsThereAnyDeal: Steam, GOG, Epic, Humble e altri)" : " (Steam; aggiungi la chiave IsThereAnyDeal per confrontare tutti gli store)"}.
-        Negozi di key: GG.deals.
-        Clicca un gioco per vedere tutte le offerte e i minimi storici.
-        Avviso quando lo sconto supera il ${s.threshold}%, quando il prezzo (anche nei negozi di key) scende sotto quello che indichi o tocca il minimo storico.</p></div>
-      <div class="row"><button class="btn" id="wl-import">⬇ Importa da Steam</button><button class="btn" id="wl-check">↻ Controlla prezzi</button>
+    <div class="page-head"><div><h2>♡ ${t("h.wl.title")}</h2>
+      <p class="muted small">${t("h.wl.officialPrices")}${s.has_key ? t("h.wl.itadAll") : t("h.wl.itadAdd")}.
+        ${t("h.wl.keyShops")}
+        ${t("h.wl.clickGame")}
+        ${t("h.wl.alertHelp", {thr: s.threshold})}</p></div>
+      <div class="row"><button class="btn" id="wl-import">⬇ ${t("h.common.importSteam")}</button><button class="btn" id="wl-check">↻ ${t("h.wl.checkPrices")}</button>
         <button class="btn" id="wl-settings">⚙</button></div></div>
     <div class="wl-settings" hidden>
-      <label>Chiave IsThereAnyDeal <input class="field" id="wl-key" placeholder="${s.has_key ? "già inserita (lascia vuoto per non cambiarla)" : "facoltativa"}">
-        <a href="#" data-open="https://isthereanydeal.com/apps/my/">ottieni la chiave gratuita</a></label>
-      <label>Chiave GG.deals <input class="field" id="wl-gg" placeholder="${s.has_gg ? "già inserita (lascia vuoto per non cambiarla)" : "facoltativa: prezzi dei negozi di key"}">
-        <a href="#" data-open="https://gg.deals/api/">ottieni la chiave gratuita</a></label>
-      <label>Paese <input class="field" id="wl-country" value="${esc(s.country)}" maxlength="2" style="width:60px"></label>
-      <label>Avvisa da uno sconto del <input class="field" id="wl-thr" type="number" min="5" max="95" value="${s.threshold}" style="width:70px">%</label>
-      <button class="btn primary" id="wl-save">Salva</button></div>
-    <div class="wl-add"><input class="field grow" id="wl-q" placeholder="Cerca un gioco da aggiungere…" autocomplete="off"><div id="wl-res"></div></div>
-    ${d.checking ? `<p class="muted small">Controllo dei prezzi in corso…</p>` : ""}
+      <label>${t("h.wl.itadKey")} <input class="field" id="wl-key" placeholder="${s.has_key ? t("h.wl.keyStored") : t("h.wl.optional")}">
+        <a href="#" data-open="https://isthereanydeal.com/apps/my/">${t("h.wl.getKey")}</a></label>
+      <label>${t("h.wl.ggKey")} <input class="field" id="wl-gg" placeholder="${s.has_gg ? t("h.wl.keyStored") : t("h.wl.optionalKeyPrices")}">
+        <a href="#" data-open="https://gg.deals/api/">${t("h.wl.getKey")}</a></label>
+      <label>${t("h.wl.country")} <input class="field" id="wl-country" value="${esc(s.country)}" maxlength="2" style="width:60px"></label>
+      <label>${t("h.wl.alertFrom")} <input class="field" id="wl-thr" type="number" min="5" max="95" value="${s.threshold}" style="width:70px">%</label>
+      <button class="btn primary" id="wl-save">${t("h.common.save")}</button></div>
+    <div class="wl-add"><input class="field grow" id="wl-q" placeholder="${t("h.wl.searchPh")}" autocomplete="off"><div id="wl-res"></div></div>
+    ${d.checking ? `<p class="muted small">${t("h.wl.checking")}</p>` : ""}
     ${!s.has_gg ? `<p class="muted small">🔑 Per i prezzi delle key aggiungi la chiave GG.deals in ⚙.</p>`
-      : d.log.length ? `<p class="muted small">Ultimo avviso: ${esc(d.log[d.log.length - 1])}</p>` : ""}
-    <div class="wl-list" id="wl-rows">${d.items.length ? "" : `<p class="muted">La lista è vuota: cerca un gioco qui sopra o importa la tua lista desideri di Steam.</p>`}</div></div>`;
+      : d.log.length ? `<p class="muted small">${t("h.wl.lastNotice", {msg: esc(d.log[d.log.length - 1])})}</p>` : ""}
+    <div class="wl-list" id="wl-rows">${d.items.length ? "" : `<p class="muted">${t("h.wl.empty")}</p>`}</div></div>`;
   // una riga per volta, solo quelle visibili: la lista puo' avere migliaia di giochi
-  if (d.items.length) vlist(pv, $("#wl-rows", pv), d.items, (w) => `<div class="wl-row${w.alert ? " has-alert" : ""}${w.alert && !w.seen ? " new" : ""}" data-wid="${esc(w.id)}" title="Clicca per tutte le offerte">
+  if (d.items.length) vlist(pv, $("#wl-rows", pv), d.items, (w) => `<div class="wl-row${w.alert ? " has-alert" : ""}${w.alert && !w.seen ? " new" : ""}" data-wid="${esc(w.id)}" title="${t("h.wl.clickOffers")}">
       <div class="wl-img">${imgTag(w)}</div>
-      <div class="wl-t"><b>${esc(w.title)}</b>${w.owned ? ` <span class="tag">già in libreria</span>` : ""}
-        <span class="muted small">${w.checked ? `${esc(w.shop || "")} · controllato ${new Date(w.checked * 1000).toLocaleDateString("it")}` : "prezzo non ancora controllato"}
-          ${w.low != null ? ` · minimo storico ${money(w.low, w.currency)}` : ""}</span>${priceSpark(w.history, money, w.currency)}</div>
+      <div class="wl-t"><b>${esc(w.title)}</b>${w.owned ? ` <span class="tag">${t("h.wl.inLibrary")}</span>` : ""}
+        <span class="muted small">${w.checked ? `${esc(w.shop || "")} · ${t("h.wl.checkedOn", {d: new Date(w.checked * 1000).toLocaleDateString(GSI18n.lang)})}` : t("h.wl.notChecked")}
+          ${w.low != null ? ` · ${t("h.wl.low", {p: money(w.low, w.currency)})}` : ""}</span>${priceSpark(w.history, money, w.currency)}</div>
       <div class="wl-price" title="${esc(w.steam ? "Steam" : w.shop || "")}">${(w.steam || w).cut ? `<span class="cut">-${(w.steam || w).cut}%</span><s class="muted">${money((w.steam || w).regular, w.currency)}</s>` : ""}<b>${money((w.steam || w).price, w.currency)}</b>
         ${w.key_price != null ? keyPrice(w, money, (w.steam || w).regular || (w.steam || w).price) : ""}</div>
       <div class="wl-alert">${w.alert ? `🔔 ${esc(w.alert)}` : ""}</div>
-      <label class="wl-target" title="Avvisami quando costa meno di…">≤ <input class="field" type="number" step="0.5" min="0" data-target="${esc(w.id)}" value="${w.target ?? ""}" placeholder="€"></label>
-      ${w.url ? `<button class="btn" data-open="${esc(w.url)}">Apri ↗</button>` : ""}
-      ${w.key_url ? `<button class="btn" data-open="${esc(w.key_url)}" title="Confronto dei negozi di key su GG.deals">🔑 ↗</button>` : ""}
-      <button class="icon-btn" data-del="${esc(w.id)}" title="Togli dalla lista">✕</button></div>`, { gap: 6 });
+      <label class="wl-target" title="${t("h.wl.alertWhen")}">≤ <input class="field" type="number" step="0.5" min="0" data-target="${esc(w.id)}" value="${w.target ?? ""}" placeholder="€"></label>
+      ${w.url ? `<button class="btn" data-open="${esc(w.url)}">${t("h.common.open")} ↗</button>` : ""}
+      ${w.key_url ? `<button class="btn" data-open="${esc(w.key_url)}" title="${t("h.wl.keyCompare")}">🔑 ↗</button>` : ""}
+      <button class="icon-btn" data-del="${esc(w.id)}" title="${t("h.wl.removeFromList")}">✕</button></div>`, { gap: 6 });
   if (d.unseen) { api("/api/wishlist/seen", { body: {} }).then(() => pollWishBadge()); }
   let tmr = 0;
   $("#wl-q").oninput = (e) => {
@@ -73,13 +73,13 @@ async function renderWishlist(pv) {
       let r;
       try { r = await api("/api/wishlist/search", { body: { q } }); } catch (err) { return toast(err.message, true); }
       $("#wl-res").innerHTML = r.results.map((x, i) => `<div class="wl-hit" data-i="${i}">${x.cover ? `<img src="${remoteImg(x.cover)}" alt="" onerror="this.remove()">` : ""}<span>${esc(x.title)}</span><b>＋</b></div>`).join("")
-        || `<div class="muted small" style="padding:8px">Nessun risultato</div>`;
+        || `<div class="muted small" style="padding:8px">${t("h.wl.noResults")}</div>`;
       $("#wl-res").onclick = async (ev) => {
         const h = ev.target.closest(".wl-hit");
         if (!h) return;
         const x = r.results[+h.dataset.i];
         try { await api("/api/wishlist/add", { body: x }); } catch (err) { return toast(err.message, true); }
-        toast(`«${x.title}» aggiunto alla lista desideri`);
+        toast(t("h.wl.added", {name: x.title}));
         renderWishlist(pv);
         setTimeout(() => S.view.type === "wishlist" && renderWishlist(pv), 4000);
       };
@@ -97,14 +97,14 @@ async function renderWishlist(pv) {
       if ($("#wl-key").value.trim()) body.itad_key = $("#wl-key").value.trim();
       if ($("#wl-gg").value.trim()) body.gg_key = $("#wl-gg").value.trim();
       try { await api("/api/wishlist/settings", { body }); } catch (err) { return toast(err.message, true); }
-      toast("Impostazioni salvate"); renderWishlist(pv);
+      toast(window.t("h.wl.settingsSaved")); renderWishlist(pv);
     } else if (t.id === "wl-check") {
       await api("/api/wishlist/check", { body: { force: true } });
-      toast("Controllo dei prezzi avviato…");
+      toast(window.t("h.wl.checkStarted"));
       setTimeout(() => S.view.type === "wishlist" && renderWishlist(pv), 5000);
     } else if (t.id === "wl-import") {
       t.disabled = true;
-      try { const r = await api("/api/wishlist/import-steam", { body: {} }); toast(`Importati ${r.imported} giochi dalla lista desideri di Steam`); }
+      try { const r = await api("/api/wishlist/import-steam", { body: {} }); toast(window.t("h.wl.imported", {n: r.imported})); }
       catch (err) { toast(err.message, true); }
       renderWishlist(pv);
       setTimeout(() => S.view.type === "wishlist" && renderWishlist(pv), 6000);
@@ -114,24 +114,24 @@ async function renderWishlist(pv) {
     const t = e.target;
     if (t.dataset.target === undefined) return;
     try { await api(`/api/wishlist/item/${encodeURIComponent(t.dataset.target)}`, { body: { target: t.value } }); } catch (err) { return toast(err.message, true); }
-    toast("Prezzo desiderato salvato");
+    toast(window.t("h.wl.targetSaved"));
   };
 }
 
 /** Grafico a gradini del prezzo nel tempo: pts = [[data, prezzo]], low = linea tratteggiata del minimo storico. */
 function lineChart(pts, color, low, money) {
-  if (pts.length < 2) return `<p class="muted small">Non ci sono ancora abbastanza dati per il grafico.</p>`;
+  if (pts.length < 2) return `<p class="muted small">${t("h.chart.notEnough")}</p>`;
   const W = 640, H = 170, L = 58, B = 20, T = 8;
   const ts = pts.map(([d]) => +new Date(d)), vs = pts.map(([, v]) => v).concat(low != null ? [low] : []);
   const t0 = ts[0], t1 = ts[ts.length - 1], lo = Math.min(...vs), hi = Math.max(...vs);
   const x = (t) => L + (t1 === t0 ? 0 : ((t - t0) / (t1 - t0)) * (W - L - 6));
   const y = (v) => T + (hi === lo ? (H - T - B) / 2 : (1 - (v - lo) / (hi - lo)) * (H - T - B));
   const path = pts.map(([, v], i) => (i ? `H${x(ts[i]).toFixed(1)}V${y(v).toFixed(1)}` : `M${x(t0).toFixed(1)},${y(v).toFixed(1)}`)).join("") + `H${x(t1).toFixed(1)}`;
-  const day = (t) => new Date(t).toLocaleDateString("it", { day: "2-digit", month: "short", year: "2-digit" });
+  const day = (t) => new Date(t).toLocaleDateString(GSI18n.lang, { day: "2-digit", month: "short", year: "2-digit" });
   return `<svg class="wp-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">
     <text x="2" y="${T + 9}" class="ax">${money(hi)}</text><text x="2" y="${H - B}" class="ax">${money(lo)}</text>
     <text x="${L}" y="${H - 5}" class="ax">${day(t0)}</text><text x="${W - 4}" y="${H - 5}" class="ax" text-anchor="end">${day(t1)}</text>
-    ${low != null ? `<line x1="${L}" x2="${W - 6}" y1="${y(low)}" y2="${y(low)}" stroke="${color}" stroke-dasharray="4 4" opacity=".5"><title>Minimo storico ${money(low)}</title></line>` : ""}
+    ${low != null ? `<line x1="${L}" x2="${W - 6}" y1="${y(low)}" y2="${y(low)}" stroke="${color}" stroke-dasharray="4 4" opacity=".5"><title>${t("h.chart.lowTitle", {p: money(low)})}</title></line>` : ""}
     <path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
@@ -140,7 +140,7 @@ async function openWishPrices(wid) {
   const dlg = $("#wl-dlg"), box = $("#wl-dlg-body");
   let d;
   try { d = await api(`/api/wishlist/prices/${encodeURIComponent(wid)}`); } catch (e) { return toast(e.message, true); }
-  const money = (v) => (v == null ? "—" : v.toLocaleString("it", { style: "currency", currency: d.currency }));
+  const money = (v) => (v == null ? "—" : v.toLocaleString(GSI18n.lang, { style: "currency", currency: d.currency }));
   const a = d.detail || {}, steam = a.steam, key = a.key;
   const since = (days) => (days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : "");
   // Steam: storico di ITAD + punti giornalieri registrati qui (questi vincono sullo stesso giorno)
@@ -153,30 +153,30 @@ async function openWishPrices(wid) {
     const cut = (pts) => pts.filter(([day]) => day >= since(range));
     box.querySelector("#wp-charts").innerHTML = `
       <h4>Steam</h4>${lineChart(cut(steamPts), "#5b8cff", null, money)}
-      <h4>Key più economica</h4>${keyPts.length > 1 ? lineChart(cut(keyPts), "#9be3b5", d.key_low, money)
-        : `<p class="muted small">Lo storico delle key si costruisce giorno per giorno da quando segui il gioco${d.key_low != null ? ` (minimo storico: ${money(d.key_low)})` : ""}.</p>`}`;
+      <h4>${t("h.prices.cheapestKey")}</h4>${keyPts.length > 1 ? lineChart(cut(keyPts), "#9be3b5", d.key_low, money)
+        : `<p class="muted small">${t("h.prices.keyBuild")}${d.key_low != null ? t("h.prices.keyLow", {p: money(d.key_low)}) : ""}.</p>`}`;
     box.querySelectorAll("[data-range]").forEach((b) => b.classList.toggle("primary", +b.dataset.range === range));
   };
   box.innerHTML = `<div class="row"><h3 class="grow">${esc(d.title)}</h3>
       ${steam?.url ? `<button class="btn" data-open="${esc(steam.url)}">Steam ↗</button>` : ""}
       ${d.key_url ? `<button class="btn" data-open="${esc(d.key_url)}">GG.deals ↗</button>` : ""}
-      <button class="icon-btn" id="wp-close" title="Chiudi">✕</button></div>
-    <p class="muted small">${d.checked ? `Prezzi controllati il ${new Date(d.checked * 1000).toLocaleString("it", { dateStyle: "short", timeStyle: "short" })}.` : "Prezzi non ancora controllati."}
-      ${d.has_gg ? "" : " Aggiungi la chiave GG.deals in ⚙ per le key."}${d.has_itad ? "" : " Aggiungi la chiave IsThereAnyDeal per il confronto degli store e lo storico."}</p>
+      <button class="icon-btn" id="wp-close" title="${t("h.common.close")}">✕</button></div>
+    <p class="muted small">${d.checked ? t("h.prices.checkedOn", {d: new Date(d.checked * 1000).toLocaleString(GSI18n.lang, { dateStyle: "short", timeStyle: "short" })}) : t("h.prices.notChecked")}
+      ${d.has_gg ? "" : " " + t("h.prices.addGg")}${d.has_itad ? "" : " " + t("h.prices.addItad")}</p>
     <div class="wp-cards">
       <div class="wp-card"><span class="muted small">Steam</span>
-        <b>${steam ? money(steam.price) : "—"}</b>${steam?.cut ? ` <span class="cut">-${steam.cut}%</span> <span class="muted small">prezzo pieno <s>${money(steam.regular)}</s></span>` : ""}</div>
-      <div class="wp-card key"><span class="muted small">Key più economica (GG.deals)</span>
+        <b>${steam ? money(steam.price) : "—"}</b>${steam?.cut ? ` <span class="cut">-${steam.cut}%</span> <span class="muted small">${t("h.prices.fullPrice")} <s>${money(steam.regular)}</s></span>` : ""}</div>
+      <div class="wp-card key"><span class="muted small">${t("h.prices.cheapestKeyGg")}</span>
         <b>${key?.key != null ? money(key.key) : "—"}</b>
-        <span class="muted small">Minimo storico: ${money(key?.key_low)}</span></div>
-      ${a.low != null ? `<div class="wp-card"><span class="muted small">Minimo storico negli store</span><b>${money(a.low)}</b></div>` : ""}
+        <span class="muted small">${t("h.prices.lowLabel", {p: money(key?.key_low)})}</span></div>
+      ${a.low != null ? `<div class="wp-card"><span class="muted small">${t("h.prices.lowStores")}</span><b>${money(a.low)}</b></div>` : ""}
     </div>
-    ${offers.length ? `<h4>Offerte degli store (${offers.length})</h4><table class="wp-table"><thead><tr><th>Negozio</th><th class="num">Prezzo pieno</th><th class="num">Sconto</th><th class="num">Prezzo</th><th></th></tr></thead>
+    ${offers.length ? `<h4>${t("h.prices.offers", {n: offers.length})}</h4><table class="wp-table"><thead><tr><th>${t("h.prices.shop")}</th><th class="num">${t("h.prices.fullPriceCap")}</th><th class="num">${t("h.prices.discount")}</th><th class="num">${t("h.prices.price")}</th><th></th></tr></thead>
       <tbody>${offers.map((o) => `<tr><td>${esc(o.shop)}</td><td class="num muted">${o.cut ? `<s>${money(o.regular)}</s>` : ""}</td>
         <td class="num">${o.cut ? `-${o.cut}%` : ""}</td><td class="num"><b>${money(o.price)}</b></td>
-        <td>${o.url ? `<button class="btn" data-open="${esc(o.url)}">Apri ↗</button>` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
-    <div class="row wp-range"><span class="muted small grow">Andamento</span>
-      <button class="btn" data-range="30">30 giorni</button><button class="btn" data-range="365">1 anno</button><button class="btn" data-range="0">Tutto</button></div>
+        <td>${o.url ? `<button class="btn" data-open="${esc(o.url)}">${t("h.common.open")} ↗</button>` : ""}</td></tr>`).join("")}</tbody></table>` : ""}
+    <div class="row wp-range"><span class="muted small grow">${t("h.prices.trend")}</span>
+      <button class="btn" data-range="30">${t("h.prices.days30")}</button><button class="btn" data-range="365">${t("h.prices.year1")}</button><button class="btn" data-range="0">${t("h.prices.all")}</button></div>
     <div id="wp-charts"></div>`;
   box.onclick = (e) => {
     const t = e.target, o = t.closest("[data-open]"), r = t.closest("[data-range]");
@@ -217,33 +217,33 @@ async function renderStats(pv) {
       <span class="trk"><span class="fill" style="width:${Math.max(1, (100 * v) / max)}%"></span></span><span class="v">${h(v)}</span></div>`).join("")}</div>`;
   };
   const mMax = Math.max(1, ...d.months);
-  const MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+  const MONTHS = Array.from({ length: 12 }, (_, i) => t("h.stats.m" + (i + 1)));
   const years = Object.keys(d.years).map(Number);
   if (!years.includes(STATS_Y.y)) years.push(STATS_Y.y);
   pv.innerHTML = `<div class="page stats" data-view="stats">
     <div class="tiles">
-      <div class="tile-s"><b>${prim.length.toLocaleString("it")}</b><span>giochi in libreria</span></div>
-      <div class="tile-s"><b>${played.length.toLocaleString("it")}</b><span>giocati almeno una volta</span></div>
-      <div class="tile-s"><b>${h(total) || "0 min"}</b><span>tempo di gioco totale<br><small>app + store</small></span></div>
-      <div class="tile-s"><b>${doneN}</b><span>finiti${startedN ? ` · ${Math.round((100 * doneN) / startedN)}% di quelli iniziati` : ""}</span></div>
-      <div class="tile-s"><b>${st.playing || 0}</b><span>in corso</span></div>
-      <div class="tile-s"><b>${st.backlog || 0}</b><span>da giocare${backlogH ? `<br><small>servono ~${Math.round(backlogH)} h per finirli</small>` : ""}</span></div>
+      <div class="tile-s"><b>${prim.length.toLocaleString(GSI18n.lang)}</b><span>${t("h.stats.inLibrary")}</span></div>
+      <div class="tile-s"><b>${played.length.toLocaleString(GSI18n.lang)}</b><span>${t("h.stats.playedOnce")}</span></div>
+      <div class="tile-s"><b>${h(total) || t("h.stats.zeroMin")}</b><span>${t("h.stats.totalTime")}</span></div>
+      <div class="tile-s"><b>${doneN}</b><span>${t("h.stats.finished")}${startedN ? ` · ${t("h.stats.ofStarted", {p: Math.round((100 * doneN) / startedN)})}` : ""}</span></div>
+      <div class="tile-s"><b>${st.playing || 0}</b><span>${t("h.stats.inProgress")}</span></div>
+      <div class="tile-s"><b>${st.backlog || 0}</b><span>${t("h.stats.toPlay")}${backlogH ? `<br><small>${t("h.stats.needHours", {hrs: Math.round(backlogH)})}</small>` : ""}</span></div>
     </div>
-    <div class="scard"><div class="scard-h"><h3>🏆 Il tuo ${d.year}</h3>
+    <div class="scard"><div class="scard-h"><h3>🏆 ${t("h.stats.yourYear", {y: d.year})}</h3>
       <select class="field" id="st-year">${years.sort().map((y) => `<option${y === STATS_Y.y ? " selected" : ""}>${y}</option>`).join("")}</select></div>
-      <p class="muted small">Ore giocate per mese (partite avviate dall'app)</p>
-      <div class="months">${d.months.map((v, i) => `<div class="mcol" title="${MONTHS[i]} ${d.year}: ${h(v) || "nessuna partita"}">
+      <p class="muted small">${t("h.stats.hoursPerMonth")}</p>
+      <div class="months">${d.months.map((v, i) => `<div class="mcol" title="${MONTHS[i]} ${d.year}: ${h(v) || t("h.stats.noSession")}">
         <span class="mbar" style="height:${v ? Math.max(3, (100 * v) / mMax) : 0}%"></span><span class="ml">${MONTHS[i]}</span></div>`).join("")}</div>
-      ${d.top_year.length ? `<h4>Classifica dell'anno</h4><ol class="toplist">${d.top_year.map((t) => `<li data-id="${t.id}"><b>${esc(t.title)}</b>
+      ${d.top_year.length ? `<h4>${t("h.stats.yearRank")}</h4><ol class="toplist">${d.top_year.map((t) => `<li data-id="${t.id}"><b>${esc(t.title)}</b>
         <span class="muted">${esc(STORE_SHORT[t.platform] || platName(t.platform))} · ${h(t.seconds)}</span></li>`).join("")}</ol>`
-        : `<p class="muted small">Nessuna partita registrata nel ${d.year}: la classifica si riempie avviando i giochi dall'app.</p>`}</div>
+        : `<p class="muted small">${t("h.stats.noYear", {y: d.year})}</p>`}</div>
     <div class="scols">
-      <div class="scard"><h3>Tempo per console e store</h3>${perPlat.length ? bars(perPlat) : `<p class="muted small">Ancora nessun dato.</p>`}</div>
-      <div class="scard"><h3>Tempo per genere</h3>${perGenre.length ? bars(perGenre) : `<p class="muted small">Ancora nessun dato.</p>`}</div>
+      <div class="scard"><h3>${t("h.stats.timePlatform")}</h3>${perPlat.length ? bars(perPlat) : `<p class="muted small">${t("h.stats.noData")}</p>`}</div>
+      <div class="scard"><h3>${t("h.stats.timeGenre")}</h3>${perGenre.length ? bars(perGenre) : `<p class="muted small">${t("h.stats.noData")}</p>`}</div>
     </div>
-    <div class="scard"><h3>I più giocati di sempre</h3>${top.length ? `<ol class="toplist">${top.map((g) => `<li data-id="${g.id}"><b>${esc(g.title)}</b>
+    <div class="scard"><h3>${t("h.stats.mostPlayed")}</h3>${top.length ? `<ol class="toplist">${top.map((g) => `<li data-id="${g.id}"><b>${esc(g.title)}</b>
       <span class="muted">${esc(g.store ? STORE_SHORT[g.store] : platName(g.platform))} · ${h(secs(g))}${g.grp.status ? ` · ${STATUS[g.grp.status].icon} ${STATUS[g.grp.status].label}` : ""}</span></li>`).join("")}</ol>`
-      : `<p class="muted small">Ancora nessuna partita registrata.</p>`}</div></div>`;
+      : `<p class="muted small">${t("h.stats.noSessions")}</p>`}</div></div>`;
   $("#st-year").onchange = (e) => { STATS_Y.y = +e.target.value; renderStats(pv); };
   pv.onclick = (e) => { const li = e.target.closest("li[data-id]"); if (li) openDetail(+li.dataset.id); };
 }
@@ -268,23 +268,22 @@ async function renderTop(pv) {
       <span class="top-n">${i + 1}</span>
       <span class="top-cv">${t.id ? `<img loading="lazy" src="/img/${t.id}/cover?w=120" alt="" onerror="this.remove()">` : ""}</span>
       <span class="top-t"><b>${esc(t.title)}</b>
-        <span class="muted small">${[glob ? platName(t.platform) : "", t.year, t.also?.length ? `anche su ${t.also.map(platName).join(", ")}` : ""].filter(Boolean).map(esc).join(" · ")}</span>
-        <span class="muted small">${[t.critics != null ? `Critica ${pct(t.critics)}` : "", t.rating != null ? `Giocatori ${pct(t.rating)}%${t.votes ? ` (${t.votes.toLocaleString("it")} voti)` : ""}` : "", t.sources.join(", ")].filter(Boolean).map(esc).join(" · ")}</span></span>
-      <span class="badge ${t.owned ? "inst" : ""}">${t.owned ? "✓ Posseduto" : "⬇ Scaricabile"}</span>
-      <span class="top-s" title="Punteggio fra critica e giocatori">${pct(glob ? t.best ?? t.score : t.score)}</span></div>`;
+        <span class="muted small">${[glob ? platName(t.platform) : "", t.year, t.also?.length ? window.t("h.top.alsoOn", {list: t.also.map(platName).join(", ")}) : ""].filter(Boolean).map(esc).join(" · ")}</span>
+        <span class="muted small">${[t.critics != null ? window.t("h.top.critic", {p: pct(t.critics)}) : "", t.rating != null ? window.t("h.top.players", {p: pct(t.rating)}) + (t.votes ? window.t("h.top.votes", {n: t.votes.toLocaleString(GSI18n.lang)}) : "") : "", t.sources.join(", ")].filter(Boolean).map(esc).join(" · ")}</span></span>
+      <span class="badge ${t.owned ? "inst" : ""}">${t.owned ? window.t("h.top.owned") : window.t("h.top.downloadable")}</span>
+      <span class="top-s" title="${window.t("h.top.scoreTitle")}">${pct(glob ? t.best ?? t.score : t.score)}</span></div>`;
   pv.innerHTML = `<div class="page top" data-view="top">
-    <p class="muted small">Solo giochi con voti affidabili (almeno 2 fonti, un voto della critica o 50 voti dei giocatori).
-      Punteggio = media fra critica (Metacritic / IGDB) e giocatori. ${glob ? "Lo stesso gioco su più console conta una volta." : "Le versioni regionali contano una volta."}</p>
+    <p class="muted small">${t("h.top.help", {note: glob ? t("h.top.sameGame") : t("h.top.regional")})}</p>
     <div class="top-tools">
       ${glob ? `<select class="field" id="top-limit">${opt(100, "Top 100", TOP_F.limit)}${opt(1000, "Top 1000", TOP_F.limit)}</select>
-        <select class="field" id="top-plat">${opt("", "Tutte le console", TOP_F.plat)}${plats.map((p) => opt(p, platName(p), TOP_F.plat)).join("")}</select>` : ""}
-      <select class="field" id="top-own">${opt("", "Posseduti e scaricabili", TOP_F.own)}${opt("owned", "Solo posseduti", TOP_F.own)}${opt("net", "Solo scaricabili", TOP_F.own)}</select>
-      <button class="btn" id="top-fetch"${run ? " disabled" : ""} title="Chiede a IGDB e RAWG i voti dei candidati${glob ? " di tutte le console" : ""}: i giochi già cercati negli ultimi 30 giorni non si richiedono">↻ Aggiorna voti online${glob ? " (tutte le console)" : ""}</button>
-      <button class="btn" id="top-stop"${run ? "" : " hidden"}>■ Ferma</button>
+        <select class="field" id="top-plat">${opt("", t("h.top.allConsoles"), TOP_F.plat)}${plats.map((p) => opt(p, platName(p), TOP_F.plat)).join("")}</select>` : ""}
+      <select class="field" id="top-own">${opt("", t("h.top.ownedAndDl"), TOP_F.own)}${opt("owned", t("h.top.onlyOwned"), TOP_F.own)}${opt("net", t("h.top.onlyDl"), TOP_F.own)}</select>
+      <button class="btn" id="top-fetch"${run ? " disabled" : ""} title="${t("h.top.fetchHelp", {all: glob ? t("h.top.ofAll") : ""})}">↻ ${t("h.top.updateVotes")}${glob ? " " + t("h.top.allParen") : ""}</button>
+      <button class="btn" id="top-stop"${run ? "" : " hidden"}>■ ${t("h.common.stop")}</button>
     </div>
     <div id="top-job"></div>
     ${items.length ? `<div class="top-list" id="top-rows"></div>`
-      : `<p class="muted">Nessun gioco con voti affidabili${TOP_F.own || TOP_F.plat ? " con questi filtri" : ""}. Premi «↻ Aggiorna voti online» per cercarli su IGDB e RAWG.</p>`}</div>`;
+      : `<p class="muted">${t("h.top.none")}${TOP_F.own || TOP_F.plat ? " " + t("h.top.withFilters") : ""}. ${t("h.top.hint")}</p>`}</div>`;
   if (items.length) vlist(pv, $("#top-rows", pv), items, (t) => row(t, items.indexOf(t)), { gap: 4 });
   renderJobInto($("#top-job"), js);
   const re = () => renderTop(pv);
@@ -324,7 +323,7 @@ function openLightbox(list, i) {
   const draw = () => {
     const s = list[i];
     lb.innerHTML = `<div class="lb-top"><b>${esc(s.title || "")}</b><span class="muted">${esc(fmtDate(s.taken))} · ${esc(s.source)} · ${i + 1}/${list.length}</span>
-      <span class="grow"></span><button class="btn" data-lb="folder">📁 Mostra nella cartella</button><button class="btn" data-lb="del">🗑 Elimina</button>
+      <span class="grow"></span><button class="btn" data-lb="folder">📁 ${t("h.lb.showFolder")}</button><button class="btn" data-lb="del">🗑 ${t("h.lb.delete")}</button>
       <button class="icon-btn big" data-lb="close">✕</button></div>
       <button class="lb-arr l" data-lb="prev"${i ? "" : " disabled"}>‹</button><img class="lb-img" src="${s.url}" alt="">
       <button class="lb-arr r" data-lb="next"${i < list.length - 1 ? "" : " disabled"}>›</button>`;
@@ -343,7 +342,7 @@ function openLightbox(list, i) {
     else if (a === "next" && i < list.length - 1) { i++; draw(); }
     else if (a === "folder") api("/api/shots/open", { body: { id: list[i].id } });
     else if (a === "del") {
-      if (!confirm("Eliminare questa schermata dall'app? (l'originale dell'emulatore, se c'e', non viene toccato)")) return;
+      if (!confirm(t("h.shots.confirmDel"))) return;
       await api(`/api/shots/${list[i].id}`, { method: "DELETE" });
       list.splice(i, 1);
       if (!list.length) { close(); } else { i = Math.min(i, list.length - 1); draw(); }
@@ -367,18 +366,17 @@ async function renderShots(pv) {
   const groups = new Map();
   d.shots.forEach((s, i) => { const k = s.game ?? s.key; if (!groups.has(k)) groups.set(k, { s, items: [] }); groups.get(k).items.push(i); });
   pv.innerHTML = `<div class="page" data-view="shots">
-    <div class="page-head"><div><h2>📷 Le tue schermate</h2>
-      <p class="muted small">Mentre giochi premi <kbd>${esc(SHOTS.hotkey)}</kbd> o <kbd>Select</kbd>+<kbd>R1</kbd> sul controller (View+RB su Xbox):
-        l'app salva la finestra del gioco. Le schermate fatte con il tasto dell'emulatore vengono importate a fine partita.</p></div>
-      <div class="row"><button class="btn" id="sh-steam">⬇ Importa da Steam</button><button class="btn" id="sh-folder">📁 Cartella</button>
+    <div class="page-head"><div><h2>📷 ${t("h.shots.title")}</h2>
+      <p class="muted small">${t("h.shots.hint", {hk: esc(SHOTS.hotkey)})}</p></div>
+      <div class="row"><button class="btn" id="sh-steam">⬇ ${t("h.common.importSteam")}</button><button class="btn" id="sh-folder">📁 ${t("h.shots.folder")}</button>
         <button class="btn" id="sh-set">⚙</button></div></div>
     <div class="wl-settings" id="sh-settings" hidden>
       <label>Scorciatoia da tastiera <input class="field" id="sh-hotkey" value="${esc(st.hotkey || "")}" placeholder="es. ctrl+shift+s, f10"></label>
-      <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> Select + R1 sul controller</label>
-      <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> Importa le schermate dell'emulatore a fine partita</label>
-      <button class="btn primary" id="sh-save">Salva</button></div>
+      <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> ${t("h.shots.padLabel")}</label>
+      <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> ${t("h.shots.emuLabel")}</label>
+      <button class="btn primary" id="sh-save">${t("h.common.save")}</button></div>
     ${d.shots.length ? `<div id="sh-rows"></div>`
-      : `<p class="muted">Ancora nessuna schermata. Avvia un gioco dall'app e premi <kbd>${esc(SHOTS.hotkey)}</kbd>.</p>`}</div>`;
+      : `<p class="muted">${t("h.shots.empty", {hk: esc(SHOTS.hotkey)})}</p>`}</div>`;
   // un gioco per riga (gruppo): si disegnano solo i gruppi visibili
   if (d.shots.length) vlist(pv, $("#sh-rows", pv), [...groups.values()], (g) => `<section class="sh-group"><h3>${g.s.game ? `<a href="#" data-game="${g.s.game}">${esc(g.s.title)}</a>` : esc(g.s.title)}
         <span class="muted small">${esc(STORE_SHORT[g.s.platform] || platName(g.s.platform) || "")} · ${g.items.length}</span></h3>
@@ -391,12 +389,12 @@ async function renderShots(pv) {
     else if (t.id === "sh-set") $("#sh-settings").hidden = !$("#sh-settings").hidden;
     else if (t.id === "sh-steam") {
       t.disabled = true;
-      try { const r = await api("/api/shots/import-steam", { body: {} }); toast(`Importate ${r.imported} schermate da Steam`); renderShots(pv); }
+      try { const r = await api("/api/shots/import-steam", { body: {} }); toast(window.t("h.shots.imported", {n: r.imported})); renderShots(pv); }
       catch (err) { toast(err.message, true); t.disabled = false; }
     } else if (t.id === "sh-save") {
       try {
         await api("/api/shots/settings", { body: { hotkey: $("#sh-hotkey").value, pad: $("#sh-pad").checked, import_emulator: $("#sh-emu").checked } });
-        toast("Impostazioni delle schermate salvate (valgono dalla prossima partita)");
+        toast(window.t("h.shots.settingsSaved"));
         renderShots(pv);
       } catch (err) { toast(err.message, true); }
     }
@@ -427,9 +425,9 @@ async function openProfile(d) {
   }
   $(".pf-preview").hidden = false;
   const emus = PF.emulators.filter((e) => e.configured || e.id === p.emulator).sort((a, b) => (b.preset - a.preset) || a.id.localeCompare(b.id));
-  $("#pf-emu").innerHTML = `<option value="">Predefinito della console${def ? ` (${esc(def.emulator)}${def.core ? " · " + esc(def.core) : ""})` : ""}</option>`
-    + emus.map((e) => `<option value="${esc(e.id)}"${p.emulator === e.id ? " selected" : ""}>${esc(e.id)}${e.preset ? "" : " (non previsto per questa console)"}</option>`).join("");
-  $("#pf-core").innerHTML = `<option value="">Predefinito</option>` + PF.cores.map((c) => `<option${p.core === c ? " selected" : ""}>${esc(c)}</option>`).join("");
+  $("#pf-emu").innerHTML = `<option value="">${t("h.prof.defaultConsole")}${def ? ` (${esc(def.emulator)}${def.core ? " · " + esc(def.core) : ""})` : ""}</option>`
+    + emus.map((e) => `<option value="${esc(e.id)}"${p.emulator === e.id ? " selected" : ""}>${esc(e.id)}${e.preset ? "" : " " + t("h.prof.notPlanned")}</option>`).join("");
+  $("#pf-core").innerHTML = `<option value="">${t("h.prof.default")}</option>` + PF.cores.map((c) => `<option${p.core === c ? " selected" : ""}>${esc(c)}</option>`).join("");
   $("#pf-exe").value = p.exe || "";
   $("#pf-args").value = p.args || "";
   $("#pf-extra").value = p.extra || "";
@@ -450,7 +448,7 @@ function pfRefresh() {
   $("#pf-cmd").textContent = `"${exe}" ${extra && args.includes("{rom}") ? args.replace("{rom}", extra + " {rom}") : args + (extra ? " " + extra : "")}`;
 }
 async function saveProfile(reset = false) {
-  if (!PF) return toast("Profilo non caricato: chiudi e riapri la finestra", true);
+  if (!PF) return toast(t("h.prof.notLoaded"), true);
   // app da avviare insieme al gioco (facoltativa), per giochi PC e console: tre campi nel profilo
   const comp = { companion: $("#pf-comp-exe").value.trim(), companion_args: $("#pf-comp-args").value.trim(),
     companion_close: $("#pf-comp-kill").checked ? "1" : "" };
@@ -461,6 +459,6 @@ async function saveProfile(reset = false) {
           exe: $("#pf-exe").value, args: $("#pf-args").value, extra: $("#pf-extra").value, before: $("#pf-before").value, after: $("#pf-after").value, ...comp } }));
   } catch (e) { return toast(e.message, true); }
   $("#prof-dlg").close();
-  toast(reset ? "Profilo rimosso: si usano le impostazioni della console" : "Profilo di avvio salvato");
+  toast(reset ? t("h.prof.removed") : t("h.prof.saved"));
   if (S.detail?.id === PF.id) openDetail(PF.id);
 }

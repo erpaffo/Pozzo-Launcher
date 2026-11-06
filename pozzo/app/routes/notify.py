@@ -7,7 +7,7 @@ import time
 
 from fastapi import APIRouter, Body
 
-from ... import config as C
+from ... import config as C, i18n as I
 from ...matching import normalize
 
 
@@ -50,8 +50,8 @@ def build_router(ctx) -> APIRouter:
         C.set_setting(cfg, "free_notified", sorted((notified & ids) | {_free_id(i) for i in fresh}))
         if fresh and fs.get("free_state") is not None:  # la prima volta si registra e basta
             titles = [f"• {i.get('title')} ({i.get('source') or i.get('console') or ''})".strip() for i in fresh[:4]]
-            extra = f"\n+{len(fresh) - 4} altri" if len(fresh) > 4 else ""
-            _notify(f"🎁 {len(fresh)} giochi gratis nuovi", "\n".join(titles) + extra)
+            extra = "\n" + I.tr("s.notify.more", n=len(fresh) - 4) if len(fresh) > 4 else ""
+            _notify("🎁 " + I.tr("s.notify.freeNew", n=len(fresh)), "\n".join(titles) + extra)
 
     def _port_alerts():
         """Aggiornamenti dei port PC installati: un avviso per ogni versione nuova, non a ogni controllo."""
@@ -76,7 +76,7 @@ def build_router(ctx) -> APIRouter:
         C.set_setting(cfg, "ports_seen", seen)
         if fresh:
             # un solo port: il clic apre la sua pagina; piu' port: il catalogo dei port
-            _notify(f"🕹 {len(fresh)} port da aggiornare", "\n".join(fresh[:4]),
+            _notify("🕹 " + I.tr("s.notify.portsUpdate", n=len(fresh)), "\n".join(fresh[:4]),
                     {"view": "ports", "port": fresh_slugs[0] if len(fresh_slugs) == 1 else None})
 
     app.state.alerts = {"free": _free_alerts, "ports": _port_alerts}  # per i test (avvisi senza rete)
@@ -94,7 +94,7 @@ def build_router(ctx) -> APIRouter:
                 rows = _job_rows()
                 for r in rows:
                     if prev.get(r["id"]) == "running" and r["status"] in ("done", "error", "cancelled"):
-                        _notify(r["name"], r["phase"] or ("Completato" if r["status"] == "done" else r["status"]))
+                        _notify(r["name"], r["phase"] or (I.tr("s.notify.completed") if r["status"] == "done" else r["status"]))
                 prev = {r["id"]: r["status"] for r in rows}
                 if _busy():
                     busy_before = True
@@ -106,8 +106,8 @@ def build_router(ctx) -> APIRouter:
                     if mode in ("sleep", "shutdown"):
                         try:
                             power.schedule(mode)
-                            _notify("Operazioni finite", "Sospendo il PC tra 60 secondi." if mode == "sleep"
-                                    else "Spengo il PC tra 60 secondi.")
+                            _notify(I.tr("s.notify.jobsDone"), I.tr("s.notify.sleepSoon") if mode == "sleep"
+                                    else I.tr("s.notify.shutdownSoon"))
                         except ValueError:
                             pass
                 now = time.time()

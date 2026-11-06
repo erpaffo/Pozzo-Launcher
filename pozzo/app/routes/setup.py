@@ -12,6 +12,7 @@ from .. import jobs as J
 from ... import config as C, ownership as OW, profilecfg as PC, stores as STORES
 from ...library.build import build
 from ..server import _plain
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -60,7 +61,7 @@ def build_router(ctx) -> APIRouter:
         from ...scanner import find_platform_dirs
         p = Path(os.path.expandvars(os.path.expanduser(str(body.get("path") or "").strip().strip('"'))))
         if not str(body.get("path") or "").strip() or not p.is_dir():
-            raise HTTPException(400, "Cartella non trovata")
+            raise HTTPException(400, I.tr("s.setup.folder_not_found"))
         found = find_platform_dirs(_replace(cfg, roms=p))
         rows = {}
         for plat, d in found:
@@ -77,7 +78,7 @@ def build_router(ctx) -> APIRouter:
         if roms:
             p = Path(os.path.expandvars(os.path.expanduser(roms)))
             if not p.is_dir():
-                raise HTTPException(400, "Cartella delle ROM non trovata")
+                raise HTTPException(400, I.tr("s.setup.roms_not_found"))
             sections["paths"] = {"roms": str(p.resolve())}
         acc = body.get("accounts") or {}
         ss = {k: v.strip() for k, v in (("user", acc.get("ss_user")), ("password", acc.get("ss_password"))) if v and v.strip()}
@@ -99,36 +100,36 @@ def build_router(ctx) -> APIRouter:
         C.save_settings(cfg, **sections)
         if body.get("start"):
             if setup_state["status"] == "running":
-                raise HTTPException(409, "Configurazione gia' in corso")
+                raise HTTPException(409, I.tr("s.setup.already_running"))
             threading.Thread(target=_setup_run, args=(bool(body.get("scrape", True)),), daemon=True).start()
         return api_setup()
 
     def _setup_run(scrape: bool):
         say = lambda m: setup_state["log"].append(_plain(str(m)))  # noqa: E731
-        setup_state.update(status="running", log=[], phase="Preparazione")
+        setup_state.update(status="running", log=[], phase=I.tr("b.onb.conclude.default"))
         try:
             sel = [s["id"] for s in _setup_stores() if s["enabled"] and s["detected"]]
             if sel:
-                setup_state["phase"] = "Importazione dei giochi degli store"
+                setup_state["phase"] = I.tr("s.setup.phase_import_stores")
                 sj = J.StoreJob(only=sel)
                 job["stores"] = sj
                 sj.say = lambda m, _j=sj: (_j.log.append(_plain(m)), say(m))
                 sj.run(cfg, lambda stats: lib.load())
             if not lib.built_at or not sel:
-                setup_state["phase"] = "Creazione della libreria"
+                setup_state["phase"] = I.tr("s.setup.phase_build")
                 state["build_log"] = []
                 build(cfg, log=say)
                 lib.load()
             threading.Thread(target=_pregen_thumbs, daemon=True).start()
             if scrape and Path(cfg.roms).is_dir():
-                setup_state["phase"] = "Scraping dei metadati avviato in sottofondo"
+                setup_state["phase"] = I.tr("s.setup.phase_scraping")
                 try:
                     api_scan_start({"mode": "new"})
                 except HTTPException as e:
                     say(e.detail)
-            setup_state.update(status="done", phase="Pronto")
+            setup_state.update(status="done", phase=I.tr("s.setup.phase_ready"))
         except Exception as e:
-            setup_state.update(status="error", phase=f"Errore: {type(e).__name__}: {e}")
+            setup_state.update(status="error", phase=I.tr("s.system.error", kind=type(e).__name__, msg=str(e)))
             say(setup_state["phase"])
 
     @router.post("/api/roms/extra")
@@ -147,11 +148,11 @@ def build_router(ctx) -> APIRouter:
                 C.save_settings(cfg, paths={"extra_roms": [x for x in shared if x != raw]})
         else:
             if not raw or not p.is_dir():
-                raise HTTPException(400, "Cartella non trovata")
+                raise HTTPException(400, I.tr("s.setup.folder_not_found"))
             p = p.resolve()
             # confronto tra percorsi risolti: la stessa cartella puo' essere salvata in forma diversa (link, nome corto)
             if p == Path(cfg.roms).resolve() or any(Path(x).resolve() == p for x in [*shared, *own]):
-                raise HTTPException(400, "Cartella gia' presente")
+                raise HTTPException(400, I.tr("s.setup.folder_exists"))
             PC.set(cfg, "roms_extra", [*own, str(p)])
         return {"extra": [{"path": str(r), "online": r.exists(), "own": mine} for r, mine in OW.visible_roots(cfg)]}
 
@@ -160,7 +161,7 @@ def build_router(ctx) -> APIRouter:
         """Cartella radice delle ROM scelta dall'app (salvata in settings.json)."""
         p = Path(os.path.expandvars(os.path.expanduser(str(body.get("path") or "").strip().strip('"'))))
         if not str(p) or not p.is_dir():
-            raise HTTPException(400, "Cartella non trovata")
+            raise HTTPException(400, I.tr("s.setup.folder_not_found"))
         C.save_settings(cfg, paths={"roms": str(p.resolve())})
         return {"root": str(cfg.roms)}
 

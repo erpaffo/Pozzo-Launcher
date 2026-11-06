@@ -1,0 +1,37 @@
+# Ricetta Pozzo Media: Podcast RSS (NASA's Curious Universe)
+# Formato dichiarativo: nessun codice eseguito.
+
+name = "NASA's Curious Universe"
+host = "www.nasa.gov"
+type = "rss"
+start_url = "https://www.nasa.gov/rss/dyn/curious-universe.rss"
+
+[list]
+selector = "channel"
+item = "item"
+title = "title"
+cover = "itunes:image@href"
+link = "link"
+
+[detail]
+title = "channel > title"
+cover = "channel > image > url"
+overview = "channel > description"
+year = "channel > pubDate"
+duration = "itunes:duration"
+stream_url = "enclosure@url"
+
+[episodes]
+selector = "channel"
+item = "item"
+title = "title"
+duration = "itunes:duration"
+stream_url = "enclosure@url"
+season = "itunes:season"
+episode = "itunes:episode"
+
+[pagination]
+next_url = "atom:link[rel='next']@href"
+param = "page"
+increment = 1
+limit = 5

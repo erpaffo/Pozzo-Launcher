@@ -7,7 +7,7 @@ TEMI  - cartella <config>/themes/<id>/ (oppure quelli inclusi in pozzo/app/theme
     bigpicture.css  idem per la modalita' Big Picture
 
 PLUGIN - cartella <config>/plugins/<id>/:
-    plugin.toml     [plugin] name, version, author, description, api = 1
+    plugin.toml     [plugin] name, version, author, description, api = 1 (o 2, vedi sotto)
     frontend.js     (facoltativo) modulo ES: export default function (gs, ctx) { ... }
     style.css       (facoltativo)
     backend.py      (facoltativo) def register(gs): ...   con gs = PluginAPI (vedi sotto)
@@ -19,6 +19,11 @@ PLUGIN - cartella <config>/plugins/<id>/:
 Un plugin backend puo': aggiungere endpoint (gs.route), fornitori di libreria/store (gs.add_store),
 fonti di metadati per lo scraping (gs.add_source), reagire agli eventi (gs.on), lavori periodici (gs.job) e salvare
 impostazioni proprie (gs.settings / gs.save_settings). Guida completa: docs/ESTENSIONI.md
+
+API 2 (api = 2 nel plugin.toml; le api = 1 restano invariate) aggiunge tre registrazioni dichiarative, lette dal
+frontend in /api/extensions: gs.add_library_kind({id, label, icon}), gs.add_player({id, label, mode}) e
+gs.add_scraper({id, url, ...ricetta}). Le prime due servono ai media (Pozzo Media, roadmap 0.18); il permesso
+"media:lettura" dichiara l'accesso alle cartelle di film e musica scelte dall'utente.
 """
 
 from __future__ import annotations
@@ -78,7 +83,7 @@ EXPERIENCE_METADATA = {
 }
 BUILTIN_PLUGINS = Path(__file__).parent / "plugins"  # solo lo store: le altre estensioni si installano da li'
 STORE_ID = "estensioni"
-API_VERSION = 1
+API_VERSION = 2
 
 
 def user_dir(cfg, name: str) -> Path:
@@ -257,6 +262,7 @@ PERMISSION_LABELS = {
     "file:lettura": "Legge file sul disco", "file:scrittura": "Modifica o elimina file sul disco",
     "impostazioni": "Legge e salva impostazioni", "notifiche": "Mostra notifiche",
     "avvio": "Avvia giochi o programmi",
+    "media:lettura": "Legge le cartelle di film e musica scelte dall'utente",
 }
 
 
@@ -275,6 +281,35 @@ def describe_permissions(perms) -> list[dict]:
             label = PERMISSION_LABELS[base] if base else f"Permesso non riconosciuto: {p}"
         out.append({"id": p, "label": label})
     return out
+
+
+# ---------------------------------------------------------------- media (API 2)
+# Registrazioni dichiarative delle estensioni api = 2: il core le mostra, il frontend le legge da /api/extensions.
+# Sono elenchi di dizionari con "extension" (id del plugin che le ha registrate); una ri-registrazione le sostituisce.
+PLAYER_MODES = ("integrato", "esterno")
+LIBRARY_KINDS: list[dict] = []
+PLAYERS: list[dict] = []
+SCRAPERS: list[dict] = []
+
+
+def _slug(value) -> bool:
+    return re.fullmatch(r"[a-z][a-z0-9_-]{0,40}", str(value or "")) is not None
+
+
+def _register(registry: list[dict], item: dict, pid: str) -> dict:
+    entry = {**item, "extension": pid}
+    for i, x in enumerate(registry):
+        if x["id"] == entry["id"] and x["extension"] == pid:
+            registry[i] = entry
+            return entry
+    registry.append(entry)
+    return entry
+
+
+def media_registry() -> dict:
+    """Registrazioni API 2 per /api/extensions (copia: il frontend non tocca gli elenchi veri)."""
+    return {"api": API_VERSION, "library_kinds": [dict(x) for x in LIBRARY_KINDS],
+            "players": [dict(x) for x in PLAYERS], "scrapers": [dict(x) for x in SCRAPERS]}
 
 
 def _manifest(d: Path) -> dict | None:
@@ -304,10 +339,14 @@ def list_plugins(cfg, errors: dict | None = None) -> list[dict]:
                 if m is None or (d.name == STORE_ID and base != BUILTIN_PLUGINS):  # lo store e' sempre quello incluso nell'app
                     continue
                 seen.add(d.name)
+                try:
+                    api = int(m.get("api", 1))
+                except (TypeError, ValueError):
+                    api = None  # manifest sbagliato: l'estensione non si carica (come api troppo alta)
                 out.append({
                     "id": d.name, "name": m.get("name", d.name), "version": str(m.get("version", "")),
-                    "author": m.get("author", ""), "description": m.get("description", ""),
-                    "enabled": (d.name not in disabled or d.name == STORE_ID) and int(m.get("api", 1)) <= API_VERSION,
+                    "author": m.get("author", ""), "description": m.get("description", ""), "api": api,
+                    "enabled": (d.name not in disabled or d.name == STORE_ID) and api is not None and api <= API_VERSION,
                     "locked": d.name == STORE_ID,
                     "frontend": f"/plugins/{d.name}/frontend.js" if (d / "frontend.js").exists() else None,
                     "style": f"/plugins/{d.name}/style.css" if (d / "style.css").exists() else None,
@@ -419,6 +458,31 @@ class PluginAPI:
         from ..sources import SOURCES
         SOURCES[source_cls.name] = source_cls
 
+    def add_library_kind(self, kind: dict):
+        """API 2: una sezione di media accanto ai giochi. {id, label, icon?}; id = lettere minuscole, cifre, - e _."""
+        kind = kind if isinstance(kind, dict) else {}
+        label = str(kind.get("label") or "").strip()
+        if not _slug(kind.get("id")) or not label:
+            raise ValueError("gs.add_library_kind: servono id (minuscole, cifre, - e _) ed etichetta")
+        return _register(LIBRARY_KINDS, {"id": kind["id"], "label": label[:60],
+                                        "icon": str(kind.get("icon") or "")[:8]}, self.id)
+
+    def add_player(self, player: dict):
+        """API 2: chi riproduce un contenuto. {id, label, mode}; mode = "integrato" (<video>) o "esterno" (mpv/VLC)."""
+        player = player if isinstance(player, dict) else {}
+        label = str(player.get("label") or "").strip()
+        if not _slug(player.get("id")) or not label or player.get("mode") not in PLAYER_MODES:
+            raise ValueError("gs.add_player: servono id, etichetta e mode «integrato» o «esterno»")
+        return _register(PLAYERS, {"id": player["id"], "label": label[:60], "mode": player["mode"]}, self.id)
+
+    def add_scraper(self, recipe: dict):
+        """API 2: una ricetta dichiarativa (nessun codice eseguito). {id, url, ...campi della ricetta}."""
+        recipe = recipe if isinstance(recipe, dict) else {}
+        url = str(recipe.get("url") or "").strip()
+        if not _slug(recipe.get("id")) or not re.match(r"^https?://[^\s]+$", url):
+            raise ValueError("gs.add_scraper: servono id e url http/https")
+        return _register(SCRAPERS, {**recipe, "id": recipe["id"], "url": url}, self.id)
+
     def on(self, event: str, fn):
         self.events.on(event, fn)
 
@@ -476,6 +540,19 @@ class _LazyAPI(PluginAPI):
     def add_source(self, source_cls):
         self._late("gs.add_source")
         super().add_source(source_cls)
+
+    # API 2: le sezioni e i lettori fanno parte della finestra principale, quindi servono dall'avvio
+    def add_library_kind(self, kind: dict):
+        self._late("gs.add_library_kind")
+        return super().add_library_kind(kind)
+
+    def add_player(self, player: dict):
+        self._late("gs.add_player")
+        return super().add_player(player)
+
+    def add_scraper(self, recipe: dict):
+        self._late("gs.add_scraper")
+        return super().add_scraper(recipe)
 
 
 class LazyPlugin:

@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 // Segnaposto della griglia durante il caricamento: `node tests/test_skeleton_grid.js`.
 // Esegue davvero grid.js e motion-settings.js (GSSkeleton) in un contesto vm con un DOM finto.
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
@@ -42,7 +43,7 @@ const ctx = {
   platName: () => "", fmtSize: () => "", S: null,
 };
 ctx.window = ctx;
-vm.createContext(ctx);
+inject(ctx); vm.createContext(ctx);
 // motion-settings.js definisce GSSkeleton; grid.js dipende da S (state.js) e dalle sue helper
 vm.runInContext(read("motion-settings.js"), ctx);
 ctx.S = {

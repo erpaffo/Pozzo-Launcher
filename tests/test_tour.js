@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 

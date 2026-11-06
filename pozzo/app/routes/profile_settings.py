@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import extensions as X
-from ... import config as C, profilecfg as PC
+from ... import config as C, i18n as I, profilecfg as PC
 
 
 def build_router(ctx) -> APIRouter:
@@ -32,13 +32,13 @@ def build_router(ctx) -> APIRouter:
     def api_profile_settings_set(body: dict = Body(...)):
         bad = [k for k in body if k not in ALLOWED]
         if bad:
-            raise HTTPException(400, f"Impostazioni non consentite: {', '.join(bad)}")
+            raise HTTPException(400, I.tr("s.profilesettings.notAllowed", keys=', '.join(bad)))
         if "theme" in body and body["theme"] not in {t["id"] for t in X.list_themes(cfg)}:
-            raise HTTPException(404, "Tema non trovato")
+            raise HTTPException(404, I.tr("s.profilesettings.themeNotFound"))
         if "experience" in body and body["experience"] not in {x["id"] for x in X.list_experiences() if x.get("available")}:
-            raise HTTPException(404, "Esperienza non trovata")
+            raise HTTPException(404, I.tr("s.profilesettings.expNotFound"))
         if "exp_animations" in body and body["exp_animations"] not in ("normal", "reduced", "off"):
-            raise HTTPException(400, "Impostazione animazioni non valida")
+            raise HTTPException(400, I.tr("s.profilesettings.animInvalid"))
         for k in ("theme", "experience"):
             if k in body:
                 PC.put(cfg, k, body[k], mirror=True)
@@ -60,7 +60,7 @@ def build_router(ctx) -> APIRouter:
         else:
             p = Path(os.path.expandvars(os.path.expanduser(raw)))
             if not raw or not p.is_dir():
-                raise HTTPException(400, "Cartella non trovata")
+                raise HTTPException(400, I.tr("s.profilesettings.folderNotFound"))
             if str(p.resolve()) not in cur:
                 cur.append(str(p.resolve()))
         PC.set(cfg, "roms_extra", cur or None)

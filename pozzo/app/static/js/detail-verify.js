@@ -9,9 +9,9 @@ window.addEventListener("pozzo:detail-open", async (event) => {
     const result = await api(`/api/game/${game.id}/verify`);
     if (window.S?.detail?.id !== game.id) return;
     const labels = {
-      verificata: "ROM verificata",
-      sconosciuta: "ROM sconosciuta",
-      "nessun DAT": "Nessun DAT disponibile",
+      verificata: t("f.verify.ok"),
+      sconosciuta: t("f.verify.unknown"),
+      "nessun DAT": t("f.verify.no_dat"),
     };
     const label = labels[result.status];
     if (!label) return;
@@ -19,8 +19,8 @@ window.addEventListener("pozzo:detail-open", async (event) => {
     badge.className = `tag rom-verify rom-verify-${result.status.replaceAll(" ", "-")}`;
     badge.textContent = label;
     badge.title = result.match_by === "hash"
-      ? `Corrispondenza per hash${result.hash_kind ? ` (${result.hash_kind.toUpperCase()})` : ""}`
-      : result.match_by === "name" ? "Corrispondenza solo per nome" : "";
+      ? `${t("f.verify.match_hash")}${result.hash_kind ? ` (${result.hash_kind.toUpperCase()})` : ""}`
+      : result.match_by === "name" ? t("f.verify.match_name") : "";
     box.append(document.createElement("br"), badge);
   } catch {
     box.querySelector(".rom-verify")?.remove();

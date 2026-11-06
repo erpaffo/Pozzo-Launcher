@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 // Harness Node: scheda gioco «Impostazioni emulatore» e selettore per console, con DOM e fetch finti.
 const assert = require("assert");
 const fs = require("fs");
@@ -37,7 +38,7 @@ function ambiente(routes) {
     if (h instanceof Error) throw h;
     return h;
   };
-  vm.runInNewContext(SRC, { window: win, document: doc, api, toast: (t, e) => toasts.push([t, !!e]), Set, Object, Promise, RegExp });
+  vm.runInNewContext(SRC, inject({ window: win, document: doc, api, toast: (t, e) => toasts.push([t, !!e]), Set, Object, Promise, RegExp }));
   return { body, win, toasts, calls, open: (d) => { win.S.detail = d; return win.handlers["pozzo:detail-open"]({ detail: d }); } };
 }
 

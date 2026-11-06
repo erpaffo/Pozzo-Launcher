@@ -6,7 +6,7 @@ GS.registerExperience({
   home(element, context) {
     const root = document.createElement("section");
     root.className = "gs-console-home";
-    root.setAttribute("aria-label", "Home della raccolta giochi");
+    root.setAttribute("aria-label", t("c.console.home.aria"));
 
     const backdrop = document.createElement("div");
     backdrop.className = "gs-console-backdrop";
@@ -23,21 +23,21 @@ GS.registerExperience({
     header.className = "gs-console-header";
     const brand = document.createElement("div");
     brand.className = "gs-console-brand";
-    brand.innerHTML = '<span class="gs-console-mark" aria-hidden="true"></span><span>RACCOLTA</span>';
+    brand.innerHTML = `<span class="gs-console-mark" aria-hidden="true"></span><span>${t("c.console.brand")}</span>`;
     const count = document.createElement("span");
     count.className = "gs-console-count";
     header.append(brand, count);
 
     const library = document.createElement("section");
     library.className = "gs-console-library";
-    library.setAttribute("aria-label", "I tuoi giochi");
+    library.setAttribute("aria-label", t("c.console.library.aria"));
     const libraryHeading = document.createElement("h2");
     libraryHeading.className = "gs-console-section-title";
-    libraryHeading.textContent = "LA TUA RACCOLTA";
+    libraryHeading.textContent = t("c.console.library");
     const lane = document.createElement("div");
     lane.className = "gs-console-lane";
     lane.setAttribute("role", "group");
-    lane.setAttribute("aria-label", "Giochi. Usa le frecce sinistra e destra per spostare il focus tra i titoli.");
+    lane.setAttribute("aria-label", t("c.console.lane.aria"));
     library.append(libraryHeading, lane);
 
     const feature = document.createElement("div");
@@ -51,7 +51,7 @@ GS.registerExperience({
     const openButton = document.createElement("button");
     openButton.className = "gs-console-open";
     openButton.type = "button";
-    openButton.textContent = "Apri gioco";
+    openButton.textContent = t("c.console.open");
     openButton.hidden = true;
     actions.append(openButton);
     feature.append(title, subtitle, actions);
@@ -72,7 +72,7 @@ GS.registerExperience({
       const id = String(game.id);
       const gameTitle = typeof game.title === "string" && game.title.trim()
         ? game.title.trim()
-        : "Gioco senza titolo";
+        : t("c.game.untitled");
       const coverAvailable = Boolean(game.cover || game.hero);
 
       root.dataset.focusedGame = id;
@@ -81,7 +81,7 @@ GS.registerExperience({
       const details = [platformName]
         .filter((value) => typeof value === "string" && value.trim())
         .map((value) => value.trim());
-      subtitle.textContent = details.join(" · ") || "La tua prossima avventura è a un pulsante di distanza.";
+      subtitle.textContent = details.join(" · ") || t("c.console.nextadv");
       openButton.hidden = false;
       openButton.dataset.consoleOpen = id;
       root.classList.remove("gs-console-has-art");
@@ -99,9 +99,9 @@ GS.registerExperience({
     };
 
     if (games.length) {
-      count.textContent = `${total} ${total === 1 ? "GIOCO" : "GIOCHI"}`;
-      title.textContent = "Scegli il tuo prossimo gioco";
-      subtitle.textContent = "Sposta il focus su un titolo per metterlo in primo piano.";
+      count.textContent = `${total} ${total === 1 ? t("c.console.gameone") : t("c.console.gamemany")}`;
+      title.textContent = t("c.console.choose");
+      subtitle.textContent = t("c.console.hint");
       for (const game of games) {
         const button = document.createElement("button");
         button.className = "gs-console-game";
@@ -109,8 +109,8 @@ GS.registerExperience({
         button.dataset.consoleGame = String(game.id);
         const gameTitle = typeof game.title === "string" && game.title.trim()
           ? game.title.trim()
-          : "Gioco senza titolo";
-        button.setAttribute("aria-label", `Apri ${gameTitle}`);
+          : t("c.game.untitled");
+        button.setAttribute("aria-label", t("c.console.openaria", { title: gameTitle }));
 
         const cover = document.createElement("span");
         cover.className = "gs-console-cover";
@@ -134,13 +134,13 @@ GS.registerExperience({
       }
       setHero(games[0]);
     } else {
-      count.textContent = "SI COMINCIA";
-      title.textContent = "La tua raccolta inizia da qui";
-      subtitle.textContent = "Aggiungi o importa giochi per creare una raccolta tutta tua.";
+      count.textContent = t("c.console.start");
+      title.textContent = t("c.console.empty.title");
+      subtitle.textContent = t("c.console.empty.text");
       const libraryButton = document.createElement("button");
       libraryButton.className = "gs-console-open";
       libraryButton.type = "button";
-      libraryButton.textContent = "Apri libreria";
+      libraryButton.textContent = t("c.console.openlibrary");
       libraryButton.dataset.consoleLibrary = "true";
       actions.append(libraryButton);
       library.hidden = true;

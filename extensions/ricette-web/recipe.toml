@@ -1,0 +1,37 @@
+# Ricetta Pozzo Media: Internet Archive (Film classici di pubblico dominio)
+# Formato dichiarativo: nessun codice eseguito.
+
+name = "Internet Archive - Film Classici"
+host = "archive.org"
+type = "html"
+start_url = "https://archive.org/details/feature_films"
+
+[list]
+selector = ".item-ia"
+item = ".item-ia"
+title = ".item-title"
+cover = "img.thumb@src"
+link = "a.item-link@href"
+
+[detail]
+title = "h1.item-title"
+cover = "img.item-image@src"
+overview = ".item-description"
+year = ".date"
+duration = ".duration"
+stream_url = "video source@src"
+
+[episodes]
+selector = ".file-list"
+item = ".file-item"
+title = ".file-title"
+duration = ".file-duration"
+stream_url = "a.download-link@href"
+season = ".season-num"
+episode = ".episode-num"
+
+[pagination]
+next_url = "a.pagination-next@href"
+param = "page"
+increment = 1
+limit = 10

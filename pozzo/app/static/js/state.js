@@ -62,7 +62,7 @@ function addOnline(games) {
 }
 
 async function loadOnline(seq) {
-  if (S.games.length === S.nOwned[0]) loading("Caricamento dei giochi degli store…");
+  if (S.games.length === S.nOwned[0]) loading(t("h.state.loadingStores"));
   try {
     const d = decodeLibrary(await api("/api/library?part=online"));
     if (seq !== onlineSeq) return; // nel frattempo la libreria e' stata ricaricata
@@ -75,7 +75,7 @@ async function loadOnline(seq) {
     refreshGrid(true);
     if (S.view.type === "home") renderExperienceHome($("#plugin-view"));
   } catch (e) {
-    if (seq === onlineSeq) toast("Giochi degli store non caricati: " + e.message, true);
+    if (seq === onlineSeq) toast(t("h.state.storesErr", {msg: e.message}), true);
   } finally {
     if (seq === onlineSeq) loading(null);
   }
@@ -98,7 +98,7 @@ function renderLanguageFilter() {
   for (const game of S.games) for (const code of gameLanguages(game)) languages.add(code);
   if (typeof S.langFilter === "string" && S.langFilter) languages.add(S.langFilter);
   const options = [...languages].sort((a, b) => collator.compare(GSLanguages.label(a), GSLanguages.label(b)));
-  select.innerHTML = `<option value="">Tutte le lingue</option>${options.map((code) =>
+  select.innerHTML = `<option value="">${t("h.state.allLangs")}</option>${options.map((code) =>
     `<option value="${esc(code)}">${esc(GSLanguages.label(code))}</option>`).join("")}`;
   select.value = S.langFilter;
   if (!select.dataset.bound) {
@@ -200,7 +200,7 @@ function computeItems() {
   it.sort(d.cmp && S.view.type !== "shop" ? d.cmp : SORTS[S.sort] || SORTS.title);
   const byDisc = !!d.cmp && S.view.type !== "shop";
   $("#sort").disabled = byDisc;
-  $("#sort").title = byDisc ? "Ordine deciso dal filtro Scopri" : "Ordinamento";
+  $("#sort").title = byDisc ? t("h.state.sortByDisc") : t("h.state.sortTitle");
   S.items = it;
 }
 
@@ -209,7 +209,7 @@ function sections(items) {
   if (!group) return [{ label: null, items }];
   const keyOf = {
     platform: (g) => platName(g.platform),
-    year: (g) => (g.year ? String(g.year) : "Anno sconosciuto"),
+    year: (g) => (g.year ? String(g.year) : t("h.state.unknownYear")),
     letter: (g) => { const c = (g.sort || "#")[0].toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; },
   }[group];
   const m = new Map();

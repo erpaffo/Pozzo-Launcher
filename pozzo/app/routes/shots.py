@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import FileResponse
 
 from ... import config as C, stores as STORES
+from ... import i18n as I
 from ...library import launcher as L
 
 
@@ -80,7 +81,7 @@ def build_router(ctx) -> APIRouter:
         finally:
             c.close()
         if not root:
-            raise HTTPException(400, "Steam non trovato su questo computer")
+            raise HTTPException(400, I.tr("s.shots.steamNotFound"))
         keys = {g["key"].split(":", 1)[1]: g["key"] for g in lib.games if g.get("store") == "steam"}
         n = SC.import_steam(shots, Path(root), keys)
         return {"imported": n}
@@ -91,7 +92,7 @@ def build_router(ctx) -> APIRouter:
         if "hotkey" in body:
             hk = str(body.get("hotkey") or "").strip().lower()
             if hk and not SC.parse_hotkey(hk):
-                raise HTTPException(400, "Scorciatoia non valida (es. ctrl+shift+s, f10, alt+f12)")
+                raise HTTPException(400, I.tr("s.shots.hotkeyInvalid"))
             cur["hotkey"] = hk
         for k in ("pad", "import_emulator"):
             if k in body:

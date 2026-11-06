@@ -1,32 +1,41 @@
-<h3>Salute</h3>
-<p class="muted">Cosa non va e come sistemarlo. Controlli sul PC, nessuna richiesta online.</p>
+<h3 data-i18n="k.sys.h.health">Salute</h3>
+<p class="muted" data-i18n="k.sys.health.p">Cosa non va e come sistemarlo. Controlli sul PC, nessuna richiesta online.</p>
 <div id="health-list"></div>
-<button class="btn" id="health-reload">↻ Ricontrolla</button>
+<button class="btn" id="health-reload" data-i18n="k.sys.btn.recheck">↻ Ricontrolla</button>
 
-<h3>Versione e aggiornamenti</h3>
+<h3 data-i18n="k.sys.h.diag">Diagnostica e registro errori locale</h3>
+<p class="muted small" data-i18n="k.sys.diag.p">Registro diagnostico locale memorizzato solo sul tuo computer (nessun dato inviato al cloud). Puoi visualizzare gli errori recenti, copiare il report anonimizzato o svuotare il registro.</p>
+<div id="sys-errors-box" class="small"></div>
+<div class="row wrap small" style="margin-top: 8px;">
+  <button class="btn" id="sys-errors-refresh" type="button" data-i18n="k.sys.btn.refresh">↻ Aggiorna</button>
+  <button class="btn" id="sys-errors-copy" type="button" data-i18n="k.sys.btn.copy_report">📋 Copia report per assistenza</button>
+  <button class="btn" id="sys-errors-clear" type="button" data-i18n="k.sys.btn.clear_log">🗑 Svuota registro</button>
+</div>
+
+<h3 data-i18n="k.sys.h.version">Versione e aggiornamenti</h3>
 <p>Pozzo Launcher <b id="about-ver"></b> <span class="muted small" id="about-data"></span></p>
 <div id="about-update" class="muted"></div>
-<button class="btn" id="about-check">↻ Controlla aggiornamenti</button>
+<button class="btn" id="about-check" data-i18n="k.sys.btn.check_updates">↻ Controlla aggiornamenti</button>
 
-<h3>Dati scaricati</h3>
-<p class="muted small">Metadati, copertine e cache: dove stanno e quanto pesano. <button class="btn" id="storage-go">⟳ Calcola</button></p>
+<h3 data-i18n="k.sys.h.downloaded">Dati scaricati</h3>
+<p class="muted small"><span data-i18n="k.sys.storage.p">Metadati, copertine e cache: dove stanno e quanto pesano.</span> <button class="btn" id="storage-go" data-i18n="k.sys.btn.calc">⟳ Calcola</button></p>
 <div id="storage-box" class="small"></div>
 
-<h3>Cache delle fonti</h3>
-<p class="muted small">Risposte di RAWG, IGDB, HowLongToBeat e delle altre fonti, più il database LaunchBox. Svuotarle le fa riscaricare al prossimo uso.
-  <button class="btn" id="csrc-go">⟳ Mostra</button> <button class="btn" id="csrc-clear-all">Svuota tutte</button></p>
+<h3 data-i18n="k.sys.h.cache">Cache delle fonti</h3>
+<p class="muted small"><span data-i18n="k.sys.cache.p">Risposte di RAWG, IGDB, HowLongToBeat e delle altre fonti, più il database LaunchBox. Svuotarle le fa riscaricare al prossimo uso.</span>
+  <button class="btn" id="csrc-go" data-i18n="k.sys.btn.show">⟳ Mostra</button> <button class="btn" id="csrc-clear-all" data-i18n="k.sys.btn.clear_all">Svuota tutte</button></p>
 <div id="csrc-box" class="small"></div>
 
-<h3>API locale</h3>
-<p class="muted small">Per script, Stream Deck, Home Assistant e webhook: gli endpoint <code>/api/v1</code>
+<h3 data-i18n="k.sys.h.api">API locale</h3>
+<p class="muted small" data-i18n-html="k.sys.api.p">Per script, Stream Deck, Home Assistant e webhook: gli endpoint <code>/api/v1</code>
   restano gli stessi tra le versioni e vogliono questo token (<code>Authorization: Bearer …</code>).
   Esempi e regole nelle <a href="#" data-open="https://github.com/erpaffo/Pozzo-Launcher/blob/main/docs/riferimento.md#api-locale">istruzioni</a>.</p>
 <div class="row wrap small">
   <input class="field grow" id="api-token" readonly>
-  <button class="btn" id="api-token-copy" type="button">Copia</button>
-  <button class="btn" id="api-token-new" type="button" title="Il token cambia: gli script gia' configurati smettono di funzionare">Nuovo token</button>
+  <button class="btn" id="api-token-copy" type="button" data-i18n="k.sys.btn.copy">Copia</button>
+  <button class="btn" id="api-token-new" type="button" title="Il token cambia: gli script gia' configurati smettono di funzionare" data-i18n-title="k.sys.api.new_tip" data-i18n="k.sys.btn.new_token">Nuovo token</button>
 </div>
 <p class="muted small" id="api-url"></p>
 
-<h3>Novità</h3>
+<h3 data-i18n="k.sys.h.news">Novità</h3>
 <div id="about-log" class="changelog"></div>

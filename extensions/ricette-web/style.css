@@ -1,0 +1,519 @@
+/* Stili Ricette Web (Pozzo Media) - Solo classi rw-*, usa le variabili tema dell'app */
+
+.rw-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+/* 1. Barra strumenti e tab */
+.rw-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rw-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.rw-tab {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.rw-tab:hover,
+.rw-tab:focus-visible {
+  background: var(--bg-3);
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rw-tab.rw-active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.rw-search-box {
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+
+.rw-search {
+  width: 100%;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.84rem;
+  box-sizing: border-box;
+}
+
+.rw-search:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* 2. Elenco sorgenti (ricette) */
+.rw-sources-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rw-sources-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rw-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.rw-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.rw-chip:hover,
+.rw-chip:focus-visible {
+  background: var(--bg-2);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rw-chip.rw-active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.rw-site-btn {
+  margin-left: auto;
+}
+
+/* 3. Griglia e card pulita (copertina, titolo) */
+.rw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.rw-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+  transition: transform .18s ease, border-color .18s ease;
+}
+
+.rw-card:hover,
+.rw-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rw-poster {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+
+.rw-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rw-poster-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
+  font-size: 2rem;
+  background: var(--bg-3);
+}
+
+.rw-card-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rw-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-seen-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--panel);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.rw-card.rw-seen .rw-poster-img {
+  opacity: 0.82;
+}
+
+.rw-badge {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--text);
+  display: inline-block;
+}
+
+/* 4. Dettaglio con episodi */
+.rw-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rw-detail-header {
+  display: flex;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.rw-detail-poster {
+  width: 140px;
+  flex-shrink: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-2);
+}
+
+.rw-detail-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rw-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.rw-detail-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.rw-detail-series {
+  font-size: 0.92rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.rw-detail-overview {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.rw-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.rw-episodes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rw-episodes-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.rw-episode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rw-episode-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.rw-episode-item:hover {
+  background: var(--bg-2);
+  border-color: var(--accent);
+}
+
+.rw-episode-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 50px;
+}
+
+.rw-episode-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rw-episode-title {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 5. Anteprima ricetta (campi estratti in tabella) */
+.rw-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rw-preview-header {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rw-preview-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.rw-preview-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.rw-section-subtitle {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.rw-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.rw-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.rw-table th,
+.rw-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rw-table th {
+  background: var(--bg-2);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rw-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rw-table code {
+  font-family: monospace;
+  background: var(--bg-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+/* 6. Pulsanti ed elementi comuni */
+.rw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.rw-btn:hover,
+.rw-btn:focus-visible {
+  background: var(--bg-3);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rw-btn.rw-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.rw-btn.rw-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
+.rw-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.rw-link:hover {
+  text-decoration: underline;
+}
+
+.rw-empty,
+.rw-loading {
+  padding: 40px 16px;
+  text-align: center;
+}
+
+/* 7. Responsive e Accessibilità */
+@media (max-width: 640px) {
+  .rw-detail-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .rw-detail-poster {
+    width: 120px;
+  }
+  .rw-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rw-search-box {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rw-card,
+  .rw-btn,
+  .rw-tab,
+  .rw-chip,
+  .rw-episode-item {
+    transition: none !important;
+  }
+  .rw-card:hover {
+    transform: none;
+  }
+}

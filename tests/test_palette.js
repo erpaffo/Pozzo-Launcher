@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 // Palette comandi: normalizzazione, ranking, limiti e debounce (nessun DOM). Esegui: node tests/test_palette.js
 const assert = require("assert");
 const P = require("../pozzo/app/static/palette.js");

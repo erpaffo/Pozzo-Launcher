@@ -1,4 +1,5 @@
 "use strict";
+const { inject } = require("./_i18n_stub");
 // Card «Riprendi» in testa alla home Big Picture (stile Classico): `node tests/test_bp_resume.js`.
 // Carica layouts/classic/layout.js in un contesto vm con globali finti (il DOM non serve: si controlla l'HTML prodotto).
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
@@ -12,7 +13,7 @@ function makeCtx(resumeReply) {
     BPLayouts: {}, hueOf: () => 10, esc: (s) => String(s), STORE_SHORT: {}, SHORT: {}, platName: (p) => p.toUpperCase(),
     $: () => ({ style: {} }), document: { querySelectorAll: () => [], querySelector: () => null },
     card: (g, i) => `<div class="card" data-i="${i}">${g.title}</div>`, textCard: (l, s, i) => `<div class="card tile-text" data-i="${i}">${l}</div>`,
-    renderNav() {}, setBackground() {}, beep() {}, toast() {}, TABS: [], openTab() {}, toggleFav() {},
+    window: {}, renderNav() {}, setBackground() {}, beep() {}, toast() {}, TABS: [], openTab() {}, toggleFav() {},
     console, main: { innerHTML: "" }, calls: { push: [], play: [], detail: [] },
     stackTop: null, api: null,
   };
@@ -25,7 +26,7 @@ function makeCtx(resumeReply) {
     if (p === "/api/home/resume") { if (resumeReply instanceof Error) throw resumeReply; return resumeReply; }
     throw new Error("api inattesa: " + p);
   };
-  vm.createContext(ctx);
+  inject(ctx); vm.createContext(ctx);
   vm.runInContext(src, ctx);
   return ctx;
 }

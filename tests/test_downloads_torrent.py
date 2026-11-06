@@ -294,3 +294,63 @@ def test_stato_sessione_su_disco(tmp):
     e3._pack = dict(e._pack)
     assert e3.session() is not None
     e3.close()
+
+
+def test_tracker_paralleli_e_filtro_avvisi(tmp):
+    e = TOR.Engine(tmp / "res")
+    e.configure({})
+    assert e._pack.get("announce_to_all_trackers") is True
+    assert e._pack.get("announce_to_all_tiers") is True
+    assert e._pack.get("tracker_completion_timeout") == 15
+
+    mag = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&tr=udp%3A%2F%2Ffake.invalid%3A1337%2Fann"
+    p = lt.parse_magnet_uri(mag)
+    p.save_path = str(tmp)
+    p.tracker_tiers = [0] * len(p.trackers)
+    ses = e.session()
+    h = ses.add_torrent(p)
+    e.add_trackers(h)
+    assert all(t["tier"] == 0 for t in h.trackers())
+    tid = "test-task"
+    e.handles[tid] = h
+    logs = []
+    e.logs[tid] = lambda msg, level="info": logs.append((msg, level))
+    for _ in range(15):
+        e._pump()
+        time.sleep(0.1)
+    assert len(logs) == 1
+    assert "fake.invalid" in logs[0][0] and logs[0][1] == "warn"
+    assert not any("unreachable" in m[0].lower() or "non raggiungibile" in m[0].lower() for m in logs)
+    assert any(t["url"] == "udp://fake.invalid:1337/ann" and t["fail_limit"] == 1 for t in h.trackers())
+    assert "udp://fake.invalid:1337/ann" in e.dead_trackers[tid]
+    ses.remove_torrent(h)
+
+
+def test_pre_verifica_e_blacklist_tracker_unreachable(tmp):
+    import asyncio
+    e = TOR.Engine(tmp / "res")
+    e.configure({})
+    mag = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&tr=udp%3A%2F%2Fnonexistent-fake-xyz123.org%3A1337%2Fann&tr=udp%3A%2F%2Fvalid.example%3A1337%2Fann"
+    t = T.DownloadTask(source=mag, save_path=str(tmp))
+    p = asyncio.run(TOR._params(t, e, None))
+    assert "udp://valid.example:1337/ann" in p.trackers
+    assert "udp://nonexistent-fake-xyz123.org:1337/ann" not in p.trackers
+    assert "udp://nonexistent-fake-xyz123.org:1337/ann" in t.options["dead_trackers"]
+
+    p.save_path = str(tmp)
+    ses = e.session()
+    h = ses.add_torrent(p)
+    e.handles[t.id] = h
+    e.logs[t.id] = lambda m, l="info": None
+    h.add_tracker({"url": "udp://runtime-dead.invalid:1337/ann", "tier": 0})
+    h.force_reannounce()
+    for _ in range(25):
+        e._pump()
+        time.sleep(0.1)
+    assert "udp://runtime-dead.invalid:1337/ann" in e.dead_trackers[t.id]
+    assert any(tr["url"] == "udp://runtime-dead.invalid:1337/ann" and tr["fail_limit"] == 1 for tr in h.trackers())
+
+    e.trackers = ["udp://runtime-dead.invalid:1337/ann"]
+    e.add_trackers(h, t)
+    assert len([tr for tr in h.trackers() if "runtime-dead.invalid" in tr["url"]]) == 1
+    ses.remove_torrent(h)

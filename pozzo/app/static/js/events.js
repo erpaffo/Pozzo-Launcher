@@ -21,6 +21,13 @@ function bind() {
   focusableNav();
   new MutationObserver(focusableNav).observe($("#nav"), { childList: true, subtree: true });
   $("#nav").addEventListener("click", (e) => {
+    const star = e.target.closest("[data-toggle-fav-ext]");
+    if (star) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFavExt(star.dataset.toggleFavExt);
+      return;
+    }
     const a = e.target.closest(".nav-item");
     if (!a) return;
     if (a.dataset.pluginItem && !a.dataset.view) {
@@ -35,6 +42,13 @@ function bind() {
   });
   $("#nav").addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
+    const star = e.target.closest("[data-toggle-fav-ext]");
+    if (star) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFavExt(star.dataset.toggleFavExt);
+      return;
+    }
     const a = e.target.closest(".nav-item");
     if (!a) return;
     e.preventDefault();
@@ -53,22 +67,22 @@ function bind() {
   // altri store PC: aggiunta, rimozione, categoria e filtro
   $("#pcst-add").onclick = () => {
     const url = $("#pcst-url").value.trim();
-    if (!/^https?:\/\//i.test(url)) return toast("Indirizzo non valido (serve http:// o https://)", true);
-    if (PCST.rows.some((r) => r.url === url)) return toast("Questo elenco è già stato aggiunto");
+    if (!/^https?:\/\//i.test(url)) return toast(t("g.ev.url.invalid"), true);
+    if (PCST.rows.some((r) => r.url === url)) return toast(t("g.ev.pcstore.exists"));
     savePcStores([...PCST.rows, { url, kind: $("#pcst-kind").value }], false);
     $("#pcst-url").value = "";
   };
   // anteprima: legge solo la prima pagina e dice quanti giochi/pagine ci sono
   $("#pcst-probe").onclick = async () => {
     const url = $("#pcst-url").value.trim();
-    if (!/^https?:\/\//i.test(url)) return toast("Indirizzo non valido (serve http:// o https://)", true);
+    if (!/^https?:\/\//i.test(url)) return toast(t("g.ev.url.invalid"), true);
     const out = $("#pcst-probe-out");
-    out.textContent = "Lettura in corso…";
+    out.textContent = t("g.ev.probe.reading");
     let r;
     try { r = await api("/api/pc-stores/probe", { body: { url } }); } catch (e) { out.textContent = ""; return toast(e.message, true); }
-    const many = r.pages > 1 ? `su ${r.pages.toLocaleString("it")} pagine` : "su una sola pagina";
-    const ex = r.samples.length ? ` Esempi: ${r.samples.slice(0, 3).join(" · ")}` : "";
-    out.textContent = `${r.games ? "✅" : "⚠️"} Formato ${r.kind}: ${r.games.toLocaleString("it")} giochi in questa pagina, ${many}.${ex}`;
+    const many = r.pages > 1 ? t("g.ev.probe.pages", { n: r.pages.toLocaleString(GSI18n.lang) }) : t("g.ev.probe.single_page");
+    const ex = r.samples.length ? ` ${t("g.ev.probe.examples", { list: r.samples.slice(0, 3).join(" · ") })}` : "";
+    out.textContent = `${r.games ? "✅" : "⚠️"} ${t("g.ev.probe.result", { kind: r.kind, n: r.games.toLocaleString(GSI18n.lang), many })}${ex}`;
   };
   // aggiornamento di tutti gli store: modalità (avvio / orario / manuale), parallelismo, avvio a mano
   $("#srf-mode").onchange = () => { $("#srf-time").disabled = $("#srf-mode").value !== "daily"; };
@@ -104,10 +118,11 @@ function bind() {
   // integrazioni: notifiche di Windows
   autosaveControl($("#nt-on"), (enabled) => api("/api/app/notify", { body: { enabled } }));
   autosaveControl($("#bp-start"), (enabled) => api("/api/app/start-bigpicture", { body: { enabled } }));
+  autosaveControl($("#resume-session-start"), (enabled) => { store.set("resumeSession", enabled); });
   // a coda vuota: sospendi o spegni
   autosaveControl($("#pw-after"), (after_jobs) => api("/api/app/power", { body: { after_jobs } }).then(loadPower));
   $("#pw-abort").onclick = async () => {
-    try { await api("/api/app/power/abort", { body: {} }); loadPower(); toast("Annullato"); } catch (err) { toast(err.message, true); }
+    try { await api("/api/app/power/abort", { body: {} }); loadPower(); toast(t("g.ev.common.cancelled")); } catch (err) { toast(err.message, true); }
   };
   // integrazioni: presenza su Discord
   $("#dc-save").onclick = async () => {
@@ -116,7 +131,7 @@ function bind() {
     try { d = await api("/api/integrations/discord", { body }); } catch (e) { return toast(e.message, true); }
     $("#dc-state").textContent = "";
     renderIntegrations({ discord: d.discord });
-    toast(body.enabled ? "Presenza su Discord aggiornata" : "Presenza su Discord spenta");
+    toast(body.enabled ? t("g.ev.discord.updated") : t("g.ev.discord.off"));
   };
   autosaveControl($("#dc-on"), (enabled) => api("/api/integrations/discord", { body: { enabled } }));
   autosaveControl($("#dc-time"), (show_time) => api("/api/integrations/discord", { body: { show_time } }));
@@ -127,7 +142,7 @@ function bind() {
   };
   $("#pcst-meta").onclick = async () => {
     try { await api("/api/catalogs/windows/netmeta", { body: {} }); } catch (e) { return toast(e.message, true); }
-    toast("Copertine degli store PC in corso: compaiono un po' alla volta (avanzamento in Attività)");
+    toast(t("g.ev.pcstore.covers_running"));
   };
   $("#pcst-filter").addEventListener("click", (e) => {
     const b = e.target.closest("[data-pcst-filter]");
@@ -151,11 +166,16 @@ function bind() {
   $("#inst-filter").onchange = (e) => { S.instFilter = e.target.value; store.set("instFilter", S.instFilter); refreshGrid(); };
   $("#pc-add").onclick = () => openAddGame();
   $("#bp-btn").onclick = () => enterBigPicture();
+  $("#refresh-btn").onclick = async () => {
+    try { await loadLibrary(); } catch (e) { toast(t("g.ev.library.reload_failed")); return; }
+    refreshGrid(true);
+    toast(t("g.ev.library.updated"));
+  };
   $("#random-btn").onclick = () => {
     // tra quelli mostrati; meglio se si possono avviare subito (niente da scaricare o installare)
     const ready = S.items.filter((g) => !g.store || (g.store !== "online" && g.installed));
     const pool = ready.length ? ready : S.items;
-    if (!pool.length) return toast("Nessun gioco in questa vista");
+    if (!pool.length) return toast(t("g.ev.random.empty"));
     openDetail(pool[Math.floor(Math.random() * pool.length)].id);
   };
   GS.on("uiChanged", () => { if (S.games.length) { renderSidebar(); } });
@@ -179,6 +199,12 @@ function bind() {
     if (!a) return;
     e.preventDefault();
     openPlatCtx(e, a.dataset.id);
+  });
+  $("#plugin-nav").addEventListener("contextmenu", (e) => {
+    const a = e.target.closest("[data-plugin-item]");
+    if (!a) return;
+    e.preventDefault();
+    openExtCtx(e, a.dataset.pluginItem);
   });
   document.addEventListener("contextmenu", (e) => {
     // dove serve (campi di testo, finestre aperte, il menu stesso) resta quello del browser
@@ -234,9 +260,9 @@ function bind() {
   };
   $("#coll-filter").addEventListener("input", (e) => { S.collFilter = e.target.value; renderCollList(); });
   $("#coll-sort").onclick = () => { S.collSort = S.collSort === "name" ? "count" : "name"; store.set("collSort", S.collSort); renderCollList();
-    toast(S.collSort === "name" ? "Collezioni in ordine alfabetico" : "Collezioni per numero di giochi"); };
+    toast(S.collSort === "name" ? t("g.ev.coll.sort_name") : t("g.ev.coll.sort_count")); };
   $("#coll-new").onclick = async (e) => {
-    const name = await askText(e.currentTarget, "Nome della nuova collezione");
+    const name = await askText(e.currentTarget, t("g.ev.coll.new_name"));
     if (!name) return;
     try { const r = await api("/api/collections", { body: { name } }); await reload(true); setView({ type: "collection", id: r.slug }); }
     catch (err) { toast(err.message, true); }
@@ -254,11 +280,11 @@ function bind() {
       try {
         if (S.view.type === "store") {
           await api("/api/stores/refresh", { body: { only: S.view.id === "all" ? null : [S.view.id] } });
-          toast("Cerco i giochi nuovi…");
+          toast(t("g.ev.scan.searching_store"));
           pollStores(true);
         } else {
           await api("/api/scan", { body: { platforms: [S.view.id], mode: "new" } });
-          toast("Cerco i giochi nuovi: compaiono subito, i dati arrivano dopo");
+          toast(t("g.ev.scan.searching_plat"));
           SET.lastStatus = "running"; setScanRunning(true); pollScan();
         }
       } catch (err) { toast(err.message, true); }
@@ -272,17 +298,17 @@ function bind() {
       const r = await api("/api/app/duplicates", { body: { skip: !S.skipDup } });
       S.skipDup = r.skip_duplicates;
       updateHeader();
-      toast(S.skipDup ? "I duplicati non verranno più scrapati: usano i metadati della versione principale"
-        : "I duplicati verranno scrapati come gli altri giochi");
+      toast(S.skipDup ? t("g.ev.dup.skip_on")
+        : t("g.ev.dup.skip_off"));
       return;
     }
     const c = S.collBySlug.get(S.view.id);
     if (!c) return;
     if (e.target.id === "coll-rename") {
-      const name = await askText(e.target, "Nuovo nome", c.name);
+      const name = await askText(e.target, t("g.ev.common.new_name"), c.name);
       if (name) { await api(`/api/collections/${encodeURIComponent(c.slug)}`, { method: "PATCH", body: { name } }); await reload(true); }
     } else if (e.target.id === "coll-delete") {
-      if (!confirm(c.custom ? `Eliminare la collezione «${c.name}»?` : `Nascondere la collezione automatica «${c.name}»?`)) return;
+      if (!confirm(c.custom ? t("g.ev.coll.delete_confirm", { name: c.name }) : t("g.ev.coll.hide_confirm", { name: c.name }))) return;
       await api(`/api/collections/${encodeURIComponent(c.slug)}`, { method: "DELETE" });
       S.view = { type: "all" }; await reload(false);
     }
@@ -295,7 +321,7 @@ function bind() {
       S.hideDlc = new Set(r.hide_dlc);
     } catch (err) { e.target.checked = !e.target.checked; return toast(err.message, true); }
     refreshGrid();
-    toast(e.target.checked ? `DLC di ${platName(S.view.id)} nascoste` : `DLC di ${platName(S.view.id)} di nuovo visibili`);
+    toast(e.target.checked ? t("g.ev.dlc.hidden", { plat: platName(S.view.id) }) : t("g.ev.dlc.visible", { plat: platName(S.view.id) }));
   });
 
   $("#detail-close").onclick = closeDetail;
@@ -326,7 +352,7 @@ function bind() {
     const v = e.target.value.trim();
     try { await api(`/api/game/${d.id}/flag`, { body: { field: "note", value: v } }); } catch (err) { return toast(err.message, true); }
     d.user.note = v;
-    toast(v ? "Nota salvata" : "Nota cancellata");
+    toast(v ? t("g.ev.note.saved") : t("g.ev.note.deleted"));
   });
   $("#detail").addEventListener("click", async (e) => {
     const d = S.detail;
@@ -335,8 +361,8 @@ function bind() {
     if (t.id === "d-play") play(d.id);
     else if (t.id === "d-install") installGame(d.id);
     else if (t.id === "d-torrent") api(`/api/game/${d.id}/torrent`, { body: {} })
-      .then((r) => r.internal ? toast(`Download di «${r.file}» avviato in ${r.dest} (solo questo gioco)`) : toast(r.single ? `Aperto nel client torrent: scarica solo «${r.file}» (se ti propone tutti i file, tieni solo questo)`
-        : `Aperto nel client torrent: è l'intero set, seleziona solo «${r.file}»`))
+      .then((r) => r.internal ? toast(window.t("g.ev.torrent.started", { file: r.file, dest: r.dest })) : toast(r.single ? window.t("g.ev.torrent.single", { file: r.file })
+        : window.t("g.ev.torrent.set", { file: r.file })))
       .catch((err) => toast(err.message, true));
     else if (t.dataset.install) installGame(+t.dataset.install);
     else if (t.dataset.port) { closeDetail(); PORTS_F.open = t.dataset.port; setView({ type: "ports" }); }
@@ -360,7 +386,7 @@ function bind() {
     else if (t.id === "d-magnet") {
       const mag = dlMagnetUrl();
       if (mag) downloadLinks(d, [mag]);
-      else toast("Questa pagina non offre un torrent: usa le fonti dirette", true);
+      else toast(window.t("g.ev.magnet.none"), true);
     }
     else if (t.id === "d-hide") setFlag("hidden", !d.user.hidden);
     else if (t.id === "d-folder") api(`/api/game/${d.id}/open-folder`, { body: {} }).catch((err) => toast(err.message, true));
@@ -369,7 +395,7 @@ function bind() {
     else if (t.id === "d-media") { e.preventDefault(); openMediaPick(d); }
     else if (t.id === "d-shortcut") {
       e.preventDefault();
-      api(`/api/game/${d.id}/shortcut`, { body: {} }).then(() => toast(`Collegamento «${d.title}» creato sul desktop`), (err) => toast(err.message, true));
+      api(`/api/game/${d.id}/shortcut`, { body: {} }).then(() => toast(window.t("g.ev.shortcut.created", { title: d.title })), (err) => toast(err.message, true));
     }
     else if (t.id === "d-shots-all") { e.preventDefault(); openLightbox(SHOTS.detail, 0); }
     else if (t.closest("#d-myshots img")) { openLightbox(SHOTS.detail, +t.closest("img").dataset.i); }
@@ -377,8 +403,8 @@ function bind() {
       try { await api("/api/scan", { body: { game: d.id, mode: "missing" } }); }
       catch (err) { return toast(err.message, true); }
       t.disabled = true;
-      t.textContent = "Ricerca in corso…";
-      toast(`Cerco i dati mancanti di «${d.title}»…`);
+      t.textContent = window.t("g.ev.scrape.running");
+      toast(window.t("g.ev.scrape.searching", { title: d.title }));
       SET.lastStatus = "running";
       pollScan();
     }
@@ -401,14 +427,14 @@ function bind() {
   $("#backup-now").onclick = backupNow;
   $("#save-dir-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#save-dir").value = p; };
   $("#save-dir-save").onclick = () => api("/api/app/save-dir", { body: { save_dir: $("#save-dir").value } })
-    .then((r) => { loadSaveDir(r); toast("Cartella dei salvataggi salvata"); }, (e) => toast(e.message, true));
+    .then((r) => { loadSaveDir(r); toast(t("g.ev.saves.dir_saved")); }, (e) => toast(e.message, true));
   bindSync();
   $("#profile-btn").onclick = (e) => profileMenu(e.currentTarget);
   bindProfilesSettings();
   $("#ra-save").onclick = async () => {
     const body = { username: $("#ra-user").value };
     if ($("#ra-key").value.trim()) body.key = $("#ra-key").value.trim();
-    try { await api("/api/ra", { body }); toast("RetroAchievements collegato"); $("#ra-key").value = ""; loadAccounts(); }
+    try { await api("/api/ra", { body }); toast(t("g.ev.ra.linked")); $("#ra-key").value = ""; loadAccounts(); }
     catch (e) { toast(e.message, true); }
   };
   $("#xf-pick").onclick = async () => { const p = window.pywebview?.api ? await pickPath("folder") : null; if (p) $("#xf-out").value = p; };
@@ -417,13 +443,13 @@ function bind() {
   $("#xf-title-row").hidden = $("#xf-format").value !== "html";
   $("#xf-go").onclick = async (e) => {
     e.target.disabled = true;
-    $("#xf-info").textContent = "Esportazione in corso (copia anche le immagini, può richiedere qualche minuto)…";
+    $("#xf-info").textContent = t("g.ev.export.running");
     try {
       const r = await api("/api/export/frontend", {
         body: { format: $("#xf-format").value, out_dir: $("#xf-out").value, title: $("#xf-title").value.trim() },
       });
-      $("#xf-info").textContent = `Esportati ${r.games.toLocaleString("it")} giochi di ${Object.keys(r.summary).length} console in ${r.out_dir}`
-        + (r.index ? ` · apri ${r.index}` : "");
+      $("#xf-info").textContent = t("g.ev.export.done", { n: r.games.toLocaleString(GSI18n.lang), consoles: Object.keys(r.summary).length, dir: r.out_dir })
+        + (r.index ? ` · ${t("g.ev.export.open", { index: r.index })}` : "");
     } catch (err) { $("#xf-info").textContent = ""; toast(err.message, true); }
     e.target.disabled = false;
   };
@@ -433,12 +459,12 @@ function bind() {
   $("#csrc-go").onclick = loadCacheSources;
   $("#csrc-clear-all").onclick = () => clearCacheSource("");
   $("#api-token-copy").onclick = async () => {
-    try { await navigator.clipboard.writeText($("#api-token").value); toast("Token copiato"); }
-    catch { toast("Copia non riuscita: selezionalo e copialo a mano", true); }
+    try { await navigator.clipboard.writeText($("#api-token").value); toast(t("g.ev.token.copied")); }
+    catch { toast(t("g.ev.token.copy_failed"), true); }
   };
   $("#api-token-new").onclick = async () => {
-    if (!confirm("Cambiare il token? Script, Stream Deck e webhook che usano quello vecchio smettono di funzionare.")) return;
-    try { const t = await api("/api/api-token", { body: {} }); $("#api-token").value = t.token; toast("Nuovo token creato"); }
+    if (!confirm(t("g.ev.token.change_confirm"))) return;
+    try { const r = await api("/api/api-token", { body: {} }); $("#api-token").value = r.token; toast(t("g.ev.token.created")); }
     catch (e) { toast(e.message, true); }
   };
   checkUpdate(false, false); // subito all'avvio, in parallelo al caricamento dei giochi (la risposta resta in cache 2 ore)
@@ -450,7 +476,7 @@ function bind() {
 
   // scraping
   $("#scan-start").onclick = startScan;
-  $("#scan-cancel").onclick = () => api("/api/scan/cancel", { body: {} }).then(() => toast("Interruzione in corso…"));
+  $("#scan-cancel").onclick = () => api("/api/scan/cancel", { body: {} }).then(() => toast(t("g.ev.scan.stopping")));
   $("#scan-reload").onclick = loadScan;
   $("#scan-mode").onchange = applyScanMode;
   $("#scan-table").addEventListener("change", (e) => {
@@ -467,7 +493,7 @@ function bind() {
     try {
       const pv = await api("/api/folders", { body: { folder: s.dataset.folder, platform: s.value } });
       renderScan(pv, null);
-      toast(`«${s.dataset.folder}» associata: ora puoi cercarne i giochi`);
+      toast(t("g.ev.scan.mapped", { folder: s.dataset.folder }));
     } catch (err) { toast(err.message, true); }
   });
 
@@ -475,7 +501,7 @@ function bind() {
   $("#cat-save").onclick = async () => {
     const urls = $("#cat-urls").value.split(/\s+/).filter(Boolean);
     try { renderCatalog(await api(`/api/catalogs/${SET.catPid}`, { body: { urls } })); } catch (e) { return toast(e.message, true); }
-    if (urls.length) pollCatalog(); else toast("Store online scollegato");
+    if (urls.length) pollCatalog(); else toast(t("g.ev.catalog.unlinked"));
   };
   $("#cat-refresh").onclick = async () => {
     try { await api(`/api/catalogs/${SET.catPid}/refresh`, { body: {} }); } catch (e) { return toast(e.message, true); }
@@ -499,12 +525,12 @@ function bind() {
     try { await api("/api/platforms/custom", { body }); } catch (e) { return toast(e.message, true); }
     $("#console-dlg").close();
     SET.platforms = null;
-    toast(`Console «${body.name}» aggiunta: ora puoi associarle una cartella e cercare i giochi`);
+    toast(t("g.ev.console.added", { name: body.name }));
     loadScan(); renderCustomConsoles();
   };
   $("#custom-consoles").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-cdel]");
-    if (!b || !confirm("Rimuovere questa console? I giochi già in libreria restano finché non aggiorni la libreria.")) return;
+    if (!b || !confirm(t("g.ev.console.remove_confirm"))) return;
     await api(`/api/platforms/custom/${b.dataset.cdel}`, { method: "DELETE" });
     SET.platforms = null;
     loadScan(); renderCustomConsoles();
@@ -529,33 +555,33 @@ function bind() {
   });
   for (const id of ["sch-on", "sch-time", "sch-mode"]) $("#" + id).addEventListener("change", scheduleSourceSave);
   $("#rawg-save").onclick = async () => {
-    if (!$("#rawg-key").value.trim()) return toast("Incolla prima la chiave RAWG", true);
+    if (!$("#rawg-key").value.trim()) return toast(t("g.ev.rawg.paste_first"), true);
     try { SET.sources = await api("/api/sources", { body: collectSources() }); } catch (e) { return toast(e.message, true); }
     $("#rawg-key").value = "";
     loadSources();
-    toast("Chiave RAWG salvata");
+    toast(t("g.ev.rawg.saved"));
   };
   $("#bulk-list").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-bulk]");
     if (!b) return;
     try { await api(`/api/bulk/${b.dataset.bulk}/refresh`, { body: {} }); } catch (err) { return toast(err.message, true); }
-    toast("Download del database avviato");
+    toast(t("g.ev.bulk.started"));
     pollBulk();
   });
   $("#scan-plan").onclick = showPlan;
   $("#setup-open").onclick = async () => { closeSettings(); await SETUP.open(true); await reload(true); };
   $("#roms-change").onclick = async () => {
-    let p = window.pywebview?.api ? await pickPath("folder") : prompt("Percorso della cartella delle ROM", $("#scan-root").textContent);
+    let p = window.pywebview?.api ? await pickPath("folder") : prompt(t("g.ev.roms.prompt"), $("#scan-root").textContent);
     if (!p) return;
     try { await api("/api/roms", { body: { path: p } }); } catch (e) { return toast(e.message, true); }
-    toast("Cartella delle ROM aggiornata");
+    toast(t("g.ev.roms.updated"));
     loadScan();
   };
   $("#scan-extra").addEventListener("click", async (e) => {
     const del = e.target.closest(".xr-del");
     if (del) { e.preventDefault(); return extraRoot("remove", del.dataset.path); }
     if (e.target.id === "xr-add") {
-      const p = window.pywebview?.api ? await pickPath("folder") : prompt("Percorso di un'altra cartella ROM (anche una sola console, es. D:\\Switch)");
+      const p = window.pywebview?.api ? await pickPath("folder") : prompt(t("g.ev.roms.extra_prompt"));
       extraRoot("add", p);
     }
     if (e.target.id === "xr-paste") pasteFolder("windows");
@@ -591,7 +617,7 @@ function bind() {
     if (rb) {
       try {
         await api("/api/phone/pads/rumble", { body: { slot: +rb.dataset.padRumble } });
-        toast("📳 Vibrazione inviata al telefono");
+        toast("📳 " + window.t("g.ev.phone.rumble"));
       } catch (err) { toast(err.message, true); }
       return;
     }
@@ -599,15 +625,15 @@ function bind() {
       t.disabled = true;
       try {
         const r = await api("/api/phone/emusetup", { body: { what: t.dataset.es, players: +$("#es-n").value || 1 } });
-        toast("Fatto: " + r.note);
+        toast(window.t("g.ev.phone.done", { note: r.note }));
       } catch (err) { toast(err.message, true); }
       t.disabled = false;
       return;
     }
     if (t.dataset.esundo) {
       e.preventDefault();
-      if (!confirm("Rimettere le impostazioni dell'emulatore com'erano prima dell'ultima configurazione di Pozzo Launcher?")) return;
-      try { await api("/api/phone/emusetup", { body: { what: t.dataset.esundo, restore: true } }); toast("Impostazioni rimesse"); } catch (err) { toast(err.message, true); }
+      if (!confirm(window.t("g.ev.emu.undo_confirm"))) return;
+      try { await api("/api/phone/emusetup", { body: { what: t.dataset.esundo, restore: true } }); toast(window.t("g.ev.emu.restored")); } catch (err) { toast(err.message, true); }
       return;
     }
     if (t.id === "ph-newcode") { e.preventDefault(); await api("/api/phone/code", { body: {} }); loadRemote(); }
@@ -618,15 +644,15 @@ function bind() {
       loadRemote();
     }
     else if (t.dataset.revoke) {
-      if (!confirm("Revocare questo telefono? Dovrà essere abbinato di nuovo.")) return;
+      if (!confirm(window.t("g.ev.phone.revoke_confirm"))) return;
       await api(`/api/phone/devices/${t.dataset.revoke}`, { method: "DELETE" }); loadRemote();
     } else if (t.id === "sun-start") {
-      try { await api("/api/sunshine/start", { body: {} }); toast("Avvio di Sunshine…"); setTimeout(loadRemote, 4000); } catch (err) { toast(err.message, true); }
+      try { await api("/api/sunshine/start", { body: {} }); toast(window.t("g.ev.sun.starting")); setTimeout(loadRemote, 4000); } catch (err) { toast(err.message, true); }
     } else if (t.id === "sun-pub") {
-      t.disabled = true; t.textContent = "Pubblicazione…";
+      t.disabled = true; t.textContent = window.t("g.ev.sun.publishing");
       try {
         await api("/api/sunshine", { body: { user: $("#sun-user").value, password: $("#sun-pass").value, count: $("#sun-count").value, publish: true } });
-        toast("Pubblicato: apri Moonlight e aggiorna l'elenco del PC");
+        toast(window.t("g.ev.sun.published"));
       } catch (err) { toast(err.message, true); }
       loadRemote();
     }
@@ -641,10 +667,10 @@ function bind() {
   $("#running").addEventListener("click", async (e) => {
     if (e.target.closest("#run-shot")) api("/api/running/screenshot", { body: {} });
     if (!e.target.closest("#run-stop")) return;
-    if (!confirm(`Chiudere «${S.running?.title || "il gioco"}»? I progressi non salvati vanno persi.`)) return;
+    if (!confirm(t("g.ev.running.close_confirm", { title: S.running?.title || t("g.ev.running.default_title") }))) return;
     try {
       const r = await api("/api/running/stop", { body: {} });
-      toast(r.found ? "Gioco chiuso" : "Gioco non trovato: esecuzione interrotta nel launcher", !r.found);
+      toast(r.found ? t("g.ev.running.closed") : t("g.ev.running.not_found"), !r.found);
     } catch (err) { toast(err.message, true); }
     pollRunning();
   });
@@ -666,11 +692,34 @@ function bind() {
   $("#smart-dlg").addEventListener("input", smCount);
   $("#sm-cancel").onclick = () => $("#smart-dlg").close();
   $("#sm-save").onclick = () => saveSmart(false);
-  $("#sm-delete").onclick = () => { if (confirm("Eliminare questa collezione intelligente? I giochi non vengono toccati.")) saveSmart(true); };
+  $("#sm-delete").onclick = () => { if (confirm(t("g.ev.smart.delete_confirm"))) saveSmart(true); };
   $("#hltb-missing").onclick = () => startHltb("missing");
   $("#hltb-all").onclick = () => startHltb("all");
   $("#hltb-stop").onclick = () => api("/api/hltb/cancel", { body: {} });
   pollWishBadge();
+  // notifiche notizie e avvisi per giochi in wishlist
+  function onWishlistAlert(data) {
+    if (!data) return;
+    const items = data.alerts || data.news || (data.title ? [data.title] : []);
+    (Array.isArray(items) ? items : [items]).forEach((item) => {
+      const title = typeof item === "string" ? item : (item && (item.title || item.name));
+      if (title) toast(t("g.ev.wishlist.news", { title }));
+    });
+  }
+  window.addEventListener("wishlist_alerts", (e) => onWishlistAlert(e.detail));
+  window.addEventListener("wishlist_news", (e) => onWishlistAlert(e.detail));
+  if (typeof window !== "undefined" && window.EventSource) {
+    try {
+      const es = window.gsEventSource || new EventSource("/api/v1/events");
+      window.gsEventSource = es;
+      es.addEventListener("wishlist_alerts", (e) => {
+        try { onWishlistAlert(JSON.parse(e.data)); } catch {}
+      });
+      es.addEventListener("wishlist_news", (e) => {
+        try { onWishlistAlert(JSON.parse(e.data)); } catch {}
+      });
+    } catch {}
+  }
   setTimeout(() => api("/api/free").then((d) => { if (d.first) d.new = 0; freeBadge(d); }).catch(() => {}), 4000);
   $("#smeta-missing").onclick = () => startStoreMeta(true);
   $("#smeta-close").onclick = () => $("#smeta").close();
@@ -701,6 +750,7 @@ function bind() {
   // aspetto: temi e plugin
   $("#theme-list").addEventListener("change", async (e) => {
     if (e.target.name !== "theme") return;
+    uiHoverOff();
     const next = e.target.value;
     const previous = SET.theme;
     try {
@@ -726,6 +776,13 @@ function bind() {
       loadAppearance();
     }
   });
+  $("#plugin-list").addEventListener("click", (e) => {
+    const star = e.target.closest("[data-toggle-fav-ext]");
+    if (!star) return;
+    e.preventDefault();
+    toggleFavExt(star.dataset.toggleFavExt);
+    loadAppearance();
+  });
   $("#plugin-list").addEventListener("change", async (e) => {
     const c = e.target.closest("[data-plugin]");
     if (!c) return;
@@ -733,7 +790,7 @@ function bind() {
     try {
       await api("/api/app/plugin", { body: { id, enabled: c.checked } });
       savedToast(async () => { await api("/api/app/plugin", { body: { id, enabled: previous } }); loadAppearance(); },
-        "Salvato · riavvia l'app per applicare");
+        t("g.ev.plugin.saved_restart"));
     } catch (err) { c.checked = previous; toast(err.message, true); }
   });
   // aggiungi gioco PC
@@ -752,17 +809,17 @@ function bind() {
   // emulatori
   $("#emu-save").onclick = () => saveEmu();
   $("#ln-save").onclick = () => api("/api/app/launch", { body: { before: $("#ln-before").value, after: $("#ln-after").value,
-    close_launcher: $("#ln-close").checked } }).then(() => toast("Impostazioni di avvio salvate"), (e) => toast(e.message, true));
+    close_launcher: $("#ln-close").checked } }).then(() => toast(t("g.ev.launch.saved")), (e) => toast(e.message, true));
   $("#emu-folder-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#emu-folder").value = p; };
   $("#emu-detect").onclick = async () => {
     const folder = $("#emu-folder").value.trim();
-    if (!folder) return toast("Indica prima la cartella in cui hai installato gli emulatori", true);
+    if (!folder) return toast(t("g.ev.emu.folder_first"), true);
     try {
       const d = await api("/api/emulators/detect", { body: { folder } });
       SET.emu = d;
       renderEmu(d);
       const n = Object.keys(d.found).length;
-      toast(n ? `Trovati e salvati: ${Object.keys(d.found).join(", ")}` : "Nessun emulatore conosciuto in questa cartella", !n);
+      toast(n ? t("g.ev.emu.found", { list: Object.keys(d.found).join(", ") }) : t("g.ev.emu.none_found"), !n);
     } catch (err) { toast(err.message, true); }
   };
   $("#emu-inst").addEventListener("click", async (e) => {
@@ -777,7 +834,7 @@ function bind() {
     followEmuJob();
   });
   $("#emu-add").onclick = async (e) => {
-    const name = await askText(e.currentTarget, "Nome dell'emulatore, es. mgba");
+    const name = await askText(e.currentTarget, t("g.ev.emu.name_prompt"));
     if (!name) return;
     const draft = collectEmu();
     SET.extraEmus.push(name.toLowerCase());
@@ -792,7 +849,7 @@ function bind() {
   $("#emu-table").addEventListener("change", async (e) => {
     const s = e.target.closest(".emu-sel");
     if (!s || s.value !== "__new") return;
-    const name = await askText(s, "Nome dell'emulatore, es. mgba");
+    const name = await askText(s, t("g.ev.emu.name_prompt"));
     const draft = collectEmu();
     if (name) {
       SET.extraEmus.push(name.toLowerCase());

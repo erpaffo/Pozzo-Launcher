@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 // Toast di errore di avvio con crash e fallback (C2): `node tests/test_crash_fallback_ui.js`.
 // Estrae launchErrorToast da js/actions.js e la esegue con un DOM finto minimo.
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
@@ -20,13 +21,13 @@ const ctx = {
   document: { createElement: (t) => new El(t) },
   $: (sel) => (sel === "#toast" ? toastEl : null),
   overlayHost: () => overlay,
-  toast: (m) => { ctx.plain = m; },
+  toast: (m) => { ctx.plain = m; }, window: {},
   toastTimer: 0,
   clearTimeout: () => {},
   play: (id, body) => played.push([id, body]),
   S: { byId: new Map([[7, { id: 7, key: "pc/x:1" }]]) },
 };
-vm.createContext(ctx);
+inject(ctx); vm.createContext(ctx);
 vm.runInContext(fn[0] + "\nthis.launchErrorToast = launchErrorToast;", ctx);
 
 const all = (el, out = []) => { out.push(el); el.children.forEach((c) => all(c, out)); return out; };

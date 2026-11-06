@@ -6,6 +6,7 @@ import threading
 
 from fastapi import APIRouter, Body, HTTPException
 
+from ... import i18n as I
 from .. import jobs as J
 
 
@@ -18,7 +19,7 @@ def build_router(ctx) -> APIRouter:
     def api_hltb_start(body: dict = Body(default={})):
         j = J.HltbJob(only_missing=body.get("mode", "missing") != "all")
         if not _claim("hltb", j):
-            raise HTTPException(409, "Ricerca delle durate gia' in corso")
+            raise HTTPException(409, I.tr("s.top.hltbBusy"))
 
         def after(stats):
             lib.load()
@@ -59,7 +60,7 @@ def build_router(ctx) -> APIRouter:
         pid = body.get("pid") or "all"
         j = J.TopGamesJob(pids=[] if pid == "all" else [pid])
         if not _claim("top", j):
-            raise HTTPException(409, "Ricerca dei voti gia' in corso")
+            raise HTTPException(409, I.tr("s.top.topBusy"))
 
         def after(stats):
             lib.load()

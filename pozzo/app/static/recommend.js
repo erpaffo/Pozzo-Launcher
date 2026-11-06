@@ -29,8 +29,8 @@
     host.textContent = "";
     host.classList && host.classList.add("reco");
     host.setAttribute("role", "region");
-    host.setAttribute("aria-label", "Consigliati per te");
-    host.appendChild(el(doc, "h2", "reco-title", "Consigliati per te"));
+    host.setAttribute("aria-label", t("i.reco.title"));
+    host.appendChild(el(doc, "h2", "reco-title", t("i.reco.title")));
     const ul = el(doc, "ul", "reco-list");
     ul.setAttribute("role", "list");
     for (const it of items) {
@@ -59,8 +59,8 @@
     host.textContent = "";
     host.classList && host.classList.add("reco");
     host.setAttribute("role", "region");
-    host.setAttribute("aria-label", "Classifica ROM");
-    host.appendChild(el(doc, "h2", "reco-title", "Classifica ROM"));
+    host.setAttribute("aria-label", t("i.reco.rank"));
+    host.appendChild(el(doc, "h2", "reco-title", t("i.reco.rank")));
     const lista = el(doc, "div", "rank-list");
     lista.setAttribute("role", "list");
     host.appendChild(lista);

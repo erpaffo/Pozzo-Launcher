@@ -7,6 +7,7 @@ from pathlib import Path
 
 _TID = re.compile(r"[\[(]([0-9A-Fa-f]{16})[\])]")
 _BOOT = re.compile(r"^\s*BOOT2?\s*=\s*cdrom0?:\\*([A-Za-z]{4})[_-]?(\d{3})\.?(\d{2})", re.I | re.M)
+_PS3 = re.compile(rb"(?<![A-Z0-9])((?:BL|BC|NP)[A-Z]{2}\d{5})(?!\d)")
 _SYNC = b"\x00" + b"\xff" * 10 + b"\x00"
 
 
@@ -17,6 +18,8 @@ def game_key(platform_id: str, path: Path) -> str | None:
             return _serial(path)
         if platform_id in ("gc", "wii"):
             return _gc_id(path)
+        if platform_id == "ps3":
+            return _ps3(path)
         if platform_id in ("switch", "wiiu"):
             return _title_id(platform_id, path)
     except Exception:  # noqa: BLE001 - contratto: mai eccezioni
@@ -66,6 +69,14 @@ def _serial(path: Path) -> str | None:
                 return f"{m.group(1).upper()}-{m.group(2)}{m.group(3)}" if m else None
             pos += n
     return None
+
+
+def _ps3(path: Path) -> str | None:
+    """Seriale PS3 (BLUS/BLES/BCUS/NPUB… + 5 cifre): dal PARAM.SFO della cartella gioco o dal nome."""
+    sfo = next((c for c in (path / "PS3_GAME" / "PARAM.SFO", path / "PARAM.SFO") if c.is_file()), None) if path.is_dir() else None
+    # shortcut: negli .iso cifrati il PARAM.SFO non è leggibile; si usa il nome, upgrade = parser ISO
+    m = _PS3.search(sfo.read_bytes()[:65536] if sfo else path.name.upper().encode("ascii", "ignore"))
+    return m.group(1).decode() if m else None
 
 
 def _gc_id(path: Path) -> str | None:

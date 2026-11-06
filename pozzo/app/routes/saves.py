@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, platforms as P, ports as PT
+from ... import config as C, i18n as I, platforms as P, ports as PT
 from ...library import launcher as L
 
 
@@ -87,15 +87,14 @@ def build_router(ctx) -> APIRouter:
         before = (SV.list_backups(cfg, g["key"])[:1] or [{}])[0].get("name")
         out = SV.backup(cfg, g["key"], g["title"], s["all"], name=s["name"]) if s["all"] else None
         if not out:
-            raise HTTPException(404, "Nessun salvataggio trovato per questo gioco: aggiungi a mano la cartella dove "
-                                     f"li tiene ({s['emulator'] or 'emulatore non configurato'})")
+            raise HTTPException(404, I.tr("s.saves.noSaves", emu=s["emulator"] or I.tr("s.saves.noEmu")))
         return {"name": out.name, "unchanged": out.name == before}
 
     @router.post("/api/game/{gid}/saves/restore")
     def api_saves_restore(gid: int, body: dict = Body(...)):
         g = lib.get(gid)
         if launcher.running().get("status") in ("starting", "extracting", "running"):
-            raise HTTPException(409, "Chiudi il gioco prima di ripristinare i salvataggi")  # l'emulatore li riscriverebbe
+            raise HTTPException(409, I.tr("s.saves.closeFirst"))  # l'emulatore li riscriverebbe
         try:
             return SV.restore(cfg, g["key"], body.get("name") or "")
         except (FileNotFoundError, ValueError) as e:
@@ -135,11 +134,11 @@ def build_router(ctx) -> APIRouter:
         if raw:
             p = Path(raw)
             if not p.is_absolute():
-                raise HTTPException(400, "Serve un percorso completo")
+                raise HTTPException(400, I.tr("s.saves.needFullPath"))
             try:
                 p.mkdir(parents=True, exist_ok=True)
             except OSError as e:
-                raise HTTPException(400, f"Cartella non utilizzabile: {e}")
+                raise HTTPException(400, I.tr("s.saves.badDir", e=e))
         C.save_settings(cfg, app={"save_dir": raw})
         if raw:
             cfg.app["save_dir"] = raw

@@ -1,42 +1,41 @@
-<p class="muted">Cartella ROM: <code id="scan-root"></code> <button class="btn" id="roms-change" type="button">📁 Cambia…</button>
-  <button class="btn" id="setup-open" type="button" title="Cartella ROM, store PC e account delle fonti, passo per passo">🧭 Configurazione guidata</button>
-  — le console vengono riconosciute dal nome della cartella.
-  Lo scraping interroga solo i giochi mai cercati prima, quindi è veloce anche su librerie grandi.</p>
+<p class="muted"><span data-i18n="k.lib.rom.folder">Cartella ROM:</span> <code id="scan-root"></code> <button class="btn" id="roms-change" type="button" data-i18n="k.lib.rom.change">📁 Cambia…</button>
+  <button class="btn" id="setup-open" type="button" title="Cartella ROM, store PC e account delle fonti, passo per passo" data-i18n-title="k.lib.setup.tip" data-i18n="k.lib.setup.btn">🧭 Configurazione guidata</button>
+  <span data-i18n="k.lib.rom.hint">— le console vengono riconosciute dal nome della cartella. Lo scraping interroga solo i giochi mai cercati prima, quindi è veloce anche su librerie grandi.</span></p>
 <div id="scan-extra"></div>
 <div id="scan-renamed"></div>
 <div id="scan-table"></div>
 <div id="scan-unknown"></div>
-<h3>Giochi nuovi</h3>
-<label class="chk"><input type="checkbox" id="watch-roms"> Aggiungi da solo i giochi che copio nelle cartelle ROM</label>
-<p class="muted small">Controlla le cartelle ogni pochi secondi, aspetta che la copia finisca e durante una partita lavora piano per non rallentare il gioco.</p>
+<h3 data-i18n="k.lib.h.new">Giochi nuovi</h3>
+<label class="chk"><input type="checkbox" id="watch-roms"> <span data-i18n="k.lib.watch.chk">Aggiungi da solo i giochi che copio nelle cartelle ROM</span></label>
+<p class="muted small" data-i18n="k.lib.watch.p">Controlla le cartelle ogni pochi secondi, aspetta che la copia finisca e durante una partita lavora piano per non rallentare il gioco.</p>
 <p class="muted small" id="watch-state" hidden></p>
-<h3>Scraping automatico</h3>
-<div class="row"><label class="chk"><input type="checkbox" id="sch-on"> Ogni giorno alle</label>
+<h3 data-i18n="k.lib.h.auto">Scraping automatico</h3>
+<div class="row"><label class="chk"><input type="checkbox" id="sch-on"> <span data-i18n="k.common.daily_at">Ogni giorno alle</span></label>
   <input type="time" class="field" id="sch-time" value="03:00">
-  <select class="field" id="sch-mode"><option value="missing">completa i dati mancanti</option><option value="new">solo giochi nuovi</option></select>
+  <select class="field" id="sch-mode"><option value="missing" data-i18n="k.lib.opt.complete">completa i dati mancanti</option><option value="new" data-i18n="k.lib.opt.only_new">solo giochi nuovi</option></select>
   <span class="muted small" id="sch-last"></span></div>
-<p class="muted small">Funziona mentre l'app è aperta (anche ridotta a icona). Rispetta i limiti: se una quota finisce, riprende il giorno dopo.</p>
+<p class="muted small" data-i18n="k.lib.sch.p">Funziona mentre l'app è aperta (anche ridotta a icona). Rispetta i limiti: se una quota finisce, riprende il giorno dopo.</p>
 <div class="row">
-  <select id="scan-mode" class="field" title="Cosa cercare">
-    <option value="new">Solo giochi nuovi o mai cercati</option>
-    <option value="missing">Completa i dati mancanti (riprova le fonti che non li avevano trovati)</option>
-    <option value="all">Riscarica tutto da capo (usa molta quota)</option>
+  <select id="scan-mode" class="field" title="Cosa cercare" data-i18n-title="k.lib.scan.mode_tip">
+    <option value="new" data-i18n="k.lib.opt.scan_new">Solo giochi nuovi o mai cercati</option>
+    <option value="missing" data-i18n="k.lib.opt.scan_missing">Completa i dati mancanti (riprova le fonti che non li avevano trovati)</option>
+    <option value="all" data-i18n="k.lib.opt.scan_all">Riscarica tutto da capo (usa molta quota)</option>
   </select>
   <span class="spacer"></span>
-  <button class="btn" id="console-add">＋ Aggiungi console</button>
-  <button class="btn" id="scan-reload">↻ Ricontrolla cartelle</button>
-  <button class="btn" id="scan-plan" title="Quanti giochi e richieste per ogni fonte, tempi e giorni necessari">📊 Stima</button>
-  <button class="btn" id="scan-cancel" hidden>■ Interrompi</button>
-  <button class="btn primary" id="scan-start">⟳ Cerca nuovi giochi</button>
+  <button class="btn" id="console-add" data-i18n="k.lib.btn.add_console">＋ Aggiungi console</button>
+  <button class="btn" id="scan-reload" data-i18n="k.lib.btn.recheck">↻ Ricontrolla cartelle</button>
+  <button class="btn" id="scan-plan" title="Quanti giochi e richieste per ogni fonte, tempi e giorni necessari" data-i18n-title="k.lib.plan.tip" data-i18n="k.lib.plan.btn">📊 Stima</button>
+  <button class="btn" id="scan-cancel" hidden data-i18n="k.common.stop">■ Interrompi</button>
+  <button class="btn primary" id="scan-start" data-i18n="k.lib.btn.scan_start">⟳ Cerca nuovi giochi</button>
 </div>
 <div id="custom-consoles"></div>
 <div id="scan-plan-box"></div>
 <div id="scan-progress"></div>
 <pre id="scan-log" class="log"></pre>
 
-<h3>Aggiorna libreria</h3>
+<h3 data-i18n="k.lib.h.rebuild">Aggiorna libreria</h3>
 <p class="muted" id="lib-info"></p>
-<button class="btn" id="rebuild-btn">↻ Aggiorna libreria</button>
-<p class="muted small">Ricalcola giochi, versioni e collezioni dalla cache, senza scaricare nulla.</p>
+<button class="btn" id="rebuild-btn" data-i18n="k.lib.btn.rebuild">↻ Aggiorna libreria</button>
+<p class="muted small" data-i18n="k.lib.rebuild.p">Ricalcola giochi, versioni e collezioni dalla cache, senza scaricare nulla.</p>
 <pre id="build-log" class="log"></pre>
 <p class="muted" id="thumbs-info"></p>

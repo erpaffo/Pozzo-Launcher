@@ -1,0 +1,15 @@
+{
+  "MediaContainer": {
+    "Metadata": [
+      {
+        "ratingKey": "202",
+        "type": "episode",
+        "title": "Pilota",
+        "grandparentTitle": "Serie",
+        "duration": 2400000,
+        "viewCount": 1,
+        "Media": [{ "Part": [{ "key": "/library/parts/10/file.mp4", "container": "mp4" }] }]
+      }
+    ]
+  }
+}

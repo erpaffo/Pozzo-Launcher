@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 const strict = require("node:assert/strict");
 const assert = Object.assign((...a) => strict(...a), strict, { // gli oggetti nati nel vm hanno un altro prototipo: si confrontano come JSON
   deepEqual: (a, b, m) => strict.equal(JSON.stringify(a), JSON.stringify(b), m),
@@ -22,7 +23,7 @@ function world(initial = {}) {
     get(k, d) { try { const v = ls.get("gs." + k); return v === undefined ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { ls.set("gs." + k, JSON.stringify(v)); },
   };
-  const ctx = { document, store, window: {} };
+  const ctx = inject({ document, store, window: {} });
   vm.runInNewContext(`${block}\nthis.GSUi = GSUi;`, ctx);
   return { U: ctx.GSUi, document, root, ls, store, head };
 }

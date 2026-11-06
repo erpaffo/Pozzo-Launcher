@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "emulator": "eden",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": {
+        "Renderer": {
+          "backend\\use_global": "false",
+          "backend": "1",
+          "resolution_setup\\use_global": "false",
+          "resolution_setup": "4",
+          "use_vsync\\use_global": "false",
+          "use_vsync": "true"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/yuzu-emu/yuzu/master/src/common/settings.h"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": {
+        "Renderer": {
+          "backend\\use_global": "false",
+          "backend": "1",
+          "resolution_setup\\use_global": "false",
+          "resolution_setup": "1",
+          "use_vsync\\use_global": "false",
+          "use_vsync": "false"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/yuzu-emu/yuzu/master/src/common/settings.h"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele",
+      "values": {
+        "Renderer": {
+          "backend\\use_global": "false",
+          "backend": "1",
+          "resolution_setup\\use_global": "false",
+          "resolution_setup": "2",
+          "use_vsync\\use_global": "false",
+          "use_vsync": "true"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/yuzu-emu/yuzu/master/src/common/settings.h"
+      ]
+    }
+  },
+  "games": {}
+}

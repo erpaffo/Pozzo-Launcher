@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from ... import modsites as MS
 from ... import ports as PT
+from ... import i18n as I
 from ...cache import Cache
 
 
@@ -21,13 +22,13 @@ def build_router(ctx) -> APIRouter:
         """Siti di mod per un titolo famoso della libreria (tabella curata, nessuna ricerca per gioco)."""
         g = lib.by_id.get(gid)
         if not g:
-            raise HTTPException(404, "Gioco non trovato")
+            raise HTTPException(404, I.tr("s.mods.gameNotFound"))
         return {"sites": MS.sites_for(g["title"], g.get("canonical") or "", platform=g["platform"])}
 
     def _port(slug: str) -> dict:
         mod = PT.all_installed(cfg).get(slug)
         if not mod:
-            raise HTTPException(404, "Port non installato")
+            raise HTTPException(404, I.tr("s.mods.portNotInstalled"))
         return mod
 
     @router.get("/api/mods/{slug}")
@@ -55,22 +56,22 @@ def build_router(ctx) -> APIRouter:
             cache.close()
         selected = next((item for item in items if item.get("id") == body.get("id")), None)
         if not selected:
-            raise HTTPException(404, "Mod non trovata")
+            raise HTTPException(404, I.tr("s.mods.notFound"))
         try:
             installed = PT.install_mod(cfg, slug, selected)
         except (ValueError, OSError, RuntimeError, zipfile.BadZipFile, httpx.HTTPError) as error:
-            raise HTTPException(400, f"Mod non installata: {error}") from error
+            raise HTTPException(400, I.tr("s.mods.notInstalledErr", err=error)) from error
         return installed.get("installed_mods") or {}
 
     @router.post("/api/mods/{slug}/{mod_id:path}/enabled")
     def api_mod_enabled(slug: str, mod_id: str, body: dict = Body(...)):
         _port(slug)
         if not isinstance(body.get("enabled"), bool):
-            raise HTTPException(400, "Indica enabled come valore booleano")
+            raise HTTPException(400, I.tr("s.mods.enabledBool"))
         try:
             return PT.set_mod_enabled(cfg, slug, mod_id, body["enabled"]).get("installed_mods") or {}
         except KeyError as error:
-            raise HTTPException(404, "Mod non installata") from error
+            raise HTTPException(404, I.tr("s.mods.notInstalled")) from error
         except (ValueError, OSError) as error:
             raise HTTPException(409, str(error)) from error
 
@@ -80,7 +81,7 @@ def build_router(ctx) -> APIRouter:
         try:
             return PT.remove_mod(cfg, slug, mod_id).get("installed_mods") or {}
         except KeyError as error:
-            raise HTTPException(404, "Mod non installata") from error
+            raise HTTPException(404, I.tr("s.mods.notInstalled")) from error
         except (ValueError, OSError) as error:
             raise HTTPException(409, str(error)) from error
 

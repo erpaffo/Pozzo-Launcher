@@ -1,34 +1,34 @@
-<h3>Profilo di esperienza desktop</h3>
-<p class="muted small">Scelta valida per tutta questa installazione; non cambia tema, Big Picture o interfaccia del telefono.</p>
+<h3 data-i18n="j.asp.exp.title">Profilo di esperienza desktop</h3>
+<p class="muted small" data-i18n="j.asp.exp.desc">Scelta valida per tutta questa installazione; non cambia tema, Big Picture o interfaccia del telefono.</p>
 <div id="experience-list" class="experience-list"></div>
-<h3>Tema</h3>
+<h3 data-i18n="j.asp.theme.title">Tema</h3>
 <div id="theme-list" class="theme-list"></div>
-<p class="muted small">Passa il mouse (o la tastiera) su un tema per vederne l'anteprima senza applicarlo.</p>
-<h3>Dimensione e densit?</h3>
-<div class="srow"><div class="srow-txt"><div class="srow-title">Zoom dell'interfaccia</div>
-  <div class="srow-desc">Da 90% a 125%, a passi del 5%. Vale anche per Big Picture; 100% lascia tutto com'?.</div></div>
-  <div class="row"><input id="ui-zoom" type="range" min="90" max="125" step="5" value="100" aria-label="Zoom dell'interfaccia"> <output id="ui-zoom-out" for="ui-zoom">100%</output></div></div>
-<div class="srow"><div class="srow-txt"><div class="srow-title">Densit?</div>
-  <div class="srow-desc">Compatta riduce gli spazi di barre ed elenchi per mostrare pi? contenuti.</div></div>
-  <select id="ui-density" aria-label="Densit? dell'interfaccia"></select></div>
-<div class="srow"><div class="srow-txt"><div class="srow-title">Colore della copertina</div>
-  <div class="srow-desc">Tinge la scheda del gioco e lo sfondo di Big Picture con il colore dominante della copertina. Non cambia il colore d'accento del tema.</div></div>
-  <label class="chk"><input id="ui-cover-accent" type="checkbox" checked> Attivo</label></div>
-<h3>Salvaschermo di Big Picture</h3>
-<div class="srow"><div class="srow-txt"><div class="srow-title">Mostra le copertine dopo un periodo di inattivit?</div>
-  <div class="srow-desc">Qualsiasi tasto, movimento o clic lo chiude senza eseguire il comando. Non parte durante un gioco; la musica non viene toccata.</div></div>
-  <select id="ui-idle" aria-label="Inattivit? prima del salvaschermo"></select></div>
-<h3>Editor del tema</h3>
-<p class="muted small">Regola colore (H), saturazione (S) e luminosit? (L) dei colori del tema. L'anteprima non ? salvata finch? non premi ?Salva come mio tema?.</p>
-<div class="row"><label class="srow-title" for="te-name">Nome</label><input id="te-name" type="text" maxlength="40" value="Il mio tema" autocomplete="off"></div>
+<p class="muted small" data-i18n="j.asp.theme.desc">Passa il mouse (o la tastiera) su un tema per vederne l'anteprima senza applicarlo.</p>
+<h3 data-i18n="j.asp.size.title">Dimensione e densità</h3>
+<div class="srow"><div class="srow-txt"><div class="srow-title" data-i18n="j.asp.zoom.title">Zoom dell'interfaccia</div>
+  <div class="srow-desc" data-i18n="j.asp.zoom.desc">Da 90% a 125%, a passi del 5%. Vale anche per Big Picture; 100% lascia tutto com'è.</div></div>
+  <div class="row"><input id="ui-zoom" type="range" min="90" max="125" step="5" value="100" aria-label="Zoom dell'interfaccia" data-i18n-aria="j.asp.zoom.title"> <output id="ui-zoom-out" for="ui-zoom">100%</output></div></div>
+<div class="srow"><div class="srow-txt"><div class="srow-title" data-i18n="j.asp.density.title">Densità</div>
+  <div class="srow-desc" data-i18n="j.asp.density.desc">Compatta riduce gli spazi di barre ed elenchi per mostrare più contenuti.</div></div>
+  <select id="ui-density" aria-label="Densità dell'interfaccia" data-i18n-aria="j.asp.density.aria"></select></div>
+<div class="srow"><div class="srow-txt"><div class="srow-title" data-i18n="j.asp.cover.title">Colore della copertina</div>
+  <div class="srow-desc" data-i18n="j.asp.cover.desc">Tinge la scheda del gioco e lo sfondo di Big Picture con il colore dominante della copertina. Non cambia il colore d'accento del tema.</div></div>
+  <label class="chk"><input id="ui-cover-accent" type="checkbox" checked> <span data-i18n="j.asp.cover.on">Attivo</span></label></div>
+<h3 data-i18n="j.asp.idle.title">Salvaschermo di Big Picture</h3>
+<div class="srow"><div class="srow-txt"><div class="srow-title" data-i18n="j.asp.idle.label">Mostra le copertine dopo un periodo di inattività?</div>
+  <div class="srow-desc" data-i18n="j.asp.idle.desc">Qualsiasi tasto, movimento o clic lo chiude senza eseguire il comando. Non parte durante un gioco; la musica non viene toccata.</div></div>
+  <select id="ui-idle" aria-label="Inattività prima del salvaschermo" data-i18n-aria="j.asp.idle.aria"></select></div>
+<h3 data-i18n="j.asp.te.title">Editor del tema</h3>
+<p class="muted small" data-i18n="j.asp.te.desc">Regola colore (H), saturazione (S) e luminosità (L) dei colori del tema. L'anteprima non è salvata finché non premi «Salva come mio tema».</p>
+<div class="row"><label class="srow-title" for="te-name" data-i18n="j.asp.te.name">Nome</label><input id="te-name" type="text" maxlength="40" value="Il mio tema" autocomplete="off"></div>
 <div id="te-tokens"></div>
 <ul id="te-contrast" class="small" aria-live="polite"></ul>
 <div class="row">
-  <button type="button" class="btn" id="te-revert">Annulla anteprima</button>
-  <button type="button" class="btn primary" id="te-save">Salva come mio tema</button>
-  <button type="button" class="btn" id="te-export">Esporta (JSON)</button>
-  <label class="btn" for="te-import">Importa (JSON)</label><input id="te-import" type="file" accept="application/json,.json" hidden>
-  <button type="button" class="btn" id="te-remove">Rimuovi il mio tema</button>
+  <button type="button" class="btn" id="te-revert" data-i18n="j.asp.te.revert">Annulla anteprima</button>
+  <button type="button" class="btn primary" id="te-save" data-i18n="j.asp.te.save">Salva come mio tema</button>
+  <button type="button" class="btn" id="te-export" data-i18n="j.asp.te.export">Esporta (JSON)</button>
+  <label class="btn" for="te-import" data-i18n="j.asp.te.import">Importa (JSON)</label><input id="te-import" type="file" accept="application/json,.json" hidden>
+  <button type="button" class="btn" id="te-remove" data-i18n="j.asp.te.remove">Rimuovi il mio tema</button>
 </div>
-<label class="chk"><input type="checkbox" id="te-enabled"> Usa il mio tema</label>
+<label class="chk"><input type="checkbox" id="te-enabled"> <span data-i18n="j.asp.te.enabled">Usa il mio tema</span></label>
 <p id="te-msg" class="muted small" role="status" aria-live="polite"></p>

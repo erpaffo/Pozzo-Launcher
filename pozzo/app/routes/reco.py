@@ -12,7 +12,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException
 
-from ... import franchise, ownership as OW, profilecfg as PC, rankings, similar, taste
+from ... import franchise, i18n as I, ownership as OW, profilecfg as PC, rankings, similar, taste
 from ...matching import normalize
 
 AMATO_VOTO = 4  # un gioco e' «amato» con 4 stelle o piu', preferito, o finito con qualche ora di gioco
@@ -129,7 +129,7 @@ def build_router(ctx) -> APIRouter:
         games = visible()
         target = next((g for g in games if g["id"] == gid), None)
         if target is None:
-            raise HTTPException(404, "Gioco sconosciuto")
+            raise HTTPException(404, I.tr("s.reco.unknownGame"))
         idx = memo("index", (), lambda: build_index(games), personal_data=False)
         subset = related(idx, target)
         info = franchise.of(gid, subset)

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "emulator": "ryujinx",
+  "presets": {
+    "quality": {
+      "name": "Qualità",
+      "values": {
+        "config": {
+          "res_scale": "2",
+          "graphics_backend": "\"Vulkan\"",
+          "enable_vsync": "true"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/Ryubing/Ryujinx/master/src/Ryujinx.Ui.Common/Configuration/ConfigurationState.cs"
+      ]
+    },
+    "performance": {
+      "name": "Prestazioni",
+      "values": {
+        "config": {
+          "res_scale": "1",
+          "graphics_backend": "\"Vulkan\"",
+          "enable_vsync": "false"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/Ryubing/Ryujinx/master/src/Ryujinx.Ui.Common/Configuration/ConfigurationState.cs"
+      ]
+    },
+    "faithful": {
+      "name": "Fedele",
+      "values": {
+        "config": {
+          "res_scale": "1",
+          "graphics_backend": "\"Vulkan\"",
+          "enable_vsync": "true"
+        }
+      },
+      "sources": [
+        "https://raw.githubusercontent.com/Ryubing/Ryujinx/master/src/Ryujinx.Ui.Common/Configuration/ConfigurationState.cs"
+      ]
+    }
+  },
+  "games": {}
+}

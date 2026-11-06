@@ -114,8 +114,8 @@ async function setGrp(g, field, value) {
 /** Le categorie da cui il gioco si puo' togliere: preferiti, giocati di recente, stato e collezioni. */
 function ctxRemovals(g) {
   const grp = g.grp, out = [];
-  if (grp.favorite) out.push({ l: "Preferiti", view: "favorites", f: () => setGrp(g, "favorite", false) });
-  if (grp.last > 0) out.push({ l: "Giocati di recente", view: "recent", f: () => setGrp(g, "last_played", null) });
+  if (grp.favorite) out.push({ l: t("h.app.navFavorites"), view: "favorites", f: () => setGrp(g, "favorite", false) });
+  if (grp.last > 0) out.push({ l: t("h.title.recent"), view: "recent", f: () => setGrp(g, "last_played", null) });
   if (grp.status) out.push({ l: STATUS[grp.status]?.label || grp.status, view: "status", id: grp.status, f: () => setGrp(g, "status", "") });
   for (const i of grp.colls) {
     const c = S.colls[i];
@@ -134,36 +134,36 @@ function openCtx(e, g) {
   const here = rem.find((r) => r.view === S.view.type && (r.id ?? null) === (S.view.id ?? null));
   const pt = { getBoundingClientRect: () => ({ left: e.clientX, bottom: e.clientY }) };
   const rows = [];
-  if (g.store !== "online") rows.push({ l: "▶ Gioca", f: () => play(g.id) });
-  rows.push({ l: "Dettagli", f: () => openDetail(g.id) });
-  if (!g.store) rows.push({ l: "📂 Mostra nella cartella", f: () => api(`/api/game/${g.id}/open-folder`, { body: {} }) });
-  rows.push({ l: "🖼 Immagini del gioco…", f: () => openMediaPick(g) });
-  if (g.store !== "online") rows.push({ l: "🔗 Applicazioni abbinate…", f: () => openProfile(g) });
+  if (g.store !== "online") rows.push({ l: "▶ " + t("h.act.play"), f: () => play(g.id) });
+  rows.push({ l: t("h.common.details"), f: () => openDetail(g.id) });
+  if (!g.store) rows.push({ l: "📂 " + t("h.lb.showFolder"), f: () => api(`/api/game/${g.id}/open-folder`, { body: {} }) });
+  rows.push({ l: "🖼 " + t("h.act.images"), f: () => openMediaPick(g) });
+  if (g.store !== "online") rows.push({ l: "🔗 " + t("h.act.apps"), f: () => openProfile(g) });
   if (g.store && !["online", "manual"].includes(g.store)) {
-    if (!g.installed) rows.push({ l: "⬇ Installa", f: () => installGame(g.id) });
-    rows.push({ l: "🛒 Pagina dello store", f: () => api(`/api/game/${g.id}/store-page`, { body: {} }) });
+    if (!g.installed) rows.push({ l: "⬇ " + t("h.grid.install"), f: () => installGame(g.id) });
+    rows.push({ l: "🛒 " + t("h.act.storePage"), f: () => api(`/api/game/${g.id}/store-page`, { body: {} }) });
   }
-  if (g.store !== "online") rows.push({ l: "🖥 Collegamento sul desktop", f: async () => {
+  if (g.store !== "online") rows.push({ l: "🖥 " + t("h.act.shortcut"), f: async () => {
     await api(`/api/game/${g.id}/shortcut`, { body: {} });
-    toast(`Collegamento «${g.title}» creato sul desktop`);
+    toast(t("h.act.shortcutMade", {name: g.title}));
   } });
-  rows.push({ l: "📋 Copia il titolo", f: () => navigator.clipboard.writeText(g.title).then(() => toast("Titolo copiato")) });
-  if (here) rows.push("-", { l: `✖ Rimuovi da «${here.l}»`, f: here.f, hl: 1 });
-  rows.push("-", { l: grp.favorite ? "★ Togli dai preferiti" : "☆ Aggiungi ai preferiti", f: async () => {
+  rows.push({ l: "📋 " + t("h.act.copyTitle"), f: () => navigator.clipboard.writeText(g.title).then(() => toast(t("h.act.titleCopied"))) });
+  if (here) rows.push("-", { l: "✖ " + t("h.act.removeFrom", {l: here.l}), f: here.f, hl: 1 });
+  rows.push("-", { l: grp.favorite ? "★ " + t("h.act.unfav") : "☆ " + t("h.act.fav"), f: async () => {
     await setGrp(g, "favorite", !grp.favorite);
-    toast(grp.favorite ? `«${g.title}» nei preferiti` : `«${g.title}» tolto dai preferiti`); // nella Home non cambia nulla a vista
+    toast(grp.favorite ? t("h.act.inFavs", {name: g.title}) : t("h.act.outFavs", {name: g.title})); // nella Home non cambia nulla a vista
   } });
-  rows.push({ l: "＋ Aggiungi a una collezione…", f: () => pickCollection(pt, g.id, grp.colls.map((i) => S.colls[i]?.slug)) });
-  rows.push({ h: "Voto" }, { stars: true });
-  rows.push({ h: "Stato" });
+  rows.push({ l: "＋ " + t("h.act.addColl"), f: () => pickCollection(pt, g.id, grp.colls.map((i) => S.colls[i]?.slug)) });
+  rows.push({ h: t("h.act.rating") }, { stars: true });
+  rows.push({ h: t("h.act.status") });
   for (const [k, s] of Object.entries(STATUS)) if (grp.status !== k) rows.push({ l: `${s.icon} ${s.label}`, f: async () => {
     await setGrp(g, "status", k);
-    toast(`«${g.title}»: ${s.label}`);
+    toast(t("h.act.statusSet", {name: g.title, s: s.label}));
   } });
   const others = rem.filter((r) => r !== here);
-  if (others.length) rows.push({ h: "Rimuovi da" }, ...others.map((r) => ({ l: `✖ ${r.l}`, f: r.f })));
-  rows.push("-", { l: grp.hidden ? "Mostra di nuovo" : "Nascondi dalla libreria", f: () => setGrp(g, "hidden", !grp.hidden) });
-  if (g.store === "manual") rows.push({ l: "🗑 Rimuovi dalla libreria", f: () => removeManual(g) });
+  if (others.length) rows.push({ h: t("h.act.removeFromH") }, ...others.map((r) => ({ l: `✖ ${r.l}`, f: r.f })));
+  rows.push("-", { l: grp.hidden ? t("h.act.showAgain") : t("h.act.hideLib"), f: () => setGrp(g, "hidden", !grp.hidden) });
+  if (g.store === "manual") rows.push({ l: "🗑 " + t("h.act.removeLib"), f: () => removeManual(g) });
 
   const m = document.createElement("div");
   m.id = "ctxmenu";
@@ -179,7 +179,7 @@ function openCtx(e, g) {
       closeCtx();
       try {
         await api(`/api/game/${g.id}/flag`, { body: { field: "my_rating", value: +star.dataset.n } });
-        toast(`Voto ${star.dataset.n}/5 a «${g.title}»`);
+        toast(t("h.act.ratedTo", {n: star.dataset.n, name: g.title}));
         if (S.detail?.id === g.id) openDetail(g.id);
       } catch (err) { toast(err.message, true); }
       return;
@@ -193,11 +193,11 @@ function openCtx(e, g) {
 
 /** Toglie un gioco aggiunto a mano dalla libreria: i file sul disco non vengono toccati. */
 async function removeManual(g) {
-  if (!confirm(`Rimuovere «${g.title}» dalla libreria? Il gioco sul disco non viene toccato.`)) return;
+  if (!confirm(t("h.act.confirmRemove", {name: g.title}))) return;
   await api(`/api/manual/${encodeURIComponent(g.key)}`, { method: "DELETE" });
   if (S.detail?.id === g.id) closeDetail();
   await reload(true);
-  toast("Rimosso dalla libreria");
+  toast(t("h.act.removed"));
 }
 
 /* ---- immagine scelta a mano: ricerca su Google Immagini (titolo gia' scritto) e indirizzo incollato */
@@ -216,7 +216,7 @@ async function openMediaPick(g, kind = "cover") {
   $("#md-game").textContent = `— ${g.title}`;
   $("#md-q").value = g.title;
   $("#md-url").value = "";
-  $("#md-tiles").innerHTML = `<p class="muted small">Carico le immagini…</p>`;
+  $("#md-tiles").innerHTML = `<p class="muted small">${t("h.media.loading")}</p>`;
   googleImages();
   $("#media-dlg").showModal();
   try { MDK = await api(`/api/game/${g.id}/media`); } catch (e) { return toast(e.message, true); }
@@ -230,11 +230,11 @@ function renderMedia(kind) {
   sel.value = kind;
   const t = Date.now();  // stesso indirizzo /img/… con un file nuovo: si forza il ricaricamento
   $("#md-tiles").innerHTML = MDK.kinds.map((k) => `<button type="button" class="md-tile${k.kind === kind ? " on" : ""}" data-kind="${k.kind}" aria-pressed="${k.kind === kind}">
-    <span class="md-img">${k.url ? `<img src="${k.url}?w=300&t=${t}" alt="" loading="lazy">` : `<span class="muted small">Nessuna</span>`}</span>
-    <span class="md-cap">${esc(k.label)}<span class="muted small">${k.custom ? "scelta da te" : k.source ? "dalle fonti" : "—"}</span></span></button>`).join("");
+    <span class="md-img">${k.url ? `<img src="${k.url}?w=300&t=${t}" alt="" loading="lazy">` : `<span class="muted small">${window.t("h.media.none")}</span>`}</span>
+    <span class="md-cap">${esc(k.label)}<span class="muted small">${k.custom ? window.t("h.media.chosen") : k.source ? window.t("h.media.fromSrc") : "—"}</span></span></button>`).join("");
   const cur = MDK.kinds.find((k) => k.kind === kind);
   $("#md-reset").hidden = !cur?.custom;
-  $("#md-reset").textContent = cur?.source ? "↺ Torna all'originale" : "🗑 Togli";
+  $("#md-reset").textContent = cur?.source ? "↺ " + window.t("h.media.restore") : "🗑 " + window.t("h.media.remove");
   sgdbCands(kind);
 }
 
@@ -247,7 +247,7 @@ async function sgdbCands(kind) {
   let r = SGDB.cache.get(ck);
   if (!r) {
     box.hidden = false;
-    $("#md-sgdb-msg").textContent = "Cerco su SteamGridDB…";
+    $("#md-sgdb-msg").textContent = t("h.media.searching");
     $("#md-cands").innerHTML = "";
     try { r = await api(`/plugin-api/steamgriddb/cerca?q=${encodeURIComponent($("#md-q").value.trim() || g.title)}&kind=${kind}`); }
     catch (e) {
@@ -259,7 +259,7 @@ async function sgdbCands(kind) {
   }
   if (MD !== g || $("#md-kind").value !== kind) return;  // nel frattempo si e' scelto altro
   box.hidden = false;
-  $("#md-sgdb-msg").textContent = r.error || (r.items.length ? `Da SteamGridDB${r.game ? ` («${r.game}»)` : ""}: un clic per usarla` : "SteamGridDB non ha immagini di questo tipo per il gioco");
+  $("#md-sgdb-msg").textContent = r.error || (r.items.length ? t("h.media.sgdbFrom", {g: r.game ? t("h.media.sgdbGame", {g: r.game}) : ""}) : t("h.media.sgdbNone"));
   const img = (u) => /^https:\/\/cdn2\.steamgriddb\.com\//.test(u) ? `/remote-img?u=${encodeURIComponent(u)}` : u;
   $("#md-cands").innerHTML = r.items.map((i) => `<button type="button" data-url="${esc(i.url)}" title="${i.w && i.h ? `${i.w}×${i.h}` : ""}"><img src="${esc(img(i.thumb))}" alt="" loading="lazy"></button>`).join("");
 }
@@ -275,18 +275,18 @@ async function mediaChanged(r, msg) {
 
 async function useMedia(url) {
   const g = MD;
-  if (!g || !/^https?:\/\//i.test(url || "")) return toast("Serve un indirizzo di immagine (http o https)", true);
+  if (!g || !/^https?:\/\//i.test(url || "")) return toast(t("h.media.needUrl"), true);
   let r;
   try { r = await api(`/api/game/${g.id}/media`, { body: { kind: $("#md-kind").value, url } }); }
   catch (e) { return toast(e.message, true); }
   $("#md-url").value = "";
-  await mediaChanged(r, "Immagine salvata");
+  await mediaChanged(r, t("h.media.saved"));
 }
 
 async function uploadMedia(file) {
   const g = MD;
   if (!g || !file) return;
-  if (!/^image\//.test(file.type || "image/")) return toast("Serve un file immagine (PNG, JPG, GIF, WebP, BMP)", true);
+  if (!/^image\//.test(file.type || "image/")) return toast(t("h.media.needImg"), true);
   const fd = new FormData();
   fd.append("file", file);
   const r = await fetch(`/api/game/${g.id}/media/${$("#md-kind").value}/file`, { method: "POST", body: fd });
@@ -295,7 +295,7 @@ async function uploadMedia(file) {
     try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
     return toast(m, true);
   }
-  await mediaChanged(await r.json(), "Immagine caricata");
+  await mediaChanged(await r.json(), t("h.media.uploaded"));
 }
 
 async function resetMedia() {
@@ -304,7 +304,7 @@ async function resetMedia() {
   let r;
   try { r = await api(`/api/game/${g.id}/media/${$("#md-kind").value}`, { method: "DELETE" }); }
   catch (e) { return toast(e.message, true); }
-  await mediaChanged(r, "Immagine scelta tolta");
+  await mediaChanged(r, t("h.media.removed"));
 }
 
 /* ---- incolla una cartella per una console (o per i giochi PC) e cerca solo i giochi nuovi */
@@ -312,16 +312,16 @@ async function pasteFolder(platform) {
   let path = "";
   try { path = (await navigator.clipboard.readText() || "").trim().replace(/^"|"$/g, ""); }
   catch { /* permesso negato o pagina non in HTTPS: si chiede a mano */ }
-  if (!path) path = prompt(`Percorso della cartella (${platform === "windows" ? "giochi PC" : platName(platform)})`) || "";
+  if (!path) path = prompt(t("h.paste.askPath", {p: platform === "windows" ? t("h.paste.pcGames") : platName(platform)})) || "";
   path = path.trim().replace(/^"|"$/g, "");
   if (!path) return;
   let r;
   try { r = await api("/api/folders/add", { body: { platform, path } }); }
   catch (e) { return toast(e.message, true); }
   // giochi PC: {added}; console: lo stato dello scraping appena avviato (i giochi nuovi si vedono nella barra)
-  if (r.added) toast(`Cartella aggiunta: ${r.added} ${r.added === 1 ? "gioco PC" : "giochi PC"}`);
-  else if (r.status === "running" || (r.keys || []).length) { toast("Cartella aggiunta: cerco i giochi nuovi…"); SET.lastStatus = "running"; pollScan(); }
-  else toast("Cartella aggiunta");
+  if (r.added) toast(t("h.paste.added", {n: r.added, w: r.added === 1 ? t("h.paste.pc1") : t("h.paste.pcGames")}));
+  else if (r.status === "running" || (r.keys || []).length) { toast(t("h.paste.searching")); SET.lastStatus = "running"; pollScan(); }
+  else toast(t("h.paste.plain"));
   await reload(true);
   loadScan();
 }
@@ -336,11 +336,11 @@ function launchErrorToast(r) {
   const body = document.createElement("div");
   body.style.cssText = "display:grid;gap:6px;max-width:min(560px,90vw)";
   const text = document.createElement("div");
-  text.textContent = c ? `L'emulatore si è chiuso subito (codice ${c.code}, dopo ${Math.round(c.duration * 10) / 10} s)` : r.message;
+  text.textContent = c ? window.t("h.launch.crash", {code: c.code, s: Math.round(c.duration * 10) / 10}) : r.message;
   body.appendChild(text);
   if (c && c.log) {
     const det = document.createElement("details"), sum = document.createElement("summary"), pre = document.createElement("pre");
-    sum.textContent = "Ultimo log";
+    sum.textContent = window.t("h.launch.lastLog");
     pre.textContent = c.log;  // textContent: il log dell'emulatore non e' HTML
     pre.style.cssText = "max-height:40vh;overflow:auto;white-space:pre-wrap;margin:6px 0 0;font-size:12px";
     det.append(sum, pre);
@@ -357,10 +357,10 @@ function launchErrorToast(r) {
     bar.appendChild(b);
   };
   const g = [...S.byId.values()].find((x) => x.key === r.key);
-  if (g && r.fallback) add(`Prova con ${r.fallback.label}`, () => { t.hidden = true; play(g.id, { fallback: r.fallback.id }); });
+  if (g && r.fallback) add(window.t("h.launch.tryWith", {l: r.fallback.label}), () => { t.hidden = true; play(g.id, { fallback: r.fallback.id }); });
   // «Perché?» apre il pannello di detail.js (window.openDiagnose): solo se caricato
-  if (g && typeof openDiagnose === "function") add("Perché?", () => { t.hidden = true; openDiagnose(g.id); });
-  add("Chiudi", () => { t.hidden = true; });
+  if (g && typeof openDiagnose === "function") add(window.t("h.launch.why"), () => { t.hidden = true; openDiagnose(g.id); });
+  add(window.t("h.common.close"), () => { t.hidden = true; });
   t.replaceChildren(body, bar);
   t.hidden = false;
   clearTimeout(toastTimer);
@@ -376,17 +376,17 @@ async function pollRunning() {
   if (active) {
     bar.hidden = false;
     bar.className = r.status === "extracting" ? "extracting" : "";
-    const what = r.status === "extracting" ? (r.message || "Estrazione…") : r.status === "starting" ? "Avvio…" : `In esecuzione con ${esc(r.emulator)}`;
+    const what = r.status === "extracting" ? (r.message || t("h.run.extract")) : r.status === "starting" ? t("h.run.starting") : t("h.run.running", {e: esc(r.emulator)});
     bar.innerHTML = `<span class="dot"></span><b>${esc(r.title)}</b><span class="muted">${esc(what)}</span>`
-      + (r.status === "running" ? `<button class="btn" id="run-stop" title="Chiude il gioco in esecuzione">■ Chiudi gioco</button><button class="btn" id="run-shot" title="Schermata del gioco (${esc(SHOTS.hotkey)} · controller: Select+R1)">📷${r.shots ? " " + r.shots : ""}</button>` : "");
-    if (S.running && r.status === "running" && (r.shots || 0) > (S.running.shots || 0)) toast("📷 Schermata salvata");
+      + (r.status === "running" ? `<button class="btn" id="run-stop" title="${t("h.run.closeTitle")}">■ ${t("h.run.close")}</button><button class="btn" id="run-shot" title="${t("h.run.shotTitle", {hk: esc(SHOTS.hotkey)})}">📷${r.shots ? " " + r.shots : ""}</button>` : "");
+    if (S.running && r.status === "running" && (r.shots || 0) > (S.running.shots || 0)) toast("📷 " + t("h.run.shotSaved"));
     pollTimer = setTimeout(pollRunning, 1500);
   } else {
     bar.hidden = true;
     if (S.running && S.running.started === r.started) {
       if (r.status === "error") launchErrorToast(r);
       if (r.status === "finished") {
-        toast(`Sessione terminata: ${fmtTime(r.played)}${r.shots ? ` · ${r.shots} ${r.shots === 1 ? "schermata" : "schermate"}` : ""}`);
+        toast(t("h.run.ended", {time: fmtTime(r.played)}) + (r.shots ? " · " + t("h.run.shots", {n: r.shots, w: r.shots === 1 ? t("h.run.shot1") : t("h.run.shotN")}) : ""));
         reload(true);
         if (S.detail) openDetail(S.detail.id);
       }
@@ -400,7 +400,7 @@ async function pollRunning() {
 async function installGame(id) {
   try { await api(`/api/game/${id}/install`, { body: {} }); }
   catch (e) { return toast(e.message, true); }
-  toast("Apro lo store per l'installazione. Al termine premi «↻ Aggiorna store» in Impostazioni › Account.");
+  toast(t("h.act.installHint"));
 }
 
 function openAddGame(kind = "game") {
@@ -415,9 +415,9 @@ function openAddGame(kind = "game") {
 /** «Browser / URL»: il campo diventa un URL, niente Sfoglia e niente argomenti. */
 function agKindChanged() {
   const web = $("#ag-kind").value === "browser";
-  $("#ag-exe-lbl").textContent = web ? "URL" : "Eseguibile";
+  $("#ag-exe-lbl").textContent = web ? t("h.add.url") : t("h.add.exe");
   $("#ag-exe").placeholder = web ? "https://www.chess.com" : "C:\\Giochi\\MioGioco\\gioco.exe";
-  $("#ag-title").placeholder = web ? "se vuoto: titolo della pagina" : "se vuoto: nome del file .exe";
+  $("#ag-title").placeholder = web ? t("h.add.titleWeb") : t("h.add.titleExe");
   $("#ag-pick").hidden = $("#ag-args-lbl").hidden = web;
 }
 
@@ -433,20 +433,20 @@ function agTitleFromExe() {
 async function saveAddGame() {
   const exe = $("#ag-exe").value.trim();
   const kind = ({ app: "app", browser: "browser" })[$("#ag-kind").value] || "game";
-  if (!exe) return toast(kind === "browser" ? "Inserisci l'URL del gioco" : kind === "app" ? "Scegli il file .exe dell'applicazione" : "Scegli il file .exe del gioco", true);
+  if (!exe) return toast(kind === "browser" ? t("h.add.needUrl") : kind === "app" ? t("h.add.needAppExe") : t("h.add.needGameExe"), true);
   const btn = $("#ag-save");
   btn.disabled = true;
-  btn.textContent = "Aggiungo…";
+  btn.textContent = t("h.add.adding");
   let res;
   try {
     res = await api("/api/manual", { body: kind === "browser" ? { url: exe, title: $("#ag-title").value.trim(), kind }
       : { exe, title: $("#ag-title").value.trim(), args: $("#ag-args").value, kind } });
   } catch (e) { return toast(e.message, true); }
-  finally { btn.disabled = false; btn.textContent = "Aggiungi"; }
+  finally { btn.disabled = false; btn.textContent = t("h.add.add"); }
   $("#add-game").close();
   await reload(true);  // il gioco e' gia' in libreria: copertina e metadati arrivano dopo, solo per lui
-  toast(res && res.warning ? `Gioco browser aggiunto. ${res.warning}` : kind === "app" ? "Applicazione aggiunta"
-    : kind === "browser" ? "Gioco browser aggiunto" : "Gioco aggiunto: cerco copertina e dati…", !!(res && res.warning));
+  toast(res && res.warning ? t("h.add.browserWarn", {w: res.warning}) : kind === "app" ? t("h.add.appAdded")
+    : kind === "browser" ? t("h.add.browserAdded") : t("h.add.gameAdded"), !!(res && res.warning));
   pollManual();
 }
 
@@ -468,7 +468,7 @@ async function pollCollart(started = false) {
   let js;
   try { js = await api("/api/collart"); } catch { return; }
   if (started && js.status !== "running") js.status = "running";
-  $("#collart-info").textContent = `${js.with_icon} collezioni su ${js.total} con un'icona · ${js.with_wiki} da Wikipedia`;
+  $("#collart-info").textContent = t("h.col.info", {a: js.with_icon, b: js.total, c: js.with_wiki});
   renderJobInto($("#collart-progress"), js);
   const run = js.status === "running";
   $("#collart-missing").disabled = $("#collart-all").disabled = run;
@@ -487,7 +487,7 @@ async function pollHltb(started = false) {
   let js;
   try { js = await api("/api/hltb"); } catch { return; }
   if (started && js.status !== "running") js.status = "running";
-  $("#hltb-info").textContent = `${(js.with_hltb || 0).toLocaleString("it")} giochi con la durata · ${(js.known || 0).toLocaleString("it")} già cercati`;
+  $("#hltb-info").textContent = t("h.hltb.info", {a: (js.with_hltb || 0).toLocaleString(GSI18n.lang), b: (js.known || 0).toLocaleString(GSI18n.lang)});
   renderJobInto($("#hltb-progress"), js);
   const run = js.status === "running";
   $("#hltb-missing").disabled = $("#hltb-all").disabled = run;
@@ -508,7 +508,7 @@ async function pollWishBadge() {
     $("#cnt-wish").classList.toggle("alert", !!w.unseen);
     if (w.unseen && !pollWishBadge.told) {
       pollWishBadge.told = true;
-      toast(`♡ Lista desideri: ${w.unseen} ${w.unseen === 1 ? "offerta" : "offerte"} da vedere`);
+      toast(t("h.act.wishToast", {n: w.unseen, o: w.unseen === 1 ? t("h.act.offer1") : t("h.act.offerN")}));
     }
   } catch { /* server non pronto */ }
   setTimeout(pollWishBadge, 10 * 60 * 1000);

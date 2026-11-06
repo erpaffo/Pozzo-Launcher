@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 // Pannello «Perché non parte?» (diagnose): `node tests/test_diagnose_ui.js`.
 // Estrae diagHtml, skelInline (detail.js) ed esc (core.js) ed esegue il bottone «Perché?» di launchErrorToast (actions.js) con un DOM finto minimo.
 const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
@@ -16,7 +17,7 @@ const toastFn = actionsSrc.match(/function launchErrorToast[\s\S]*?\r?\n\}\r?\n/
 assert(toastFn, "launchErrorToast non trovata");
 
 const ctx = { window: { GSSkeleton: undefined } };
-vm.createContext(ctx);
+inject(ctx); vm.createContext(ctx);
 vm.runInContext(escLine[0] + diagFns.join("\n") + "\nthis.diagHtml = diagHtml; this.skelInline = skelInline;", ctx);
 
 // diagnosi: causa più probabile in cima, testi escapati, ✓/✗ con causa e rimedio
@@ -68,7 +69,7 @@ class El {
 const toastEl = new El("div"), overlay = new El("div");
 toastEl.parentElement = overlay;
 const opened = [];
-const tctx = {
+const tctx = { window: {},
   document: { createElement: (t) => new El(t) },
   $: (sel) => (sel === "#toast" ? toastEl : null),
   overlayHost: () => overlay,
@@ -79,7 +80,7 @@ const tctx = {
   S: { byId: new Map([[7, { id: 7, key: "pc/x:1" }]]) },
   openDiagnose: (id) => opened.push(id),
 };
-vm.createContext(tctx);
+inject(tctx); vm.createContext(tctx);
 vm.runInContext(toastFn[0] + "\nthis.launchErrorToast = launchErrorToast;", tctx);
 const all = (el, out = []) => { out.push(el); el.children.forEach((c) => all(c, out)); return out; };
 const labels = () => all(toastEl).filter((e) => e.tagName === "button").map((b) => b.textContent);

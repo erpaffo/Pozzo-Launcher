@@ -6,6 +6,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from ... import config as C
+from ... import i18n as I
 from ... import profilecfg as PC
 
 
@@ -31,7 +32,7 @@ def build_router(ctx) -> APIRouter:
     def _locked_out(pid: str):
         """PIN di un profilo protetto: il cambio (o la modifica del PIN) passa solo dopo lo sblocco."""
         if any(p["id"] == pid and p["locked"] for p in SY.profiles(cfg)) and pid not in unlocked:
-            raise HTTPException(403, "Profilo protetto da PIN: sbloccalo prima")
+            raise HTTPException(403, I.tr("s.profiles.lockedOut"))
 
     def _remembered(request: Request) -> bool:
         """Questo dispositivo entra sempre con lo stesso profilo (cookie gs_remember): niente «Chi gioca?» all'avvio. Se il
@@ -75,35 +76,35 @@ def build_router(ctx) -> APIRouter:
     def api_profile_unlock(pid: str, body: dict = Body(...)):
         """Sblocca il profilo per questa sessione del server. Dopo PC.PIN_TRIES errori si aspetta PC.PIN_WAIT secondi."""
         if not any(p["id"] == pid for p in SY.profiles(cfg)):
-            raise HTTPException(404, "Profilo non trovato")
+            raise HTTPException(404, I.tr("s.profiles.notFound"))
         wait = limiter.wait(pid)
         if wait:
-            raise HTTPException(429, f"Troppi tentativi: riprova tra {wait} secondi", headers={"Retry-After": str(wait)})
+            raise HTTPException(429, I.tr("s.profiles.rateLimit", wait=wait), headers={"Retry-After": str(wait)})
         stored = next((p for p in cfg.app.get("profiles") or [] if p.get("id") == pid), {}).get("pin_hash")
         if not stored or PC.check_pin(stored, str(body.get("pin") or "")):
             limiter.ok(pid)
             unlocked.add(pid)
             return _profiles_state()
         limiter.fail(pid)
-        raise HTTPException(403, "PIN errato")
+        raise HTTPException(403, I.tr("s.profiles.pinWrong"))
 
     def _switch(pid: str, pin=None, cookie: bool = True, force: bool = False, remember: bool | None = None):
         """Cambia il profilo di questo dispositivo (cookie gs_profile) e quello del server (telefono, thread di sfondo).
         PIN: serve se il profilo ne ha uno e non e' stato gia' sbloccato (POST /api/profiles/{id}/unlock)."""
         if not any(p["id"] == pid for p in SY.profiles(cfg)):
-            raise HTTPException(404, "Profilo non trovato")
+            raise HTTPException(404, I.tr("s.profiles.notFound"))
         if launcher.running().get("status") in ("starting", "extracting", "running"):
-            raise HTTPException(409, "Chiudi il gioco in corso prima di cambiare profilo")
+            raise HTTPException(409, I.tr("s.profiles.closeGameFirst"))
         if not force and any(p["id"] == pid and p["locked"] for p in SY.profiles(cfg)) and pid not in unlocked:
             wait = limiter.wait(pid)
             if wait:
-                return JSONResponse({"error": "rate", "detail": f"Troppi tentativi: riprova tra {wait} secondi"}, 429,
+                return JSONResponse({"error": "rate", "detail": I.tr("s.profiles.rateLimit", wait=wait)}, 429,
                                     headers={"Retry-After": str(wait)})
             stored = next((p for p in cfg.app.get("profiles") or [] if p.get("id") == pid), {}).get("pin_hash")
             if pin is None or not PC.check_pin(stored, str(pin)):
                 if pin is not None:
                     limiter.fail(pid)
-                return JSONResponse({"error": "pin", "detail": "PIN errato" if pin is not None else "Serve il PIN"}, 403)
+                return JSONResponse({"error": "pin", "detail": I.tr("s.profiles.pinWrong") if pin is not None else I.tr("s.profiles.pinNeeded")}, 403)
             limiter.ok(pid)
             unlocked.add(pid)  # PIN giusto: sbloccato per questa sessione del server, come con /unlock
         user.ud, user.switches = user_of(pid), user.switches + 1
@@ -131,7 +132,7 @@ def build_router(ctx) -> APIRouter:
     def api_profile_edit(pid: str, body: dict = Body(...)):
         """Nome, icona, colore e PIN (pin "" toglie il PIN). Le voci mancanti restano come sono."""
         if not any(p["id"] == pid for p in SY.profiles(cfg)):
-            raise HTTPException(404, "Profilo non trovato")
+            raise HTTPException(404, I.tr("s.profiles.notFound"))
         if "pin" in body:
             _locked_out(pid)
         try:
@@ -147,7 +148,7 @@ def build_router(ctx) -> APIRouter:
     @router.delete("/api/profiles/{pid}")
     def api_profile_delete(pid: str):
         if pid == "default" or not any(p["id"] == pid for p in SY.profiles(cfg)):
-            raise HTTPException(400, "Questo profilo non si elimina")
+            raise HTTPException(400, I.tr("s.profiles.notDeletable"))
         if user.ud is users.get(pid):
             _switch("default", cookie=False, force=True)  # il profilo eliminato era quello del server; i cookie vecchi cadono su "default"
         if pid in users:

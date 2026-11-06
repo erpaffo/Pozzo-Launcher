@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 
 from ... import cachepolicy as P
+from ... import i18n as I
 from ...boot import BOOT
 from ...cache import Cache
 from ...net import HttpCache
@@ -41,7 +42,7 @@ def build_router(ctx) -> APIRouter:
     def api_cache_sources_clear(body: dict = Body(default={})):
         src = body.get("source")
         if src is not None and not isinstance(src, str):
-            raise HTTPException(400, "source deve essere un testo")
+            raise HTTPException(400, I.tr("s.cache_sources.source_type"))
         h = HttpCache(db_path())
         c = Cache(cfg.cache)
         try:

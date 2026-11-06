@@ -73,6 +73,14 @@ class Shell(HTMLParser):
             b["text"] += data
 
 
+import json as _json
+_CAT = _json.loads((Path(__file__).resolve().parents[1] / "pozzo" / "data" / "locales" / "it.json").read_text(encoding="utf-8"))
+
+
+def _label(el):
+    return el.get("aria-label") or _CAT.get(el.get("data-i18n-aria", ""), "")
+
+
 def test_shell() -> None:
     p = Shell()
     p.feed(INDEX.read_text(encoding="utf-8"))
@@ -92,7 +100,7 @@ def test_shell() -> None:
     unnamed = [
         b["attrs"].get("id") or b["attrs"].get("class") or "?"
         for b in p.buttons
-        if not (b["attrs"].get("aria-label", "").strip() or b["text"].strip())
+        if not (b["attrs"].get("aria-label", "").strip() or b["attrs"].get("data-i18n-aria") or b["text"].strip())
     ]
     assert not unnamed, f"pulsanti senza nome accessibile: {unnamed}"
 
@@ -102,8 +110,8 @@ def test_shell() -> None:
     assert live.get("aria-live") in ("polite", "assertive"), "#toast-live senza aria-live"
 
     # landmark di navigazione, ricerca con etichetta, foglio di stile dell'a11y collegato
-    assert p.by_id.get("experience-nav", {}).get("aria-label") == "Navigazione principale", "nav principale senza etichetta"
-    assert p.by_id.get("search", {}).get("aria-label"), "campo di ricerca senza aria-label"
+    assert _label(p.by_id.get("experience-nav", {})) == "Navigazione principale", "nav principale senza etichetta"
+    assert _label(p.by_id.get("search", {})), "campo di ricerca senza aria-label"
     assert 'href="/static/a11y.css' in INDEX.read_text(encoding="utf-8"), "a11y.css non collegato"
 
 
@@ -131,8 +139,8 @@ def test_focus_and_live() -> None:
     # dettaglio: dialog solo se modale, complementary in pannello
     detail = (static / "js" / "detail.js").read_text(encoding="utf-8")
     assert 'mode === "panel" ? "complementary" : "region"' in detail, "presentDetail: panel deve essere complementary"
-    assert 'aria-label="Rimuovi ${esc(c.name)}"' in detail, "chip: pulsante di rimozione senza aria-label"
-    assert 'aria-label="Valuta ${n} stelle"' in detail and "aria-pressed" in detail, "stelle senza aria-label/aria-pressed"
+    assert "f.coll.remove_aria" in detail and _CAT["f.coll.remove_aria"] == "Rimuovi {name}", "chip: pulsante di rimozione senza aria-label"
+    assert "f.rate.aria" in detail and _CAT["f.rate.aria"] == "Valuta {n} stelle" and "aria-pressed" in detail, "stelle senza aria-label/aria-pressed"
 
     # emoji + testo: l'emoji e' nascosta ai lettori di schermo
     html = INDEX.read_text(encoding="utf-8")

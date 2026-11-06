@@ -1,6 +1,7 @@
 """Schermata «Chi gioca?»: apertura all'avvio, PIN, 429, 404, tastiera, controller e degrado. Node con DOM e fetch finti, nessuna rete."""
 from __future__ import annotations
 
+import _i18n_text  # noqa: F401
 import json
 import shutil
 import subprocess
@@ -12,6 +13,7 @@ STATIC = ROOT / "pozzo" / "app" / "static"
 
 HARNESS = r"""
 const assert = require("assert");
+require(process.argv[2]); // t() e GSI18n come nel browser (catalogo it.json)
 class El {
   constructor() { this.map = {}; this.dataset = {}; this.textContent = ""; this.listeners = {}; this.attrs = {}; this.tagName = "DIV"; }
   querySelector(s) { return (this.map[s] = this.map[s] || new El()); }
@@ -133,7 +135,7 @@ def main() -> None:
     if not node:
         print("ok  selettore profili: controlli statici (Node assente)")
         return
-    r = subprocess.run([node, "-e", HARNESS, str(STATIC / "profile-picker.js")], capture_output=True, text=True,
+    r = subprocess.run([node, "-e", HARNESS, str(STATIC / "profile-picker.js"), str(ROOT / "tests" / "_i18n_stub.js")], capture_output=True, text=True,
                        encoding="utf-8", timeout=20)
     assert r.returncode == 0 and r.stdout.strip().endswith("ok"), r.stdout + r.stderr
     print("ok  selettore profili: avvio solo con ask e 2+ profili, PIN, 429, 404, tastiera, controller, degrado")

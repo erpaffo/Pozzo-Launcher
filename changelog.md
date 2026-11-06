@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.16.0 (2026-11-06)
+
+### Aggiunto
+
+- **Media Hub stile cinema (estensioni Media locale e Ricette Web)**: interfaccia rinnovata per sfogliare la propria libreria locale e i provider Stream4me / Kodi
+  - **Spotlight cinematografico (Hero)** in cima alla pagina Media con locandina o sfondo ad alta risoluzione, metadati (anno, genere, durata, stagioni/episodi), trama e pulsante rapido per riprendere o avviare la riproduzione
+  - **Watchlist integrata**: salva film, serie TV e anime direttamente dai provider o dalla libreria locale; permette di impostare la priorità (Alta, Media, Bassa), lo stato di visione (Da vedere, In corso, Completato) con filtri e ordinamenti dedicati
+  - **Gestione provider nell'interfaccia**: aggiunta di nuovi provider dalle impostazioni e rimozione rapida tramite menu contestuale (tasto destro del mouse)
+  - **Schermo intero da riproduttore moderno**: tasto `F` e pulsante `⛶` portano la finestra del launcher a schermo intero reale senza barre di sistema, come nei player online (YouTube, Netflix)
+  - **Categorizzazione automatica**: i contenuti di AnimeUnity e AnimeWorld sono riconosciuti e catalogati sempre come **Anime**, mentre StreamingCommunity e Altadefinizione01 alimentano **Film** e **Serie TV**
+- **Dashboard personalizzabile**: nuova schermata Home con griglia dinamica responsive a colonne flessibili (da 1 a 4 colonne). Modalità «Modifica layout» con drag-and-drop del mouse fluido e animazioni fisiche FLIP (First, Last, Invert, Play) ad alta efficienza di risorse CPU/GPU
+- **Ridimensionamento dinamico dei widget**: ogni widget si può allargare o restringere liberamente per adattarsi allo spazio disponibile nella dashboard
+- **Galleria widget con anteprime dal vivo**: cassetto laterale con l'anteprima in tempo reale di ogni widget disponibile, che si può trascinare direttamente a schermo nella posizione voluta o inserire con un clic
+- **Nuovi widget per Media e Giochi**: Spotlight cinematografico, Continua a guardare con barra di avanzamento, Watchlist rapida, Prossimo episodio, Preferiti e scorciatoie per giochi recenti, notizie e sconti
+- **Sezione Media · Menu contestuale e scorciatoie**: tasto destro su locandine, righe ed episodi per «Riproduci», «Informazioni», aggiunta/rimozione dai preferiti, rimozione immediata da «Continua a guardare» (con azzeramento posizione anche sul server) e gestione della libreria Stream4me («Aggiungi / Rimuovi dalla Libreria»). Tasto Canc/Backspace per togliere l'elemento puntato dalla cronologia, F per i preferiti ed Esc per chiudere menu e schede
+- **Ripresa rapida dell'ultima sessione**: all'avvio Pozzo riapre automaticamente l'ultima vista visitata e l'eventuale gioco aperto, senza attese o schermate bianche. Disattivabile in qualsiasi momento da Impostazioni › Generale › «Riprendi automaticamente l'ultima sessione all'avvio»
+- **Monitor FPS e modalità prestazioni in Big Picture**: controllo continuo del framerate a 60 frame; se la media scende sotto i 30 FPS per più di 2 secondi, l'interfaccia attiva da sola la modalità a prestazioni ridotte (riduzione di ombre e sfocature con l'avviso discreto «Modalità prestazioni attiva per fluidità») e ripristina la grafica completa non appena si torna stabilmente sopra i 45 FPS
+- **Tour dei temi con anteprima istantanea**: in Impostazioni › Aspetto, passando il mouse su un tema dell'elenco Pozzo mostra subito come apparirebbe l'interfaccia senza salvare nulla; allontanando il cursore torna il tema precedente, e cliccando si conferma la scelta
+- **Notifiche per novità sui giochi in lista desideri**: avviso a comparsa quando arrivano annunci o novità dedicati ai titoli salvati nella tua lista desideri
+- **Diagnostica e registro errori locale**: in Impostazioni › Sistema, visualizzazione degli ultimi errori registrati sul PC, con i pulsanti «Copia report per assistenza» (testo anonimizzato senza percorsi personali) e «Svuota registro». Nessun invio cloud o telemetria verso l'esterno
+- Profili grafici per emulatore anche per **RPCS3**, **Ryujinx** ed **Eden**: preset «Prestazioni», «Qualità» e «Fedele» (risoluzione, filtro anisotropo, frequenza VBlank, backend Vulkan, vsync). Per RPCS3 il seriale PS3 (BLUS, BLES, BCUS, NPUB… + 5 cifre) si ricava dal nome del file o dal PARAM.SFO della cartella del gioco; negli .iso cifrati serve il seriale nel nome. Chiavi di Ryujinx ed Eden non ancora provate su un emulatore reale
+- Disinstallazione degli emulatori installati da Pozzo (`POST /api/emulators/{id}/uninstall`): si sceglie se conservare o cancellare configurazione, salvataggi e shader cache. Non disinstalla un emulatore aperto
+- Installazione portatile: i dati di Dolphin, DuckStation, PCSX2, Ryujinx, Cemu, Eden, PPSSPP e melonDS si possono tenere accanto all'eseguibile (marcatore portable/user), copiando i dati già presenti in %APPDATA%
+- Telemetria locale degli errori, solo sul tuo PC: gli ultimi 50 errori restano in memoria e in `errors.log`; si leggono, si svuotano o si esportano (percorsi utente mascherati) da `/api/system/errors`. Non viene inviato nulla in automatico
+
+### Cambiato
+
+- Provider Stream4me predefiniti: selezione mirata e ottimizzata sui 4 canali principali (`animeunity`, `animeworld`, `streamingcommunity`, `altadefinizione01`)
+- Il dominio di AnimeUnity è aggiornato a `animeunity.co` (al posto dei vecchi `.so` e `.tv` dismessi)
+- Codice: la classe `Library` è ora in `pozzo/app/library_service.py` (nessun cambio di endpoint); nuovi adattatori emulatore Ryujinx ed Eden
+
+### Migliorato
+
+- Ricerca nei provider: barra di ricerca funzionante e sincronizzata sui provider attivi (AnimeWorld, StreamingCommunity, AnimeUnity, Altadefinizione01) e sul catalogo locale
+- Copertine e locandine dei provider web:
+  - **StreamingCommunity**: recupero corretto delle locandine WebP dal CDN dedicato, con pieno supporto alle risposte paginate Inertia (`props.titles.data`)
+  - **Altadefinizione01**: supporto per immagini in lazy-loading (`data-src`) e contenitori griglia moderni (`.boxgrid`, `.cover_kapsul`)
+  - Filtro elementi spuri: le voci di navigazione e i link social (Telegram, Instagram, "Anime casuale", sfondi) non vengono più scambiati per schede film/anime senza copertina
+- Stile grafico uniforme: interfaccia Media Hub allineata alle 8 variabili di tema del launcher con classi con prefisso `.pm-` e contrasto rifinito su temi scuri e OLED
+- Gestione della memoria dei widget nella Dashboard: distruzione controllata degli elementi DOM e disiscrizione dei listener al cambio vista per evitare perdite di memoria nel tempo
+- Conformità cromatica della sezione Media: i menu contestuali e gli stati di errore/rimozione utilizzano esclusivamente le variabili del tema attivo, garantendo leggibilità e contrasto perfetto con qualsiasi combinazione di colori
+
+### Corretto
+
+- StreamingCommunity: corretto il blocco del player causato da `manifest.webmanifest`, che veniva erroneamente troncato ed estratto come video `.webm` a causa della regex sui flussi diretti
+- Protezione contro link pubblicitari: impedita l'apertura accidentale di banner pubblicitari esterni (come `ad.a-ads.com`) durante la risoluzione dei flussi video
+- AnimeWorld: corretto il parsing dei titoli che generava schede chiamate tutte "DUB"; ora il nome reale dell'anime viene estratto correttamente, aggiungendo il suffisso `(ITA)` quando doppiato
+- Windows e Python 3.13: silenziata l'eccezione `ConnectionResetError: [WinError 10054]` generata da `_ProactorBasePipeTransport` quando le connessioni webview o browser vengono chiuse bruscamente
+
 ## 0.15.0 (2026-11-03)
 
 ### Aggiunto

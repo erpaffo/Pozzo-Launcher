@@ -1,3 +1,4 @@
+require("./_i18n_stub");
 // Harness Node: DOM e fetch finti, nessuna rete. Prova gusto, ordine di gioco, consigli e classifica ROM (404 incluso).
 const assert = require("assert");
 const path = require("path");

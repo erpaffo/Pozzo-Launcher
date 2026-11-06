@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 
 from fastapi import APIRouter, HTTPException
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -15,7 +16,7 @@ def build_router(ctx) -> APIRouter:
     def api_game_verify(gid: int):
         g = lib.by_id.get(gid)
         if not g:
-            raise HTTPException(404, "Gioco non trovato")
+            raise HTTPException(404, I.tr("s.mods.gameNotFound"))
         return {"status": g.get("verify") or "", "match_by": g.get("match_by") or ""}
 
     @router.get("/api/verify/report")

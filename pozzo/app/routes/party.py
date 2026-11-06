@@ -9,7 +9,7 @@ import time
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR
+from ... import config as C, i18n as I, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR
 from ...library import launcher as L
 from ...remote.certs import lan_ips
 
@@ -65,7 +65,7 @@ def build_router(ctx) -> APIRouter:
     def api_party_invite(body: dict = Body(...)):
         g = lib.by_key.get(str(body.get("key") or ""))
         if not g:
-            raise HTTPException(404, "Gioco non trovato in libreria")
+            raise HTTPException(404, I.tr("s.party.notFound"))
         plan = _plan(g)
         emu = (plan or {}).get("emulator", "")
         if not plan or not NP.supported(emu):
@@ -95,10 +95,10 @@ def build_router(ctx) -> APIRouter:
             try:
                 proc = EDR.start(EDR.room_cmd(plan["exe"], g["title"], port, pw, g["title"]))
             except OSError as e:
-                raise HTTPException(409, f"Non riesco ad avviare la stanza di Eden: {e}")
+                raise HTTPException(409, I.tr("s.party.edenStart", e=e))
             if not EDR.alive(proc):
                 EDR.stop(proc)
-                raise HTTPException(409, "La stanza di Eden si è chiusa subito: controlla che questa versione abbia eden-room")
+                raise HTTPException(409, I.tr("s.party.edenClosed"))
             EDR.prefill(plan["exe"], NP.eden_nick(nick), "127.0.0.1", port)
         try:
             _play(g, NP.args("join" if eden else "host", host="127.0.0.1", port=port, nick=nick, emulator=emu, password=pw))
@@ -120,7 +120,7 @@ def build_router(ctx) -> APIRouter:
         if "register_protocol" in body:
             v = body["register_protocol"]
             if not isinstance(v, bool):
-                raise HTTPException(400, "register_protocol deve essere true o false")
+                raise HTTPException(400, I.tr("s.party.regProtoBool"))
             conf["register_protocol"] = v
             C.save_settings(cfg, app={"netplay": conf})
             cfg.app["netplay"] = conf
@@ -152,7 +152,7 @@ def build_router(ctx) -> APIRouter:
         if body.get("url"):
             code = PR.parse_url(str(body.get("url")))
             if code is None:
-                raise HTTPException(400, "Link non valido")
+                raise HTTPException(400, I.tr("s.party.badLink"))
         else:
             code = str(body.get("code") or "")
         try:
@@ -171,7 +171,7 @@ def build_router(ctx) -> APIRouter:
     def api_party_public_ip():
         ip = NA.public_ip()
         if not ip:
-            return {"ip": "", "kind": "", "tip": "", "error": "Non riesco a rilevare il tuo IP pubblico: controlla la connessione"}
+            return {"ip": "", "kind": "", "tip": "", "error": I.tr("s.party.noPublicIp")}
         k = NA.address_kind(ip)
         return {"ip": ip, "kind": k["kind"], "tip": k["tip"], "error": ""}
 
@@ -186,7 +186,7 @@ def build_router(ctx) -> APIRouter:
         t = _decode(body)
         g = lib.by_key.get(t["k"])
         if not g:
-            raise HTTPException(404, "Gioco non presente nella tua libreria")
+            raise HTTPException(404, I.tr("s.party.notInLibrary"))
         if t.get("e") == "eden":
             plan = _plan(g) or {}
             if plan.get("emulator") != "eden":

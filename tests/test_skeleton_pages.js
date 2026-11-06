@@ -1,3 +1,4 @@
+const { inject } = require("./_i18n_stub");
 // Segnaposto di caricamento nelle pagine di js/pages.js (wishlist, statistiche, top, schermate).
 // Esegui: node tests/test_skeleton_pages.js
 const assert = require("node:assert/strict");
@@ -68,7 +69,7 @@ function makeContext({ withSkeleton = true } = {}) {
     api: () => new Promise((res, rej) => { context.pending = { res, rej }; }),
   };
   context.window = context;
-  vm.createContext(context);
+  inject(context); vm.createContext(context);
   if (withSkeleton) vm.runInContext(motionSource, context, { filename: "motion-settings.js" });
   vm.runInContext(pagesSource, context, { filename: "pages.js" });
   return context;

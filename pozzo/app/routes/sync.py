@@ -9,6 +9,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
+from ... import i18n as I
+
 
 
 def build_router(ctx) -> APIRouter:
@@ -101,7 +103,7 @@ def build_router(ctx) -> APIRouter:
         if "folder" in body:
             f = str(body.get("folder") or "").strip()
             if f and not Path(f).is_dir():
-                raise HTTPException(400, f"Cartella non trovata: {f}")
+                raise HTTPException(400, I.tr("s.sync.dirNotFound", f=f))
             c["folder"] = f
         if body.get("what") in ("personal", "all"):
             c["what"] = body["what"]
@@ -110,7 +112,7 @@ def build_router(ctx) -> APIRouter:
         if "saves_games" in body:
             raw = body.get("saves_games")
             if not isinstance(raw, list) or len(raw) > 2000:
-                raise HTTPException(400, "Elenco dei giochi da sincronizzare non valido")
+                raise HTTPException(400, I.tr("s.sync.badGames"))
             keys = [k.strip() for k in raw if isinstance(k, str) and k.strip()]
             c["saves_games"] = list(dict.fromkeys(keys))[:2000]
         SY.save_conf(cfg, c)
@@ -125,7 +127,7 @@ def build_router(ctx) -> APIRouter:
     def api_sync_code():
         """Codice per abbinare un altro PC a questo (accende il server HTTPS sulla rete di casa se serve)."""
         if not phone_hub.running() and not phone_hub.start(app):
-            raise HTTPException(500, phone_hub.error or "Server di rete non avviato")
+            raise HTTPException(500, phone_hub.error or I.tr("s.sync.netDown"))
         return {"code": phone_hub.new_code(), "minutes": PH.CODE_TTL // 60, **_sync_state()}
 
     @router.post("/api/sync/peer")
@@ -133,12 +135,12 @@ def build_router(ctx) -> APIRouter:
         """Abbina questo PC a un altro (che ha mostrato il codice): da qui partono gli scambi, nei due sensi."""
         raw = str(body.get("url") or "").strip().removeprefix("https://").removeprefix("http://").split("/")[0]
         if not raw:
-            raise HTTPException(400, "Serve l'indirizzo dell'altro PC")
+            raise HTTPException(400, I.tr("s.sync.needAddress"))
         url = f"https://{raw if ':' in raw else raw + ':' + str(PH.PORT)}"
         try:
             r = SY.request(url, "/api/sync/pair", {"code": str(body.get("code") or ""), "name": sync.pc()["pc_name"]})
         except Exception as e:
-            raise HTTPException(400, f"Abbinamento non riuscito: {e}")
+            raise HTTPException(400, I.tr("s.sync.pairFail", e=e))
         c = SY.conf(cfg)
         peer = {"id": r["pc"]["pc_id"], "name": r["pc"].get("pc_name") or raw, "url": url, "token": r["token"], "fp": r["_fp"]}
         c["peers"] = [p for p in c.get("peers") or [] if p["id"] != peer["id"]] + [peer]
@@ -188,19 +190,18 @@ def build_router(ctx) -> APIRouter:
         """Un file di salvataggio per un PC abbinato, uno per richiesta (niente risposte enormi)."""
         dev = getattr(request.state, "phone_device", None)
         if not any(d["id"] == dev and d.get("kind") == "pc" for d in phone_hub.conf["devices"]):
-            raise HTTPException(403, "Solo per i PC abbinati")
+            raise HTTPException(403, I.tr("s.sync.pcOnly"))
         key, rel = str(body.get("key") or ""), str(body.get("rel") or "")
         if not SY._safe_rel(rel):
-            raise HTTPException(400, "Percorso del salvataggio non valido")
+            raise HTTPException(400, I.tr("s.sync.badSavePath"))
         if key not in (SY.conf(cfg).get("saves_games") or []):
-            raise HTTPException(403, "Gioco non incluso nella sincronizzazione dei salvataggi")
+            raise HTTPException(403, I.tr("s.sync.gameNotIncluded"))
         f = sync.saves_file(key, rel)
         if f is None:
-            raise HTTPException(404, "Salvataggio non trovato")
+            raise HTTPException(404, I.tr("s.sync.saveNotFound"))
         size = f.stat().st_size
         if size > SY.SAVE_REQ_MAX:
-            raise HTTPException(413, f"File troppo grande per la sincronizzazione ({SY._mb(size)}, massimo "
-                                     f"{SY._mb(SY.SAVE_REQ_MAX)})")
+            raise HTTPException(413, I.tr("s.sync.tooBig", size=SY._mb(size), limit=SY._mb(SY.SAVE_REQ_MAX)))
         return {"data": base64.b64encode(f.read_bytes()).decode(), "sha1": SV._sha1(f), "size": size}
 
     # raggiungibili dagli altri PC tramite il server HTTPS (remote/phone.py: PUBLIC e rotte dei PC abbinati)
@@ -216,7 +217,7 @@ def build_router(ctx) -> APIRouter:
     def api_sync_exchange(request: Request, body: dict = Body(...)):
         dev = getattr(request.state, "phone_device", None)
         if not any(d["id"] == dev and d.get("kind") == "pc" for d in phone_hub.conf["devices"]):
-            raise HTTPException(403, "Solo per i PC abbinati")
+            raise HTTPException(403, I.tr("s.sync.pcOnly"))
         try:
             merged = sync.receive(body.get("bundles") or {})
         except ValueError as e:

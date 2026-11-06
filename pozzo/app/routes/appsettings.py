@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse
 from .. import extensions as X
 from ... import config as C, profilecfg as PC
 from ...library import fastcopy as FC, launcher as L
+from ... import i18n as I
 
 
 DEFAULT_EXP_PROFILES = (
@@ -36,7 +37,7 @@ def _webhook_url(value) -> str:
     url = str(value or "").strip()
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.netloc:
-        raise HTTPException(400, "L'indirizzo del webhook deve iniziare con http:// o https://")
+        raise HTTPException(400, I.tr("s.appsettings.webhookScheme"))
     return url
 
 
@@ -54,16 +55,16 @@ def _old_secret(old_hooks, item: dict) -> str:
 def _clean_webhooks(items, old_hooks=None) -> list[dict]:
     """secret vuoto = resta quello salvato; clear_secret = lo toglie; un valore nuovo lo sostituisce."""
     if not isinstance(items, list):
-        raise HTTPException(400, "I webhook devono essere una lista")
+        raise HTTPException(400, I.tr("s.appsettings.webhooksNotList"))
     if len(items) > WEBHOOK_MAX:
-        raise HTTPException(400, f"Al massimo {WEBHOOK_MAX} webhook")
+        raise HTTPException(400, I.tr("s.appsettings.webhookMax", n=WEBHOOK_MAX))
     out = []
     for item in items:
         if not isinstance(item, dict):
-            raise HTTPException(400, "Webhook non valido")
+            raise HTTPException(400, I.tr("s.appsettings.webhookInvalid"))
         events = item.get("events") or []
         if not isinstance(events, list) or not all(e in WEBHOOK_EVENTS for e in events):
-            raise HTTPException(400, "Evento webhook sconosciuto")
+            raise HTTPException(400, I.tr("s.appsettings.webhookEventUnknown"))
         hook = {
             "url": _webhook_url(item.get("url")),
             "events": [e for e in WEBHOOK_EVENTS if e in events],  # ordine fisso, senza duplicati
@@ -134,6 +135,7 @@ def build_router(ctx) -> APIRouter:
         return {"themes": themes, "active_theme": active, "active_experience": exp,
                 "experiences": X.list_experiences(),
                 "plugins": X.list_plugins(cfg, plugin_errors), "load_total_ms": X.LOAD_TOTAL_MS,
+                **X.media_registry(),
                 "paths": {"themes": str(X.user_dir(cfg, "themes")), "plugins": str(X.user_dir(cfg, "plugins"))}}
 
     @router.get("/api/app/launch")
@@ -172,24 +174,24 @@ def build_router(ctx) -> APIRouter:
     def _fastcopy_check_dir(raw: str) -> str:
         p = Path(raw).expanduser().resolve()
         if p.parent == p:
-            raise HTTPException(400, "Scegli una cartella dedicata: la radice di un disco non è ammessa")
+            raise HTTPException(400, I.tr("s.appsettings.fastcopyRoot"))
         if p == Path.home().resolve():
-            raise HTTPException(400, "Scegli una cartella dedicata: la home non è ammessa")
+            raise HTTPException(400, I.tr("s.appsettings.fastcopyHome"))
         for r in C.rom_roots(cfg):  # le copie si svuotano: mai dentro (o sopra) la libreria
             r = r.expanduser().resolve()
             if p == r or r in p.parents or p in r.parents:
-                raise HTTPException(400, "La cartella non può stare dentro la libreria né contenerla")
+                raise HTTPException(400, I.tr("s.appsettings.fastcopyInLibrary"))
         try:
             if p.exists():
                 if not p.is_dir():
-                    raise HTTPException(400, "Il percorso esiste ed è un file")
+                    raise HTTPException(400, I.tr("s.appsettings.pathIsFile"))
                 # a fine gioco la cartella puo' essere svuotata: non toccare cartelle altrui
                 if any(p.iterdir()) and not (p / FC.MARKER).exists():
-                    raise HTTPException(400, "La cartella non è vuota: scegli una cartella vuota o dedicata")
+                    raise HTTPException(400, I.tr("s.appsettings.folderNotEmpty"))
             p.mkdir(parents=True, exist_ok=True)
             (p / FC.MARKER).touch()  # ora e' nostra: purge_stale la puo' svuotare
         except OSError as e:
-            raise HTTPException(400, f"Cartella non utilizzabile: {e.strerror or e}")
+            raise HTTPException(400, I.tr("s.appsettings.folderUnusable", err=e.strerror or e))
         return str(p)
 
     @router.get("/api/app/fastcopy")
@@ -202,11 +204,11 @@ def build_router(ctx) -> APIRouter:
         fc = dict(cfg.app.get("fastcopy") or {})
         if "delete_after" in body:
             if not isinstance(body["delete_after"], bool):
-                raise HTTPException(400, "delete_after deve essere true o false")
+                raise HTTPException(400, I.tr("s.appsettings.deleteAfterBool"))
             fc["delete_after"] = body["delete_after"]
         if "dir" in body:
             if not isinstance(body["dir"], str):
-                raise HTTPException(400, "Cartella non valida")
+                raise HTTPException(400, I.tr("s.appsettings.folderInvalid"))
             raw = body["dir"].strip()
             if raw:
                 fc["dir"] = _fastcopy_check_dir(raw)
@@ -241,7 +243,7 @@ def build_router(ctx) -> APIRouter:
         cfg.app["notify"] = on
         if on:
             from ... import notify
-            notify.send(cfg, "Pozzo Launcher", "Notifiche attive: prezzi, giochi gratis e lavori finiti.")
+            notify.send(cfg, "Pozzo Launcher", I.tr("s.appsettings.notifyOn"))
         return {"enabled": on}
 
     @router.get("/api/webhooks")
@@ -286,7 +288,7 @@ def build_router(ctx) -> APIRouter:
         from ... import power
         mode = str(body.get("after_jobs") or "none")
         if mode not in power.MODES:
-            raise HTTPException(400, "Scelta non valida")
+            raise HTTPException(400, I.tr("s.appsettings.choiceInvalid"))
         C.save_settings(cfg, app={"after_jobs": mode})
         cfg.app["after_jobs"] = mode
         return api_power_get()
@@ -306,7 +308,7 @@ def build_router(ctx) -> APIRouter:
         """Nasconde le DLC di una console (una per console: le console non hanno tutte lo stesso catalogo)."""
         pid = str(body.get("platform") or "")
         if not pid:
-            raise HTTPException(400, "Piattaforma mancante")
+            raise HTTPException(400, I.tr("s.appsettings.platformMissing"))
         cur = [p for p in (cfg.app.get("hide_dlc") or []) if p != pid]
         if body.get("hide"):
             cur.append(pid)
@@ -331,7 +333,7 @@ def build_router(ctx) -> APIRouter:
     def api_theme(body: dict = Body(...)):
         tid = body.get("theme") or "default"
         if tid not in {t["id"] for t in X.list_themes(cfg)}:
-            raise HTTPException(404, "Tema non trovato")
+            raise HTTPException(404, I.tr("s.appsettings.themeNotFound"))
         PC.put(cfg, "theme", tid, mirror=True)
         return {"ok": True}
 
@@ -341,7 +343,7 @@ def build_router(ctx) -> APIRouter:
         if not isinstance(experience, str) or experience not in {
             x["id"] for x in X.list_experiences() if x.get("available")
         }:
-            raise HTTPException(400, "Profilo di esperienza non valido")
+            raise HTTPException(400, I.tr("s.appsettings.expInvalid"))
         PC.put(cfg, "experience", experience, mirror=True)
         return {"experience": experience}
 
@@ -356,15 +358,15 @@ def build_router(ctx) -> APIRouter:
         theme = body.get("theme")
         animations = body.get("animations")
         if not isinstance(name, str) or not name.strip() or len(name.strip()) > 40:
-            raise HTTPException(400, "Nome non valido")
+            raise HTTPException(400, I.tr("s.appsettings.nameInvalid"))
         if not isinstance(experience, str) or experience not in {
             x["id"] for x in X.list_experiences() if x.get("available")
         }:
-            raise HTTPException(400, "Profilo di esperienza non valido")
+            raise HTTPException(400, I.tr("s.appsettings.expInvalid"))
         if not isinstance(theme, str) or theme not in {x["id"] for x in X.list_themes(cfg)}:
-            raise HTTPException(400, "Tema non valido")
+            raise HTTPException(400, I.tr("s.appsettings.themeInvalid"))
         if not isinstance(animations, str) or animations not in EXP_PROFILE_ANIMATIONS:
-            raise HTTPException(400, "Impostazione animazioni non valida")
+            raise HTTPException(400, I.tr("s.appsettings.animInvalid"))
 
         presets = _exp_profiles()
         profile_id = body.get("id")
@@ -373,7 +375,7 @@ def build_router(ctx) -> APIRouter:
             slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-") or "profilo"
             profile_id = f"{slug[:28]}-{uuid.uuid4().hex[:8]}"
         elif not isinstance(profile_id, str) or not EXP_PROFILE_ID.fullmatch(profile_id):
-            raise HTTPException(400, "Id profilo non valido")
+            raise HTTPException(400, I.tr("s.appsettings.profileIdInvalid"))
 
         preset = {"id": profile_id, "nome": name.strip(), "experience": experience,
                   "theme": theme, "animations": animations}
@@ -386,11 +388,11 @@ def build_router(ctx) -> APIRouter:
     def api_exp_profiles_delete(body: dict = Body(...)):
         profile_id = body.get("id")
         if not isinstance(profile_id, str) or not EXP_PROFILE_ID.fullmatch(profile_id):
-            raise HTTPException(400, "Id profilo non valido")
+            raise HTTPException(400, I.tr("s.appsettings.profileIdInvalid"))
         presets = _exp_profiles()
         remaining = [p for p in presets if p["id"] != profile_id]
         if len(remaining) == len(presets):
-            raise HTTPException(404, "Preset non trovato")
+            raise HTTPException(404, I.tr("s.appsettings.presetNotFound"))
         PC.set(cfg, "exp_profiles", remaining)
         return _exp_profiles_state()
 
@@ -399,7 +401,7 @@ def build_router(ctx) -> APIRouter:
         profile_id = body.get("id")
         preset = next((p for p in _exp_profiles() if p["id"] == profile_id), None)
         if preset is None:
-            raise HTTPException(404, "Preset non trovato")
+            raise HTTPException(404, I.tr("s.appsettings.presetNotFound"))
         resolved = _resolved_exp_profile(preset)
         PC.put(cfg, "experience", resolved["experience"], mirror=True)
         PC.put(cfg, "theme", resolved["theme"], mirror=True)
@@ -409,7 +411,7 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/app/plugin")
     def api_plugin_toggle(body: dict = Body(...)):
         if body.get("id") == X.STORE_ID:
-            raise HTTPException(400, "Lo store delle estensioni resta sempre attivo")
+            raise HTTPException(400, I.tr("s.appsettings.extStoreAlwaysOn"))
         disabled = set(cfg.app.get("disabled_plugins", []))
         (disabled.discard if body.get("enabled") else disabled.add)(body.get("id"))
         C.save_settings(cfg, app={"disabled_plugins": sorted(disabled)})
@@ -444,7 +446,7 @@ def build_router(ctx) -> APIRouter:
         import webbrowser
         url_ = str(body.get("url") or "")
         if not url_.startswith(("https://", "http://")):
-            raise HTTPException(400, "Sono ammessi solo link web")
+            raise HTTPException(400, I.tr("s.appsettings.onlyWebLinks"))
         webbrowser.open(url_)
         return {"ok": True}
 

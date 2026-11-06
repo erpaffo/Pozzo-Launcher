@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from ... import stores as STORES
 from ...library.build import build
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -22,7 +23,7 @@ def build_router(ctx) -> APIRouter:
             return _add_browser_game(body)
         exe = (body.get("exe") or "").strip().strip('"')
         if not exe or not Path(exe).is_file():
-            raise HTTPException(400, "Seleziona un file .exe esistente")
+            raise HTTPException(400, I.tr("s.manual.select_exe"))
         title = (body.get("title") or "").strip() or Path(exe).stem
         args = [a.strip('"') for a in shlex.split(body.get("args") or "", posix=False)]
         kind = "app" if body.get("kind") == "app" else "game"
@@ -42,7 +43,7 @@ def build_router(ctx) -> APIRouter:
         try:
             meta = fetch_meta(url)
         except WebMetaError as e:
-            warning = f"Metadati non letti: {e}"
+            warning = I.tr("s.manual.meta_unread", err=str(e))
         title = (body.get("title") or "").strip() or meta.get("title") or urlsplit(url).hostname
         mid = user.add_manual(title, url, [], "", "browser", meta)
         return {**_refresh_manual(mid), "warning": warning}

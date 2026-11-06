@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from .. import jobs as J
 from ... import config as C
+from ... import i18n as I
 
 
 def build_router(ctx) -> APIRouter:
@@ -99,12 +100,12 @@ def build_router(ctx) -> APIRouter:
 
     def _start_collart(only_missing=True):
         if job["collart"].status == "running":
-            raise HTTPException(409, "Ricerca delle immagini delle collezioni gia' in corso")
+            raise HTTPException(409, I.tr("s.collart.already_running"))
         v = view()
         cols = [(slug, c["name"]) for slug, c in v["colls"].items() if c["groups"]]
         j = J.CollArtJob(collections=cols, only_missing=only_missing)
         if not _claim("collart", j):
-            raise HTTPException(409, "Ricerca delle immagini delle collezioni gia' in corso")
+            raise HTTPException(409, I.tr("s.collart.already_running"))
 
         def after(_stats):
             art_state["rev"] += 1
@@ -133,7 +134,7 @@ def build_router(ctx) -> APIRouter:
     def api_smart_save(body: dict = Body(...)):
         items = body.get("items")
         if not isinstance(items, list):
-            raise HTTPException(400, "elenco non valido")
+            raise HTTPException(400, I.tr("s.collart.list_invalid"))
         clean = []
         for it in items[:200]:
             if not isinstance(it, dict) or not str(it.get("name") or "").strip():

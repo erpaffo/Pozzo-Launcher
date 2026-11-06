@@ -446,6 +446,8 @@ non parte (WinError 448). La release contiene solo lo store.
 | **Il mio PC ce la fa?** | rileva CPU, GPU e RAM del computer e fornisce un verdetto immediato sul gioco (Gira bene, Con impostazioni, Troppo pesante), confrontando i requisiti Steam e indicando le impostazioni consigliate per gli emulatori |
 | **Recensioni e punteggi** | voti della critica e della community aggregati nella scheda di ogni gioco: Metacritic, OpenCritic (con tier e percentuale di raccomandazione) e recensioni degli utenti Steam |
 | **Sconti e bundle** | saldi in tempo reale sui giochi della lista dei desideri (con avviso «Minimo storico»), bundle attivi su IsThereAnyDeal marcati «Per te» se contengono titoli seguiti o posseduti, e giochi attualmente gratis da riscattare |
+| **Media locale** | film, serie e musica dalle cartelle del tuo computer sfogliati come una libreria multimediale: riconoscimento dei nomi, poster locali (poster.jpg, folder.jpg), ripresa della riproduzione e supporto per lettore integrato o esterno |
+| **Ricette web** | cataloghi di film e podcast da siti e feed web leciti (es. Internet Archive e podcast NASA) estratti tramite ricette TOML dichiarative senza codice eseguito; cache con ETag, rispetto di robots.txt, dettaglio, episodi e riproduzione |
 
 **Store Minerva + Switch** tiene i preset in `PRESETS` (`backend.py`): per aggiungerne altri basta una riga
 (`{"console": ["https://…"]}`). Poiché gli elenchi della stessa console possono avere formati diversi
@@ -456,6 +458,8 @@ ogni pagina viene riconosciuta da sola da `catalog.detect_kind`.
 dell'interfaccia (`config.set_setting`) e quindi le modifiche valgono subito, senza riavviare l'app.
 La logica di lettura della pagina sta in `pozzo/linklist.py` (`scan_page`, `add_store`), fuori dal
 plugin, così è testabile senza avviare il server.
+
+**Media locale** e **Ricette web** sono estensioni per **Pozzo Media** (`api = 2`): operano su una propria cache separata dalla libreria dei giochi. **Media locale** richiede il permesso `media:lettura` per scansionare solo le cartelle multimediali scelte dall'utente. **Ricette web** supporta ricette dichiarative per pagine HTML, podcast RSS e API JSON, proteggendo il sistema con il divieto assoluto di codice eseguibile e limitando l'accesso di rete agli host autorizzati.
 
 ### Sicurezza
 

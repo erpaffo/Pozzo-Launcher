@@ -4,7 +4,7 @@
 /* ------------------------------------------------------------------ vista "Per te" (stile Netflix) */
 function nfCard(g, why = "") {
   const tag = g.store ? (STORE_SHORT[g.store] || "PC") : (SHORT[g.platform] || g.platform.toUpperCase());
-  const sc = g.critics != null ? `Critica ${Math.round(g.critics * 100)}` : g.rating != null && g.votes ? `★ ${Math.round(g.rating * 100)}%` : "";
+  const sc = g.critics != null ? `${t("h.top.critic", {p: Math.round(g.critics * 100)})}` : g.rating != null && g.votes ? `★ ${Math.round(g.rating * 100)}%` : "";
   return `<div class="nf-card${g.store && !g.installed ? " notinst" : ""}" data-id="${g.id}" title="${esc(g.title)}">`
     + `<div class="nf-cv" style="--h:${hue(g.title)}"><span class="nf-ph">${esc(g.title)}</span>`
     + (g.cover ? `<img loading="lazy" src="/img/${g.id}/cover?w=300" alt="" onerror="this.remove()">` : "")
@@ -18,17 +18,17 @@ async function renderForYou(pv) {
   const heroG = rows.find((r) => r.id === "foryou")?.items[0] || rows[0]?.items[0];
   pv.innerHTML = `<div class="nf">
     <div class="nf-hero" id="nf-hero"><div class="nf-hero-txt">
-      <div class="nf-kicker">✨ Scelto per te</div><h1 id="nf-h-title"></h1><p id="nf-h-meta" class="muted"></p><p id="nf-h-desc"></p>
-      <div class="nf-hero-btns"><button class="btn primary" id="nf-quiz">🎲 A cosa vuoi giocare?</button>
-        <button class="btn" id="nf-h-open">Dettagli</button></div></div></div>
-    ${rows.length ? "" : `<p class="muted" style="padding:20px">Gioca qualche partita o rispondi al questionario per ricevere consigli.</p>`}
+      <div class="nf-kicker">✨ ${t("h.home.forYou")}</div><h1 id="nf-h-title"></h1><p id="nf-h-meta" class="muted"></p><p id="nf-h-desc"></p>
+      <div class="nf-hero-btns"><button class="btn primary" id="nf-quiz">🎲 ${t("h.home.quizBtn")}</button>
+        <button class="btn" id="nf-h-open">${t("h.common.details")}</button></div></div></div>
+    ${rows.length ? "" : `<p class="muted" style="padding:20px">${t("h.home.playHint")}</p>`}
     ${rows.map((r) => `<section class="nf-row"><h2>${esc(r.title)}${r.why ? ` <small>${esc(r.why)}</small>` : ""}</h2>
-      <div class="nf-wrap"><button class="nf-arr l" aria-label="Indietro">‹</button><div class="nf-scroll">${r.items.map((g) => nfCard(g)).join("")}</div>
-      <button class="nf-arr r" aria-label="Avanti">›</button></div></section>`).join("")}
-    ${crows.length ? `<div class="nf-section"><h2 class="nf-sec-title">🗂 Collezioni</h2><p class="muted small">Saghe e franchise della tua libreria</p></div>` : ""}
+      <div class="nf-wrap"><button class="nf-arr l" aria-label="${t("h.common.back")}">‹</button><div class="nf-scroll">${r.items.map((g) => nfCard(g)).join("")}</div>
+      <button class="nf-arr r" aria-label="${t("h.common.next")}">›</button></div></section>`).join("")}
+    ${crows.length ? `<div class="nf-section"><h2 class="nf-sec-title">🗂 ${t("h.app.navCollections")}</h2><p class="muted small">${t("h.home.sagas")}</p></div>` : ""}
     ${crows.map((r) => `<section class="nf-row"><h2>${esc(r.title)}</h2>
-      <div class="nf-wrap"><button class="nf-arr l" aria-label="Indietro">‹</button><div class="nf-scroll">${r.items.map((x) => collCard(x)).join("")}</div>
-      <button class="nf-arr r" aria-label="Avanti">›</button></div></section>`).join("")}</div>`;
+      <div class="nf-wrap"><button class="nf-arr l" aria-label="${t("h.common.back")}">‹</button><div class="nf-scroll">${r.items.map((x) => collCard(x)).join("")}</div>
+      <button class="nf-arr r" aria-label="${t("h.common.next")}">›</button></div></section>`).join("")}</div>`;
   pv.querySelectorAll(".nf-wrap").forEach((w) => {
     const sc = w.querySelector(".nf-scroll");
     w.querySelector(".l").onclick = () => sc.scrollBy({ left: -sc.clientWidth * 0.85, behavior: "smooth" });
@@ -142,32 +142,32 @@ function renderShelvesHome(pv) {
   } catch (e) { console.warn("Suggerimenti non disponibili", e); }
   const hero = recent[0] || recommendations[0]?.items?.[0] || games[0];
   const sections = [
-    { title: "Continua a giocare", items: recent.slice(0, 16), recent: true },
+    { title: t("h.app.heroContinue"), items: recent.slice(0, 16), recent: true },
     ...recommendations.slice(0, 3).map((r) => ({ title: r.title, why: r.why, items: r.items.slice(0, 16) })),
-    { title: "I tuoi preferiti", items: favorites.slice(0, 16) },
-    ...(recent.length || recommendations.length || favorites.length ? [] : [{ title: "Dalla tua libreria", items: games.slice(0, 16) }]),
+    { title: t("h.home.favs"), items: favorites.slice(0, 16) },
+    ...(recent.length || recommendations.length || favorites.length ? [] : [{ title: t("h.home.fromLib"), items: games.slice(0, 16) }]),
   ].filter((r) => r.items.length);
   pv.innerHTML = `<div class="resume-host"></div><section class="shelves-hero"${hero ? ` data-hero="${hero.id}"` : ""}>
       <img class="shelves-hero-art" alt="" hidden>
       <div class="shelves-hero-copy">
-        <div class="shelves-kicker">${hero ? (recent.length ? "Bentornato" : "Una selezione per te") : "La tua raccolta"}</div>
-        <h2>${hero ? esc(hero.title) : "La libreria inizia da qui"}</h2>
-        <p>${hero ? "Apri la scheda per riprendere da dove eri rimasto o scoprire altri dettagli." : "Aggiungi o importa i tuoi giochi: li organizzeremo qui per piattaforma, attività e collezione."}</p>
+        <div class="shelves-kicker">${hero ? (recent.length ? t("h.home.welcome") : t("h.home.selection")) : t("h.app.heroCollection")}</div>
+        <h2>${hero ? esc(hero.title) : t("h.home.libStart")}</h2>
+        <p>${hero ? t("h.home.resumeHint") : t("h.home.addHint")}</p>
         <div class="shelves-actions">
-          ${hero ? `<button class="btn primary" type="button" data-shelf-game="${hero.id}">Apri gioco</button>` : ""}
-          <button class="btn" type="button" data-home-view="all">Vai alla libreria</button>
-          ${!games.length ? `<button class="btn" type="button" data-home-scan>⟳ Cerca nuovi giochi</button>` : ""}
+          ${hero ? `<button class="btn primary" type="button" data-shelf-game="${hero.id}">${t("h.home.openGame")}</button>` : ""}
+          <button class="btn" type="button" data-home-view="all">${t("h.home.goLib")}</button>
+          ${!games.length ? `<button class="btn" type="button" data-home-scan>⟳ ${t("h.scan.newGames")}</button>` : ""}
         </div>
       </div>
     </section>
-    ${!games.length && !recommendations.length ? `<section class="shelves-empty"><h2>Ancora nessun gioco da mostrare</h2>
-      <p class="muted">Puoi collegare uno store, aggiungere un gioco o avviare una scansione dalle impostazioni.</p>
-      <button class="btn" type="button" data-home-view="all">Apri la libreria</button></section>` : ""}
+    ${!games.length && !recommendations.length ? `<section class="shelves-empty"><h2>${t("h.home.emptyTitle")}</h2>
+      <p class="muted">${t("h.home.emptyHint")}</p>
+      <button class="btn" type="button" data-home-view="all">${t("h.home.openLib")}</button></section>` : ""}
     ${sections.map((r) => `<section class="shelf-section"${r.recent ? " data-recent-shelf" : ""}><h2>${esc(r.title)}${r.why ? `<small>${esc(r.why)}</small>` : ""}</h2>
       <div class="shelf-lane">${r.items.map(shelfGame).join("")}</div></section>`).join("")}
-    ${collectionRows.length ? `<section class="shelf-section"><h2>Collezioni</h2><div class="shelf-lane">
+    ${collectionRows.length ? `<section class="shelf-section"><h2>${t("h.app.navCollections")}</h2><div class="shelf-lane">
       ${collectionRows.flatMap((r) => r.items).slice(0, 12).map((x) => `<button class="shelf-collection" type="button" data-shelf-collection="${esc(x.coll.slug)}">
-        <b>${esc(x.coll.name)}</b><span>${esc(x.why || `${x.games.length} giochi`)}</span></button>`).join("")}
+        <b>${esc(x.coll.name)}</b><span>${esc(x.why || t("h.srf.games", {n: x.games.length}))}</span></button>`).join("")}
     </div></section>` : ""}`;
   pv.onclick = (e) => {
     const game = e.target.closest("[data-shelf-game]");
@@ -202,7 +202,7 @@ function renderExperienceHome(element) {
   try { GS.experience.home(element, { renderShelvesHome, state: S, setView }); }
   catch (e) {
     console.error(`Home esperienza ${GS.experience.id}:`, e);
-    element.textContent = "Home non disponibile.";
+    element.textContent = t("h.home.unavailable");
   }
 }
 
@@ -220,14 +220,14 @@ function renderQuiz() {
   if (QZ.step >= Q.length) return renderQuizResults();
   const q = Q[QZ.step], val = QZ.a[q.id];
   const on = (id) => (q.multi ? (val || []).includes(id) : val === id);
-  box.innerHTML = `<div class="qz-head"><span class="muted">Domanda ${QZ.step + 1} di ${Q.length}</span>
+  box.innerHTML = `<div class="qz-head"><span class="muted">${t("h.quiz.qOf", {a: QZ.step + 1, b: Q.length})}</span>
       <div class="qz-dots">${Q.map((_, i) => `<i class="${i <= QZ.step ? "on" : ""}"></i>`).join("")}</div>
-      <button class="icon-btn" id="qz-x" title="Chiudi">✕</button></div>
+      <button class="icon-btn" id="qz-x" title="${t("h.common.close")}">✕</button></div>
     <h2>${esc(q.title)}</h2>${q.sub ? `<p class="muted">${esc(q.sub)}</p>` : ""}
     <div class="qz-opts">${q.options.map((o) => `<button class="qz-opt${on(o.id) ? " on" : ""}" data-o="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>
-    <div class="row end"><button class="btn" id="qz-back"${QZ.step ? "" : " disabled"}>‹ Indietro</button>
-      <button class="btn" id="qz-skip">Salta</button>
-      ${q.multi ? `<button class="btn primary" id="qz-next">Avanti ›</button>` : ""}</div>`;
+    <div class="row end"><button class="btn" id="qz-back"${QZ.step ? "" : " disabled"}>‹ ${t("h.common.back")}</button>
+      <button class="btn" id="qz-skip">${t("h.quiz.skip")}</button>
+      ${q.multi ? `<button class="btn primary" id="qz-next">${t("h.common.next")} ›</button>` : ""}</div>`;
   box.onclick = (e) => {
     const o = e.target.closest(".qz-opt");
     if (o) {
@@ -250,12 +250,12 @@ function renderQuizResults() {
   RECO.saveTastes(QZ.a);
   const res = RECO.suggest(S.games, QZ.a, 12);
   const box = $("#quiz-body");
-  box.innerHTML = `<div class="qz-head"><b>🎮 Da giocare adesso</b><span class="muted">${res.length} suggerimenti</span>
-      <button class="icon-btn" id="qz-x" title="Chiudi">✕</button></div>
+  box.innerHTML = `<div class="qz-head"><b>🎮 ${t("h.quiz.playNow")}</b><span class="muted">${t("h.quiz.count", {n: res.length})}</span>
+      <button class="icon-btn" id="qz-x" title="${t("h.common.close")}">✕</button></div>
     ${res.length ? `<div class="qz-res">${res.map((x) => nfCard(x.g, x.why)).join("")}</div>`
-      : `<p class="muted">Nessun gioco corrisponde a tutte le risposte: prova a cambiarne qualcuna.</p>`}
-    <div class="row end"><button class="btn" id="qz-again">↻ Altri suggerimenti</button>
-      <button class="btn" id="qz-restart">Rifai il questionario</button></div>`;
+      : `<p class="muted">${t("h.quiz.noMatch")}</p>`}
+    <div class="row end"><button class="btn" id="qz-again">↻ ${t("h.quiz.more")}</button>
+      <button class="btn" id="qz-restart">${t("h.quiz.restart")}</button></div>`;
   box.onclick = (e) => {
     const c = e.target.closest(".nf-card");
     if (c) { $("#quiz").close(); openDetail(+c.dataset.id); return; }

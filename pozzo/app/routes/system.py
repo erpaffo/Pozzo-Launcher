@@ -11,7 +11,10 @@ from pathlib import Path
 
 from fastapi import APIRouter
 
-from ... import backup as BK, config as C, platforms as P
+from fastapi.responses import PlainTextResponse
+
+from ... import backup as BK, config as C, platforms as P, telemetry
+from ... import i18n as I
 from ...library.build import build
 from ..server import WINDOW_FOCUS, _REMOTE_DOWN, _plain
 
@@ -26,6 +29,22 @@ def build_router(ctx) -> APIRouter:
     def api_about():
         from ... import __version__, updates
         return {"version": __version__, "changelog": updates.changelog(), "data_dir": str(C.settings_path(cfg).parent)}
+
+    # ------------------------------------------------------------ registro errori locale (nessun invio)
+    telemetry.set_path(C.settings_path(cfg).parent / "data" / "errors.log")
+
+    @router.get("/api/system/errors")
+    def api_system_errors():
+        return {"errors": telemetry.recent()}
+
+    @router.post("/api/system/errors/clear")
+    def api_system_errors_clear():
+        telemetry.clear()
+        return {"ok": True}
+
+    @router.get("/api/system/errors/export")
+    def api_system_errors_export():
+        return PlainTextResponse(telemetry.export_report())
 
     # ------------------------------------------------------------ spazio dei dati scaricati (cache)
     storage_cache: dict = {}
@@ -90,12 +109,12 @@ def build_router(ctx) -> APIRouter:
             for src, nrow, nb in c.db.execute(
                     "SELECT source, COUNT(*), SUM(length(value)+length(field)+length(key)) FROM resources GROUP BY source ORDER BY 3 DESC"):
                 sources.append({"source": src, "rows": nrow, "bytes": nb or 0})
-            labels = {"catalog": "Elenchi degli store online", "netmeta": "Copertine e descrizioni degli store",
-                      "storemeta": "Metadati offline degli store", "store": "Store PC", "ports": "Port e app", "art": "Immagini",
-                      "hltb": "Durata (HowLongToBeat)", "collart": "Immagini delle collezioni", "size": "Dimensioni"}
+            labels = {"catalog": I.tr("s.system.kind.catalog"), "netmeta": I.tr("s.system.kind.netmeta"),
+                      "storemeta": I.tr("s.system.kind.storemeta"), "store": I.tr("b.setup.step.stores"), "ports": I.tr("a.nav.ports"), "art": I.tr("f.media.label"),
+                      "hltb": I.tr("s.system.kind.hltb"), "collart": I.tr("k.fonti.h.coll"), "size": I.tr("s.system.kind.size")}
             for k, nrow, nb in c.db.execute(
                     "SELECT substr(k,1,instr(k||':',':')-1), COUNT(*), SUM(length(v)) FROM kv GROUP BY 1 ORDER BY 3 DESC"):
-                kv.append({"kind": k or "altro", "label": labels.get(k, k or "altro"), "rows": nrow, "bytes": nb or 0})
+                kv.append({"kind": k or "altro", "label": labels.get(k, k or I.tr("s.system.kind.other")), "rows": nrow, "bytes": nb or 0})
             try:
                 for pid, nrow, nb in c.db.execute(
                         "SELECT json_extract(v,'$.pid'), COUNT(*), SUM(length(v)) FROM kv WHERE k LIKE 'catalog:%' GROUP BY 1"):
@@ -162,25 +181,24 @@ def build_router(ctx) -> APIRouter:
             roots = C.rom_roots(cfg)
             off = [r for r in roots if not r.exists()]
             if len(off) == len(roots):
-                add("error", "Cartella delle ROM non raggiungibile", f"{cfg.roms} (disco scollegato o cartella spostata?)",
-                    {"label": "Cambia cartella", "tab": "scan"})
+                add("error", I.tr("s.system.roms_unreachable"), I.tr("s.system.roms_unreachable_detail", path=cfg.roms),
+                    {"label": I.tr("s.system.change_folder"), "tab": "scan"})
             elif off:
-                add("warn", f"{len(off)} cartelle ROM non raggiungibili", ", ".join(map(str, off))
-                    + ". I loro giochi spariscono dalla libreria al prossimo aggiornamento finché il disco non torna "
-                    "(i dati restano salvati).", {"label": "Nuovi giochi", "tab": "scan"})
+                add("warn", I.tr("s.system.roms_some_unreachable", n=len(off)), ", ".join(map(str, off))
+                    + I.tr("s.system.roms_some_tail"), {"label": "Nuovi giochi", "tab": "scan"})
             else:
-                add("ok", "Cartelle delle ROM raggiungibili", ", ".join(map(str, roots)))
+                add("ok", I.tr("s.system.roms_ok"), ", ".join(map(str, roots)))
 
         def emulators():
             with lib.lock:
                 pids = sorted({g["platform"] for g in lib.games if not g.get("store")} & set(P.PLATFORMS))
             bad = [r for r in (_emu_row(p) for p in pids) if not r["effective"]]
             if bad:
-                add("warn", f"{len(bad)} console senza emulatore pronto",
+                add("warn", I.tr("s.system.emu_some_bad", n=len(bad)),
                     "; ".join(f"{r['name']}: {r['problem']}" for r in bad[:8]) + ("…" if len(bad) > 8 else ""),
-                    {"label": "Emulatori", "tab": "emu"})
+                    {"label": I.tr("s.system.emulators"), "tab": "emu"})
             elif pids:
-                add("ok", "Emulatori pronti per tutte le console", f"{len(pids)} console")
+                add("ok", I.tr("s.system.emu_all_ready"), I.tr("b.setup.sum.consoles", n=len(pids)))
 
         def switch_keys():
             with lib.lock:
@@ -190,34 +208,32 @@ def build_router(ctx) -> APIRouter:
             from ... import switchmeta
             found = switchmeta.key_candidates(getattr(cfg, "switch_keys", ""))
             if found:
-                add("ok", "prod.keys trovato: metadati Switch letti dai file", str(found[0]))
+                add("ok", I.tr("s.system.keys_found"), str(found[0]))
             else:
-                add("warn", "prod.keys non trovato", "Senza chiavi i giochi Switch usano solo le fonti online. "
-                    "Indicalo in config.toml, [paths] switch_keys, oppure installa le chiavi in Ryujinx/Eden.")
+                add("warn", I.tr("s.system.keys_missing"), I.tr("s.system.keys_missing_detail"))
 
         def library():
             with lib.lock:
                 prim = [g for g in lib.games if g["is_primary"] and not g.get("store")]
             nodata = sum(1 for g in prim if not g["found"])
             nocover = sum(1 for g in prim if g["found"] and "cover" not in g["media"])
-            fix = {"label": "Completa i dati mancanti", "scan": "missing"}
+            fix = {"label": I.tr("s.system.complete_missing"), "scan": "missing"}
             if nodata:
-                add("warn", f"{num(nodata)} giochi senza dati", "Nessuna fonte li ha riconosciuti.", fix)
+                add("warn", I.tr("s.system.n_no_data", n=num(nodata)), I.tr("s.system.no_source"), fix)
             if nocover:
-                add("warn", f"{num(nocover)} giochi senza copertina", "", fix)
+                add("warn", I.tr("s.system.n_no_cover", n=num(nocover)), "", fix)
             if not nodata and not nocover:
-                add("ok", "Tutti i giochi hanno dati e copertina", num(len(prim)))
+                add("ok", I.tr("s.system.all_have_data"), num(len(prim)))
 
         def missing_files():
             with lib.lock:
                 rows = [(g["title"], g["files"]) for g in lib.games if g["files"] and not g.get("store")]
             gone = [t for t, fl in rows if not any(Path(f).exists() for f in fl)]
             if gone:
-                add("warn", f"{num(len(gone))} giochi con i file non trovati",
-                    ", ".join(gone[:6]) + ("…" if len(gone) > 6 else "") + ". Se hai rinominato o spostato le cartelle, "
-                    "riassociali da Nuovi giochi prima di aggiornare la libreria.", {"label": "Nuovi giochi", "tab": "scan"})
+                add("warn", I.tr("s.system.n_files_missing", n=num(len(gone))),
+                    ", ".join(gone[:6]) + ("…" if len(gone) > 6 else "") + I.tr("s.system.files_missing_tail"), {"label": "Nuovi giochi", "tab": "scan"})
             else:
-                add("ok", "Tutti i file dei giochi sono presenti", num(len(rows)))
+                add("ok", I.tr("s.system.all_files_present"), num(len(rows)))
 
         def sources():
             from ...cache import Cache
@@ -227,39 +243,39 @@ def build_router(ctx) -> APIRouter:
             finally:
                 c.close()
             errs = [e.split(":")[0] for e in fg.get("errors", []) if e != "reset"]
-            down = [f"immagini da {h}" for h, until in _REMOTE_DOWN.items() if until > time.time()]
+            down = [I.tr("s.system.images_from", h=h) for h, until in _REMOTE_DOWN.items() if until > time.time()]
             if errs or down:
-                add("warn", "Alcune fonti online non rispondono", "; ".join(errs + down)
-                    + ". Si riprova da solo più tardi; intanto si usa l'ultimo elenco salvato.")
+                add("warn", I.tr("s.system.sources_down"), "; ".join(errs + down)
+                    + I.tr("s.system.sources_tail"))
 
         def backups():
             last = BK.list_backups(cfg)
             if not last:
-                add("warn", "Nessuna copia dei tuoi dati", "", {"label": "Crea una copia", "backup": True})
+                add("warn", I.tr("s.system.no_backup"), "", {"label": I.tr("s.system.make_backup"), "backup": True})
                 return
             days = int((time.time() - last[0]["time"]) / 86400)
             old = days >= 8
-            add("warn" if old else "ok", f"Ultima copia dei tuoi dati: {'oggi' if not days else f'{days} giorni fa'}",
-                last[0]["name"], {"label": "Crea una copia", "backup": True} if old else None)
+            add("warn" if old else "ok", I.tr("s.system.last_backup", when=I.tr("g.dash.save.today") if not days else I.tr("g.dash.save.days_ago", n=days)),
+                last[0]["name"], {"label": I.tr("s.system.make_backup"), "backup": True} if old else None)
 
         def streaming():
             if not SUN.install_dir():
                 return
             state, mode = SUN.service_state(), SUN.start_mode()
-            fix = {"label": "Avvia Sunshine (anche con Windows)", "sunshine": True}
+            fix = {"label": I.tr("i.remote.sun.start"), "sunshine": True}
             if state == "stopped":
-                add("warn", "Sunshine è fermo: lo streaming verso TV e telefono non funziona",
-                    "Moonlight non trova il PC finché il servizio di Sunshine non è avviato.", fix)
+                add("warn", I.tr("s.system.sunshine_stopped"),
+                    I.tr("s.system.sunshine_stopped_detail"), fix)
             elif state == "running" and mode and mode != "auto":
-                add("warn", "Sunshine non parte con Windows", "Dopo un riavvio lo streaming smette di funzionare.", fix)
+                add("warn", I.tr("s.system.sunshine_no_autostart"), I.tr("s.system.sunshine_no_autostart_detail"), fix)
             elif state == "running":
-                add("ok", "Sunshine attivo: streaming pronto per Moonlight")
+                add("ok", I.tr("s.system.sunshine_ok"))
 
         for fn in (roms, emulators, switch_keys, library, missing_files, sources, backups, streaming):
             try:
                 fn()
             except Exception as e:  # un controllo rotto non deve nascondere gli altri
-                add("warn", "Controllo non riuscito", f"{fn.__name__}: {type(e).__name__}: {e}")
+                add("warn", I.tr("s.system.check_failed"), f"{fn.__name__}: {type(e).__name__}: {e}")
         order = {"error": 0, "warn": 1, "ok": 2}
         return {"items": sorted(out, key=lambda x: order[x["level"]])}
 
@@ -303,7 +319,7 @@ def build_router(ctx) -> APIRouter:
             lib.load()
             threading.Thread(target=_pregen_thumbs, daemon=True).start()
         except Exception as e:
-            state["build_log"].append(f"Errore: {type(e).__name__}: {e}")
+            state["build_log"].append(I.tr("s.system.error", kind=type(e).__name__, msg=str(e)))
         finally:
             state["building"] = False
 

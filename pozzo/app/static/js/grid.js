@@ -23,11 +23,11 @@ function layout() {
   S.total = y + 60;
   sizer.style.height = S.total + "px";
   $("#empty").hidden = S.items.length > 0 || skeletonWanted();
-  $("#empty").innerHTML = S.search ? esc(`Nessun gioco trovato per «${S.search}».`)
+  $("#empty").innerHTML = S.search ? esc(t("h.grid.noSearch", {q: S.search}))
     : !$("#loadbar").hidden ? ""
-    : !S.games.length ? `<div class="empty-lib"><b>La libreria è vuota.</b><p class="muted">Scegli la cartella delle ROM o importa i giochi degli store.</p>
-        <button class="btn primary" onclick="SETUP.open(true).then(() => reload(true))">🧭 Configurazione guidata</button></div>`
-    : "Nessun gioco in questa vista.";
+    : !S.games.length ? `<div class="empty-lib"><b>${t("h.grid.emptyLib")}</b><p class="muted">${t("h.grid.emptyHint")}</p>
+        <button class="btn primary" onclick="SETUP.open(true).then(() => reload(true))">🧭 ${t("h.grid.wizard")}</button></div>`
+    : t("h.grid.noView");
   skeletonSync();
 }
 
@@ -125,7 +125,7 @@ function tileEl(g) {
   el.dataset.id = g.id;
   el.tabIndex = -1; // setRoving() (a fine render) lascia tabulabile solo la tessera corrente
   el.setAttribute("role", "button");
-  el.setAttribute("aria-label", `Apri ${g.title}, ${platName(g.platform)}`);
+  el.setAttribute("aria-label", t("h.grid.openAria", {title: g.title, plat: platName(g.platform)}));
   const pn = platName(g.platform);
   const showPlat = S.view.type !== "platform";
   const sub = (showPlat ? [pn, g.year] : [g.year, g.dev]).concat((S.sort === "-size" || S.sort === "size" || S.view.type === "shop") && g.size ? [fmtSize(g.size)] : [])
@@ -133,13 +133,13 @@ function tileEl(g) {
     .concat((S.sort === "hltb" || S.sort === "-hltb") && g.hltb != null && S.discScore !== "hltb" ? [`⏱ ${fmtHours(g.hltb)}`] : []).filter(Boolean).join(" · ");
   const badges = (g.grp.favorite ? `<span class="badge fav">★</span>` : "")
     + (g.grp.status ? `<span class="badge st st-${g.grp.status}" title="${esc(STATUS[g.grp.status]?.label || "")}">${STATUS[g.grp.status]?.icon || ""}</span>` : "")
-    + (S.oneVersion && g.grp.versions > 1 ? `<span class="badge ver">${g.grp.versions} ${g.store ? "store" : "versioni"}</span>` : "")
+    + (S.oneVersion && g.grp.versions > 1 ? `<span class="badge ver">${g.grp.versions} ${g.store ? t("h.grid.stores") : t("h.grid.versions")}</span>` : "")
     + (g.store ? `<span class="badge plat">${esc(STORE_SHORT[g.store] || g.store.toUpperCase())}</span>`
       : showPlat ? `<span class="badge plat">${esc(SHORT[g.platform] || g.platform.toUpperCase())}</span>` : "")
-    + (g.content === "dlc" ? `<span class="badge ext" title="Contenuto aggiuntivo (DLC/add-on): non è un gioco a sé">DLC</span>` : "")
-    + (g.players >= 2 ? `<span class="badge ext" title="Multigiocatore locale">👥 ${g.players}</span>` : "")
-    + (g.store === "online" ? `<span class="badge inst">🌐 Scarica${g.size ? " · " + fmtSize(g.size) : ""}</span>`
-      : g.store && !g.installed ? `<span class="badge inst">⬇ Installa</span>` : "")
+    + (g.content === "dlc" ? `<span class="badge ext" title="${t("h.grid.dlcTitle")}">DLC</span>` : "")
+    + (g.players >= 2 ? `<span class="badge ext" title="${t("h.grid.localMulti")}">👥 ${g.players}</span>` : "")
+    + (g.store === "online" ? `<span class="badge inst">🌐 ${t("h.grid.download")}${g.size ? " · " + fmtSize(g.size) : ""}</span>`
+      : g.store && !g.installed ? `<span class="badge inst">⬇ ${t("h.grid.install")}</span>` : "")
     + GS.ui.tileBadges.map((b) => { try { const t = b.render(g); return t ? `<span class="badge ext">${esc(t)}</span>` : ""; } catch { return ""; } }).join("");
   el.innerHTML = `<div class="cover" style="--h:${hue(g.title)}"><div class="ph">${esc(g.title)}<small>${esc(pn)}</small></div>`
     + (g.cover ? `<img alt="" decoding="async">` : "") + badges + `</div>`

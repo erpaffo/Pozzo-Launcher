@@ -21,11 +21,11 @@
     return { status: r.status, ok: r.ok, data: data || {}, retry: Number(r.headers?.get?.("Retry-After")) || 0 };
   }
   function errText(res) {
-    if (res.status === 429) return `Troppi tentativi: riprova tra ${res.retry || 30} s`;
-    if (res.status === 403 && (res.data.error === "pin" || !res.data.detail)) return "PIN errato";
-    if (res.status === 404) return "Profilo non trovato";
-    if (res.status === 0) return "Server non raggiungibile";
-    return res.data.detail || res.data.error || `Errore ${res.status}`;
+    if (res.status === 429) return t("i.pp.tooMany", { s: res.retry || 30 });
+    if (res.status === 403 && (res.data.error === "pin" || !res.data.detail)) return t("i.pp.wrongPin");
+    if (res.status === 404) return t("i.pp.notFound");
+    if (res.status === 0) return t("i.pp.unreachable");
+    return res.data.detail || res.data.error || t("i.pp.error", { s: res.status });
   }
   /** Elenco dei profili, o null se la route manca o il server non risponde. */
   async function load() {
@@ -63,7 +63,7 @@
   const $ = (s, el = st.el) => el?.querySelector(s);
   const btns = () => [...st.el.querySelectorAll("button:not([disabled]), input")].filter((b) => !b.hidden);
   const live = (t) => { const n = $("#pp-live"); if (n) n.textContent = t; };
-  const tile = (p, extra = "") => `<button type="button" class="pp-tile" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}${p.locked ? ", protetto da PIN" : ""}">`
+  const tile = (p, extra = "") => `<button type="button" class="pp-tile" data-pid="${esc(p.id)}" aria-label="${esc(p.name)}${p.locked ? t("i.pp.lockedAria") : ""}">`
     + `<span class="pp-av" style="background:${esc(p.color || "#5b8cff")}">${esc(p.avatar || "👤")}${p.locked ? '<i class="pp-lock" aria-hidden="true">🔒</i>' : ""}</span>`
     + `<span class="pp-name">${esc(p.name)}</span>${extra}</button>`;
 
@@ -85,13 +85,13 @@
 
   function showPicker() {
     const ps = st.data.profiles;
-    setView("pick", `<h1 id="pp-title">Chi gioca?</h1>
-      <div class="pp-grid" role="group" aria-label="Profili">${ps.map((p) => tile(p, st.manage ? '<span class="pp-edit" aria-hidden="true">✎</span>' : "")).join("")}
-        <button type="button" class="pp-tile pp-new" data-act="new" aria-label="Nuovo profilo"><span class="pp-av">＋</span><span class="pp-name">Nuovo profilo</span></button></div>
-      <p class="pp-hint muted">${st.manage ? "Scegli un profilo da modificare." : "Scegli il tuo profilo. La libreria è la stessa per tutti."}</p>
-      ${st.manage ? "" : `<label class="pp-remember"><input type="checkbox" id="pp-remember"${st.data.remembered ? " checked" : ""}> Entra sempre con questo profilo su questo dispositivo</label>`}
-      <div class="pp-row"><button type="button" class="pp-btn" data-act="manage" aria-pressed="${st.manage}">${st.manage ? "Fine" : "Gestisci"}</button>
-      <button type="button" class="pp-btn" data-act="close">Chiudi</button></div>`, close);
+    setView("pick", `<h1 id="pp-title">${t("i.pp.who")}</h1>
+      <div class="pp-grid" role="group" aria-label="${t("i.pp.profiles")}">${ps.map((p) => tile(p, st.manage ? '<span class="pp-edit" aria-hidden="true">✎</span>' : "")).join("")}
+        <button type="button" class="pp-tile pp-new" data-act="new" aria-label="${t("i.pp.new")}"><span class="pp-av">＋</span><span class="pp-name">${t("i.pp.new")}</span></button></div>
+      <p class="pp-hint muted">${st.manage ? t("i.pp.pickManage") : t("i.pp.pickHint")}</p>
+      ${st.manage ? "" : `<label class="pp-remember"><input type="checkbox" id="pp-remember"${st.data.remembered ? " checked" : ""}> ${t("i.pp.remember")}</label>`}
+      <div class="pp-row"><button type="button" class="pp-btn" data-act="manage" aria-pressed="${st.manage}">${st.manage ? t("i.pp.done") : t("i.pp.manage")}</button>
+      <button type="button" class="pp-btn" data-act="close">${t("i.pp.close")}</button></div>`, close);
     ([...st.el.querySelectorAll("[data-pid]")].find((b) => b.dataset.pid === st.data.active) || btns()[0])?.focus?.();
   }
 
@@ -101,20 +101,20 @@
   function showPin(p, submit, done, back = showPicker) {
     st.pin = "";
     const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" class="pp-key" data-d="${n}">${n}</button>`).join("")
-      + `<button type="button" class="pp-key" data-act="del" aria-label="Cancella l'ultima cifra">⌫</button><button type="button" class="pp-key" data-d="0">0</button>`
+      + `<button type="button" class="pp-key" data-act="del" aria-label="${t("i.pp.delAria")}">⌫</button><button type="button" class="pp-key" data-d="0">0</button>`
       + `<button type="button" class="pp-key pp-ok" data-act="ok">OK</button>`;
-    setView("pin", `<div class="pp-pinwho">${tile({ ...p, locked: false })}</div><h1 id="pp-title">PIN di «${esc(p.name)}»</h1>
-      <div class="pp-dots" id="pp-dots" role="img" aria-label="0 cifre inserite"></div>
+    setView("pin", `<div class="pp-pinwho">${tile({ ...p, locked: false })}</div><h1 id="pp-title">${t("i.pp.pinOf", { name: esc(p.name) })}</h1>
+      <div class="pp-dots" id="pp-dots" role="img" aria-label="${t("i.pp.digitsIn", { n: 0 })}"></div>
       <p class="pp-err" id="pp-err" role="alert"></p>
-      <div class="pp-pad" role="group" aria-label="Tastierino numerico">${keys}</div>
-      <div class="pp-row"><button type="button" class="pp-btn" data-act="back">Indietro</button></div>`, back);
-    const dots = () => { const d = $("#pp-dots"); d.textContent = "●".repeat(st.pin.length) || "–"; d.setAttribute("aria-label", `${st.pin.length} cifre inserite`); };
+      <div class="pp-pad" role="group" aria-label="${t("i.pp.keypad")}">${keys}</div>
+      <div class="pp-row"><button type="button" class="pp-btn" data-act="back">${t("i.pp.back")}</button></div>`, back);
+    const dots = () => { const d = $("#pp-dots"); d.textContent = "●".repeat(st.pin.length) || "–"; d.setAttribute("aria-label", t("i.pp.digitsIn", { n: st.pin.length })); };
     dots();
     const ctl = {
       digit(n) { if (!st.busy && st.pin.length < 8) { st.pin += n; dots(); $("#pp-err").textContent = ""; } },
       del() { st.pin = st.pin.slice(0, -1); dots(); },
       async ok() {
-        if (st.busy || st.pin.length < 4) { $("#pp-err").textContent = "Il PIN ha da 4 a 8 cifre"; return; }
+        if (st.busy || st.pin.length < 4) { $("#pp-err").textContent = t("i.pp.pinLength"); return; }
         st.busy = true;
         const res = await submit(st.pin);
         st.busy = false;
@@ -175,18 +175,18 @@
       const cur = p || { name: "", avatar: AVATARS[0], color: COLORS[0], locked: false };
       let avatar = cur.avatar || AVATARS[0], color = cur.color || COLORS[0];
       const back = () => (onDone ? onDone() : close());
-      setView("form", `<form id="pp-form" autocomplete="off"><h1 id="pp-title">${isNew ? "Nuovo profilo" : `Modifica «${esc(cur.name)}»`}</h1>
-        <label class="pp-f">Nome <input name="name" maxlength="40" required value="${esc(cur.name)}"></label>
-        <div class="pp-f">Avatar <div class="pp-choices" role="radiogroup" aria-label="Avatar">${AVATARS.map((a) => `<button type="button" role="radio" class="pp-ch" data-av="${a}" aria-checked="${a === avatar}">${a}</button>`).join("")}</div>
-          <input name="avatar" maxlength="8" value="${esc(avatar)}" aria-label="Avatar, emoji a scelta"></div>
-        <div class="pp-f">Colore <div class="pp-choices" role="radiogroup" aria-label="Colore">${COLORS.map((c) => `<button type="button" role="radio" class="pp-ch pp-sw" data-co="${c}" style="background:${c}" aria-label="${c}" aria-checked="${c === color}"></button>`).join("")}</div></div>
-        <label class="pp-f">${cur.locked ? "Nuovo PIN (vuoto = non cambiare)" : "PIN (facoltativo, 4-8 cifre)"}
+      setView("form", `<form id="pp-form" autocomplete="off"><h1 id="pp-title">${isNew ? t("i.pp.new") : t("i.pp.editNamed", { name: esc(cur.name) })}</h1>
+        <label class="pp-f">${t("i.common.name")} <input name="name" maxlength="40" required value="${esc(cur.name)}"></label>
+        <div class="pp-f">${t("i.pp.avatar")} <div class="pp-choices" role="radiogroup" aria-label="${t("i.pp.avatar")}">${AVATARS.map((a) => `<button type="button" role="radio" class="pp-ch" data-av="${a}" aria-checked="${a === avatar}">${a}</button>`).join("")}</div>
+          <input name="avatar" maxlength="8" value="${esc(avatar)}" aria-label="${t("i.pp.avatarEmoji")}"></div>
+        <div class="pp-f">${t("i.pp.color")} <div class="pp-choices" role="radiogroup" aria-label="${t("i.pp.color")}">${COLORS.map((c) => `<button type="button" role="radio" class="pp-ch pp-sw" data-co="${c}" style="background:${c}" aria-label="${c}" aria-checked="${c === color}"></button>`).join("")}</div></div>
+        <label class="pp-f">${cur.locked ? t("i.pp.newPin") : t("i.pp.pin")}
           <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" autocomplete="new-password"></label>
-        ${cur.locked ? '<label class="pp-f chk"><input type="checkbox" name="nopin"> Togli il PIN</label>' : ""}
-        <p class="pp-hint muted">Il PIN blocca il cambio di profilo dal menu: non protegge i file del computer.</p>
+        ${cur.locked ? '<label class="pp-f chk"><input type="checkbox" name="nopin"> ' + t("i.pp.removePin") + '</label>' : ""}
+        <p class="pp-hint muted">${t("i.pp.pinNote")}</p>
         <p class="pp-err" id="pp-err" role="alert"></p>
-        <div class="pp-row"><button type="submit" class="pp-btn pp-primary">Salva</button><button type="button" class="pp-btn" data-act="back">Annulla</button>
-          ${!isNew && cur.id !== "default" ? '<button type="button" class="pp-btn pp-danger" data-act="del">Elimina…</button>' : ""}</div></form>`, back);
+        <div class="pp-row"><button type="submit" class="pp-btn pp-primary">${t("i.common.save")}</button><button type="button" class="pp-btn" data-act="back">${t("i.pp.cancel")}</button>
+          ${!isNew && cur.id !== "default" ? '<button type="button" class="pp-btn pp-danger" data-act="del">' + t("i.pp.delete") + '</button>' : ""}</div></form>`, back);
       const f = $("#pp-form");
       const mark = (attr, val) => f.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute("aria-checked", String(b.getAttribute(attr) === val)));
       f.addEventListener("click", (e) => {
@@ -201,8 +201,8 @@
         e.preventDefault();
         const name = f.name.value.trim(), pin = f.pin.value;
         const err = (t) => { $("#pp-err").textContent = t; live(t); };
-        if (!name) return err("Scrivi un nome");
-        if (pin && !/^\d{4,8}$/.test(pin)) return err("Il PIN ha da 4 a 8 cifre");
+        if (!name) return err(t("i.pp.writeName"));
+        if (pin && !/^\d{4,8}$/.test(pin)) return err(t("i.pp.pinLength"));
         const body = { name, avatar: f.avatar.value.trim() || AVATARS[0], color };
         if (pin) body.pin = pin; else if (f.nopin?.checked) body.pin = "";
         let id = cur.id, res;
@@ -212,7 +212,7 @@
         }
         if (!isNew || res.ok) res = await req(`/api/profiles/${encodeURIComponent(id)}`, "PATCH", body);
         if (!res.ok) return err(errText(res));
-        (st.opts.toast || root.toast)?.(isNew ? "Profilo creato" : "Profilo aggiornato");
+        (st.opts.toast || root.toast)?.(isNew ? t("i.pp.created") : t("i.pp.updated"));
         back();
       });
     });
@@ -224,10 +224,10 @@
   }
 
   async function remove(p, back) {
-    if (!(root.confirm?.(`Eliminare il profilo «${p.name}»? Preferiti, tempo di gioco e collezioni di questo profilo spariscono dall'app (il database resta nella cartella profiles/eliminati).`) ?? true)) return;
+    if (!(root.confirm?.(t("i.pp.confirmDelete", { name: p.name })) ?? true)) return;
     const res = await req(`/api/profiles/${encodeURIComponent(p.id)}`, "DELETE");
     if (!res.ok) { $("#pp-err").textContent = errText(res); return; }
-    (st.opts.toast || root.toast)?.("Profilo eliminato");
+    (st.opts.toast || root.toast)?.(t("i.pp.deleted"));
     st.removed = p.id;
     back();
   }
@@ -321,7 +321,7 @@
   api.open = async (opts = {}) => {
     if (st.open) return false;
     const d = await load();
-    if (!d) { (opts.toast || root.toast)?.("Profili non disponibili", true); return false; }
+    if (!d) { (opts.toast || root.toast)?.(t("i.pp.unavailable"), true); return false; }
     st.data = d; st.manage = false;
     openShell(opts);
     showPicker();

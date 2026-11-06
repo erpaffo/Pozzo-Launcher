@@ -1,0 +1,21 @@
+{
+  "steam": {
+    "steamid": "76561199053855654",
+    "api_key": "2B957D7B4AD56FB1E186C9FA0C88606F"
+  },
+  "theme": "oled",
+  "_done": [
+    "discord",
+    "discord_voice",
+    "epic",
+    "experience",
+    "github_token",
+    "gog",
+    "retroachievements",
+    "roms_extra",
+    "spotify",
+    "steam",
+    "theme",
+    "wishlist"
+  ]
+}

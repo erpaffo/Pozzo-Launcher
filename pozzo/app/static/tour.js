@@ -43,28 +43,28 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
 
   // sel = selettori alternativi (il primo visibile vince; nessun sel = scheda centrata); k = tasti letti da shortcuts.js
   const STEPS = [
-    { id: "welcome", title: "Benvenuto in Pozzo Launcher",
-      text: () => "Ti mostro in un minuto dove trovare le cose più utili. Puoi usare le frecce ← e → della tastiera e fermarti quando vuoi." },
-    { id: "views", sel: ["#nav", "#experience-nav"], title: "Le tue viste",
-      text: () => "Da qui scegli cosa guardare: tutti i giochi, i preferiti, gli store, le console e le tue collezioni." },
-    { id: "search", sel: ["#search"], title: "Cerca un gioco",
-      text: (k) => `Scrivi il titolo o lo sviluppatore. Premi «${k.search}» per saltare qui da ovunque; con ${k.palette} apri la ricerca veloce di giochi e comandi.` },
-    { id: "sort", sel: ["#sort"], title: "Ordina e filtra",
-      text: () => "Metti i giochi in ordine per titolo, anno o tempo di gioco. Vicino trovi i filtri per genere, decennio e lingua." },
-    { id: "game", sel: [".tile[data-id]", ".gs-dashboard__tile"], title: "Un gioco",
-      text: () => "Clic sulla copertina per i dettagli, doppio clic per giocare. Con il clic destro vedi le altre azioni, come i preferiti." },
-    { id: "top", sel: ["#bp-btn"], title: "Big Picture e gioco a caso",
-      text: () => "«Big Picture» apre la libreria a schermo intero, pensata per il controller. «A caso» sceglie un gioco per te." },
-    { id: "settings", sel: ["#settings-btn"], title: "Impostazioni",
-      text: () => "Qui trovi le cartelle dei giochi, gli emulatori, gli store e tutte le altre opzioni." },
-    { id: "themes", sel: ["#settings-btn"], title: "Temi e aspetto",
-      text: () => "In Impostazioni ? Aspetto passa il mouse su un tema per vederne l'anteprima senza applicarlo; l? trovi anche zoom, densit? e l'editor dei colori." },
-    { id: "profile", sel: ["#mb-profile", "#profile-btn"], title: "Chi gioca",
-      text: () => "Ogni persona può avere il suo profilo, con preferiti e tempo di gioco. Da qui cambi utente." },
-    { id: "keys", sel: ['.mb-top[data-m="Impostazioni"]'], title: "Scorciatoie da tastiera",
-      text: (k) => `Premi «${k.help}» in qualsiasi momento per vedere tutte le scorciatoie. Le trovi anche nel menu Impostazioni.` },
-    { id: "end", title: "Sei pronto",
-      text: () => "Buon divertimento! Per rivedere il tour: menu Impostazioni › Tour guidato, oppure Impostazioni › Generale › «Rivedi il tour»." },
+    { id: "welcome", get title() { return t("b.tour.welcome.title"); },
+      text: () => t("b.tour.welcome.text") },
+    { id: "views", sel: ["#nav", "#experience-nav"], get title() { return t("b.tour.views.title"); },
+      text: () => t("b.tour.views.text") },
+    { id: "search", sel: ["#search"], get title() { return t("b.tour.search.title"); },
+      text: (k) => t("b.tour.search.text", {cerca: k.search, palette: k.palette}) },
+    { id: "sort", sel: ["#sort"], get title() { return t("b.tour.sort.title"); },
+      text: () => t("b.tour.sort.text") },
+    { id: "game", sel: [".tile[data-id]", ".gs-dashboard__tile"], get title() { return t("b.tour.game.title"); },
+      text: () => t("b.tour.game.text") },
+    { id: "top", sel: ["#bp-btn"], get title() { return t("b.tour.top.title"); },
+      text: () => t("b.tour.top.text") },
+    { id: "settings", sel: ["#settings-btn"], get title() { return t("b.common.settings"); },
+      text: () => t("b.tour.settings.text") },
+    { id: "themes", sel: ["#settings-btn"], get title() { return t("b.tour.themes.title"); },
+      text: () => t("b.tour.themes.text") },
+    { id: "profile", sel: ["#mb-profile", "#profile-btn"], get title() { return t("b.tour.profile.title"); },
+      text: () => t("b.tour.profile.text") },
+    { id: "keys", sel: ['.mb-top[data-m="Impostazioni"]'], get title() { return t("b.tour.keys.title"); },
+      text: (k) => t("b.tour.keys.text", {aiuto: k.help}) },
+    { id: "end", get title() { return t("b.tour.end.title"); },
+      text: () => t("b.tour.end.text") },
   ];
 
   const loadState = (s) => {
@@ -124,10 +124,10 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       u.card.setAttribute("role", "dialog"); u.card.setAttribute("aria-modal", "true");
       u.card.setAttribute("aria-labelledby", "gs-tour-title"); u.card.setAttribute("aria-describedby", "gs-tour-text");
       u.dots.setAttribute("aria-hidden", "true");
-      u.back = btn("btn", "Indietro", () => go(-1));
-      u.next = btn("btn accent", "Avanti", () => go(1));
-      u.skip = btn("btn", "Salta il tour", () => end("done"));
-      u.off = btn("gs-tour-off", "Non mostrare più il tour", () => end("off"));
+      u.back = btn("btn", t("b.common.back"), () => go(-1));
+      u.next = btn("btn accent", t("b.common.next"), () => go(1));
+      u.skip = btn("btn", t("b.tour.skip"), () => end("done"));
+      u.off = btn("gs-tour-off", t("b.tour.off"), () => end("off"));
       const meta = el("div", "gs-tour-meta"); meta.append(u.count, u.dots);
       const r1 = el("div", "gs-tour-row"); r1.append(u.back, u.next, u.skip);
       const r2 = el("div", "gs-tour-row end"); r2.append(u.off);
@@ -154,17 +154,17 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
         shownId = cur;
         ui.title.textContent = step.title;
         ui.text.textContent = step.text(keys());
-        ui.count.textContent = `Passo ${i + 1} di ${n}`;
+        ui.count.textContent = t("b.common.stepOf", {n: i + 1, tot: n});
         ui.dots.textContent = "";
         shown.forEach((_, k) => { const d = doc.createElement("i"); if (k === i) d.className = "on"; ui.dots.appendChild(d); });
         ui.back.disabled = i === 0;
-        ui.next.textContent = i === n - 1 ? "Fine" : "Avanti";
-        ui.live.textContent = `Passo ${i + 1} di ${n}. ${step.title}. ${ui.text.textContent}`;
+        ui.next.textContent = i === n - 1 ? t("b.common.end") : t("b.common.next");
+        ui.live.textContent = `${t("b.common.stepOf", {n: i + 1, tot: n})}. ${step.title}. ${ui.text.textContent}`;
         ui.next.focus();
       } else {
-        ui.count.textContent = `Passo ${i + 1} di ${n}`;
+        ui.count.textContent = t("b.common.stepOf", {n: i + 1, tot: n});
         ui.back.disabled = i === 0;
-        ui.next.textContent = i === n - 1 ? "Fine" : "Avanti";
+        ui.next.textContent = i === n - 1 ? t("b.common.end") : t("b.common.next");
       }
       const v = vp(), sz = { w: ui.card.offsetWidth || 360, h: ui.card.offsetHeight || 240 };
       let p;
@@ -225,7 +225,7 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       if (opener && opener.isConnected !== false && opener.focus) opener.focus();
       opener = null;
       win.dispatchEvent(new CustomEvent("pozzo:tour-end", { detail: { kind: kind || "stop" } }));
-      if (kind === "off") env.toast?.("Il tour non partirà più. Per rivederlo: Impostazioni › Generale › «Rivedi il tour», oppure menu Impostazioni › Tour guidato.");
+      if (kind === "off") env.toast?.(t("b.tour.toast.off"));
     }
 
     function start(opts = {}) {

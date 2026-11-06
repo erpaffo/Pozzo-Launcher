@@ -3,6 +3,12 @@
  * Script classico: ambito globale condiviso con gli altri file di js/ (ordine in index.html).
  * Le funzioni pure (DLU) sono provate con node da tests/test_downloads_ui.js. */
 
+/* testo tradotto: t() di i18n.js nel browser; nei test node (senza i18n) resta l'italiano */
+const tr = (k, it, p) => {
+  const s = typeof window !== "undefined" && window.t ? window.t(k, p) : k;
+  return s !== k ? s : it.replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? p[n] : m));
+};
+const LOC = () => (typeof GSI18n !== "undefined" ? GSI18n.lang : "it");
 const DLU = (() => {
   const UNITS = ["B", "KB", "MB", "GB", "TB"];
   /** come fmtSize di core.js, ma 0 resta «0 B»: un download appena partito ha 0 byte, non «niente» */
@@ -17,14 +23,14 @@ const DLU = (() => {
     if (s == null || !isFinite(s) || s < 0) return "—";
     s = Math.round(s);
     const two = (n) => String(n).padStart(2, "0");
-    if (s < 60) return `${s} s`;
-    if (s < 3600) return `${Math.floor(s / 60)} min ${two(s % 60)} s`;
-    if (s < 86400) return `${Math.floor(s / 3600)} h ${two(Math.floor(s / 60) % 60)} min`;
-    return `${Math.floor(s / 86400)} g ${Math.floor(s / 3600) % 24} h`;
+    if (s < 60) return tr("d.time.s", "{n} s", { n: s });
+    if (s < 3600) return tr("d.time.ms", "{m} min {s} s", { m: Math.floor(s / 60), s: two(s % 60) });
+    if (s < 86400) return tr("d.time.hm", "{h} h {m} min", { h: Math.floor(s / 3600), m: two(Math.floor(s / 60) % 60) });
+    return tr("d.time.dh", "{d} g {h} h", { d: Math.floor(s / 86400), h: Math.floor(s / 3600) % 24 });
   }
-  const STATUS = { queued: "In coda", running: "In corso", paused: "In pausa", completed: "Completato", error: "Errore" };
-  const status = (s) => STATUS[s] || s || "—";
-  const FILE_PRIO = [[0, "Salta"], [1, "Normale"], [4, "Alta"], [7, "Massima"]];
+  const STATUS = { queued: ["d.status.queued", "In coda"], running: ["d.status.running", "In corso"], paused: ["d.status.paused", "In pausa"], completed: ["d.status.completed", "Completato"], error: ["d.status.error", "Errore"] };
+  const status = (s) => (STATUS[s] ? tr(...STATUS[s]) : s || "—");
+  const FILE_PRIO = [[0, "d.prio.skip", "Salta"], [1, "d.prio.normal", "Normale"], [4, "d.prio.high", "Alta"], [7, "d.prio.max", "Massima"]];
   // stesso ordine del server: priorità più alta prima, poi i più vecchi
   const order = (a, b) => (b.priority || 0) - (a.priority || 0) || (a.created || 0) - (b.created || 0);
   /** unisce gli aggiornamenti (task interi o parziali, per id) allo stato; restituisce un nuovo elenco ordinato */
@@ -46,13 +52,13 @@ const DLU = (() => {
   /** attesa prima di riaprire lo stream dopo l'n-esimo errore di fila (ms) */
   const BACKOFF = [2000, 5000, 10000, 30000];
   const backoff = (n) => BACKOFF[Math.min(Math.max(n | 0, 0), BACKOFF.length - 1)];
-  const PRIO = [[2, "Massima"], [1, "Alta"], [0, "Normale"], [-1, "Bassa"], [-2, "Minima"]];
+  const PRIO = [[2, "d.prio.max", "Massima"], [1, "d.prio.high", "Alta"], [0, "d.prio.normal", "Normale"], [-1, "d.prio.low", "Bassa"], [-2, "d.prio.min", "Minima"]];
   const clampPrio = (p) => Math.min(Math.max(Math.round(Number(p)) || 0, -2), 2);
-  const prio = (p) => PRIO.find(([v]) => v === clampPrio(p))[1];
+  const prio = (p) => { const x = PRIO.find(([v]) => v === clampPrio(p)); return tr(x[1], x[2]); };
   /** larghezza di una colonna dopo aver trascinato il suo bordo: mai sotto il minimo leggibile */
   const colW = (w, dx, min = 56) => Math.round(Math.max(w + dx, min));
   // le chiavi coincidono con lo stato dei task («Attivi» = in corso)
-  const FILTERS = [["all", "Tutti"], ["running", "Attivi"], ["queued", "In coda"], ["paused", "In pausa"], ["completed", "Completati"], ["error", "Errori"]];
+  const FILTERS = [["all", "d.filter.all", "Tutti"], ["running", "d.filter.running", "Attivi"], ["queued", "d.status.queued", "In coda"], ["paused", "d.status.paused", "In pausa"], ["completed", "d.filter.completed", "Completati"], ["error", "d.filter.error", "Errori"]];
   function filter(tasks, f, q) {
     q = (q || "").trim().toLocaleLowerCase("it");
     return (tasks || []).filter((t) => (!f || f === "all" || t.status === f)
@@ -92,15 +98,15 @@ const DLU = (() => {
     if (l && l.up > 0) out.push(`↑ ${l.up} KB/s`);
     return out.join(" ");
   }
-  const DAYS = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]; // 0 = lunedì, come il server
+  const DAYS = [["d.day.mon", "lun"], ["d.day.tue", "mar"], ["d.day.wed", "mer"], ["d.day.thu", "gio"], ["d.day.fri", "ven"], ["d.day.sat", "sab"], ["d.day.sun", "dom"]]; // 0 = lunedì, come il server
   /** programmazione della modalità lenta in parole; "" se spenta */
   function schedule(s) {
     if (!s || !s.enabled) return "";
     const d = [...new Set(s.days ?? [0, 1, 2, 3, 4, 5, 6])].filter((x) => x >= 0 && x <= 6).sort();
     const k = d.join();
-    const days = d.length === 7 ? "ogni giorno" : k === "0,1,2,3,4" ? "dal lunedì al venerdì" : k === "5,6" ? "sabato e domenica"
-      : d.length ? d.map((i) => DAYS[i]).join(", ") : "nessun giorno";
-    return `${days}, dalle ${s.from || "00:00"} alle ${s.to || "00:00"}`;
+    const days = d.length === 7 ? tr("d.sched.every", "ogni giorno") : k === "0,1,2,3,4" ? tr("d.sched.weekdays", "dal lunedì al venerdì") : k === "5,6" ? tr("d.sched.weekend", "sabato e domenica")
+      : d.length ? d.map((i) => tr(...DAYS[i])).join(", ") : tr("d.sched.none", "nessun giorno");
+    return tr("d.sched.range", "{days}, dalle {from} alle {to}", { days, from: s.from || "00:00", to: s.to || "00:00" });
   }
   const DEBRID = [["realdebrid", "Real-Debrid", "https://real-debrid.com/apitoken"], ["alldebrid", "AllDebrid", "https://alldebrid.com/apikeys"],
     ["premiumize", "Premiumize", "https://www.premiumize.me/account"], ["torbox", "TorBox", "https://torbox.app/settings"],
@@ -108,12 +114,12 @@ const DLU = (() => {
   const debridName = (id) => (DEBRID.find(([k]) => k === id) || [])[1] || id;
   /** esito di «Verifica» ({ok, user, premium, expires, error}) in una riga; expires in secondi, millisecondi o ISO */
   function debridState(r) {
-    if (!r || !r.ok) return `✗ ${(r && r.error) || "Verifica non riuscita"}`;
-    let out = `✓ Account ${r.user || "valido"}`;
+    if (!r || !r.ok) return `✗ ${(r && r.error) || tr("d.debrid.failed", "Verifica non riuscita")}`;
+    let out = tr("d.debrid.ok", "✓ Account {user}", { user: r.user || tr("d.debrid.valid", "valido") });
     if (r.premium) {
       const n = Number(r.expires), d = r.expires ? new Date(isFinite(n) ? (n < 1e12 ? n * 1000 : n) : r.expires) : null;
-      out += " · Premium" + (d && !isNaN(d) ? ` fino al ${d.toLocaleDateString("it-IT")}` : "");
-    } else out += " · senza Premium";
+      out += " · " + tr("d.debrid.premium", "Premium") + (d && !isNaN(d) ? " " + tr("d.debrid.until", "fino al {date}", { date: d.toLocaleDateString(LOC()) }) : "");
+    } else out += " · " + tr("d.debrid.nopremium", "senza Premium");
     return out;
   }
   /* ---- MultiUp: mai il pulsante generico, ogni provider (mirror) è un pulsante a sé */
@@ -135,15 +141,15 @@ const DLU = (() => {
   function mirrorView(m) {
     const dead = m.live === false, browser = !dead && needsBrowser(m);
     const label = m.name || m.host || "?";
-    return { label, dead, browser, note: dead ? "offline" : browser ? "richiede il browser" : "",
-      title: `${label}${m.host && m.host !== label ? " → " + m.host : ""}${dead ? " (offline)" : browser ? " (si scarica nel browser, con conto alla rovescia)" : ""}` };
+    return { label, dead, browser, note: dead ? tr("d.mirror.offline", "offline") : browser ? tr("d.mirror.browser", "richiede il browser") : "",
+      title: `${label}${m.host && m.host !== label ? " → " + m.host : ""}${dead ? " (" + tr("d.mirror.offline", "offline") + ")" : browser ? " (" + tr("d.mirror.hint", "si scarica nel browser, con conto alla rovescia") + ")" : ""}` };
   }
   /** il mirror da spuntare di default: il primo attivo che il manager scarica da solo, altrimenti il primo attivo */
   function defaultMirror(list) {
     const s = sortMirrors(list).filter((m) => m.live !== false);
     return s.find((m) => !needsBrowser(m)) || s[0] || null;
   }
-  const muTitle = (n) => (n == null ? "MultiUp — elenca i provider" : `MultiUp — ${n} provider`);
+  const muTitle = (n) => (n == null ? tr("d.mu.title", "MultiUp — elenca i provider") : tr("d.mu.count", "MultiUp — {n} provider", { n }));
   /* ---- registro del download */
   const LOG_LEVELS = { info: ["", "INFO"], warn: ["⚠ ", "AVVISO"], error: ["⛔ ", "ERRORE"] }; // l'icona e la parola dicono il livello anche senza colore
   const LOG_CAP = 1000; // righe tenute dalla finestra
@@ -153,13 +159,14 @@ const DLU = (() => {
     const d = new Date((Number(l && l.t) || 0) * 1000), lv = LOG_LEVELS[l && l.level] ? l.level : "info";
     const time = isFinite(d) ? `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}` : "--:--:--";
     const msg = String((l && l.msg) ?? "");
-    return { time, level: lv, icon: LOG_LEVELS[lv][0], label: LOG_LEVELS[lv][1], msg, text: `${time} ${LOG_LEVELS[lv][1].padEnd(6)} ${msg}` };
+    const label = tr("d.log." + lv, LOG_LEVELS[lv][1]);
+    return { time, level: lv, icon: LOG_LEVELS[lv][0], label, msg, text: `${time} ${label.padEnd(6)} ${msg}` };
   }
   /** secondi dall'inizio del registro: «+0,4 s», «+1 min 05 s» */
   function logRel(t, t0) {
     const s = Math.max(0, (Number(t) || 0) - (Number(t0) || 0));
-    if (s < 60) return "+" + s.toFixed(1).replace(".", ",") + " s";
-    return `+${Math.floor(s / 60)} min ${two(Math.floor(s % 60))} s`;
+    if (s < 60) return tr("d.log.rel_s", "+{n} s", { n: s.toFixed(1).replace(".", ",") });
+    return tr("d.log.rel_min", "+{m} min {s} s", { m: Math.floor(s / 60), s: two(Math.floor(s % 60)) });
   }
   /** «step»: sotto-passo di un risolutore (riga che inizia con →); «key»: tappa del download; altrimenti "" */
   function logKind(msg) {
@@ -189,14 +196,14 @@ const DLU = (() => {
   }
   /** previsione di spazio per disco ({drive, free_now, after_queue, after_extract, ok, unknown}) in righe; bad = la coda non ci sta */
   const spaceLines = (drives) => (drives || []).map((d) => ({
-    text: `${d.drive} libero ora ${room(d.free_now)} · dopo la coda ${room(d.after_queue)} · dopo l'estrazione ${room(d.after_extract)}`
-      + (d.unknown > 0 ? ` (${d.unknown} senza dimensione)` : "")
-      + (d.ok === false ? " · Spazio insufficiente: alcuni download restano in attesa" : ""),
+    text: tr("d.space.line", "{drive} libero ora {now} · dopo la coda {queue} · dopo l'estrazione {extract}", { drive: d.drive, now: room(d.free_now), queue: room(d.after_queue), extract: room(d.after_extract) })
+      + (d.unknown > 0 ? " " + tr("d.space.unknown", "({n} senza dimensione)", { n: d.unknown }) : "")
+      + (d.ok === false ? " · " + tr("d.space.short", "Spazio insufficiente: alcuni download restano in attesa") : ""),
     bad: d.ok === false,
   }));
   /* ---- gruppi: download della stessa partita (campo group), una testata con i totali */
-  const KIND = { base: "Base", update: "Aggiornamento", dlc: "DLC", altro: "Altro" };
-  const GROUP_STATUS = [["running", "in corso"], ["queued", "in coda"], ["paused", "in pausa"], ["error", "con errore"], ["completed", "completati"]];
+  const KIND = { base: ["d.kind.base", "Base"], update: ["d.kind.update", "Aggiornamento"], dlc: ["d.kind.dlc", "DLC"], altro: ["d.kind.other", "Altro"] };
+  const GROUP_STATUS = [["running", "d.state.running", "in corso"], ["queued", "d.state.queued", "in coda"], ["paused", "d.state.paused", "in pausa"], ["error", "d.state.error", "con errore"], ["completed", "d.state.completed", "completati"]];
   /** totali di un gruppo: barra solo su chi ha la dimensione nota, velocità sommate, tempo = rimanente / velocità */
   function groupAgg(m) {
     const known = m.filter((t) => t.size > 0);
@@ -211,7 +218,7 @@ const DLU = (() => {
     const readyEta = m.reduce((a, t) => (t.ready_eta != null && (a == null || t.ready_eta > a) ? t.ready_eta : a), null);
     return { size, done, speed, unknown: m.length - known.length, progress: size ? done / size : 0,
       eta: speed > 0 && left > 0 ? left / speed : null, counts, ready: m.length > 0 && m.every((t) => t.ready), ready_eta: readyEta,
-      summary: GROUP_STATUS.filter(([k]) => counts[k]).map(([k, l]) => `${counts[k]} ${l}`).join(", "),
+      summary: GROUP_STATUS.filter(([k]) => counts[k]).map(([k, key, l]) => `${counts[k]} ${tr(key, l)}`).join(", "),
       kinds: Object.keys(KIND).filter((k) => m.some((t) => t.kind === k)) };
   }
   /** elenco mostrato → righe {task} per i download singoli, {group} alla posizione del primo membro se i membri visibili sono ≥2 */
@@ -230,35 +237,35 @@ const DLU = (() => {
     return out;
   }
   /* ---- pronto a giocare: passi del download (stages) e ora prevista (ready_eta, secondi epoch) */
-  const STAGE_LABEL = { download: "Scarico", extract: "Estrazione", library: "Libreria", data: "Dati" };
-  const STAGE_STATE = { todo: "da fare", active: "in corso", done: "fatto", error: "errore" };
+  const STAGE_LABEL = { download: ["d.stage.download", "Scarico"], extract: ["d.stage.extract", "Estrazione"], library: ["d.stage.library", "Libreria"], data: ["d.stage.data", "Dati"] };
+  const STAGE_STATE = { todo: ["d.sstate.todo", "da fare"], active: ["d.state.running", "in corso"], done: ["d.sstate.done", "fatto"], error: ["d.sstate.error", "errore"] };
   /** «Pronto alle 21:40», «Pronto domani alle 21:40», «Pronto gio alle 21:40» più in là, «Pronto a giocare ✓»; "" se non si sa */
   function readyText(t, now = Date.now()) {
     if (!t) return "";
-    if (t.ready) return "Pronto a giocare ✓";
+    if (t.ready) return tr("d.ready.done", "Pronto a giocare ✓");
     if (t.ready_eta == null || !isFinite(t.ready_eta)) return "";
     const d = new Date(Number(t.ready_eta) * 1000), n = new Date(now);
-    const hm = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+    const hm = d.toLocaleTimeString(LOC(), { hour: "2-digit", minute: "2-digit" });
     const tom = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1).toDateString();
-    const day = d.toDateString() === n.toDateString() ? "" : d.toDateString() === tom ? "domani "
-      : d.toLocaleDateString("it-IT", { weekday: "short" }).replace(/\.$/, "") + " ";  // più in là: «Pronto gio alle 21:40»
-    return "Pronto " + day + "alle " + hm;
+    const day = d.toDateString() === n.toDateString() ? "" : d.toDateString() === tom ? tr("d.ready.tomorrow", "domani") + " "
+      : d.toLocaleDateString(LOC(), { weekday: "short" }).replace(/\.$/, "") + " ";  // più in là: «Pronto gio alle 21:40»
+    return tr("d.ready.at", "Pronto {day}alle {hm}", { day, hm });
   }
   /** passi visibili come lista (skip nascosti): pallino, nome, «Scarico 42%», «Estrazione ✓», «Libreria ✗»; "" se non ci sono */
   function stepperHtml(t) {
     const steps = ((t && t.stages) || []).filter((s) => s && STAGE_LABEL[s.id] && s.state !== "skip");
     if (!steps.length) return "";
     const items = steps.map((s) => {
-      const st = STAGE_STATE[s.state] ? s.state : "todo", label = STAGE_LABEL[s.id];
+      const st = STAGE_STATE[s.state] ? s.state : "todo", label = tr(...STAGE_LABEL[s.id]);
       const pct = Math.round(Math.min(Math.max(Number(s.pct) || 0, 0), 100));
       // nota (attesa dell'installazione o della scansione) al posto della percentuale, che lì non avanza
       const note = st === "active" && s.note ? String(s.note).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`) : "";
       const now = note ? ` · ${note}` : ` ${pct}%`;
       const text = st === "done" ? `${label} ✓` : st === "error" ? `${label} ✗` : st === "active" ? `${label}${now}` : label;
-      const aria = `${label}: ${STAGE_STATE[st]}${st === "active" ? now : ""}`;
+      const aria = `${label}: ${tr(...STAGE_STATE[st])}${st === "active" ? now : ""}`;
       return `<li class="dl-step ${st}" role="listitem" aria-label="${aria}"><i class="dl-dot" aria-hidden="true"></i>${text}</li>`;
     });
-    return `<ul class="dl-stepper" role="list" aria-label="Passi fino a giocare">${items.join("")}</ul>`;
+    return `<ul class="dl-stepper" role="list" aria-label="${tr("d.ready.steps", "Passi fino a giocare")}">${items.join("")}</ul>`;
   }
   /* ---- velocità: sparkline in SVG (niente librerie), campioni per task, storico per giorno */
   /** path SVG della linea (o dell'area chiusa sul fondo) su scala 0..max; NaN e negativi valgono 0; lista vuota = "" */
@@ -302,7 +309,7 @@ function muFetch(url, fresh = false) {
   if (fresh) MU_CACHE.delete(url);
   if (!MU_CACHE.has(url)) {
     const p = api("/api/links/mirrors", { body: { url } }).then((r) => {
-      if (!r.ok || !(r.mirrors || []).length) throw new Error(r.reason || "Nessun provider trovato per questo link.");
+      if (!r.ok || !(r.mirrors || []).length) throw new Error(r.reason || t("d.mu.none"));
       return { ...r, mirrors: DLU.sortMirrors(r.mirrors) };
     });
     p.catch(() => MU_CACHE.delete(url));
@@ -330,7 +337,7 @@ function dlRefresh() {
   const cnt = $("#cnt-dl");
   if (cnt) {
     cnt.textContent = active || "";
-    cnt.closest(".nav-item").title = active ? `${active} download attivi · ${DLU.speed(speed)}` : "Download";
+    cnt.closest(".nav-item").title = active ? t("d.nav.active", { n: active, speed: DLU.speed(speed) }) : t("d.download");
   }
   dlAltButton();
   dlsAltState();
@@ -348,7 +355,7 @@ function dlSample() {
 /** mini grafico della velocità recente, accanto al valore («—» e nulla se non ci sono campioni) */
 function dlSpark(id) {
   const v = DL.spark.get(id) || [], p = DLU.sparkPath(v, 80, 18);
-  return p ? `<svg class="dl-spark" width="80" height="18" viewBox="0 0 80 18" role="img" focusable="false" aria-label="Velocità recente, picco ${esc(DLU.speed(Math.max(...v)))}"><path d="${p}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>` : "";
+  return p ? `<svg class="dl-spark" width="80" height="18" viewBox="0 0 80 18" role="img" focusable="false" aria-label="${t("d.spark.label", { peak: esc(DLU.speed(Math.max(...v))) })}"><path d="${p}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>` : "";
 }
 
 /* ---- pannello velocità e storico: la velocità «adesso» viene dalla lista, il grafico e lo storico da /api/downloads/stats */
@@ -374,7 +381,7 @@ function dlTrendNow() {
   const el = $("#dl-trend-now");
   if (!el) return;
   const { speed } = DLU.summary(DL.tasks);
-  el.textContent = `Adesso ${speed > 0 ? DLU.speed(speed) : "fermo"}`;
+  el.textContent = t("d.trend.now", { speed: speed > 0 ? DLU.speed(speed) : t("d.trend.still") });
 }
 function dlTrendDraw(s) {
   DL.stats = s;
@@ -384,19 +391,19 @@ function dlTrendDraw(s) {
   const peak = vals.reduce((a, v) => Math.max(a, isFinite(v) ? v : 0), 0), W = 600, H = 40;
   const line = DLU.sparkPath(vals, W, H), area = DLU.sparkPath(vals, W, H, true);
   chart.innerHTML = line
-    ? `<svg class="dl-trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(`Velocità ultima ora, picco ${DLU.speed(peak)}`)}"><path class="dl-area" d="${area}"/><path class="dl-line" d="${line}" vector-effect="non-scaling-stroke"/></svg>`
-    : `<p class="muted small">Nessuna velocità registrata nell'ultima ora.</p>`;
-  peakEl.textContent = `picco ${DLU.speed(peak)}`;
+    ? `<svg class="dl-trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(t("d.trend.label", { peak: DLU.speed(peak) }))}"><path class="dl-area" d="${area}"/><path class="dl-line" d="${line}" vector-effect="non-scaling-stroke"/></svg>`
+    : `<p class="muted small">${t("d.trend.empty")}</p>`;
+  peakEl.textContent = t("d.trend.peak", { speed: DLU.speed(peak) });
   const days = s.per_day || [], total30 = days.reduce((a, d) => a + (d && d.bytes > 0 ? d.bytes : 0), 0);
   const B = DLU.barsLayout(days, W, 60);
-  const aria = `GB al giorno, ultimi 30 giorni: totale ${DLU.fmtGB(total30)}, giorno più pieno ${DLU.fmtGB(B.max)}`;
+  const aria = t("d.hist.aria", { total: DLU.fmtGB(total30), max: DLU.fmtGB(B.max) });
   const cols = B.bars.map((b) => `<rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}"><title>${esc(b.day)}: ${DLU.fmtGB(b.bytes)}</title></rect>`).join("");
   const rows = (s.per_host || []).map((h) => `<tr><th scope="row">${esc(h.host || "—")}</th><td class="num">${DLU.fmtGB(h.bytes_30d)}</td><td class="num">${DLU.fmtGB(h.bytes_total)}</td></tr>`).join("");
   hist.innerHTML = (B.max > 0
-    ? `<p class="muted small">GB al giorno, ultimi 30 giorni</p><svg class="dl-bars-svg" viewBox="0 0 ${W} 60" preserveAspectRatio="none" role="img" aria-label="${esc(aria)}">${cols}</svg>`
-    : `<p class="muted small">Nessun download negli ultimi 30 giorni.</p>`)
-    + (rows ? `<table class="dl-hosts"><thead><tr><th scope="col">Host</th><th scope="col" class="num">GB ultimi 30 giorni</th><th scope="col" class="num">GB totali</th></tr></thead>`
-      + `<tbody>${rows}</tbody><tfoot><tr><th scope="row">Totale</th><td class="num">${DLU.fmtGB(total30)}</td><td class="num">${DLU.fmtGB(s.total_bytes)}</td></tr></tfoot></table>` : "");
+    ? `<p class="muted small">${t("d.hist.days")}</p><svg class="dl-bars-svg" viewBox="0 0 ${W} 60" preserveAspectRatio="none" role="img" aria-label="${esc(aria)}">${cols}</svg>`
+    : `<p class="muted small">${t("d.hist.empty")}</p>`)
+    + (rows ? `<table class="dl-hosts"><thead><tr><th scope="col">${t("d.col.host")}</th><th scope="col" class="num">${t("d.hist.col30")}</th><th scope="col" class="num">${t("d.hist.coltot")}</th></tr></thead>`
+      + `<tbody>${rows}</tbody><tfoot><tr><th scope="row">${t("d.total")}</th><td class="num">${DLU.fmtGB(total30)}</td><td class="num">${DLU.fmtGB(s.total_bytes)}</td></tr></tfoot></table>` : "");
 }
 
 /** la tabella (altezza fissa in app.css) si accorcia di quanto occupano previsione e grafico sopra di lei */
@@ -451,8 +458,8 @@ const dlVisible = () => DLU.sortBy(DLU.filter(DL.tasks, DL.filter, DL.q), DL.sor
 /** righe che si vedono davvero, in ordine: i membri di un gruppo chiuso non ci sono (selezione e frecce usano queste) */
 const dlShown = () => DLU.groupRows(dlVisible()).flatMap((e) => (e.group ? (DL.open.has(e.group.key) ? e.group.members : []) : [e.task]));
 
-const DL_COLS = [["name", "Nome", ""], ["host", "Host", "hide-s"], ["size", "Dimensione", "num"], ["progress", "Avanzamento", "c-prog"],
-  ["speed", "Velocità", "num"], ["eta", "ETA", "num hide-s"], ["status", "Stato", "c-st"], ["priority", "Priorità", "hide-s"]];
+const DL_COLS = [["name", "d.col.name", ""], ["host", "d.col.host", "hide-s"], ["size", "d.col.size", "num"], ["progress", "d.col.progress", "c-prog"],
+  ["speed", "d.col.speed", "num"], ["eta", "d.col.eta", "num hide-s"], ["status", "d.col.status", "c-st"], ["priority", "d.col.prio", "hide-s"]];
 
 /* ---- pagina */
 async function renderDownloads(pv) {
@@ -461,44 +468,44 @@ async function renderDownloads(pv) {
   DL.panelHtml = ""; // la pagina è nuova: il pannello va ridisegnato
   DL.spark = new Map(); // i campioni ripartono con la pagina
   pv.innerHTML = `<div class="page dl-page">
-    <div class="dl-tools" role="toolbar" aria-label="Download">
-      <button class="btn primary" id="dl-add" type="button">＋ Aggiungi</button>
-      <button class="btn" id="dl-resume-all" type="button" title="Avvia o riprende tutti i download">▶ Avvia tutto</button>
-      <button class="btn" id="dl-pause-all" type="button">⏸ Pausa tutto</button>
-      <button class="btn" id="dl-clear-done" type="button" title="Toglie dall'elenco i download completati">🧹 Completati</button>
-      <button class="btn" id="dl-clear-err" type="button" title="Toglie dall'elenco i download falliti ed elimina i file parziali">🗑 Falliti</button>
-      <div class="chips dl-chips" role="group" aria-label="Mostra">${DLU.FILTERS.map(([k, l]) =>
-        `<button class="chip" type="button" data-filter="${k}" aria-pressed="${DL.filter === k}">${l}</button>`).join("")}</div>
-      <input class="field" type="search" id="dl-q" placeholder="Cerca per nome o link" aria-label="Cerca nei download" value="${esc(DL.q)}">
+    <div class="dl-tools" role="toolbar" aria-label="${t("d.download")}">
+      <button class="btn primary" id="dl-add" type="button">＋ ${t("d.add")}</button>
+      <button class="btn" id="dl-resume-all" type="button" title="${t("d.tt.resume_all")}">▶ ${t("d.resume_all")}</button>
+      <button class="btn" id="dl-pause-all" type="button">⏸ ${t("d.pause_all")}</button>
+      <button class="btn" id="dl-clear-done" type="button" title="${t("d.tt.clear_done")}">🧹 ${t("d.filter.completed")}</button>
+      <button class="btn" id="dl-clear-err" type="button" title="${t("d.tt.clear_err")}">🗑 ${t("d.clear.failed")}</button>
+      <div class="chips dl-chips" role="group" aria-label="${t("d.show")}">${DLU.FILTERS.map(([k, lk]) =>
+        `<button class="chip" type="button" data-filter="${k}" aria-pressed="${DL.filter === k}">${t(lk)}</button>`).join("")}</div>
+      <input class="field" type="search" id="dl-q" placeholder="${t("d.search.ph")}" aria-label="${t("d.search.aria")}" value="${esc(DL.q)}">
     </div>
     <div class="dl-space" id="dl-space" hidden></div>
-    <section class="dl-trend" id="dl-trend" aria-label="Velocità e storico" hidden>
+    <section class="dl-trend" id="dl-trend" aria-label="${t("d.trend.section")}" hidden>
       <div class="dl-trend-head"><b id="dl-trend-now"></b><span class="muted small" id="dl-trend-peak"></span></div>
       <div id="dl-trend-chart"></div>
-      <p class="muted small dl-trend-cap">ultima ora</p>
-      <details class="dl-hist" id="dl-hist-box"><summary>Storico download</summary><div id="dl-hist"></div></details>
+      <p class="muted small dl-trend-cap">${t("d.trend.cap")}</p>
+      <details class="dl-hist" id="dl-hist-box"><summary>${t("d.hist.title")}</summary><div id="dl-hist"></div></details>
     </section>
     <div class="dl-wrap" id="dl-wrap"${DL.panelH ? ` style="--dl-panel-h:${DL.panelH}px"` : ""}>
       <div class="dl-scroll">
-        <table class="dl-grid"><thead><tr>${DL_COLS.map(([k, l, c]) =>
-          `<th class="${c}" data-col="${k}" aria-sort="none"><button class="dl-th" type="button" data-sort="${k}">${l}<span class="dl-arrow" aria-hidden="true"></span></button><span class="dl-rs" role="separator" aria-orientation="vertical" aria-label="Larghezza colonna ${l}" tabindex="0"></span></th>`).join("")}
-          <th class="c-act"><span class="sr-only">Azioni</span></th></tr></thead>
+        <table class="dl-grid"><thead><tr>${DL_COLS.map(([k, lk, c]) =>
+          `<th class="${c}" data-col="${k}" aria-sort="none"><button class="dl-th" type="button" data-sort="${k}">${t(lk)}<span class="dl-arrow" aria-hidden="true"></span></button><span class="dl-rs" role="separator" aria-orientation="vertical" aria-label="${t("d.col.resize", { col: t(lk) })}" tabindex="0"></span></th>`).join("")}
+          <th class="c-act"><span class="sr-only">${t("d.actions")}</span></th></tr></thead>
           <tbody id="dl-rows"></tbody></table>
         <div id="dl-empty"></div>
       </div>
-      <div class="dl-split" id="dl-split" role="separator" aria-orientation="horizontal" aria-label="Altezza del pannello dettagli" tabindex="0"></div>
-      <section class="dl-panel" aria-label="Dettagli del download">
-        <div class="dl-ptabs" role="tablist">${[["gen", "Generale"], ["files", "File"], ["log", "Registro"]].map(([k, l]) =>
+      <div class="dl-split" id="dl-split" role="separator" aria-orientation="horizontal" aria-label="${t("d.split.aria")}" tabindex="0"></div>
+      <section class="dl-panel" aria-label="${t("d.panel.aria")}">
+        <div class="dl-ptabs" role="tablist">${[["gen", t("d.tab.gen")], ["files", t("d.file")], ["log", t("d.tab.log")]].map(([k, l]) =>
           `<button class="dl-ptab" type="button" role="tab" data-ptab="${k}" aria-selected="${DL.tab === k}">${l}</button>`).join("")}</div>
         <div class="dl-pbody" id="dl-pbody" role="tabpanel" tabindex="0"></div>
       </section>
     </div>
     <div class="dl-status" id="dl-status" role="status">
-      <span id="dl-s-down" title="Velocità totale in download"></span><span id="dl-s-up" title="Velocità totale in invio"></span>
-      <span id="dl-s-slots" title="Download attivi / massimo contemporanei"></span>
-      <button class="dl-lim" id="dl-s-lim" type="button" title="Limite globale di velocità: apri le impostazioni"></button>
-      <button class="btn" id="dl-alt" type="button" aria-pressed="false">🐢 Modalità lenta</button>
-      <span id="dl-s-game" hidden title="Modalità gioco attiva: i download rallentano mentre giochi">🎮 Modalità gioco</span>
+      <span id="dl-s-down" title="${t("d.st.down_tt")}"></span><span id="dl-s-up" title="${t("d.st.up_tt")}"></span>
+      <span id="dl-s-slots" title="${t("d.st.slots_tt")}"></span>
+      <button class="dl-lim" id="dl-s-lim" type="button" title="${t("d.st.lim_tt")}"></button>
+      <button class="btn" id="dl-alt" type="button" aria-pressed="false">🐢 ${t("d.alt.name")}</button>
+      <span id="dl-s-game" hidden title="${t("d.game.tt")}">🎮 ${t("d.game.name")}</span>
     </div></div>`;
   $("#dl-add", pv).onclick = dlOpenAdd;
   $("#dl-hist-box", pv).addEventListener("toggle", dlFit);
@@ -509,17 +516,17 @@ async function renderDownloads(pv) {
   $("#dl-resume-all", pv).onclick = all("resume-all");
   const clear = (status, purge) => () => {
     const tasks = DL.tasks.filter((t) => t.status === status);
-    if (!tasks.length) return toast(status === "error" ? "Nessun download fallito" : "Nessun download completato");
+    if (!tasks.length) return toast(status === "error" ? t("d.none.failed") : t("d.none.done"));
     dlCancel(tasks, purge);
   };
-  $("#dl-clear-done", pv).onclick = clear("completed", { title: "Pulire i completati?", ok: "Pulisci", del: false,
-    text: (n) => `${n} download completati verranno tolti dall'elenco.` });
-  $("#dl-clear-err", pv).onclick = clear("error", { title: "Pulire i falliti?", ok: "Pulisci", del: true,
-    text: (n) => `${n} download falliti verranno tolti dall'elenco, con i loro file parziali.` });
+  $("#dl-clear-done", pv).onclick = clear("completed", { title: t("d.purge.done.title"), ok: t("d.purge.ok"), del: false,
+    text: (n) => t("d.purge.done.text", { n }) });
+  $("#dl-clear-err", pv).onclick = clear("error", { title: t("d.purge.err.title"), ok: t("d.purge.ok"), del: true,
+    text: (n) => t("d.purge.err.text", { n }) });
   $("#dl-alt", pv).onclick = async () => {
     try { DL.settings = await api("/api/downloads/alt-speed", { body: { on: !DL.settings.alt_active } }); } catch (e) { return toast(e.message, true); }
     dlRefresh();
-    toast(DL.settings.alt_active ? "🐢 Modalità lenta attiva" : "Modalità lenta disattivata");
+    toast(DL.settings.alt_active ? "🐢 " + t("d.alt.on") : t("d.alt.off"));
   };
   $("#dl-s-lim", pv).onclick = () => { if (typeof openSettings === "function") openSettings("download"); };
   $(".dl-chips", pv).addEventListener("click", (e) => {
@@ -692,8 +699,8 @@ function dlAltButton() {
   const on = !!DL.settings.alt_active, sch = DLU.schedule(DL.settings.alt_schedule);
   b.classList.toggle("on", on);
   b.setAttribute("aria-pressed", on);
-  b.title = (on ? "Modalità lenta attiva: limiti di velocità alternativi" : "Usa i limiti di velocità alternativi (Impostazioni › Download)")
-    + (sch ? ` · programmata ${sch}` : "");
+  b.title = (on ? t("d.alt.tt_on") : t("d.alt.tt_off"))
+    + (sch ? " · " + t("d.alt.sched", { sch }) : "");
 }
 
 /** barra di stato: i nodi sono fissi, cambia solo il testo (il fuoco non si perde) */
@@ -704,8 +711,8 @@ function dlStatus() {
   const pre = s.alt_active ? "alt_" : "", d = s[pre + "limit_down"] || 0, u = s[pre + "limit_up"] || 0;
   set("#dl-s-down", "↓ " + (speed > 0 ? DLU.speed(speed) : "0 B/s"));
   set("#dl-s-up", "↑ " + (up > 0 ? DLU.speed(up) : "0 B/s"));
-  set("#dl-s-slots", s.max_active ? `${running}/${s.max_active} attivi` : `${running} attivi`);
-  set("#dl-s-lim", d || u ? `Limite ${d ? "↓ " + d + " KB/s" : ""}${d && u ? " " : ""}${u ? "↑ " + u + " KB/s" : ""}` : "Nessun limite");
+  set("#dl-s-slots", s.max_active ? t("d.slots.max", { running, max: s.max_active }) : t("d.slots.n", { running }));
+  set("#dl-s-lim", d || u ? `${t("d.limit")} ${d ? "↓ " + d + " KB/s" : ""}${d && u ? " " : ""}${u ? "↑ " + u + " KB/s" : ""}` : t("d.limit.none"));
   const g = $("#dl-s-game");
   if (g) g.hidden = !s.game_active;
 }
@@ -723,18 +730,18 @@ function dlRow(t, member = false) {
   const btn = (act, ico, label, extra = "") => `<button class="icon-btn" type="button" data-act="${act}" title="${label}" aria-label="${label}: ${esc(name)}"${extra}>${ico}</button>`;
   const live = t.status === "running" || t.status === "queued";
   const install = !!o.setup && t.status === "completed"; // repack estratto: il setup si avvia da qui
-  const st = o.seeding ? "In condivisione" : DLU.status(t.status);
+  const st = o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status);
   const note = t.status === "error" ? t.error || t.phase : t.phase; // errore corto in riga, completo nel title
   return `<tr class="dl-row${member ? " dl-member" : ""}" tabindex="0" data-id="${esc(t.id)}" data-status="${esc(t.status)}"${o.seeding ? ' data-seed="1"' : ""}>
-    <td class="c-name"><span class="dl-ico" aria-hidden="true" title="${tor ? "Torrent" : "HTTP"}">${tor ? "🧲" : "🌐"}</span>${tor ? btn("toggle", "▸", "File e dettagli") : ""}<b title="${esc(t.source)}">${esc(name)}</b>${o.start_at ? `<span class="dl-type" title="Avvio pianificato">⏰ ${esc(o.start_at)}</span>` : ""}${dlReadyHtml(t)}</td>
+    <td class="c-name"><span class="dl-ico" aria-hidden="true" title="${tor ? "Torrent" : "HTTP"}">${tor ? "🧲" : "🌐"}</span>${tor ? btn("toggle", "▸", tr("d.files.details", "File e dettagli")) : ""}<b title="${esc(t.source)}">${esc(name)}</b>${o.start_at ? `<span class="dl-type" title="${tr("d.sched.tt", "Avvio pianificato")}">⏰ ${esc(o.start_at)}</span>` : ""}${dlReadyHtml(t)}</td>
     <td class="hide-s">${esc(DLU.host(t))}</td>
     <td class="num">${t.size ? DLU.bytes(t.size) : "?"}</td>
-    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${esc(name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${pct}%</span></td>
+    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="${tr("d.progress.aria", "Avanzamento: {name}", { name: esc(name) })}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${pct}%</span></td>
     <td class="num">${t.status === "running" ? DLU.speed(t.speed) + dlSpark(t.id) : "—"}</td>
     <td class="num hide-s">${t.status === "running" ? DLU.eta(t.eta) : "—"}</td>
     <td class="c-st"${note ? ` title="${esc(t.status === "error" && t.error ? t.error : t.phase)}"` : ""}><span class="dl-st">${esc(st)}</span>${note ? `<span class="dl-now${t.status === "error" ? " bad" : ""}">${esc(note)}</span>` : ""}</td>
-    <td class="hide-s">${p ? `<span class="dl-type${p > 0 ? " hi" : ""}">${p > 0 ? "↑" : "↓"} ${DLU.prio(p)}</span>` : "Normale"}</td>
-    <td class="c-act">${install ? `<button class="btn" type="button" data-act="install" title="Avvia il setup del repack: a installazione finita il gioco entra in libreria">📦 Installa</button>` : ""}${live ? btn("pause", "⏸", "Pausa") : t.status !== "completed" ? btn("resume", "▶", "Riprendi") : ""}${btn("menu", "⋯", "Altre azioni", ' aria-haspopup="menu"')}</td>
+    <td class="hide-s">${p ? `<span class="dl-type${p > 0 ? " hi" : ""}">${p > 0 ? "↑" : "↓"} ${DLU.prio(p)}</span>` : tr("d.prio.normal", "Normale")}</td>
+    <td class="c-act">${install ? `<button class="btn" type="button" data-act="install" title="${tr("d.install.tt", "Avvia il setup del repack: a installazione finita il gioco entra in libreria")}">📦 ${tr("d.install", "Installa")}</button>` : ""}${live ? btn("pause", "⏸", tr("d.pause", "Pausa")) : t.status !== "completed" ? btn("resume", "▶", tr("d.resume", "Riprendi")) : ""}${btn("menu", "⋯", tr("d.menu.more", "Altre azioni"), ' aria-haspopup="menu"')}</td>
   </tr>`;
 }
 
@@ -745,18 +752,18 @@ function dlGroupRow(g, open) {
   const live = g.members.some((x) => x.status === "running" || x.status === "queued");
   const stop = g.members.some((x) => x.status === "paused" || x.status === "error");
   const btn = (act, ico, label) => `<button class="icon-btn" type="button" data-gact="${act}" title="${label}" aria-label="${label}: ${title}">${ico}</button>`;
-  const kinds = g.kinds.map((k) => `<span class="dl-kind">${DLU.KIND[k]}</span>`).join("");
+  const kinds = g.kinds.map((k) => `<span class="dl-kind">${t(DLU.KIND[k][0])}</span>`).join("");
   return `<tr class="dl-group" data-gid="${esc(g.key)}">
-    <td class="c-name"><button class="icon-btn dl-gtog" type="button" data-gact="toggle" aria-expanded="${open}" title="${open ? "Nascondi" : "Mostra"} i download" aria-label="${open ? "Nascondi" : "Mostra"} i download di ${title}">▸</button>` +
-    `<b>${title}</b>${kinds}<span class="muted small dl-gcount">${g.members.length} download</span>${dlReadyHtml(g)}</td>
+    <td class="c-name"><button class="icon-btn dl-gtog" type="button" data-gact="toggle" aria-expanded="${open}" title="${open ? t("d.grp.hide") : t("d.grp.show")}" aria-label="${open ? t("d.grp.hide_of", { title }) : t("d.grp.show_of", { title })}">▸</button>` +
+    `<b>${title}</b>${kinds}<span class="muted small dl-gcount">${t("d.grp.count", { n: g.members.length })}</span>${dlReadyHtml(g)}</td>
     <td class="hide-s"></td>
     <td class="num">${g.size ? DLU.bytes(g.size) : "?"}</td>
-    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="Avanzamento: ${title}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${g.size ? pct + "%" : "—"}</span>${g.unknown ? ` <span class="muted small">+${g.unknown} senza dimensione</span>` : ""}</td>
+    <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="${tr("d.progress.aria", "Avanzamento: {name}", { name: title })}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${g.size ? pct + "%" : "—"}</span>${g.unknown ? ` <span class="muted small">+${g.unknown} senza dimensione</span>` : ""}</td>
     <td class="num">${DLU.speed(g.speed)}</td>
     <td class="num hide-s">${DLU.eta(g.eta)}</td>
     <td class="c-st"><span class="dl-st">${esc(g.summary)}</span></td>
     <td class="hide-s"></td>
-    <td class="c-act">${live ? btn("pause", "⏸", "Pausa tutti") : ""}${stop ? btn("resume", "▶", "Riprendi tutti") : ""}${btn("cancel", "🗑", "Annulla tutti")}</td>
+    <td class="c-act">${live ? btn("pause", "⏸", t("d.pause.all")) : ""}${stop ? btn("resume", "▶", t("d.resume.all")) : ""}${btn("cancel", "🗑", t("d.cancel.all"))}</td>
   </tr>`;
 }
 
@@ -783,13 +790,13 @@ const dlRowKey = (el) => (el.dataset.gid != null ? "g:" + el.dataset.gid : el.da
 
 function dlTorrentBox(t) {
   const o = t.options || {}, files = o.files || [];
-  if (o.metadata === false) return `<div class="dl-x" id="dl-x-${esc(t.id)}"><p class="muted small">In attesa dei metadati…</p></div>`;
+  if (o.metadata === false) return `<div class="dl-x" id="dl-x-${esc(t.id)}"><p class="muted small">${tr("d.meta.wait", "In attesa dei metadati…")}</p></div>`;
   return `<div class="dl-x" id="dl-x-${esc(t.id)}">
-    <label class="chk"><input type="checkbox" data-act="seq"${o.sequential ? " checked" : ""}> Download sequenziale <span class="muted small">(in ordine: utile per vedere un video mentre scarica)</span></label>
-    ${files.length ? `<table class="dl-files"><thead><tr><th>File</th><th>Dimensione</th><th>Avanzamento</th><th>Priorità</th></tr></thead><tbody>
+    <label class="chk"><input type="checkbox" data-act="seq"${o.sequential ? " checked" : ""}> ${tr("d.seq", "Download sequenziale")} <span class="muted small">${tr("d.seq.hint", "(in ordine: utile per vedere un video mentre scarica)")}</span></label>
+    ${files.length ? `<table class="dl-files"><thead><tr><th>${tr("d.file", "File")}</th><th>${tr("d.col.size", "Dimensione")}</th><th>${tr("d.col.progress", "Avanzamento")}</th><th>${tr("d.col.prio", "Priorità")}</th></tr></thead><tbody>
       ${files.map((f) => `<tr><td>${esc(f.name)}</td><td>${DLU.bytes(f.size)}</td>
-        <td class="dl-fpct"><span class="dl-fbar" role="progressbar" aria-label="Avanzamento: ${esc(f.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((f.progress || 0) * 100)}"><i style="width:${Math.round((f.progress || 0) * 100)}%"></i></span>${Math.round((f.progress || 0) * 100)}%</td>
-        <td><select class="field" data-act="fprio" data-file="${esc(f.index)}" aria-label="Priorità: ${esc(f.name)}">${DLU.FILE_PRIO.map(([v, l]) => `<option value="${v}"${(f.priority ?? 1) === v ? " selected" : ""}>${l}</option>`).join("")}</select></td></tr>`).join("")}
+        <td class="dl-fpct"><span class="dl-fbar" role="progressbar" aria-label="${tr("d.progress.aria", "Avanzamento: {name}", { name: esc(f.name) })}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round((f.progress || 0) * 100)}"><i style="width:${Math.round((f.progress || 0) * 100)}%"></i></span>${Math.round((f.progress || 0) * 100)}%</td>
+        <td><select class="field" data-act="fprio" data-file="${esc(f.index)}" aria-label="${tr("d.prio.aria", "Priorità: {name}", { name: esc(f.name) })}">${DLU.FILE_PRIO.map(([v, lk, l]) => `<option value="${v}"${(f.priority ?? 1) === v ? " selected" : ""}>${tr(lk, l)}</option>`).join("")}</select></td></tr>`).join("")}
     </tbody></table>` : ""}
   </div>`;
 }
@@ -809,10 +816,10 @@ function dlRenderList() {
   if (!list.length) {
     box.replaceChildren();
     empty.innerHTML = `<div class="dl-empty muted">${!DL.tasks.length
-      ? `<div class="dl-empty-ico" aria-hidden="true">⬇</div><p>Nessun download.</p>
-         <p class="small">Incolla un link http, un magnet o un file .torrent.</p>
-         <button class="btn primary" type="button" id="dl-empty-add">＋ Aggiungi un download</button>`
-      : "Nessun download corrisponde al filtro o alla ricerca."}</div>`;
+      ? `<div class="dl-empty-ico" aria-hidden="true">⬇</div><p>${t("d.empty.none")}</p>
+         <p class="small">${t("d.empty.hint")}</p>
+         <button class="btn primary" type="button" id="dl-empty-add">＋ ${t("d.empty.add")}</button>`
+      : t("d.empty.nomatch")}</div>`;
     return dlMarkSel();
   }
   if (empty.firstChild) empty.replaceChildren();
@@ -860,16 +867,16 @@ function dlPanelTask() {
 
 function dlPanelGeneral(t) {
   const o = t.options || {}, tor = t.type === "torrent";
-  const when = (s) => (s ? new Date(s * 1000).toLocaleString("it-IT") : "");
-  const kv = [["Nome", t.name], ["Sorgente", t.source], ["Cartella", t.save_path],
-    ["Stato", `${o.seeding ? "In condivisione" : DLU.status(t.status)}${t.phase ? " · " + t.phase : ""}`],
-    ["Dimensione", `${DLU.bytes(t.done)} di ${t.size ? DLU.bytes(t.size) : "?"}`],
-    ["Via", o.resolved_by ? DLU.debridName(o.resolved_by) : ""], ["Pianificazione", o.start_at ? "Avvio alle " + o.start_at : ""],
-    ["Limite", DLU.limit(o.limit)], ["Priorità", DLU.prio(t.priority)],
-    ["Peer", tor && o.peers != null ? `${o.peers} peer, ${o.seeds ?? 0} seed` : ""], ["Invio", tor && o.upload_rate ? DLU.speed(o.upload_rate) : ""],
-    ["Rapporto", tor && o.ratio != null ? Number(o.ratio).toFixed(2).replace(".", ",") : ""],
-    ["Creato", when(t.created)], ["Finito", when(t.finished)], ["Errore", t.status === "error" ? t.error : ""]];
-  return `<dl class="dl-kv">${kv.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd${k === "Errore" ? ' class="bad"' : ""}>${esc(String(v))}</dd>`).join("")}</dl>`;
+  const when = (s) => (s ? new Date(s * 1000).toLocaleString(LOC()) : "");
+  const kv = [[tr("d.col.name", "Nome"), t.name], [tr("d.kv.src", "Sorgente"), t.source], [tr("d.kv.folder", "Cartella"), t.save_path],
+    [tr("d.col.status", "Stato"), `${o.seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status)}${t.phase ? " · " + t.phase : ""}`],
+    [tr("d.col.size", "Dimensione"), tr("d.of", "{a} di {b}", { a: DLU.bytes(t.done), b: t.size ? DLU.bytes(t.size) : "?" })],
+    [tr("d.kv.via", "Via"), o.resolved_by ? DLU.debridName(o.resolved_by) : ""], [tr("d.kv.sched", "Pianificazione"), o.start_at ? tr("d.sched.start", "Avvio alle {time}", { time: o.start_at }) : ""],
+    [tr("d.limit", "Limite"), DLU.limit(o.limit)], [tr("d.col.prio", "Priorità"), DLU.prio(t.priority)],
+    [tr("d.kv.peer", "Peer"), tor && o.peers != null ? tr("d.kv.peers", "{peers} peer, {seeds} seed", { peers: o.peers, seeds: o.seeds ?? 0 }) : ""], [tr("d.kv.up", "Invio"), tor && o.upload_rate ? DLU.speed(o.upload_rate) : ""],
+    [tr("d.kv.ratio", "Rapporto"), tor && o.ratio != null ? Number(o.ratio).toFixed(2).replace(".", ",") : ""],
+    [tr("d.kv.created", "Creato"), when(t.created)], [tr("d.kv.finished", "Finito"), when(t.finished)], [tr("d.status.error", "Errore"), t.status === "error" ? t.error : ""]];
+  return `<dl class="dl-kv">${kv.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd${k === tr("d.status.error", "Errore") ? ' class="bad"' : ""}>${esc(String(v))}</dd>`).join("")}</dl>`;
 }
 
 /** scheda Registro: stesse righe del modale (dlLogRow), ma lette per il task mostrato e accodate a ogni aggiornamento */
@@ -878,8 +885,8 @@ function dlPanelLog(t) {
   if (L.id !== t.id) Object.assign(L, { id: t.id, lines: [], n: 0, loaded: false });
   if (!L.busy && (dlLogLive(t) || t.log_n !== L.n || !L.loaded)) dlPanelLogFetch(t.id);
   const t0 = (L.lines[0] || {}).t;
-  return L.lines.length ? `<div class="dl-logbox" role="log" aria-label="Registro del download">${L.lines.map((l) => dlLogRow(l, t0)).join("")}</div>`
-    : `<p class="muted small">${L.loaded ? "Nessuna riga nel registro." : "Carico il registro…"}</p>`;
+  return L.lines.length ? `<div class="dl-logbox" role="log" aria-label="${tr("d.log.aria", "Registro del download")}">${L.lines.map((l) => dlLogRow(l, t0)).join("")}</div>`
+    : `<p class="muted small">${L.loaded ? tr("d.log.empty", "Nessuna riga nel registro.") : tr("d.log.loading", "Carico il registro…")}</p>`;
 }
 
 async function dlPanelLogFetch(id) {
@@ -911,7 +918,7 @@ function dlPanelDraw() {
   const t = dlPanelTask(), body = $("#dl-pbody");
   if (!body) return;
   const id = t ? t.id : "", same = body.dataset.id === id && body.dataset.tab === DL.tab;
-  const html = !t ? `<p class="muted small">Seleziona un download per vedere i dettagli.</p>`
+  const html = !t ? `<p class="muted small">${tr("d.panel.select", "Seleziona un download per vedere i dettagli.")}</p>`
     : DL.tab === "files" ? dlTorrentBox(t) : DL.tab === "log" ? dlPanelLog(t) : dlPanelGeneral(t);
   if (same && html === DL.panelHtml) return;
   const act = document.activeElement;
@@ -945,7 +952,7 @@ async function dlSchedule(id, at = null) {
   if (!t) return;
   let when = at;
   if (when == null) {
-    when = prompt("A che ora deve partire? (HH:MM, per esempio 23:30)", (t.options || {}).start_at || "23:00");
+    when = prompt(tr("d.sched.ask", "A che ora deve partire? (HH:MM, per esempio 23:30)"), (t.options || {}).start_at || "23:00");
     if (when == null) return; // finestra chiusa: niente da fare
     when = when.trim();
     if (!when) return;
@@ -956,7 +963,7 @@ async function dlSchedule(id, at = null) {
   const options = { ...(t.options || {}) };
   if (when) options.start_at = when; else delete options.start_at;
   dlApply([{ id, options }]);
-  toast(when ? `Avvio alle ${when}` : "Pianificazione annullata");
+  toast(when ? tr("d.sched.start", "Avvio alle {time}", { time: when }) : tr("d.sched.cancelled", "Pianificazione annullata"));
 }
 
 /* ---- menu della riga: vale per tutte le righe selezionate */
@@ -974,34 +981,34 @@ function dlMenu(id, pt) {
       + `${o.role ? `<span class="ck" aria-hidden="true">${o.on ? "✓" : ""}</span>` : ""}${esc(l)}</div>`;
   };
   const toPause = tasks.filter(live).map((x) => x.id), toResume = tasks.filter((x) => x.status === "paused" || x.status === "error").map((x) => x.id);
-  let html = (toPause.length ? it("⏸ Pausa", () => dlEach(toPause, "pause")) : "")
-    + (toResume.length ? it("▶ Riprendi", () => dlEach(toResume, "resume")) : "")
-    + `<hr role="separator"><div role="group" aria-labelledby="dl-ctx-prio"><div class="ch" id="dl-ctx-prio">Priorità</div>`
-    + DLU.PRIO.map(([v, l]) => it(l, () => dlPriority(ids, v), { role: "menuitemradio", on: !many && DLU.clampPrio(t.priority) === v })).join("")
+  let html = (toPause.length ? it("⏸ " + tr("d.pause", "Pausa"), () => dlEach(toPause, "pause")) : "")
+    + (toResume.length ? it("▶ " + tr("d.resume", "Riprendi"), () => dlEach(toResume, "resume")) : "")
+    + `<hr role="separator"><div role="group" aria-labelledby="dl-ctx-prio"><div class="ch" id="dl-ctx-prio">${tr("d.col.prio", "Priorità")}</div>`
+    + DLU.PRIO.map(([v, lk, l]) => it(tr(lk, l), () => dlPriority(ids, v), { role: "menuitemradio", on: !many && DLU.clampPrio(t.priority) === v })).join("")
     + `</div><hr role="separator">`
-    + it("⤒ Sposta in cima", () => dlEach([...ids].reverse(), "move", { to: "top" })) // al contrario: la prima resta in cima
-    + it("⤓ Sposta in fondo", () => dlEach(ids, "move", { to: "bottom" }))
-    + it("⏱ Limite di velocità…", () => dlLimit(ids))
+    + it("⤒ " + tr("d.move.top", "Sposta in cima"), () => dlEach([...ids].reverse(), "move", { to: "top" })) // al contrario: la prima resta in cima
+    + it("⤓ " + tr("d.move.bottom", "Sposta in fondo"), () => dlEach(ids, "move", { to: "bottom" }))
+    + it("⏱ " + tr("d.limit.menu", "Limite di velocità…"), () => dlLimit(ids))
     + (many ? "" : (t.options || {}).start_at
-      ? it("⏰ Annulla pianificazione", () => dlSchedule(id, ""))
-      : it("⏰ Avvia alle…", () => dlSchedule(id)))
-    + (many ? "" : it("📋 Registro…", () => dlLog(id)))
-    + (many ? "" : it("📂 Apri cartella", () => api(dlUrl(id) + "open-folder", { body: {} })))
-    + (many || !(t.options || {}).setup || t.status !== "completed" ? "" : it("📦 Installa il repack", () => api(dlUrl(id) + "install", { body: {} })))
-    + it(many ? "📋 Copia i link" : "📋 Copia link", () => navigator.clipboard.writeText(tasks.map((x) => x.source).join("\n")).then(() => toast(many ? "Link copiati" : "Link copiato")));
+      ? it("⏰ " + tr("d.sched.cancel", "Annulla pianificazione"), () => dlSchedule(id, ""))
+      : it("⏰ " + tr("d.sched.menu", "Avvia alle…"), () => dlSchedule(id)))
+    + (many ? "" : it("📋 " + tr("d.log.menu", "Registro…"), () => dlLog(id)))
+    + (many ? "" : it("📂 " + tr("d.folder.open", "Apri cartella"), () => api(dlUrl(id) + "open-folder", { body: {} })))
+    + (many || !(t.options || {}).setup || t.status !== "completed" ? "" : it("📦 " + tr("d.install.repack", "Installa il repack"), () => api(dlUrl(id) + "install", { body: {} })))
+    + it("📋 " + (many ? tr("d.copy.links", "Copia i link") : tr("d.copy.link", "Copia link")), () => navigator.clipboard.writeText(tasks.map((x) => x.source).join("\n")).then(() => toast(many ? tr("d.copied.links", "Link copiati") : tr("d.copied.link", "Link copiato"))));
   if (tor.length) {
     const seq = t.type === "torrent" && !!(t.options || {}).sequential;
-    html += `<hr role="separator">` + it("Download sequenziale", () => dlEach(tor, "sequential", { on: !seq }), { role: "menuitemcheckbox", on: seq })
-      + it("⟳ Ricontrolla i file", () => dlEach(tor, "recheck"))
-      + it("📣 Riannuncia ai tracker", () => dlEach(tor, "reannounce"));
+    html += `<hr role="separator">` + it(tr("d.seq", "Download sequenziale"), () => dlEach(tor, "sequential", { on: !seq }), { role: "menuitemcheckbox", on: seq })
+      + it("⟳ " + tr("d.recheck", "Ricontrolla i file"), () => dlEach(tor, "recheck"))
+      + it("📣 " + tr("d.reannounce", "Riannuncia ai tracker"), () => dlEach(tor, "reannounce"));
   }
-  html += `<hr role="separator">` + it(many ? `🗑 Elimina ${ids.length} download…` : "🗑 Elimina…", () => dlCancel(tasks), { hl: 1 });
+  html += `<hr role="separator">` + it("🗑 " + (many ? tr("d.del.many", "Elimina {n} download…", { n: ids.length }) : tr("d.del", "Elimina…")), () => dlCancel(tasks), { hl: 1 });
 
   closeCtx();
   const m = document.createElement("div");
   m.id = "ctxmenu";
   m.setAttribute("role", "menu");
-  m.setAttribute("aria-label", many ? `${ids.length} download selezionati` : t.name || t.source || "Download");
+  m.setAttribute("aria-label", many ? tr("d.sel.many", "{n} download selezionati", { n: ids.length }) : t.name || t.source || tr("d.download", "Download"));
   m.innerHTML = html;
   document.body.appendChild(m);
   m.style.left = Math.max(6, Math.min(pt.x, innerWidth - m.offsetWidth - 8)) + "px";
@@ -1037,7 +1044,7 @@ async function dlAct(id, act, el) {
   if (act === "install") { // setup del repack: si apre la finestra dell'installer, il gioco entra in libreria da solo
     try {
       await api(dlUrl(id) + "install", { body: {} });
-      toast("Setup del repack avviato: a installazione finita il gioco compare in libreria");
+      toast(tr("d.install.started", "Setup del repack avviato: a installazione finita il gioco compare in libreria"));
     } catch (e) { toast(e.message, true); }
     return;
   }
@@ -1055,11 +1062,11 @@ async function dlAct(id, act, el) {
 /** `purge`: pulizia dell'elenco (completati / falliti) invece dell'annullamento; `del` = file eliminati di default. */
 function dlCancel(tasks, purge = null) {
   const d = $("#dl-cancel-dlg");
-  $("#dl-cancel-title").textContent = purge ? purge.title : "Annullare il download?";
-  $("#dl-cancel-no").textContent = purge ? "Annulla" : "Continua a scaricare";
-  $("#dl-cancel-ok").textContent = purge ? purge.ok : "Annulla il download";
+  $("#dl-cancel-title").textContent = purge ? purge.title : t("d.cancel.title");
+  $("#dl-cancel-no").textContent = purge ? t("d.cancel.no") : t("d.cancel.continue");
+  $("#dl-cancel-ok").textContent = purge ? purge.ok : t("d.cancel.ok");
   $("#dl-cancel-name").textContent = purge ? purge.text(tasks.length)
-    : tasks.length > 1 ? `${tasks.length} download selezionati` : tasks[0].name || tasks[0].source;
+    : tasks.length > 1 ? t("d.sel.many", { n: tasks.length }) : tasks[0].name || tasks[0].source;
   $("#dl-cancel-del").checked = !!(purge && purge.del);
   d.returnValue = "";
   d.onclose = async () => {
@@ -1080,7 +1087,7 @@ function dlCancel(tasks, purge = null) {
 
 function dlLimit(ids) {
   const d = $("#dl-limit-dlg"), l = (dlTask(ids[0])?.options || {}).limit || {};
-  $("#dl-limit-name").textContent = ids.length > 1 ? `${ids.length} download selezionati` : dlTask(ids[0])?.name || "";
+  $("#dl-limit-name").textContent = ids.length > 1 ? t("d.sel.many", { n: ids.length }) : dlTask(ids[0])?.name || "";
   $("#dl-lim-down").value = l.down || 0;
   $("#dl-lim-up").value = l.up || 0;
   d.returnValue = "";
@@ -1088,7 +1095,7 @@ function dlLimit(ids) {
     if (d.returnValue !== "ok") return;
     const kb = (sel) => Math.max(0, Math.round(Number($(sel).value) || 0));
     try { await dlEach(ids, "limit", { down: kb("#dl-lim-down"), up: kb("#dl-lim-up") }); } catch (e) { return toast(e.message, true); }
-    toast("Limite di velocità salvato");
+    toast(t("d.limit.saved"));
   };
   d.showModal();
   $("#dl-lim-down").select();
@@ -1108,16 +1115,16 @@ function dlLogSummary() {
   const t = dlTask(DL.log.id), s = DLU.logSummary(DL.log.lines), el = $("#dl-log-sum");
   if (!el) return;
   const pct = t ? Math.round(Math.min(Math.max(t.progress || 0, 0), 1) * 100) : 0;
-  el.innerHTML = [t ? `<span><b>${pct}%</b> ${DLU.bytes(t.done)} di ${t.size ? DLU.bytes(t.size) : "?"}</span>` : "",
-    s.n ? `<span>${s.n} righe in <b>${esc(s.span)}</b></span>` : "",
-    s.warn ? `<span class="warn">${s.warn} avvisi</span>` : "", s.error ? `<span class="error">${s.error} errori</span>` : ""].join("");
+  el.innerHTML = [t ? `<span><b>${pct}%</b> ${tr("d.of", "{a} di {b}", { a: DLU.bytes(t.done), b: t.size ? DLU.bytes(t.size) : "?" })}</span>` : "",
+    s.n ? `<span>${tr("d.log.lines", "{n} righe in <b>{span}</b>", { n: s.n, span: esc(s.span) })}</span>` : "",
+    s.warn ? `<span class="warn">${tr("d.log.warns", "{n} avvisi", { n: s.warn })}</span>` : "", s.error ? `<span class="error">${tr("d.log.errors", "{n} errori", { n: s.error })}</span>` : ""].join("");
 }
 
 function dlLogHead() {
   const t = dlTask(DL.log.id), d = $("#dl-log-dlg");
   d.dataset.status = t ? t.status : "";
-  $("#dl-log-title").textContent = t ? `Registro: ${t.name || t.source}` : "Registro: download rimosso";
-  $("#dl-log-st").textContent = !t ? "" : (t.options || {}).seeding ? "In condivisione" : DLU.status(t.status);
+  $("#dl-log-title").textContent = t ? tr("d.log.title", "Registro: {name}", { name: t.name || t.source }) : tr("d.log.removed", "Registro: download rimosso");
+  $("#dl-log-st").textContent = !t ? "" : (t.options || {}).seeding ? tr("d.status.seeding", "In condivisione") : DLU.status(t.status);
   dlLogSummary();
 }
 
@@ -1126,7 +1133,7 @@ function dlLogShow(st) {
   if (st.fresh) box.replaceChildren();
   box.querySelector(".dl-log-empty")?.remove();
   box.insertAdjacentHTML("beforeend", (st.fresh ? st.lines : st.added).map((l) => dlLogRow(l)).join(""));
-  if (!L.lines.length) box.innerHTML = `<p class="dl-log-empty muted small">Nessuna riga nel registro.</p>`;
+  if (!L.lines.length) box.innerHTML = `<p class="dl-log-empty muted small">${t("d.log.empty")}</p>`;
   dlLogSummary();
   if ($("#dl-log-follow").checked) box.scrollTop = box.scrollHeight;
 }
@@ -1188,7 +1195,7 @@ function dlLogInit() {
   $("#dl-log-refresh").onclick = () => dlLogFetch(true, false);
   $("#dl-log-copy").onclick = () => {
     const text = DL.log.lines.map((l) => DLU.logView(l).text).join("\n");
-    navigator.clipboard.writeText(text).then(() => toast("Registro copiato"), () => toast("Non riesco a copiare negli appunti", true));
+    navigator.clipboard.writeText(text).then(() => toast(t("d.log.copied")), () => toast(t("d.log.copy_fail"), true));
   };
   $("#dl-log-clear").onclick = async () => {
     try { await api(dlUrl(DL.log.id) + "log/clear", { body: {} }); } catch (e) { return toast(e.message, true); }
@@ -1213,7 +1220,7 @@ async function dlMuList() {
   const todo = dlMuSources().filter((u) => !dlMuDone.has(u));
   go.disabled = true;
   box.setAttribute("aria-busy", "true");
-  go.textContent = "Cerco i provider…";
+  go.textContent = t("d.mu.search");
   try {
     for (const url of todo) {
       const g = document.createElement("fieldset");
@@ -1230,13 +1237,13 @@ async function dlMuList() {
         }).join(""));
         dlMuDone.add(url);
       } catch (e) {
-        g.insertAdjacentHTML("beforeend", `<p class="small err" role="alert">${esc(e.message)} Premi di nuovo «Elenca provider» per riprovare.</p>`);
+        g.insertAdjacentHTML("beforeend", `<p class="small err" role="alert">${esc(e.message)} ${t("d.mu.retry")}</p>`);
       }
     }
   } finally {
     box.removeAttribute("aria-busy");
     go.disabled = false;
-    go.textContent = "Elenca provider";
+    go.textContent = t("d.mu.go");
     dlMuSync();
     box.querySelector("input:not(:disabled)")?.focus();
   }
@@ -1246,9 +1253,9 @@ async function dlMuList() {
 function dlAddStartField() {
   const dlg = $("#dl-add-dlg");
   if (!dlg || $("#dl-start", dlg)) return;
-  const html = `<label class="lbl-field">Avvia alle (facoltativo)
+  const html = `<label class="lbl-field">${t("d.start.label")}
     <input class="field" id="dl-start" type="time">
-    <span class="muted small">Resta in coda e parte da solo a quest'ora.</span></label>`;
+    <span class="muted small">${t("d.start.hint")}</span></label>`;
   const end = $(".dlg-body > .row.end", dlg);
   if (end) end.insertAdjacentHTML("beforebegin", html);
   else $(".dlg-body", dlg)?.insertAdjacentHTML("beforeend", html);
@@ -1274,7 +1281,7 @@ async function dlSubmit() {
     .flatMap((l) => (dlMuDone.has(l) ? picked.filter((i) => i.closest("fieldset").dataset.src === l).map((i) => i.value) : [l]));
   const file = $("#dl-file").files[0], save_path = $("#dl-dest").value.trim();
   const start_at = ($("#dl-start")?.value || "").trim(); // facoltativo: il download parte da solo a quest'ora
-  if (!links.length && !file) return toast("Incolla almeno un link o scegli un file .torrent", true);
+  if (!links.length && !file) return toast(t("d.add.need"), true);
   const go = $("#dl-add-go");
   go.disabled = true;
   const added = [];
@@ -1294,7 +1301,7 @@ async function dlSubmit() {
       added.push(...(j.tasks || (j.task ? [j.task] : [])));
     }
     $("#dl-add-dlg").close();
-    toast(added.length === 1 ? "Download aggiunto" : `${added.length} download aggiunti`);
+    toast(added.length === 1 ? t("d.added.one") : t("d.added.many", { n: added.length }));
   } catch (e) { toast(e.message, true); }
   finally { go.disabled = false; if (added.length) dlApply(added); }
 }
@@ -1337,7 +1344,7 @@ function dlsFill(s) {
     const d = (s.debrid || {})[box.dataset.svc] || {};
     $("[data-deb=on]", box).checked = !!d.enabled;
     $("[data-deb=saved]", box).hidden = !d.key_set;
-    $("[data-deb=key]", box).placeholder = d.key_set ? "Incolla una nuova chiave per sostituirla" : "Incolla la chiave API";
+    $("[data-deb=key]", box).placeholder = d.key_set ? t("d.deb.ph_replace") : t("d.deb.ph_new");
   });
   dlsAltState();
 }
@@ -1346,7 +1353,7 @@ function dlsAltState() {
   const el = $("#dls-alt-state");
   if (!el) return;
   const sch = DLU.schedule(DL.settings.alt_schedule);
-  el.textContent = (DL.settings.alt_active ? "🐢 Attiva adesso" : "Non attiva adesso") + (sch ? ` · programmata ${sch}` : "");
+  el.textContent = (DL.settings.alt_active ? "🐢 " + t("d.alt.now") : t("d.alt.idle")) + (sch ? " · " + t("d.alt.sched", { sch }) : "");
 }
 
 async function dlsSave(body) {
@@ -1367,14 +1374,14 @@ function dlsBind() {
   const dir = $("#dls-dir"), pane = dir.closest("[data-pane]") || document;
   dir.dataset.bound = "1";
   $("#dls-debrid").innerHTML = DLU.DEBRID.map(([svc, label, url]) => `<div class="dls-deb" data-svc="${svc}">
-    <label class="chk"><input type="checkbox" data-deb="on"> Usa <b>${label}</b></label>
+    <label class="chk"><input type="checkbox" data-deb="on"> ${t("d.deb.use")} <b>${label}</b></label>
     <div class="row wrap">
-      <label class="lbl-field grow">Chiave API di ${label}
+      <label class="lbl-field grow">${t("d.deb.keyof", { name: label })}
         <input class="field" type="password" data-deb="key" autocomplete="off" spellcheck="false"></label>
-      <button class="btn" type="button" data-deb="test">Verifica</button>
+      <button class="btn" type="button" data-deb="test">${t("d.deb.test")}</button>
     </div>
-    <p class="small"><span data-deb="saved" hidden>✓ Chiave salvata <button class="btn" type="button" data-deb="del">Rimuovi</button> · </span>
-      <a href="#" data-open="${url}">Dove trovo la chiave</a> <span data-deb="state" role="status"></span></p>
+    <p class="small"><span data-deb="saved" hidden>✓ ${t("d.deb.saved")} <button class="btn" type="button" data-deb="del">${t("d.deb.remove")}</button> · </span>
+      <a href="#" data-open="${url}">${t("d.deb.where")}</a> <span data-deb="state" role="status"></span></p>
   </div>`).join("");
   for (const [sel, k, kind] of DLS_FIELDS) autosaveControl($(sel), () => dlsSave({ [k]: dlsRead($(sel), kind) }));
   const schedule = () => ({ enabled: $("#dls-sch-on").checked, from: $("#dls-sch-from").value, to: $("#dls-sch-to").value,
@@ -1393,17 +1400,17 @@ function dlsBind() {
       const v = key.value.trim();
       if (!v) return;
       key.value = ""; // la chiave non resta nella pagina
-      pending = deb({ key: v }).then(() => toast("Chiave salvata"), (e) => { key.value = v; toast(e.message, true); });
+      pending = deb({ key: v }).then(() => toast(t("d.deb.saved")), (e) => { key.value = v; toast(e.message, true); });
     });
     $("[data-deb=del]", box).onclick = async () => {
       try { await deb({ key: "" }); } catch (e) { return toast(e.message, true); }
       state.textContent = "";
-      toast("Chiave rimossa");
+      toast(t("d.deb.removed"));
     };
     $("[data-deb=test]", box).onclick = async (e) => {
       const b = e.currentTarget;
       b.disabled = true;
-      state.textContent = "Verifica…";
+      state.textContent = t("d.deb.checking");
       try {
         await pending;
         state.textContent = DLU.debridState(await api(`/api/downloads/debrid/${svc}/test`, { body: {} }));

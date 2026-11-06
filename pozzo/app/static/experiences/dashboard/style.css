@@ -1,10 +1,9 @@
 .gs-dashboard {
   --dashboard-gap: clamp(14px, 1.8vw, 24px);
-  display: grid;
-  grid-template-columns: 0 minmax(0, 1fr);
-  gap: var(--dashboard-gap);
   position: relative;
-  max-width: 1440px;
+  max-width: 1600px;
+  padding: 20px;
+  box-sizing: border-box;
   min-width: 0;
   margin: 0 auto;
   color: var(--text);

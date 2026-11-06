@@ -14,6 +14,7 @@ from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from ..server import THUMB_WIDTHS, _REMOTE_DOWN, _REMOTE_MISS, _REMOTE_SEM
+from ... import i18n as I
 
 
 def file_response(path: Path, **kw):
@@ -42,14 +43,12 @@ def build_router(ctx) -> APIRouter:
         """Immagini del gioco: quelle scelte dall'utente hanno la precedenza su quelle delle fonti."""
         return {**g["media"], **user.media_overrides(g["key"])}
 
-    KINDS = {"cover": "Copertina", "fanart": "Sfondo", "hero": "Banner", "header": "Intestazione",
-             "screenshot": "Schermata", "title": "Schermata del titolo", "wheel": "Logo (wheel)", "logo": "Logo",
-             "marquee": "Marquee", "icon": "Icona"}
+    KINDS = {"cover": "s.images.kind.cover", "fanart": "e.token.bg", "hero": "s.images.kind.hero", "header": "s.images.kind.header", "screenshot": "k.m.shot_tip", "title": "s.images.kind.title", "wheel": "s.images.kind.wheel", "logo": "s.images.kind.logo", "marquee": "s.images.kind.marquee", "icon": "a.smart.icon"}
     MAX_UPLOAD = 25 * 1024 * 1024
 
     def _kind(kind: str) -> str:
         if kind not in KINDS:
-            raise HTTPException(400, "Tipo di immagine non valido")
+            raise HTTPException(400, I.tr("s.images.kind_invalid"))
         return kind
 
     @router.get("/api/game/{gid}/media")
@@ -58,7 +57,7 @@ def build_router(ctx) -> APIRouter:
         g = lib.get(gid)
         own = user.media_overrides(g["key"])
         return {"title": g["title"], "kinds": [
-            {"kind": k, "label": label, "source": k in g["media"], "custom": k in own,
+            {"kind": k, "label": I.tr(label), "source": k in g["media"], "custom": k in own,
              "url": f"/img/{gid}/{k}" if k in g["media"] or k in own else None} for k, label in KINDS.items()]}
 
     @router.post("/api/game/{gid}/media/{kind}/file")
@@ -69,10 +68,10 @@ def build_router(ctx) -> APIRouter:
         _kind(kind)
         data = await file.read(MAX_UPLOAD + 1)
         if len(data) > MAX_UPLOAD:
-            raise HTTPException(413, "Immagine troppo grande (massimo 25 MB)")
+            raise HTTPException(413, I.tr("s.images.too_large"))
         ext = sniff(data[:16])
         if not ext or ext in ("webm", "mp4"):
-            raise HTTPException(400, "Il file non è un'immagine PNG, JPG, GIF, WebP o BMP")
+            raise HTTPException(400, I.tr("s.images.not_image"))
         folder = Path(cfg.cache) / "media" / "user"
         folder.mkdir(parents=True, exist_ok=True)
         dest = folder / f"{hashlib.sha1(data).hexdigest()}.{ext}"
@@ -99,11 +98,10 @@ def build_router(ctx) -> APIRouter:
         g = lib.get(gid)
         kind, url_ = _kind(str(body.get("kind") or "")), str(body.get("url") or "").strip()
         if not url_.startswith(("http://", "https://")):
-            raise HTTPException(400, "Indirizzo non valido")
+            raise HTTPException(400, I.tr("s.images.url_invalid"))
         rel = _fetch_remote(url_)
         if not rel:  # spesso e' l'indirizzo della pagina (Google, Pinterest...) e non dell'immagine, o il sito la blocca
-            raise HTTPException(400, "L'indirizzo non porta a un'immagine scaricabile: apri l'immagine e copia il suo "
-                                     "indirizzo, oppure salvala sul PC e usa «Carica dal PC»")
+            raise HTTPException(400, I.tr("s.images.url_not_image"))
         user.set_media(g["key"], kind, rel)
         return {**api_media_list(gid), "media": {k: f"/img/{gid}/{k}" for k in _media(g)}}
 

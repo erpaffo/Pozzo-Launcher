@@ -8,7 +8,7 @@ import time
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import HTMLResponse
 
-from ... import platforms as P
+from ... import i18n as I, platforms as P
 from ..server import STATIC, _asset_version
 
 
@@ -43,24 +43,24 @@ def build_router(ctx) -> APIRouter:
                     "last": log[-1] if log else ""}
 
         rows = [
-            row("scan", "Ricerca nuovi giochi", job["current"].state()),
-            row("stores", "Store ufficiali", job["stores"].state()),
-            row("storemeta", "Metadati degli store", job["storemeta"].state()),
-            row("pcstores", "Store PC", job["pcstores"].state()),
-            row("catalogs", "Store online", job["store_refresh"].state()),
-            *(row(k, f"Copertine e descrizioni · {P.PLATFORMS[k[8:]].name if k[8:] in P.PLATFORMS else k[8:]}",
+            row("scan", I.tr("s.activity.scan"), job["current"].state()),
+            row("stores", I.tr("s.activity.stores"), job["stores"].state()),
+            row("storemeta", I.tr("s.activity.storemeta"), job["storemeta"].state()),
+            row("pcstores", I.tr("s.activity.pcstores"), job["pcstores"].state()),
+            row("catalogs", I.tr("s.activity.catalogs"), job["store_refresh"].state()),
+            *(row(k, I.tr("s.activity.artwork", p=P.PLATFORMS[k[8:]].name if k[8:] in P.PLATFORMS else k[8:]),
                   j.state()) for k, j in list(job.items()) if k.startswith("netmeta:")),
-            row("hltb", "Durate (HowLongToBeat)", job["hltb"].state()),
-            row("top", "Migliori giochi", job["top"].state()),
-            row("collart", "Immagini delle collezioni", job["collart"].state()),
-            row("bulk", "Database locali", bulk_job),
+            row("hltb", I.tr("s.activity.hltb"), job["hltb"].state()),
+            row("top", I.tr("s.activity.top"), job["top"].state()),
+            row("collart", I.tr("s.activity.collart"), job["collart"].state()),
+            row("bulk", I.tr("s.activity.bulk"), bulk_job),
         ]
         if state["building"]:
-            rows.append({"id": "build", "name": "Libreria", "kind": "build", "status": "running",
-                         "phase": "Ricostruzione della libreria", "progress": None, "started": state["build_started"],
+            rows.append({"id": "build", "name": I.tr("s.activity.library"), "kind": "build", "status": "running",
+                         "phase": I.tr("s.activity.rebuilding"), "progress": None, "started": state["build_started"],
                          "finished": 0, "stoppable": False, "last": (state["build_log"] or [""])[-1]})
         if state["thumbs_done"] < state["thumbs_total"]:
-            rows.append({"id": "thumbs", "name": "Miniature", "kind": "build", "status": "running",
+            rows.append({"id": "thumbs", "name": I.tr("s.activity.thumbs"), "kind": "build", "status": "running",
                          "phase": f"{state['thumbs_done']:,} / {state['thumbs_total']:,}",
                          "progress": round(state["thumbs_done"] / state["thumbs_total"], 3),
                          "started": state["thumbs_started"], "finished": 0, "stoppable": False, "last": ""})
@@ -79,8 +79,8 @@ def build_router(ctx) -> APIRouter:
             status = {"completed": "done", "error": "error", "paused": "cancelled"}.get(t["status"], "running")
             speed = f" · {t['speed'] / 1048576:.1f} MB/s" if t["status"] == "running" and t["speed"] else ""
             seeding = bool(t["options"].get("seeding"))
-            phase = {"queued": "In coda", "paused": "In pausa", "completed": "Completato · in condivisione" if seeding else "Completato",
-                     "error": t["error"] or "Errore"}.get(t["status"], f"{t['progress']:.0%}{speed}")
+            phase = {"queued": I.tr("s.activity.queued"), "paused": I.tr("s.activity.paused"), "completed": I.tr("s.activity.seedingDone") if seeding else I.tr("s.activity.done"),
+                     "error": t["error"] or I.tr("s.activity.error")}.get(t["status"], f"{t['progress']:.0%}{speed}")
             out.append({"id": jid, "name": f"Download · {t['name'] or t['source'][:60]}", "kind": "download",
                         "status": status, "phase": phase, "progress": round(t["progress"], 3),
                         "started": t["created"], "finished": t["finished"],
@@ -95,7 +95,7 @@ def build_router(ctx) -> APIRouter:
             jid = "inst:" + r["id"]
             if jid in activity_hidden:
                 continue
-            out.append({"id": jid, "name": f"Installazione · {r['name']}", "kind": "install", "status": r["status"],
+            out.append({"id": jid, "name": I.tr("s.activity.install", name=r['name']), "kind": "install", "status": r["status"],
                         "phase": r["phase"], "progress": r["progress"], "started": r["started"],
                         "finished": r["finished"], "stoppable": False, "last": r["last"]})
         return out
@@ -118,13 +118,13 @@ def build_router(ctx) -> APIRouter:
             try:
                 ctx.downloads.pause(jid[3:])
             except KeyError:
-                raise HTTPException(404, "Download non trovato")
+                raise HTTPException(404, I.tr("s.activity.dlNotFound"))
             return api_activity()
         if jid.startswith("netmeta:") and jid in job:  # un lavoro per console, creato al primo avvio
             _stop_flag(jid)()
             return api_activity()
         if jid not in job_stops:
-            raise HTTPException(400, "Questa operazione non si puo' interrompere")
+            raise HTTPException(400, I.tr("s.activity.notStoppable"))
         job_stops[jid]()
         return api_activity()
 
@@ -133,9 +133,9 @@ def build_router(ctx) -> APIRouter:
         rows = {r["id"]: r for r in _job_rows()}
         row = rows.get(jid)
         if not row:
-            raise HTTPException(404, "Attività non trovata")
+            raise HTTPException(404, I.tr("s.activity.notFound"))
         if row["status"] == "running":
-            raise HTTPException(409, "Non puoi rimuovere un'attività in corso")
+            raise HTTPException(409, I.tr("s.activity.noRemoveRunning"))
         activity_hidden.add(jid)
         return api_activity()
 
@@ -186,7 +186,7 @@ def build_router(ctx) -> APIRouter:
             except ValueError as e:
                 raise HTTPException(400, str(e))
             return {"ok": True, "state": api_mobile_state()}
-        raise HTTPException(400, "Comando sconosciuto")
+        raise HTTPException(400, I.tr("s.activity.unknownCmd"))
 
     vars(ctx).update(_job_rows=_job_rows, api_mobile_action=api_mobile_action)
     return router

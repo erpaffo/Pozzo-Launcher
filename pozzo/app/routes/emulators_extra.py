@@ -8,7 +8,7 @@ import time
 import httpx
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import bios as BI, config as C, emuinstall_extra as EX, platforms as P
+from ... import bios as BI, config as C, emuinstall_extra as EX, i18n as I, platforms as P
 from ...boot import registro
 
 EMU_AUTOUPDATE_MODES = ("off", "notify", "install")
@@ -31,7 +31,7 @@ def autoupdate_pass(cfg) -> list[str]:
             continue
         name, latest = u["name"], u["latest"]
         if mode == "notify":
-            N.send(cfg, "Pozzo Launcher", f"Aggiornamento disponibile: {name} {latest}")
+            N.send(cfg, "Pozzo Launcher", I.tr("s.emuextra.updateAvailable", name=name, ver=latest))
             trattati.append(name)
             continue
         try:
@@ -39,9 +39,9 @@ def autoupdate_pass(cfg) -> list[str]:
         except EI.EmulatorRunning:  # emulatore aperto: si riprova al prossimo giro
             continue
         except Exception:  # noqa: BLE001 - install() rimette la versione di prima
-            N.send(cfg, "Pozzo Launcher", f"Aggiornamento di {name} fallito: resta la versione precedente")
+            N.send(cfg, "Pozzo Launcher", I.tr("s.emuextra.updateFailed", name=name))
         else:
-            N.send(cfg, "Pozzo Launcher", f"Aggiornato {name} a {latest}")
+            N.send(cfg, "Pozzo Launcher", I.tr("s.emuextra.updated", name=name, ver=latest))
         trattati.append(name)
     return trattati
 
@@ -55,11 +55,11 @@ def build_router(ctx) -> APIRouter:
         try:
             return fn(*args)
         except ValueError as e:
-            raise HTTPException(400, str(e) or "Richiesta non valida")
+            raise HTTPException(400, str(e) or I.tr("s.emuextra.invalid"))
         except (OSError, httpx.HTTPError) as e:
-            raise HTTPException(502, f"Connessione o disco non disponibili: {type(e).__name__}: {e}")
+            raise HTTPException(502, I.tr("s.emuextra.netDisk", kind=type(e).__name__, msg=str(e)))
         except Exception as e:  # l'installazione non deve lasciare il registro bloccato su «in corso»
-            raise HTTPException(502, f"Operazione non riuscita: {type(e).__name__}: {e}")
+            raise HTTPException(502, I.tr("s.emuextra.failed", kind=type(e).__name__, msg=str(e)))
 
     @router.get("/api/emulators/bios")
     def api_emulators_bios(console: str = ""):
@@ -89,10 +89,10 @@ def build_router(ctx) -> APIRouter:
     def api_emulators_install(body: dict = Body(default={})):
         console = str(body.get("console") or "")
         if console not in P.PLATFORMS:
-            raise HTTPException(400, f"console sconosciuta: {console}")
+            raise HTTPException(400, I.tr("s.emuextra.unknownConsole", console=console))
         reg = registro(f"install-{console}")
         if not reg.snapshot()["ready"]:
-            raise HTTPException(409, "Un'installazione è già in corso per questa console")
+            raise HTTPException(409, I.tr("s.emuextra.busy"))
         reg.reset()
 
         def avanza(msg: str, _frazione: float):
@@ -118,7 +118,7 @@ def build_router(ctx) -> APIRouter:
     def api_emulators_autoupdate(body: dict = Body(...)):
         mode = str(body.get("mode") or "")
         if mode not in EMU_AUTOUPDATE_MODES:
-            raise HTTPException(400, "modalità sconosciuta: usa off, notify o install")
+            raise HTTPException(400, I.tr("s.emuextra.badMode"))
         C.save_settings(cfg, app={"emu_autoupdate": mode})
         return {"mode": mode}
 

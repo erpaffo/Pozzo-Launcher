@@ -25,8 +25,8 @@
     host.textContent = "";
     host.classList && host.classList.add("fr");
     host.setAttribute("role", "region");
-    host.setAttribute("aria-label", "Ordine di gioco");
-    host.appendChild(el(doc, "h3", "fr-title", `Ordine di gioco: ${d.series}`));
+    host.setAttribute("aria-label", t("i.fr.order"));
+    host.appendChild(el(doc, "h3", "fr-title", t("i.fr.title", { s: d.series })));
     const ol = el(doc, "ol", "fr-list");
     for (const id of order) {
       const li = el(doc, "li", "fr-item");
@@ -42,13 +42,13 @@
         b.addEventListener("click", () => onOpen(id));
         li.appendChild(b);
       } else li.appendChild(el(doc, "span", "fr-name", nome));
-      li.appendChild(el(doc, "span", "fr-tag " + (owned.has(id) ? "fr-own" : "fr-miss"), owned.has(id) ? "Posseduto" : "Non posseduto"));
+      li.appendChild(el(doc, "span", "fr-tag " + (owned.has(id) ? "fr-own" : "fr-miss"), owned.has(id) ? t("i.fr.owned") : t("i.fr.notOwned")));
       ol.appendChild(li);
     }
     host.appendChild(ol);
     if (missing.length) {
       const m = el(doc, "div", "fr-missing");
-      m.appendChild(el(doc, "h4", "fr-sub", "Ti mancano"));
+      m.appendChild(el(doc, "h4", "fr-sub", t("i.fr.missing")));
       const ul = el(doc, "ul", "fr-miss-list");
       for (const t of missing) ul.appendChild(el(doc, "li", "fr-miss-item", t));
       m.appendChild(ul);

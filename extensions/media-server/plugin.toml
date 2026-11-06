@@ -1,0 +1,19 @@
+[plugin]
+name = "Media server"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "📡"
+description = "Le librerie del tuo Jellyfin o Plex dentro Pozzo Launcher: stessa griglia, stessa ricerca, «continua a guardare» e «visto» sincronizzati col server."
+long_description = "Collega un server Jellyfin (indirizzo, utente e password oppure chiave API) o un server Plex (indirizzo e token dell'account) e sfoglia film, serie e musica direttamente da Pozzo. Il server resta la fonte di verità: la posizione di riproduzione e lo stato «visto» vengono letti dal server e aggiornati su di lui. Lo stream è diretto, senza transcodifica: i formati che la finestra non legge si aprono nel lettore esterno. Indirizzo e token restano soltanto su questo PC, in locale; la password serve solo al primo accesso e non viene salvata."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Media server» dalla barra laterale e inserisci l'indirizzo del tuo server.\n3. Jellyfin: accedi con utente e password (oppure incolla una chiave API dalle impostazioni del server). Plex: incolla il token del tuo account.\n4. Premi «Prova» per verificare il collegamento, poi sfoglia film, serie e musica.\n5. Riprendi da dove eri rimasto: la posizione arriva dal server e viene aggiornata su di lui."
+features = [
+  "Jellyfin con utente e password o chiave API",
+  "Plex con il token del tuo account, salvato solo in locale",
+  "Stessa griglia e stessa ricerca dei contenuti locali",
+  "«Continua a guardare» e «visto» sincronizzati col server",
+  "Stream diretto (niente transcodifica, niente HLS)",
+  "Immagini servite da Pozzo, senza esporre il token al frontend"
+]
+api = 2
+min_app = "0.15.0"
+permissions = ["rete:*", "avvio", "impostazioni"]

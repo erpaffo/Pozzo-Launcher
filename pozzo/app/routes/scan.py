@@ -13,6 +13,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
 from ... import config as C, platforms as P, profilecfg as PC, relink as RL
+from ... import i18n as I
 
 
 MAINT_DEFAULT = {"enabled": False, "day": 6, "time": "03:00"}  # day: lunedi' = 0, domenica = 6
@@ -33,7 +34,7 @@ def _maint_settings(raw, strict: bool = False) -> dict:
             if ok(raw[key]):
                 out[key] = raw[key]
             elif strict:
-                raise HTTPException(400, f"Impostazione non valida: {key}")
+                raise HTTPException(400, I.tr("s.scan.settingInvalid", name=key))
     return out
 
 
@@ -53,15 +54,15 @@ def _maint_summary(d: dict) -> str:
     """Riepilogo in italiano delle sole voci peggiorate rispetto al giro precedente."""
     parts = []
     if n := len(d.get("rom_nuove_mancanti") or []):
-        parts.append(_n(n, "ROM non trovata", "ROM non trovate"))
+        parts.append(_n(n, I.tr("s.scan.romOne"), I.tr("s.scan.romMany")))
     if n := len(d.get("bios_nuovi_invalidi") or []):
-        parts.append(_n(n, "BIOS non valido", "BIOS non validi"))
+        parts.append(_n(n, I.tr("s.scan.biosOne"), I.tr("s.scan.biosMany")))
     if (n := d.get("covers_delta") or 0) > 0:
-        parts.append(_n(n, "copertina in più mancante", "copertine in più mancanti"))
+        parts.append(_n(n, I.tr("s.scan.coverOne"), I.tr("s.scan.coverMany")))
     if (b := d.get("freeable_delta") or 0) > 0:  # byte: piu' spazio sprecato in doppioni
         size = f"{b / 1024 ** 3:.1f} GB" if b >= 1024 ** 3 else f"{max(1, round(b / 1024 ** 2))} MB"
-        parts.append(f"{size.replace('.', ',')} in più di doppioni")
-    return "Manutenzione: " + (", ".join(parts) or "un controllo non è riuscito, apri il rapporto")
+        parts.append(I.tr("s.scan.dupesSpace", size=size.replace('.', ',')))
+    return I.tr("s.scan.maintSummary", parts=", ".join(parts) or I.tr("s.scan.maintCheckFailed"))
 
 
 def maintenance_execute(cfg, job=None, state=None, lib=None, claim=None) -> bool:
@@ -74,7 +75,7 @@ def maintenance_execute(cfg, job=None, state=None, lib=None, claim=None) -> bool
         if (state or {}).get("building") or job["store_refresh"].status == "running":
             return False
         from .. import jobs as _J
-        sj = _J.ScrapeJob(retry_missing=True, title="Manutenzione notturna")
+        sj = _J.ScrapeJob(retry_missing=True, title=I.tr("s.scan.maintTitle"))
         if not (claim or (lambda n, j: True))("current", sj):
             return False
         if claim is None:
@@ -85,7 +86,7 @@ def maintenance_execute(cfg, job=None, state=None, lib=None, claim=None) -> bool
         cur = M.run(cfg, **kw)
     finally:
         if sj is not None and sj.status == "running":  # passo saltato o annullato: lo slot non resta occupato
-            sj.status, sj.phase = "cancelled", "Manutenzione interrotta"
+            sj.status, sj.phase = "cancelled", I.tr("s.scan.maintInterrupted")
         if lib is not None:
             lib.load()  # scraping/store hanno riscritto la libreria
     if prev is not None:  # primo giro: niente da confrontare
@@ -102,16 +103,15 @@ def build_router(ctx) -> APIRouter:
 
     # ------------------------------------------------------------ fonti, limiti, database locali, pianificazione
     SOURCE_INFO = {
-        "libretro": ("offline", "Identificazione per CRC/nome (No-Intro, Redump), franchise, immagini libretro"),
-        "launchbox": ("offline", "Valutazioni della community, descrizioni, generi, ESRB, video, immagini e loghi"),
-        "tgdb": ("offline", "Copia completa di TheGamesDB: descrizioni, giocatori, copertine (nessuna quota)"),
-        "arcadedb": ("online", "Solo arcade (MAME): dati, immagini, video"),
-        "igdb": ("online", "Descrizioni, valutazioni utenti e critica, franchise, copertine"),
-        "screenscraper": ("online", "Ricerca per checksum, descrizioni in italiano, wheel, video (quota del tuo account)"),
-        "rawg": ("online", "Valutazioni utenti e voto Metacritic (chiave gratuita, 20.000 richieste/mese)"),
-        "thegamesdb": ("online", "API di TheGamesDB (quota mensile molto bassa: meglio la copia completa)"),
-        "wikipedia": ("online", "Descrizioni, sviluppatori, editori, generi e anno da Wikipedia (italiano, poi inglese): "
-                                "gratuita, senza chiave, solo per i dati ancora mancanti"),
+        "libretro": ("offline", I.tr("s.scan.srcLibretro")),
+        "launchbox": ("offline", I.tr("s.scan.srcLaunchbox")),
+        "tgdb": ("offline", I.tr("s.scan.srcTgdb")),
+        "arcadedb": ("online", I.tr("s.scan.srcArcadedb")),
+        "igdb": ("online", I.tr("s.scan.srcIgdb")),
+        "screenscraper": ("online", I.tr("s.scan.srcScreenscraper")),
+        "rawg": ("online", I.tr("s.scan.srcRawg")),
+        "thegamesdb": ("online", I.tr("s.scan.srcThegamesdb")),
+        "wikipedia": ("online", I.tr("s.scan.srcWikipedia")),
     }
     bulk_job: dict = {"status": "idle", "log": []}
 
@@ -162,7 +162,7 @@ def build_router(ctx) -> APIRouter:
                     raw_v = v.get(k)
                     val = (float(raw_v) if k == "rate" else int(float(raw_v))) if raw_v not in (None, "") else 0
                     if k == "rate" and val <= 0:
-                        raise HTTPException(400, f"{sid}: il ritmo deve essere maggiore di zero")
+                        raise HTTPException(400, I.tr("s.scan.rateMin", sid=sid))
                     if val != getattr(base, k):  # si salvano solo i valori cambiati rispetto ai predefiniti
                         clean[k] = val
                 lim[sid] = clean or None
@@ -184,7 +184,7 @@ def build_router(ctx) -> APIRouter:
         if bid not in BULK:
             raise HTTPException(404)
         if bulk_job["status"] == "running":
-            raise HTTPException(409, "Aggiornamento gia' in corso")
+            raise HTTPException(409, I.tr("s.scan.bulkBusy"))
 
         def run():
             import asyncio as _a
@@ -197,7 +197,7 @@ def build_router(ctx) -> APIRouter:
             try:
                 bulk_job["status"] = "done" if _a.run(go()) else "error"
             except Exception as e:
-                bulk_job["log"].append(f"Errore: {e}")
+                bulk_job["log"].append(I.tr("s.scan.errorPrefix", err=e))
                 bulk_job["status"] = "error"
         threading.Thread(target=run, daemon=True).start()
         return {"ok": True}
@@ -312,9 +312,9 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/maintenance/run")
     def api_maintenance_run():
         if job["current"].status == "running" or state["building"] or job["store_refresh"].status == "running":
-            raise HTTPException(409, "Uno scraping o un aggiornamento e' gia' in corso: riprova dopo")
+            raise HTTPException(409, I.tr("s.scan.scrapeBusyRetry"))
         if not maint_lock.acquire(blocking=False):
-            raise HTTPException(409, "Manutenzione gia' in corso")
+            raise HTTPException(409, I.tr("s.scan.maintBusy"))
         threading.Thread(target=_maint_locked_run, daemon=True).start()
         return {"ok": True}
 
@@ -329,12 +329,12 @@ def build_router(ctx) -> APIRouter:
         name = (body.get("name") or "").strip()
         pid = _re.sub(r"[^a-z0-9_-]", "", (body.get("id") or name).lower().replace(" ", "-"))
         if not name or not pid:
-            raise HTTPException(400, "Servono nome e identificativo")
+            raise HTTPException(400, I.tr("s.scan.nameIdRequired"))
         if pid in P.PLATFORMS and not P.PLATFORMS[pid].extra.get("custom"):
-            raise HTTPException(409, f"«{pid}» esiste gia' tra le console incluse")
+            raise HTTPException(409, I.tr("s.scan.platformExists", pid=pid))
         exts = " ".join(e.lower().lstrip(".") for e in str(body.get("exts", "")).replace(",", " ").split())
         if not exts:
-            raise HTTPException(400, "Indica almeno un'estensione dei file (es. iso chd)")
+            raise HTTPException(400, I.tr("s.scan.extRequired"))
         item = {"id": pid, "name": name, "exts": exts, "aliases": [a.strip() for a in body.get("aliases", []) if a.strip()],
                 "cd": bool(body.get("cd")), "dir_games": bool(body.get("dir_games")),
                 "igdb": str(body.get("igdb") or ""), "ss": str(body.get("ss") or "")}
@@ -374,7 +374,7 @@ def build_router(ctx) -> APIRouter:
 
     def _relink_busy():
         if state["building"] or job["current"].status == "running":
-            raise HTTPException(409, "Uno scraping o un aggiornamento e' gia' in corso")
+            raise HTTPException(409, I.tr("s.scan.scrapeUpdateBusy"))
 
     @router.get("/api/relink/plan")
     def api_relink_plan():
@@ -390,7 +390,7 @@ def build_router(ctx) -> APIRouter:
         # l'abbinamento si ricalcola qui: il client sceglie solo quali applicare, non le chiavi da spostare
         pairs = [x for x in RL.plan(cfg, log=lambda m: None) if x[1] in want]
         if not pairs:
-            raise HTTPException(404, "Nessun abbinamento da applicare (le cartelle sono cambiate?)")
+            raise HTTPException(404, I.tr("s.scan.relinkNone"))
         RL.apply(cfg, pairs, log=lambda m: None)
         threading.Thread(target=_rebuild, daemon=True).start()
         return {"applied": len(pairs)}
@@ -399,7 +399,7 @@ def build_router(ctx) -> APIRouter:
     def api_folders(body: dict = Body(...)):
         folder, pid = (body.get("folder") or "").strip(), (body.get("platform") or "").strip()
         if not folder or (pid and pid not in P.PLATFORMS):
-            raise HTTPException(400, "dati non validi")
+            raise HTTPException(400, I.tr("s.scan.dataInvalid"))
         C.save_settings(cfg, platform_folders={folder: pid or None})
         return api_scan_preview()
 
@@ -410,7 +410,7 @@ def build_router(ctx) -> APIRouter:
         pid = (body.get("platform") or "").strip()
         p = Path(os.path.expandvars(os.path.expanduser(str(body.get("path") or "").strip().strip('"'))))
         if pid not in P.PLATFORMS or not p.is_dir():
-            raise HTTPException(400, "Console o cartella non valida")
+            raise HTTPException(400, I.tr("s.scan.consoleFolderInvalid"))
         if pid == "windows":
             skip = re.compile(r"unins|setup|redist|crash|install|dxsetup|vcredist|launcher_helper", re.I)
             added = 0
@@ -436,7 +436,7 @@ def build_router(ctx) -> APIRouter:
     def api_scan_start(body: dict = Body(default={})):
         cur = job["current"]
         if cur.status == "running" or state["building"]:
-            raise HTTPException(409, "Uno scraping o un aggiornamento e' gia' in corso")
+            raise HTTPException(409, I.tr("s.scan.scrapeUpdateBusy"))
         plats = [p for p in (body.get("platforms") or []) if p in P.PLATFORMS] or None
         mode = body.get("mode") or ("all" if body.get("refresh") else "new")
         keys, title = None, ""

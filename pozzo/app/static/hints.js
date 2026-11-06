@@ -124,7 +124,7 @@
   const store = window.localStorage;
   let pop = null, okBtn = null, E = null;
   const note = (m) => { if (typeof toast === "function") toast(m); };
-  const AFTER = " Per riattivarli: Impostazioni › Generale › Suggerimenti.";
+  const AFTER = () => " " + t("b.hints.afterHint");
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
 
   const ui = {
@@ -132,15 +132,15 @@
       pop = mk("div", "gs-hint");
       pop.setAttribute("role", "status"); pop.setAttribute("aria-live", "polite");
       const row = mk("div", "row");
-      okBtn = mk("button", "btn accent", "Ho capito"); okBtn.type = "button"; okBtn.setAttribute("aria-keyshortcuts", "Alt+H");
+      okBtn = mk("button", "btn accent", t("b.hints.ok")); okBtn.type = "button"; okBtn.setAttribute("aria-keyshortcuts", "Alt+H");
       okBtn.onclick = () => E.close();
       row.append(okBtn);
       const foot = mk("div", "foot");
-      const day = mk("button", "", "Silenzia per 1 giorno"), off = mk("button", "", "Non mostrare più");
+      const day = mk("button", "", t("b.hints.day")), off = mk("button", "", t("b.hints.never"));
       day.type = off.type = "button";
-      day.onclick = () => { E.setMode("day"); note("Suggerimenti silenziati per 1 giorno." + AFTER); };
-      off.onclick = () => { E.setMode("off"); note("Suggerimenti disattivati." + AFTER); };
-      foot.append(day, off, mk("span", "keys", "Esc chiude · Alt+H porta qui il focus"));
+      day.onclick = () => { E.setMode("day"); note(t("b.hints.toast.day") + AFTER()); };
+      off.onclick = () => { E.setMode("off"); note(t("b.hints.toast.off") + AFTER()); };
+      foot.append(day, off, mk("span", "keys", t("b.hints.keys")));
       pop.append(mk("div", "", text), row, foot);
       document.body.appendChild(pop);
       requestAnimationFrame(() => { if (pop) pop.classList.add("in"); });
@@ -194,24 +194,24 @@
 
   // catalogo: ogni bersaglio esiste nel DOM reale (index.html, menubar.js, js/*.js); se in una grafica manca, si passa oltre
   const K = (id) => window.PozzoShortcuts?.keyLabel(id) || "";
-  const withKey = (txt, id) => () => { const k = K(id); return k ? `${txt} (${k})` : txt; };
+  const withKey = (key, id) => () => { const k = K(id), txt = t(key); return k ? `${txt} (${k})` : txt; };
   const SET = ["#settings-btn", ".mb-top[data-m=\"Impostazioni\"]"];
   [
-    { id: "search", target: "#search", priority: 9, text: withKey("Cerca per titolo o sviluppatore: premi il tasto per saltare qui da ovunque", "search") },
-    { id: "palette", target: ["#view-title", "#menubar"], priority: 8, done: ".pal-overlay", text: withKey("Palette comandi: giochi, console, impostazioni e azioni in un solo campo", "palette") },
-    { id: "bigpicture", target: "#bp-btn", priority: 8, text: withKey("Big Picture: la libreria a schermo intero, pensata per il controller", "bigPicture") },
-    { id: "gamemenu", target: ".tile", priority: 7, text: "Clic destro su un gioco: preferiti, stato, collegamento sul desktop e altro." },
-    { id: "random", target: "#random-btn", priority: 6, text: withKey("Non sai cosa giocare? Il dado sceglie un gioco a caso tra quelli mostrati", "random") },
-    { id: "shortcuts", target: ["#menubar", "#experience-bar"], priority: 6, done: "#sc-dlg[open]", text: withKey("Tutte le scorciatoie da tastiera in un elenco, anche personalizzabili", "help") },
-    { id: "wishlist", target: ".nav-item[data-view=\"wishlist\"]", priority: 5, text: withKey("Lista desideri: i giochi che vuoi, con avviso quando scendono di prezzo", "viewWishlist") },
-    { id: "stats", target: ".nav-item[data-view=\"stats\"]", priority: 5, text: withKey("Statistiche: tempo di gioco, generi preferiti e andamento della libreria", "viewStats") },
-    { id: "profile", target: ["#mb-profile", "#profile-btn"], priority: 5, text: withKey("Più persone in casa? Ognuno ha preferiti e tempo di gioco suoi: qui cambi utente", "profile") },
-    { id: "settings", target: SET, priority: 5, done: "#settings-page:not([hidden])", text: withKey("Impostazioni: cartelle ROM, emulatori, store e tutte le opzioni", "settings") },
-    { id: "appearance", target: SET, priority: 4, text: "In Impostazioni › Aspetto scegli animazioni, intensità del movimento e look dell'app." },
-    { id: "themes", target: [".mb-top[data-m=\"Visualizza\"]", "#experience-nav"], priority: 4, text: withKey("Temi e grafiche cambiano l'aspetto: prova il tema successivo", "nextTheme") },
-    { id: "experiences", target: ["#experience-nav", "#drawer-toggle"], priority: 4, text: withKey("La libreria ha più grafiche (Catalogo, Cinema, Console…): passa alla successiva", "nextExperience") },
-    { id: "emucfg", target: "#d-emucfg", priority: 7, text: "Nella scheda del gioco trovi le impostazioni consigliate per l'emulatore, applicabili con un clic e annullabili." },
-    { id: "mods", target: "#d-mod-sites", priority: 6, text: "Nella scheda del gioco: cerca le mod sui siti che le ospitano." },
+    { id: "search", target: "#search", priority: 9, text: withKey("b.hints.search", "search") },
+    { id: "palette", target: ["#view-title", "#menubar"], priority: 8, done: ".pal-overlay", text: withKey("b.hints.palette", "palette") },
+    { id: "bigpicture", target: "#bp-btn", priority: 8, text: withKey("b.hints.bigpicture", "bigPicture") },
+    { id: "gamemenu", target: ".tile", priority: 7, text: () => t("b.hints.gamemenu") },
+    { id: "random", target: "#random-btn", priority: 6, text: withKey("b.hints.random", "random") },
+    { id: "shortcuts", target: ["#menubar", "#experience-bar"], priority: 6, done: "#sc-dlg[open]", text: withKey("b.hints.shortcuts", "help") },
+    { id: "wishlist", target: ".nav-item[data-view=\"wishlist\"]", priority: 5, text: withKey("b.hints.wishlist", "viewWishlist") },
+    { id: "stats", target: ".nav-item[data-view=\"stats\"]", priority: 5, text: withKey("b.hints.stats", "viewStats") },
+    { id: "profile", target: ["#mb-profile", "#profile-btn"], priority: 5, text: withKey("b.hints.profile", "profile") },
+    { id: "settings", target: SET, priority: 5, done: "#settings-page:not([hidden])", text: withKey("b.hints.settings", "settings") },
+    { id: "appearance", target: SET, priority: 4, text: () => t("b.hints.appearance") },
+    { id: "themes", target: [".mb-top[data-m=\"Visualizza\"]", "#experience-nav"], priority: 4, text: withKey("b.hints.themes", "nextTheme") },
+    { id: "experiences", target: ["#experience-nav", "#drawer-toggle"], priority: 4, text: withKey("b.hints.experiences", "nextExperience") },
+    { id: "emucfg", target: "#d-emucfg", priority: 7, text: () => t("b.hints.emucfg") },
+    { id: "mods", target: "#d-mod-sites", priority: 6, text: () => t("b.hints.mods") },
   ].forEach(hints.register);
 
   setInterval(E.tick, TICK);

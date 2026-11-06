@@ -1,0 +1,12 @@
+{
+  "Id": "jf-movie",
+  "Type": "Movie",
+  "Name": "Film",
+  "ProductionYear": 2020,
+  "RunTimeTicks": 54000000000,
+  "Overview": "Trama",
+  "ImageTags": { "Primary": "abc" },
+  "Container": "mkv",
+  "MediaSources": [{ "Id": "src-1", "Container": "mkv" }],
+  "UserData": { "PlaybackPositionTicks": 12000000000, "Played": false }
+}

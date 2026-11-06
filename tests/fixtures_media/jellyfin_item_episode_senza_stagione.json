@@ -1,0 +1,9 @@
+{
+  "Id": "jf-ep",
+  "Type": "Episode",
+  "Name": "Pilota",
+  "SeriesName": "Serie",
+  "Container": "mp4",
+  "MediaSources": [{ "Id": "src-ep", "Container": "mp4" }],
+  "UserData": {}
+}

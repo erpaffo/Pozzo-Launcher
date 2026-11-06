@@ -1,10 +1,10 @@
 # Contribuire
 
-Grazie dell'interesse! Segnalazioni, idee e pull request sono benvenute.
+Se vuoi dare una mano, segnalazioni, idee e pull request sono ben accette.
 
-- **Problemi e idee**: apri una [segnalazione](https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose) con il modello adatto.
+- Per problemi e idee apri una [segnalazione](https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose) scegliendo il modello adatto.
 - **Sicurezza**: mai in pubblico, vedi [SECURITY.md](SECURITY.md).
-- **Domande d'uso**: prima il [manuale](https://erpaffo.github.io/Pozzo-Launcher/).
+- Se hai una domanda su come si usa, guarda prima il [manuale](https://erpaffo.github.io/Pozzo-Launcher/).
 
 ## Preparare l'ambiente
 
@@ -24,7 +24,7 @@ PYTHONUTF8=1 python packaging/run_tests.py          # tutta la suite, come la CI
 PYTHONUTF8=1 python tests/test_pipeline.py          # un solo file
 ```
 
-I test sono script con `assert`: niente framework da imparare. La CI li esegue su Windows, macOS e Linux a ogni push e pull request. Per il JavaScript basta `node --check <file>.js`.
+I test sono semplici script con `assert`, non c'è nessun framework da imparare. La CI li esegue su Windows, macOS e Linux a ogni push e pull request. Per il JavaScript basta `node --check <file>.js`.
 
 ## Stile
 

@@ -36,16 +36,16 @@ function applyLook() {
 
 
 const PALETTES = [
-  { id: "default", label: "Predefinita" },
-  { id: "deuteranopia", label: "Daltonismo · verde/rosso (deuteranopia)" },
-  { id: "protanopia", label: "Daltonismo · rosso (protanopia)" },
-  { id: "tritanopia", label: "Daltonismo · blu/giallo (tritanopia)" },
-  { id: "contrast", label: "Alto contrasto (sfondo nero)" },
+  { id: "default", get label() { return t("c.palette.default"); } },
+  { id: "deuteranopia", get label() { return t("c.palette.deuteranopia"); } },
+  { id: "protanopia", get label() { return t("c.palette.protanopia"); } },
+  { id: "tritanopia", get label() { return t("c.palette.tritanopia"); } },
+  { id: "contrast", get label() { return t("c.palette.contrast"); } },
 ];
 const TEXTS = [
-  { id: "normal", label: "Normali" },
-  { id: "large", label: "Grandi" },
-  { id: "xlarge", label: "Molto grandi" },
+  { id: "normal", get label() { return t("c.textsize.normal"); } },
+  { id: "large", get label() { return t("c.textsize.large"); } },
+  { id: "xlarge", get label() { return t("c.textsize.xlarge"); } },
 ];
 
 
@@ -125,17 +125,17 @@ function cur() { return BP.stack[BP.stack.length - 1]; }
 function show() { const s = cur(); main.innerHTML = ""; s.render(main); renderNav(); renderHints(); announce(s.title || ""); Pad.resetSpoken(); }
 
 const TABS = [
-  { id: "home", label: "Home", open: () => { BP.stack = [homeScreen()]; show(); } },
-  { id: "foryou", label: "Per te", open: () => push(forYouScreen()) },
-  { id: "all", label: "Libreria", open: () => push(discoverScreen("Libreria", sortTitle(visibleGames()), "all")) },
-  { id: "plat", label: "Console", open: () => push(platformsScreen()) },
-  { id: "coll", label: "Collezioni", open: () => push(collectionsScreen()) },
-  { id: "fav", label: "Preferiti", open: () => push(gridScreen("Preferiti", sortTitle(visibleGames().filter((g) => g.grp.favorite)), "fav")) },
-  { id: "search", label: "Cerca", open: () => push(searchScreen()) },
-  { id: "look", label: "Aspetto", open: () => push(lookScreen()) },
-  { id: "media", label: "Musica", aria: "Musica e chiamate", icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>', open: () => window.PozzoMedia?.toggle() },
-  { id: "user", label: "Utente", aria: "Cambia utente", open: () => { beep("ok"); GSProfilePicker.open({ toast }); } },
-  { id: "exit", label: "Esci", open: () => exitBigPicture() },
+  { id: "home", get label() { return t("c.tab.home"); }, open: () => { BP.stack = [homeScreen()]; show(); } },
+  { id: "foryou", get label() { return t("c.tab.foryou"); }, open: () => push(forYouScreen()) },
+  { id: "all", get label() { return t("c.tab.all"); }, open: () => push(discoverScreen(t("c.tab.all"), sortTitle(visibleGames()), "all")) },
+  { id: "plat", get label() { return t("c.tab.plat"); }, open: () => push(platformsScreen()) },
+  { id: "coll", get label() { return t("c.tab.coll"); }, open: () => push(collectionsScreen()) },
+  { id: "fav", get label() { return t("c.tab.fav"); }, open: () => push(gridScreen(t("c.tab.fav"), sortTitle(visibleGames().filter((g) => g.grp.favorite)), "fav")) },
+  { id: "search", get label() { return t("c.action.search"); }, open: () => push(searchScreen()) },
+  { id: "look", get label() { return t("c.tab.look"); }, open: () => push(lookScreen()) },
+  { id: "media", get label() { return t("c.tab.media"); }, get aria() { return t("c.tab.media.aria"); }, icon: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>', open: () => window.PozzoMedia?.toggle() },
+  { id: "user", get label() { return t("c.tab.user"); }, get aria() { return t("c.tab.user.aria"); }, open: () => { beep("ok"); GSProfilePicker.open({ toast }); } },
+  { id: "exit", get label() { return t("c.tab.exit"); }, open: () => exitBigPicture() },
 ];
 const MEDIA_TAB = TABS.findIndex((t) => t.id === "media");
 // alla chiusura del pannello il focus torna sulla voce «Musica» della barra
@@ -183,7 +183,7 @@ function discoverScreen(title, base, tab, preset = store.get("bpDisc", ""), i = 
   };
   scr.lt = () => go(-1);
   scr.rt = () => go(1);
-  scr.hints = [["a", "Apri"], ["b", "Indietro"], ["x", "Preferito"], ["lt", "Filtro"], ["rt", "Filtro"]];
+  scr.hints = [["a", t("c.action.open")], ["b", t("c.action.back")], ["x", t("c.action.fav")], ["lt", t("c.hint.filter")], ["rt", t("c.hint.filter")]];
   return scr;
 }
 
@@ -191,9 +191,9 @@ function gridScreen(title, items, tab = "all", opts = {}) {
   const scr = {
     tab, title, items, i: 0, navFocus: null, cols: 6, cw: 0, ch: 0,
     render(el) {
-      el.innerHTML = `<div class="bp-grid-view"><div class="bp-grid-head"><h1>${esc(title)}</h1><span>${items.length.toLocaleString("it")} ${opts.unit || "giochi"}</span>`
+      el.innerHTML = `<div class="bp-grid-view"><div class="bp-grid-head"><h1>${esc(title)}</h1><span>${items.length.toLocaleString(GSI18n.lang)} ${opts.unit || t("c.unit.games")}</span>`
         + (opts.head || "") + `</div><div class="bp-grid" id="grid"><div class="bp-grid-inner" id="grid-inner"></div></div></div>`;
-      if (!items.length) { $("#grid-inner").innerHTML = `<p style="padding:0 3rem" class="muted">Nessun gioco.</p>`; return; }
+      if (!items.length) { $("#grid-inner").innerHTML = `<p style="padding:0 3rem" class="muted">${t("c.grid.empty")}</p>`; return; }
       const W = $("#grid").clientWidth - 6 * 16;
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
       const cardW = (opts.text ? 15 : 11) * rem, gap = 1.3 * rem;
@@ -246,7 +246,7 @@ function gridScreen(title, items, tab = "all", opts = {}) {
       if (opts.text) it.ok(); else push(gameScreen(it.id));
     },
     fav() { const it = items[this.i]; if (it && !opts.text) toggleFav(it); },
-    hints: opts.text ? [["a", "Apri"], ["b", "Indietro"]] : [["a", "Apri"], ["b", "Indietro"], ["x", "Preferito"], ["lt", "Pagina"]],
+    hints: opts.text ? [["a", t("c.action.open")], ["b", t("c.action.back")]] : [["a", t("c.action.open")], ["b", t("c.action.back")], ["x", t("c.action.fav")], ["lt", t("c.hint.page")]],
   };
   return scr;
 }
@@ -257,39 +257,39 @@ function lookScreen() {
   const same = (a, b) => a === b;
   for (const p of PALETTES) {
     items.push({
-      label: `${same(BP.palette, p.id) ? "●" : "○"} ${p.label}`, sub: same(BP.palette, p.id) ? "in uso" : "",
+      label: `${same(BP.palette, p.id) ? "●" : "○"} ${p.label}`, sub: same(BP.palette, p.id) ? t("c.look.inuse") : "",
       key: "pal:" + p.id,
       ok: () => {
         BP.palette = p.id; store.set("bpPalette", p.id); applyLook(); beep("ok");
-        toast(`Palette: ${p.label}`); push(lookScreen());
+        toast(t("c.toast.palette", { name: p.label })); push(lookScreen());
       },
     });
   }
   for (const t of TEXTS) {
     items.push({
-      label: `${same(BP.text, t.id) ? "●" : "○"} Testi ${t.label.toLowerCase()}`,
-      sub: same(BP.text, t.id) ? "in uso" : "", key: "txt:" + t.id,
+      label: `${same(BP.text, t.id) ? "●" : "○"} ${window.t("c.look.textsize", { size: t.label.toLowerCase() })}`,
+      sub: same(BP.text, t.id) ? window.t("c.look.inuse") : "", key: "txt:" + t.id,
       ok: () => {
         BP.text = t.id; store.set("bpText", t.id); applyLook(); beep("ok");
-        toast(`Testi: ${t.label}`); push(lookScreen());
+        toast(window.t("c.toast.textsize", { size: t.label })); push(lookScreen());
       },
     });
   }
   items.push({
-    label: `${Pad.sound ? "●" : "○"} Suoni dell'interfaccia`, sub: Pad.sound ? "attivi" : "spenti", key: "snd",
+    label: `${Pad.sound ? "●" : "○"} ${t("c.look.sounds")}`, sub: Pad.sound ? t("c.look.sounds.on") : t("c.look.sounds.off"), key: "snd",
     ok: () => { Pad.sound = !Pad.sound; store.set("bpSound", Pad.sound); beep("ok"); push(lookScreen()); },
   });
   items.push({
-    label: `${Pad.talk ? "●" : "○"} Lettura vocale`, sub: Pad.talk ? "attiva" : "spenta", key: "talk",
+    label: `${Pad.talk ? "●" : "○"} ${t("c.look.talk")}`, sub: Pad.talk ? t("c.look.talk.on") : t("c.look.talk.off"), key: "talk",
     ok: () => {
       Pad.talk = !Pad.talk; store.set("bpTalk", Pad.talk);
-      toast(Pad.talk ? "Lettura vocale attiva" : "Lettura vocale spenta");
-      announce(Pad.talk ? "Lettura vocale attiva" : "Lettura vocale spenta");
+      toast(Pad.talk ? t("c.toast.talk.on") : t("c.toast.talk.off"));
+      announce(Pad.talk ? t("c.toast.talk.on") : t("c.toast.talk.off"));
       push(lookScreen());
     },
   });
-  const scr = gridScreen("Aspetto", items, "look", { text: true, unit: "opzioni" });
-  scr.hints = [["a", "Scegli"], ["b", "Indietro"], ["lt", "Scheda"]];
+  const scr = gridScreen(t("c.tab.look"), items, "look", { text: true, unit: t("c.unit.options") });
+  scr.hints = [["a", t("c.action.choose")], ["b", t("c.action.back")], ["lt", t("c.hint.tab")]];
   return scr;
 }
 
@@ -298,8 +298,8 @@ function lookScreen() {
 function forYouScreen() {
   RECO.setPlatName(platName);
   const rows = RECO.rows(BP.lib.games, RECO.tastes());
-  const shelves = [{ title: "A cosa vuoi giocare?", text: true, items: [
-    { label: "🎲 A cosa vuoi giocare?", sub: "Qualche domanda e ti suggerisco cosa giocare adesso", key: "quiz", ok: () => push(quizScreen(0, {})) }] }]
+  const shelves = [{ title: t("c.quiz.title"), text: true, items: [
+    { label: "🎲 " + t("c.quiz.title"), sub: t("c.quiz.sub"), key: "quiz", ok: () => push(quizScreen(0, {})) }] }]
     .concat(rows.map((r) => ({ title: r.title, sub: r.why, items: r.items })));
   // sezione collezioni: saghe da continuare, collezioni affini, le meglio valutate
   const games = visibleGames();
@@ -317,7 +317,7 @@ function quizScreen(step, a) {
   if (step >= Q.length) {
     RECO.saveTastes(a);
     const res = RECO.suggest(BP.lib.games, a, 18);
-    const scr = gridScreen("Da giocare adesso", res.map((x) => x.g), "foryou", { head: `<span>in base alle tue risposte</span>` });
+    const scr = gridScreen(t("c.reco.now"), res.map((x) => x.g), "foryou", { head: `<span>${t("c.reco.basedon")}</span>` });
     return scr;
   }
   const q = Q[step];
@@ -331,7 +331,7 @@ function quizScreen(step, a) {
         cur().i = i; show();
       } else { BP.stack[BP.stack.length - 1] = quizScreen(step + 1, { ...a, [q.id]: o.id }); show(); }
     } }));
-  if (q.multi) items.push({ label: "Avanti ›", sub: sel.size ? `${sel.size} scelti` : "oppure salta", key: "next",
+  if (q.multi) items.push({ label: t("c.quiz.next"), sub: sel.size ? t("c.quiz.chosen", { n: sel.size }) : t("c.quiz.skip"), key: "next",
     ok: () => { BP.stack[BP.stack.length - 1] = quizScreen(step + 1, a); show(); } });
   return gridScreen(`${step + 1}/${Q.length} · ${q.title}`, items, "foryou", { text: true });
 }
@@ -341,9 +341,9 @@ function platformsScreen() {
   const n = new Map();
   for (const g of games) n.set(g.platform, (n.get(g.platform) || 0) + 1);
   const plats = [...BP.lib.plats.values()].filter((p) => p.id !== "windows" && n.get(p.id)).sort((a, b) => collator.compare(a.name, b.name));
-  return gridScreen("Console", plats.map((p) => ({ label: p.name, sub: `${n.get(p.id)} giochi`, key: p.id,
+  return gridScreen(t("c.tab.plat"), plats.map((p) => ({ label: p.name, sub: t("c.count.games", { n: n.get(p.id) }), key: p.id,
     img: `/icons/platform/${encodeURIComponent(p.id)}`,
-    ok: () => push(discoverScreen(p.name, sortTitle(games.filter((g) => g.platform === p.id)), "plat")) })), "plat", { text: true, unit: "console" });
+    ok: () => push(discoverScreen(p.name, sortTitle(games.filter((g) => g.platform === p.id)), "plat")) })), "plat", { text: true, unit: t("c.unit.consoles") });
 }
 
 const collArt = (slug) => ({ art: `/coll-img/${encodeURIComponent(slug)}/cover?w=640`, icon: `/coll-img/${encodeURIComponent(slug)}/icon?w=256` });
@@ -354,10 +354,10 @@ function collectionsScreen() {
   for (const g of games) for (const i of g.grp.colls) counts.set(i, (counts.get(i) || 0) + 1);
   const colls = BP.lib.colls.filter((c) => !c.hidden && counts.get(c.idx)).sort((a, b) => (counts.get(b.idx) || 0) - (counts.get(a.idx) || 0));
   const smart = (BP.lib.smart || []).map((s) => ({ s, items: smartGames(BP.lib.games, s.rules) })).filter((x) => x.items.length);
-  return gridScreen("Collezioni", smart.map(({ s, items }) => ({ label: `${s.icon || "⚡"} ${s.name}`, sub: `${items.length} giochi · intelligente`, key: s.id,
-    ok: () => push(gridScreen(s.name, sortTitle(items), "coll")) })).concat(colls.map((c) => ({ label: c.name, sub: `${counts.get(c.idx)} giochi`, key: c.slug, ...collArt(c.slug),
+  return gridScreen(t("c.tab.coll"), smart.map(({ s, items }) => ({ label: `${s.icon || "⚡"} ${s.name}`, sub: t("c.count.smart", { n: items.length }), key: s.id,
+    ok: () => push(gridScreen(s.name, sortTitle(items), "coll")) })).concat(colls.map((c) => ({ label: c.name, sub: t("c.count.games", { n: counts.get(c.idx) }), key: c.slug, ...collArt(c.slug),
     ok: () => push(gridScreen(c.name, games.filter((g) => g.grp.colls.includes(c.idx)).sort((a, b) => (a.year || 9999) - (b.year || 9999)), "coll")) }))),
-  "coll", { text: true, unit: "collezioni" });
+  "coll", { text: true, unit: t("c.unit.collections") });
 }
 
 /* ---- schermate del gioco: visualizzatore a tutto schermo, sinistra/destra per scorrere */
@@ -365,7 +365,7 @@ function shotsScreen(d) {
   const scr = {
     tab: null, i: 0, list: [], navFocus: null,
     async render(el) {
-      el.innerHTML = `<div class="bp-shots"><p class="muted">Carico…</p></div>`;
+      el.innerHTML = `<div class="bp-shots"><p class="muted">${t("c.shots.loading")}</p></div>`;
       try { this.list = (await api(`/api/game/${d.id}/shots`)).shots; } catch (e) { toast(e.message, true); return; }
       this.update();
     },
@@ -375,8 +375,8 @@ function shotsScreen(d) {
       const el = document.querySelector(".bp-shots");
       if (!el) return;
       el.innerHTML = s ? `<img src="${s.url}" alt=""><div class="bp-shots-bar"><b>${esc(d.title)}</b>
-        <span>${new Date(s.taken * 1000).toLocaleString("it", { dateStyle: "medium", timeStyle: "short" })} · ${esc(s.source)}</span>
-        <span>${this.i + 1} / ${this.list.length}</span></div>` : `<p class="muted">Nessuna schermata.</p>`;
+        <span>${new Date(s.taken * 1000).toLocaleString(GSI18n.lang, { dateStyle: "medium", timeStyle: "short" })} · ${esc(s.source)}</span>
+        <span>${this.i + 1} / ${this.list.length}</span></div>` : `<p class="muted">${t("c.shots.none")}</p>`;
     },
     move(dx) {
       const n = this.i + dx;
@@ -384,14 +384,14 @@ function shotsScreen(d) {
       this.i = n; this.update(); return true;
     },
     ok() {},
-    hints: [["b", "Indietro"]],
+    hints: [["b", t("c.action.back")]],
   };
   return scr;
 }
 
 function versionsScreen(d) {
-  return gridScreen(`${d.title} · versioni`, d.versions.filter((v) => !v.store || v.installed).map((v) => ({
-    label: v.file, sub: v.primary ? "principale" : "", key: v.file,
+  return gridScreen(t("c.versions.title", { title: d.title }), d.versions.filter((v) => !v.store || v.installed).map((v) => ({
+    label: v.file, sub: v.primary ? t("c.versions.main") : "", key: v.file,
     ok: async () => {
       const vd = await detail(v.id);
       if (vd) playGame(vd);
@@ -405,14 +405,14 @@ function searchScreen() {
   const scr = {
     tab: "search", q: "", k: 0, results: [], navFocus: null, inResults: false, r: 0,
     render(el) {
-      el.innerHTML = `<div class="bp-search"><div class="kbd">${KEYS.map((k, i) => `<div class="k${k.length > 1 ? " wide" : ""}" data-k="${i}">${k}</div>`).join("")}</div>
+      el.innerHTML = `<div class="bp-search"><div class="kbd">${KEYS.map((k, i) => `<div class="k${k.length > 1 ? " wide" : ""}" data-k="${i}">${k === "Cancella" ? t("c.search.clear") : k}</div>`).join("")}</div>
         <div><div class="search-box" id="sq"></div><div class="search-res" id="sr"></div></div></div>`;
       this.search();
     },
     search() {
       const toks = fold(this.q).split(/\s+/).filter(Boolean);
       this.results = toks.length ? visibleGames().filter((g) => toks.every((t) => g.q.includes(t))).slice(0, 24) : [];
-      $("#sq").textContent = this.q || "Scrivi per cercare…";
+      $("#sq").textContent = this.q || t("c.search.placeholder");
       $("#sr").innerHTML = this.results.map((g, i) => card(g, i)).join("");
       this.r = Math.min(this.r, Math.max(0, this.results.length - 1));
       this.update();
@@ -454,7 +454,7 @@ function searchScreen() {
       this.search();
     },
     typed(ch) { if (ch === "Backspace") this.q = this.q.slice(0, -1); else this.q += ch.toLowerCase(); this.search(); },
-    hints: [["a", "Scrivi"], ["b", "Indietro"]],
+    hints: [["a", t("c.action.type")], ["b", t("c.action.back")]],
   };
   return scr;
 }
@@ -466,29 +466,29 @@ async function toggleFav(g) {
   g.grp.favorite = v ? 1 : 0;
   BP.details.delete(g.id);
   beep("ok");
-  toast(v ? `★ «${g.title}» nei preferiti` : `«${g.title}» tolto dai preferiti`);
+  toast(v ? t("c.fav.added", { title: g.title }) : t("c.fav.removed", { title: g.title }));
   const s = cur();
   if (s.d) { s.d = null; show(); }
 }
 
 async function installGame(d) {
   try { await api(`/api/game/${d.id}/install`, { body: {} }); } catch (e) { return toast(e.message, true); }
-  toast(`Apro ${d.store_name} per installare «${d.title}»`);
+  toast(t("c.install.opening", { store: d.store_name, title: d.title }));
 }
 
 async function playGame(d, body = {}) {
   let r;
   try { r = await api(`/api/game/${d.id}/play`, { body }); } catch (e) { beep("err"); return toast(e.message, true); }
   if (r.ask) { // port senza modalità salvata: si sceglie qui, «ricorda» la salva nel port
-    const modes = { windowed: "Finestra", borderless: "Senza bordi", fullscreen: "Schermo intero" };
+    const modes = { windowed: t("c.mode.windowed"), borderless: t("c.mode.borderless"), fullscreen: t("c.mode.fullscreen") };
     const items = [false, true].flatMap((remember) => Object.entries(modes).map(([k, l]) => ({
-      label: l, sub: remember ? "e ricorda la scelta" : "solo questa volta", key: k + remember,
+      label: l, sub: remember ? t("c.mode.remember") : t("c.mode.once"), key: k + remember,
       ok: () => { pop(); playGame(d, { window: k, remember }); } })));
-    return push(gridScreen("Come aprire il gioco?", items, cur().tab, { text: true, unit: "opzioni" }));
+    return push(gridScreen(t("c.mode.title"), items, cur().tab, { text: true, unit: t("c.unit.options") }));
   }
   beep("ok");
   BP.running = { id: d.id, title: d.title };
-  showRunning("Avvio…");
+  showRunning(t("c.run.starting"));
   pollRunning();
 }
 
@@ -497,16 +497,16 @@ function showRunning(msg) {
   const o = $("#bp-running");
   o.hidden = false;
   o.innerHTML = `<div class="logo big" style="color:var(--accent);font-size:3rem">◆</div><h2>${esc(BP.running?.title || "")}</h2>`
-    + `<p class="muted">${esc(msg)}</p><p class="muted">Per chiudere il gioco: tieni premuti ${glyph("back")} + ${glyph("start")} per 2 secondi</p>`;
+    + `<p class="muted">${esc(msg)}</p><p class="muted">Per chiudere il gioco: ${t("c.run.hold", { back: glyph("back"), start: glyph("start") })}</p>`;
 }
 
 async function pollRunning() {
   let r;
   try { r = await api("/api/running"); } catch { r = {}; }
   if (["starting", "extracting", "running"].includes(r.status)) {
-    showRunning(r.status === "extracting" ? (r.message || "Estrazione…") : r.status === "starting" ? "Avvio…"
-      : `In esecuzione con ${r.emulator} · Select+R1 per una schermata${r.shots ? ` (${r.shots})` : ""}`);
-    if (BP.running && (r.shots || 0) > (BP.running.shots || 0)) toast("📷 Schermata salvata");
+    showRunning(r.status === "extracting" ? (r.message || t("c.run.extracting")) : r.status === "starting" ? t("c.run.starting")
+      : `${t("c.run.running", { emulator: r.emulator })}${r.shots ? ` (${r.shots})` : ""}`);
+    if (BP.running && (r.shots || 0) > (BP.running.shots || 0)) toast(t("c.run.shot"));
     if (BP.running) BP.running.shots = r.shots || 0;
     setTimeout(pollRunning, 1500);
     return;
@@ -514,7 +514,7 @@ async function pollRunning() {
   $("#bp-running").hidden = true;
   if (BP.running) {
     if (r.status === "error") toast(r.message, true);
-    else if (r.status === "finished" && r.played > 30) toast(`Sessione: ${fmtTime(r.played)}${r.shots ? ` · 📷 ${r.shots}` : ""}`);
+    else if (r.status === "finished" && r.played > 30) toast(`${t("c.run.session", { time: fmtTime(r.played) })}${r.shots ? ` · 📷 ${r.shots}` : ""}`);
     BP.running = null;
     try { window.pywebview?.api?.focus_window?.(); } catch { /* browser */ }
     await reloadLibrary();
@@ -537,11 +537,11 @@ async function exitBigPicture() {
 /* ------------------------------------------------------------------ input: controller e tastiera */
 function renderHints() {
   const s = cur();
-  const h = s.hints || [["a", "Seleziona"], ["b", "Indietro"]];
+  const h = s.hints || [["a", t("c.action.select")], ["b", t("c.action.back")]];
   $("#bp-hints").className = Pad.kind === "ps" ? "ps" : "";
   $("#bp-hints").style.display = store.get("bpHints", true) ? "" : "none";
-  const all = h.some(([k]) => k === "y") ? h : h.concat([["y", "Cerca"]]);
-  $("#bp-hints").innerHTML = `<span class="hint" data-k="rb">${glyph("lb")}${glyph("rb")} Menù</span>`
+  const all = h.some(([k]) => k === "y") ? h : h.concat([["y", t("c.action.search")]]);
+  $("#bp-hints").innerHTML = `<span class="hint" data-k="rb">${glyph("lb")}${glyph("rb")} ${t("c.hint.menu")}</span>`
     + all.map(([k, l]) => `<span class="hint" data-k="${k}">${glyph(k)} ${esc(l)}</span>`).join("");
 }
 
@@ -550,7 +550,7 @@ function toggleHints() {
   const on = !store.get("bpHints", true);
   store.set("bpHints", on);
   renderHints();
-  toast(on ? "Legenda dei comandi attiva" : "Legenda nascosta · Select o Ctrl+Maiusc+H per rimostrarla");
+  toast(on ? t("c.hints.on") : t("c.hints.off"));
 }
 const helpOpen = () => !!$("#bp-help");
 function closeHelp() { $("#bp-help")?.remove(); }
@@ -562,16 +562,16 @@ function openHelp() {
     .map((en) => `<tr><td>${SC.keysOf(en).map((k) => `<kbd>${esc(SC.formatCombo(k))}</kbd>`).join(" ")}</td><td>${esc(en.label)}</td></tr>`).join("");
   const el = document.createElement("div");
   el.id = "bp-help";
-  el.innerHTML = `<div class="bp-help-in"><h2>Comandi</h2><div class="cols"><table>${pad}</table>
-    <table>${kb}<tr><td><kbd>Frecce</kbd> <kbd>Invio</kbd> <kbd>Esc</kbd></td><td>Muoviti, conferma, indietro</td></tr>
-    <tr><td><kbd>F</kbd> <kbd>/</kbd> <kbd>Q</kbd> <kbd>E</kbd></td><td>Preferito, cerca, categoria</td></tr></table></div>
-    <p class="muted">${glyph("x")} legenda in basso: ${store.get("bpHints", true) ? "visibile" : "nascosta"} (premi X per cambiare) · ${glyph("b")} chiudi</p></div>`;
+  el.innerHTML = `<div class="bp-help-in"><h2>${t("c.help.title")}</h2><div class="cols"><table>${pad}</table>
+    <table>${kb}<tr><td><kbd>${t("c.key.arrows")}</kbd> <kbd>${t("c.key.enter")}</kbd> <kbd>Esc</kbd></td><td>${t("c.help.move")}</td></tr>
+    <tr><td><kbd>F</kbd> <kbd>/</kbd> <kbd>Q</kbd> <kbd>E</kbd></td><td>${t("c.help.favsearch")}</td></tr></table></div>
+    <p class="muted">${t("c.help.legend", { x: glyph("x"), b: glyph("b"), state: store.get("bpHints", true) ? t("c.help.visible") : t("c.help.hidden") })}</p></div>`;
   $("#bp").appendChild(el);
 }
 function mediaChord(name) {
   if (name === "exitBigPicture") { if (!BP.running) exitBigPicture(); return; }
   beep("ok");
-  if (!window.PozzoShortcuts.runMedia(name)) toast("Controllo musica/Discord non disponibile");
+  if (!window.PozzoShortcuts.runMedia(name)) toast(t("c.media.unavailable"));
 }
 
 function input(action) {
@@ -673,7 +673,7 @@ document.addEventListener("contextmenu", (e) => { e.preventDefault(); input("b")
 
 document.addEventListener("mousemove", () => { $("#bp").classList.add("mouse"); clearTimeout(document.mt); document.mt = setTimeout(() => $("#bp").classList.remove("mouse"), 2500); });
 
-window.addEventListener("gamepadconnected", (e) => toast(`Controller collegato: ${e.gamepad.id.split("(")[0].trim()}`));
+window.addEventListener("gamepadconnected", (e) => toast(t("c.pad.connected", { name: e.gamepad.id.split("(")[0].trim() })));
 PozzoShortcuts.bind("bp", { help: openHelp, legend: toggleHints, profile: () => { if (BP.running) return false; GSProfilePicker.open({ toast }); }, bigPicture: () => { if (BP.running) return false; exitBigPicture(); } });
 
 /* ------------------------------------------------------------------ salvaschermo (attract mode)
@@ -745,17 +745,69 @@ setInterval(() => { // pulsanti o stick non mappati dai comandi di Big Picture c
   if (pads.some((p) => p.buttons.some((b) => b.pressed) || p.axes.some((a) => Math.abs(a) > 0.6))) attractWake({});
 }, 400);
 
+/* ------------------------------------------------------------------ monitor fps */
+function initFpsMonitor() {
+  if (typeof requestAnimationFrame === "undefined") return;
+  const frames = [];
+  let last = null, lowSince = null, highSince = null, rafId = 0;
+  function tick(now) {
+    if (last !== null) {
+      const delta = now - last;
+      if (delta > 0) {
+        frames.push(1000 / delta);
+        if (frames.length > 60) frames.shift();
+        const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
+        if (avg < 30) {
+          highSince = null;
+          if (lowSince === null) lowSince = now;
+          else if (now - lowSince >= 2000) {
+            if (typeof document !== "undefined" && document.body) {
+              if (!document.body.dataset) document.body.dataset = {};
+              if (document.body.dataset.motion !== "reduced") {
+                document.body.dataset.motion = "reduced";
+                toast(t("c.perf.on"));
+              }
+            }
+          }
+        } else if (avg > 45) {
+          lowSince = null;
+          if (highSince === null) highSince = now;
+          else if (now - highSince >= 2000) {
+            if (typeof document !== "undefined" && document.body?.dataset) {
+              if (document.body.dataset.motion === "reduced") {
+                delete document.body.dataset.motion;
+              }
+            }
+          }
+        } else {
+          lowSince = null;
+          highSince = null;
+        }
+      }
+    }
+    last = now;
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+  return {
+    stop: () => (typeof cancelAnimationFrame === "function" ? cancelAnimationFrame(rafId) : null),
+    getFps: () => (frames.length ? frames.reduce((a, b) => a + b, 0) / frames.length : 0),
+  };
+}
+BP.initFpsMonitor = initFpsMonitor;
+
 /* ------------------------------------------------------------------ avvio */
-function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("it", { hour: "2-digit", minute: "2-digit" }); }
+function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString(GSI18n.lang, { hour: "2-digit", minute: "2-digit" }); }
 
 (async function start() {
   clock(); setInterval(clock, 15000);
   applyLook(); // palette e dimensione dei testi scelte la volta prima
+  initFpsMonitor();
   Pad.watchFocus({ focus: "#bp-main .card.focus, #bp-main .bp-btn.focus, #bp-top .bp-tab.focus", roots: ["#bp-main", "#bp-top"] }); // lettura vocale di ciò che si seleziona (se attiva)
   try {
     BP.lib = await loadLibrary();
   } catch (e) {
-    $("#bp-loading").innerHTML = `<p>Errore: ${esc(e.message)}</p>`;
+    $("#bp-loading").innerHTML = `<p>${t("c.load.error", { msg: esc(e.message) })}</p>`;
     return;
   }
   GS.library = () => BP.lib;
@@ -765,9 +817,13 @@ function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString("i
   BP.stack = [homeScreen()];
   show();
   Pad.start({ input, onKind: renderHints, onChord: mediaChord, combo: { when: () => !!BP.running,
-    run: () => api("/api/running/stop", { body: {} }).then(() => toast("Chiusura del gioco…")) } });
+    run: () => api("/api/running/stop", { body: {} }).then(() => toast(t("c.run.closing"))) } });
   idle.arm();
   // se un gioco e' gia' in esecuzione (es. avviato prima di entrare)
   const r = await api("/api/running").catch(() => ({}));
   if (["starting", "extracting", "running"].includes(r.status)) { BP.running = { title: r.title }; pollRunning(); }
 })();
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = Object.assign(BP, { BP, initFpsMonitor });
+}

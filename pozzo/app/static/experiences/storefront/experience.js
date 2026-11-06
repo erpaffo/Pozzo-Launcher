@@ -8,7 +8,7 @@
   function coverMarkup(game, className) {
     const title = valueOf(game, "title");
     const id = encodeURIComponent(String(game.id));
-    const initial = title.slice(0, 1).toLocaleUpperCase("it");
+    const initial = title.slice(0, 1).toLocaleUpperCase(GSI18n.lang);
     return `<span class="${className}">
       <span class="vetrina-cover__fallback" aria-hidden="true">${escapeHtml(initial)}</span>
       <img src="/img/${escapeHtml(id)}/cover?w=300" alt="" loading="lazy" data-vetrina-cover>
@@ -22,7 +22,7 @@
     const facts = [platform, year].filter(Boolean);
     return `<button class="vetrina-game" type="button" data-vetrina-game="${escapeHtml(game.id)}"
         data-vetrina-card data-vetrina-platform="${escapeHtml(platform)}"
-        aria-label="Apri la scheda di ${escapeHtml(title)}">
+        aria-label="${t("c.store.openaria", { title: escapeHtml(title) })}">
       ${coverMarkup(game, "vetrina-game__cover")}
       <span class="vetrina-game__title">${escapeHtml(title)}</span>
       ${facts.length ? `<span class="vetrina-game__facts">${facts.map(escapeHtml).join(" · ")}</span>` : ""}
@@ -37,7 +37,7 @@
     });
 
     return [...counts.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, "it", { sensitivity: "base", numeric: true }))
+      .sort(([a], [b]) => a.localeCompare(b, GSI18n.lang, { sensitivity: "base", numeric: true }))
       .map(([platform, count]) => `<button class="vetrina-filter" type="button"
           data-vetrina-filter="${escapeHtml(platform)}" aria-pressed="false">
         <span>${escapeHtml(platform)}</span><span class="vetrina-filter__count">${count}</span>
@@ -67,8 +67,8 @@
       element.innerHTML = `<div class="vetrina vetrina--empty">
         <section class="vetrina-empty" aria-labelledby="vetrina-empty-title">
           <span class="vetrina-empty__mark" aria-hidden="true"></span>
-          <h1 id="vetrina-empty-title">La tua libreria è ancora vuota</h1>
-          <p>Quando aggiungi o importi giochi, li troverai qui.</p>
+          <h1 id="vetrina-empty-title">${t("c.store.empty.title")}</h1>
+          <p>${t("c.store.empty.text")}</p>
         </section>
       </div>`;
       element.onclick = null;
@@ -81,17 +81,17 @@
     const platform = valueOf(featured, "platform");
     const year = valueOf(featured, "year");
     const facts = [
-      platform ? `<div><dt>Piattaforma</dt><dd>${escapeHtml(platform)}</dd></div>` : "",
-      year ? `<div><dt>Anno</dt><dd>${escapeHtml(year)}</dd></div>` : "",
+      platform ? `<div><dt>${t("c.store.platform")}</dt><dd>${escapeHtml(platform)}</dd></div>` : "",
+      year ? `<div><dt>${t("c.store.year")}</dt><dd>${escapeHtml(year)}</dd></div>` : "",
     ].filter(Boolean).join("");
     const gameCount = games.length;
-    const gameLabel = gameCount === 1 ? "gioco" : "giochi";
+    const gameLabel = gameCount === 1 ? t("c.unit.game") : t("c.unit.games");
 
     element.innerHTML = `<div class="vetrina">
       <header class="vetrina-header">
         <div>
-          <h1>La tua raccolta</h1>
-          <p>Un posto per ritrovare i tuoi giochi.</p>
+          <h1>${t("c.store.title")}</h1>
+          <p>${t("c.store.subtitle")}</p>
         </div>
         <p class="vetrina-total"><strong>${gameCount}</strong> ${gameLabel}</p>
       </header>
@@ -102,7 +102,7 @@
           ${description ? `<p class="vetrina-feature__description">${escapeHtml(description)}</p>` : ""}
           ${facts ? `<dl class="vetrina-feature__facts">${facts}</dl>` : ""}
           <button class="vetrina-primary" type="button" data-vetrina-game="${escapeHtml(featured.id)}"
-              aria-label="Apri la scheda di ${escapeHtml(featuredTitle)}">Apri scheda</button>
+              aria-label="${t("c.store.openaria", { title: escapeHtml(featuredTitle) })}">${t("c.store.open")}</button>
         </div>
         <div class="vetrina-feature__art">
           ${coverMarkup(featured, "vetrina-feature__cover")}
@@ -112,7 +112,7 @@
       <div class="vetrina-layout">
         <section class="vetrina-library" aria-labelledby="vetrina-library-heading">
           <div class="vetrina-section-head">
-            <h2 id="vetrina-library-heading">Tutti i giochi</h2>
+            <h2 id="vetrina-library-heading">${t("c.store.all")}</h2>
             <p data-vetrina-result-count role="status" aria-live="polite">${gameCount} ${gameLabel}</p>
           </div>
           <div class="vetrina-games"></div>
@@ -120,10 +120,10 @@
         </section>
 
         <aside class="vetrina-aside" aria-labelledby="vetrina-platform-heading">
-          <h2 id="vetrina-platform-heading">Esplora per piattaforma</h2>
+          <h2 id="vetrina-platform-heading">${t("c.store.byplatform")}</h2>
           <div class="vetrina-filters">
             <button class="vetrina-filter" type="button" data-vetrina-filter=""
-                aria-pressed="true"><span>Tutte</span><span class="vetrina-filter__count">${gameCount}</span></button>
+                aria-pressed="true"><span>${t("c.store.filter.all")}</span><span class="vetrina-filter__count">${gameCount}</span></button>
             ${platformFilters(games)}
           </div>
         </aside>
@@ -140,9 +140,9 @@
       hideBrokenCovers(grid);
       const all = element.querySelector("[data-vetrina-all]");
       all.hidden = list.length <= MAX_GRID || typeof context?.setView !== "function";
-      all.textContent = `Vedi tutti i ${list.length} giochi`;
+      all.textContent = t("c.store.seeall", { n: list.length });
       const resultCount = element.querySelector("[data-vetrina-result-count]");
-      if (resultCount) resultCount.textContent = `${list.length} ${list.length === 1 ? "gioco" : "giochi"}`;
+      if (resultCount) resultCount.textContent = `${list.length} ${list.length === 1 ? t("c.unit.game") : t("c.unit.games")}`;
     };
     showGrid();
 

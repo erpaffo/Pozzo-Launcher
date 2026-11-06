@@ -30,7 +30,7 @@
         body: JSON.stringify({ id }),
       });
       applyAnimations(applied.animations);
-      if (status) status.textContent = "Preset applicato";
+      if (status) status.textContent = t("i.exp.applied");
       window.location.reload();
     } catch (error) {
       if (status) status.textContent = error.message;
@@ -50,22 +50,22 @@
         <div class="srow-txt"><div class="srow-title">${esc(profile.nome)}</div>
           <div class="srow-desc">${esc(profile.experience)} · ${esc(profile.theme)} · ${esc(profile.animations)}</div></div>
         <div class="row"><button class="btn" type="button" data-activate="${esc(profile.id)}"${current ? " disabled" : ""}>
-          ${current ? "Attivo" : "Applica"}</button>
-          <button class="btn" type="button" data-delete="${esc(profile.id)}" aria-label="Elimina ${esc(profile.nome)}">Elimina</button></div>
+          ${current ? t("i.exp.active") : t("i.exp.apply")}</button>
+          <button class="btn" type="button" data-delete="${esc(profile.id)}" aria-label="${t("i.exp.deleteNamed", { name: esc(profile.nome) })}">${t("i.exp.delete")}</button></div>
       </article>`;
     }).join("");
 
-    panel.innerHTML = `<div data-exp-profiles-list>${profileCards || '<p class="muted">Nessun preset salvato.</p>'}</div>
+    panel.innerHTML = `<div data-exp-profiles-list>${profileCards || '<p class="muted">' + t("i.exp.none") + '</p>'}</div>
       <form data-exp-profiles-form>
-        <label class="srow"><span class="srow-txt"><span class="srow-title">Nome</span></span>
-          <input class="field" name="nome" maxlength="40" required placeholder="Il mio profilo"></label>
+        <label class="srow"><span class="srow-txt"><span class="srow-title">${t("i.common.name")}</span></span>
+          <input class="field" name="nome" maxlength="40" required placeholder="${t("i.exp.namePlaceholder")}"></label>
         <div class="row">
-          <label>Esperienza <select class="field" name="experience">${experienceOptions}</select></label>
-          <label>Tema <select class="field" name="theme">${themeOptions}</select></label>
-          <label>Animazioni <select class="field" name="animations">
-            <option value="normal">Complete</option><option value="reduced">Ridotte</option><option value="off">Nessuna</option>
+          <label>${t("i.exp.experience")} <select class="field" name="experience">${experienceOptions}</select></label>
+          <label>${t("i.exp.theme")} <select class="field" name="theme">${themeOptions}</select></label>
+          <label>${t("i.motion.title")} <select class="field" name="animations">
+            <option value="normal">${t("i.motion.complete")}</option><option value="reduced">${t("i.motion.reduced")}</option><option value="off">${t("i.motion.none")}</option>
           </select></label>
-          <button class="btn" type="submit">Salva preset</button>
+          <button class="btn" type="submit">${t("i.exp.savePreset")}</button>
         </div>
       </form>
       <p data-exp-profiles-status class="muted small" role="status" aria-live="polite"></p>`;
@@ -135,7 +135,7 @@
     const anchor = document.getElementById("experience-list");
     if (!anchor || document.getElementById("exp-profiles")) return;
     const title = document.createElement("h3");
-    title.textContent = "Preset esperienza";
+    title.textContent = t("i.exp.title");
     const panel = document.createElement("div");
     panel.id = "exp-profiles";
     anchor.before(title, panel);

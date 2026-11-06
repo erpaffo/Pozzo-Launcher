@@ -3,6 +3,7 @@ GAME_TARGETS (js/actions.js). Controllo statico, senza browser: aggiungi qui sot
 
 Esegui: python tests/test_context_menu.py"""
 
+import _i18n_text  # noqa: F401
 import re
 import sys
 from pathlib import Path
@@ -41,6 +42,7 @@ def test_il_clic_destro_e_di_pagina_non_della_griglia():
 def test_il_menu_ha_le_azioni_utili():
     actions = (STATIC / "js" / "actions.js").read_text(encoding="utf-8")
     menu = actions[actions.index("function openCtx"):actions.index("async function removeManual")]
+    menu += _i18n_text._CAT  # le etichette stanno nel catalogo
     for voce in ("Aggiungi ai preferiti", "Togli dai preferiti", "Aggiungi a una collezione", "Collegamento sul desktop",
                  "Copia il titolo", "Pagina dello store", "Installa", "Nascondi dalla libreria", "stars: true"):
         assert voce in menu, f"manca nel menu: {voce}"

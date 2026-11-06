@@ -9,6 +9,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
 from ... import config as C, platforms as P, profilecfg as PC, storerefresh as SR, stores as STORES
+from ... import i18n as I
 from ...library.build import build
 
 
@@ -102,7 +103,7 @@ def build_router(ctx) -> APIRouter:
     def _start_store_job(only=None):
         j = J.StoreJob(only=only)
         if not _claim("stores", j):
-            raise HTTPException(409, "Aggiornamento degli store gia' in corso")
+            raise HTTPException(409, I.tr("s.stores.storeUpdateBusy"))
 
         def after(stats):
             lib.load()
@@ -124,10 +125,10 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/stores/metadata")
     def api_storemeta_start(body: dict = Body(default={})):
         if job["stores"].status == "running":
-            raise HTTPException(409, "Attendi la fine dell'aggiornamento degli store")
+            raise HTTPException(409, I.tr("s.stores.waitStoreUpdate"))
         j = J.StoreMetaJob(only_missing=bool(body.get("missing")))
         if not _claim("storemeta", j):
-            raise HTTPException(409, "Ricerca dei metadati degli store gia' in corso")
+            raise HTTPException(409, I.tr("s.stores.metaBusy"))
 
         def after(stats):
             lib.load()
@@ -170,7 +171,7 @@ def build_router(ctx) -> APIRouter:
         """Copertine e descrizioni: GameTDB offline (subito) + lettura delle pagine dei siti.
         Un lavoro per console: piu' console possono girare insieme."""
         if pid not in P.PLATFORMS:
-            raise HTTPException(404, "Console sconosciuta")
+            raise HTTPException(404, I.tr("s.stores.consoleUnknown"))
         name = f"netmeta:{pid}"
         limit = int(body.get("limit") or 0)  # 0 = tutte le voci (circa 2 richieste al secondo)
         if not _claim(name, J.NetMetaJob(limit=max(0, min(limit, 50000)), only=[pid],
@@ -235,13 +236,13 @@ def build_router(ctx) -> APIRouter:
         from ...net import make_client
         url = str(body.get("url") or "").strip()
         if not url.startswith(("http://", "https://")):
-            raise HTTPException(400, "Indirizzo non valido (serve http:// o https://)")
+            raise HTTPException(400, I.tr("s.stores.addressInvalid"))
         c = Cache(cfg.cache)
         try:
             async with make_client() as client:
                 page = await catalog._get_page(cfg, c, client, "windows", url, log=lambda m: None)
         except Exception as e:
-            raise HTTPException(502, f"Pagina non raggiungibile: {type(e).__name__}: {e}")
+            raise HTTPException(502, I.tr("s.stores.pageUnreachable", err=f"{type(e).__name__}: {e}"))
         finally:
             c.close()
         info = catalog.describe_page(page, url, set(P.PLATFORMS["windows"].exts))
@@ -252,7 +253,7 @@ def build_router(ctx) -> APIRouter:
     def api_pc_stores_refresh():
         """Anche «Leggi gli elenchi» passa dalla coda unica: se qualcosa sta girando, si accoda."""
         if not cfg.pc_stores:
-            raise HTTPException(400, "Nessuno store PC aggiunto")
+            raise HTTPException(400, I.tr("s.stores.noPcStore"))
         _start_store_refresh(manual=True, only=[f"windows:{it['url']}" for it in cfg.pc_stores])
         return api_pc_stores()
 
@@ -269,11 +270,11 @@ def build_router(ctx) -> APIRouter:
             available = [t for t in available if t["id"] in wanted or t["url"] in wanted]
             if not available:
                 applog.write("piano", f"in coda rifiutato: nessuno store tra {only}")
-                raise HTTPException(404, "Nessuno di questi store è configurato")
+                raise HTTPException(404, I.tr("s.stores.noneConfigured"))
         elif not available:
             applog.write("piano", "in coda rifiutato: nessuno store configurato")
             if manual:
-                raise HTTPException(400, "Nessuno store configurato")
+                raise HTTPException(400, I.tr("s.stores.noStoreConfigured"))
             return 0
         added = job["store_refresh"].add(cfg, available, lambda stats: lib.load())
         applog.write("piano", f"in coda: {added} store" + (f" (scelti: {', '.join(map(str, only))})" if only
@@ -345,7 +346,7 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/catalogs/{pid}")
     def api_catalog_set(pid: str, body: dict = Body(...)):
         if pid not in P.PLATFORMS:
-            raise HTTPException(404, "Console sconosciuta")
+            raise HTTPException(404, I.tr("s.stores.consoleUnknown"))
         urls = [u.strip() for u in body.get("urls", []) if u.strip().startswith(("http://", "https://"))]
         # il tipo di parser (e le eventuali classi CSS) restano quando si cambiano solo gli URL
         settings = dict(C.read_settings(cfg).get("catalogs", {}))
@@ -369,7 +370,7 @@ def build_router(ctx) -> APIRouter:
         """Anche la lettura di una console passa dalla coda unica degli store (niente più «già in corso»)."""
         urls = [f"{pid}:{u}" for u in (cfg.catalogs.get(pid) or [])]
         if not urls:
-            raise HTTPException(400, "Nessuno store online configurato per questa console")
+            raise HTTPException(400, I.tr("s.stores.noOnlineStore"))
         _start_store_refresh(manual=True, only=urls)
 
     @router.post("/api/catalogs/{pid}/refresh")

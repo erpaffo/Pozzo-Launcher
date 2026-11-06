@@ -6,83 +6,84 @@
   const setSelect = (sel, v) => { const el = document.querySelector(sel); el.value = v; el.dispatchEvent(new Event("change")); };
   const scan = async (mode) => {
     try { await api("/api/scan", { body: { mode } }); } catch (e) { return toast(e.message, true); }
-    toast(mode === "all" ? "Ricerca dei metadati di tutti i giochi avviata…" : "Cerco i giochi nuovi…");
+    toast(mode === "all" ? t("b.menu.toast.scanAll") : t("b.menu.toast.scanNew"));
     SET.lastStatus = "running";
     pollScan();
   };
   const theme = async (id) => { await api("/api/app/theme", { body: { theme: id } }); await loadExtensions(); };
   window.GSMenu = { scan, theme }; // usati anche dalle scorciatoie (shortcuts.js)
-  const sorts = [["title", "Titolo A–Z"], ["-year", "Anno ↓"], ["-last", "Ultimi giocati"], ["-playtime", "Tempo di gioco"], ["-rating", "Valutazione"]];
-  const groups = [["", "Nessun gruppo"], ["platform", "Per console"], ["year", "Per anno"], ["letter", "Per lettera"]];
+  const sorts = () => [["title", t("b.core.shop.sort.title")], ["-year", t("b.menu.sort.year")], ["-last", t("b.menu.sort.lastPlayed")], ["-playtime", t("b.menu.sort.playtime")], ["-rating", t("b.common.rating")]];
+  const groups = () => [["", t("b.menu.group.none")], ["platform", t("b.menu.group.platform")], ["year", t("b.menu.group.year")], ["letter", t("b.menu.group.letter")]];
 
   // "-" = separatore, {h} = titolo di gruppo, chk() = segno di spunta (puo' essere asincrono)
   const MENUS = {
     File: () => [
-      { l: "👥 Cambia utente…", a: "profile", f: () => GSProfilePicker.open({ onChange: applyProfile, toast }) },
+      { l: "👥 " + t("b.menu.file.switchUser"), a: "profile", f: () => GSProfilePicker.open({ onChange: applyProfile, toast }) },
       "-",
-      { l: "＋ Aggiungi gioco manualmente…", f: () => openAddGame("game") },
-      { l: "🧩 Aggiungi applicazione…", f: () => openAddGame("app") },
+      { l: "＋ " + t("b.menu.file.addGame"), f: () => openAddGame("game") },
+      { l: "🧩 " + t("b.menu.file.addApp"), f: () => openAddGame("app") },
       "-",
-      { l: "Esporta libreria (backup)", f: async () => { const r = await api("/api/backups", { body: {} }); toast(`Backup creato: ${r.name}`); } },
-      { l: "Importa libreria (ripristina backup)…", f: () => openSettings("lib") },
+      { l: t("b.menu.file.exportBackup"), f: async () => { const r = await api("/api/backups", { body: {} }); toast(t("b.menu.toast.backupCreated", {nome: r.name})); } },
+      { l: t("b.menu.file.importBackup"), f: () => openSettings("lib") },
       "-",
-      { l: "↻ Ricarica libreria", f: () => reload(true) },
-      { l: "Aggiorna gli store", f: async () => { await api("/api/stores/refresh", { body: {} }); toast("Aggiornamento degli store avviato"); } },
+      { l: "↻ " + t("b.menu.file.reload"), f: () => reload(true) },
+      { l: t("b.menu.file.refreshStores"), f: async () => { await api("/api/stores/refresh", { body: {} }); toast(t("b.menu.toast.storesRefresh")); } },
       "-",
-      { l: "Esci", f: async () => { if (confirm("Chiudere Pozzo Launcher?")) { try { await api("/api/app/quit", { body: {} }); } catch { /* il server si chiude */ } window.close(); } } },
+      { l: t("b.menu.file.quit"), f: async () => { if (confirm(t("b.menu.confirm.quit"))) { try { await api("/api/app/quit", { body: {} }); } catch { /* il server si chiude */ } window.close(); } } },
     ],
     Strumenti: () => [
-      { l: "⟳ Cerca nuovi giochi", a: "scanNew", f: () => scan("new") },
-      { l: "Forza la ricerca dei metadati (tutti i giochi)", f: () => confirm("Cercare di nuovo i metadati di tutta la libreria? Può richiedere molto tempo.") && scan("all") },
-      { l: "Cerca solo i dati mancanti", f: () => scan("missing") },
+      { l: "⟳ " + t("b.menu.tools.scanNew"), a: "scanNew", f: () => scan("new") },
+      { l: t("b.menu.tools.scanAll"), f: () => confirm(t("b.menu.confirm.scanAll")) && scan("all") },
+      { l: t("b.menu.tools.scanMissing"), f: () => scan("missing") },
       "-",
-      { l: "Pulisci la cache delle immagini", f: async () => { const r = await api("/api/cache/thumbs/clear", { body: {} }); toast(`Miniature eliminate: ${r.removed}. Si rigenerano da sole.`); } },
-      { l: "Ricollega le cartelle spostate…", f: () => openSettings("scan") },
-      { l: "Rimuovi doppioni aggiunti a mano", f: async () => { if (!confirm("Rimuovere dalla libreria i giochi aggiunti a mano più di una volta? I file sul disco non vengono toccati.")) return; const r = await api("/api/manual/dedupe", { body: {} }); toast(`Doppioni rimossi: ${r.removed}`); await reload(true); } },
+      { l: t("b.menu.tools.clearCache"), f: async () => { const r = await api("/api/cache/thumbs/clear", { body: {} }); toast(t("b.menu.toast.thumbsRemoved", {n: r.removed})); } },
+      { l: t("b.menu.tools.relink"), f: () => openSettings("scan") },
+      { l: t("b.menu.tools.dedupe"), f: async () => { if (!confirm(t("b.menu.confirm.dedupe"))) return; const r = await api("/api/manual/dedupe", { body: {} }); toast(t("b.menu.toast.dupesRemoved", {n: r.removed})); await reload(true); } },
     ],
     Visualizza: () => [
-      { h: "Ordina per" },
-      ...sorts.map(([v, l]) => ({ l, chk: () => S.sort === v, f: () => setSelect("#sort", v) })),
-      { h: "Raggruppa" },
-      ...groups.map(([v, l]) => ({ l, chk: () => ($("#group").value || "") === v, f: () => setSelect("#group", v) })),
+      { h: t("b.menu.group.sortBy") },
+      ...sorts().map(([v, l]) => ({ l, chk: () => S.sort === v, f: () => setSelect("#sort", v) })),
+      { h: t("b.menu.group.groupBy") },
+      ...groups().map(([v, l]) => ({ l, chk: () => ($("#group").value || "") === v, f: () => setSelect("#group", v) })),
       "-",
-      { l: "Nascondi duplicati", chk: () => $("#one-version").checked, f: () => click("#one-version") },
-      { l: "Copertine più grandi", f: () => { const z = $("#zoom"); z.value = Math.min(+z.max, +z.value + 30); z.dispatchEvent(new Event("input")); } },
-      { l: "Copertine più piccole", f: () => { const z = $("#zoom"); z.value = Math.max(+z.min, +z.value - 30); z.dispatchEvent(new Event("input")); } },
+      { l: t("b.menu.view.hideDupes"), chk: () => $("#one-version").checked, f: () => click("#one-version") },
+      { l: t("b.menu.view.zoomIn"), f: () => { const z = $("#zoom"); z.value = Math.min(+z.max, +z.value + 30); z.dispatchEvent(new Event("input")); } },
+      { l: t("b.menu.view.zoomOut"), f: () => { const z = $("#zoom"); z.value = Math.max(+z.min, +z.value - 30); z.dispatchEvent(new Event("input")); } },
       "-",
-      { l: "Tema chiaro", chk: async () => (await api("/api/extensions")).active_theme === "chiaro",
+      { l: t("b.menu.view.lightTheme"), chk: async () => (await api("/api/extensions")).active_theme === "chiaro",
         f: async () => theme((await api("/api/extensions")).active_theme === "chiaro" ? "default" : "chiaro") },
       { l: "🎮 Big Picture", a: "bigPicture", f: () => enterBigPicture() },
     ],
     Impostazioni: () => [
-      { l: "⚙ Tutte le impostazioni…", a: "settings", f: () => openSettings() },
-      { l: "⌨ Scorciatoie da tastiera…", a: "help", f: () => window.PozzoShortcuts?.openPanel() },
-      { l: "🧭 Tour guidato", f: () => window.GS?.tour?.start({ manual: true }) },
+      { l: "⚙ " + t("b.menu.settings.all"), a: "settings", f: () => openSettings() },
+      { l: "⌨ " + t("b.menu.settings.shortcuts"), a: "help", f: () => window.PozzoShortcuts?.openPanel() },
+      { l: "🧭 " + t("b.menu.settings.tour"), f: () => window.GS?.tour?.start({ manual: true }) },
       "-",
-      { l: "Cartelle da scansionare…", f: () => openSettings("scan") },
-      { l: "Account e store…", f: () => openSettings("acc") },
-      { l: "Emulatori…", f: () => openSettings("emu") },
-      { l: "Aspetto e temi…", f: () => openSettings("look") },
+      { l: t("b.menu.settings.folders"), f: () => openSettings("scan") },
+      { l: t("b.menu.settings.accounts"), f: () => openSettings("acc") },
+      { l: t("b.menu.settings.emulators"), f: () => openSettings("emu") },
+      { l: t("b.menu.settings.look"), f: () => openSettings("look") },
       "-",
-      { l: "Notifiche", chk: async () => (await api("/api/app/notify")).enabled,
-        f: async () => { const on = (await api("/api/app/notify")).enabled; await api("/api/app/notify", { body: { enabled: !on } }); toast(on ? "Notifiche disattivate" : "Notifiche attive"); } },
+      { l: t("b.menu.settings.notify"), chk: async () => (await api("/api/app/notify")).enabled,
+        f: async () => { const on = (await api("/api/app/notify")).enabled; await api("/api/app/notify", { body: { enabled: !on } }); toast(on ? t("b.menu.toast.notifyOff") : t("b.menu.toast.notifyOn")); } },
     ],
   };
 
+  const TOP_KEY = {File: "b.menu.top.file", Strumenti: "b.menu.top.tools", Visualizza: "b.menu.top.view", Impostazioni: "b.common.settings"};
   const bar = document.createElement("nav");
   bar.id = "menubar";
-  bar.innerHTML = Object.keys(MENUS).map((k) => `<button type="button" class="mb-top" data-m="${k}">${k}</button>`).join("");
+  bar.innerHTML = Object.keys(MENUS).map((k) => `<button type="button" class="mb-top" data-m="${k}" data-i18n="${TOP_KEY[k]}">${k}</button>`).join("");
   document.getElementById("app").before(bar); // in cima alla finestra, sopra ogni esperienza
   document.documentElement.style.setProperty("--mb-h", `${bar.offsetHeight}px`);
 
   // Utente attivo: il menu del profilo (cambia utente, nuovo profilo, icona e PIN), uguale a quello della barra laterale
-  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-profile" title="Utente attivo: clicca per cambiare" aria-haspopup="menu">`
-    + `<span id="mb-profile-ico">👤</span><span id="mb-profile-name">Principale</span><span class="muted">▾</span></button>`);
+  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-profile" title="Utente attivo: clicca per cambiare" data-i18n-title="b.menu.profile.title" aria-haspopup="menu">`
+    + `<span id="mb-profile-ico">👤</span><span id="mb-profile-name" data-i18n="b.menu.profile.default">Principale</span><span class="muted">▾</span></button>`);
   document.getElementById("mb-profile").onclick = (e) => { e.stopPropagation(); profileMenu(e.currentTarget); };
   if (typeof paintProfile === "function" && S?.profiles) paintProfile(); // i profili possono essere gia' arrivati
 
   // Attivita': tutte le operazioni in sottofondo (pannello qui sotto o finestra separata)
-  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-act" title="Operazioni in corso">⚙ Attività <span id="mb-act-n"></span></button>`);
+  bar.insertAdjacentHTML("beforeend", `<button type="button" id="mb-act" title="Operazioni in corso" data-i18n-title="b.menu.activity.title">⚙ <span data-i18n="b.menu.activity">Attività</span> <span id="mb-act-n"></span></button>`);
   const actBtn = document.getElementById("mb-act");
   const popOut = () => (window.pywebview?.api?.open_activity ? window.pywebview.api.open_activity()
     : window.open("/activity", "pozzo-activity", "popup,width=520,height=640"));
@@ -90,8 +91,8 @@
     const pan = document.getElementById("act-pop");
     if (pan) return pan.remove();
     document.body.insertAdjacentHTML("beforeend", `<div id="act-pop">
-      <div class="ah"><b>Attività</b><span><button type="button" id="act-out" title="Apri in una finestra separata">⧉ Finestra separata</button>
-      <button type="button" id="act-x" title="Chiudi">✕</button></span></div><iframe src="/activity"></iframe></div>`);
+      <div class="ah"><b>${t("b.menu.activity")}</b><span><button type="button" id="act-out" title="${t("b.menu.activity.openWindow")}">⧉ ${t("b.menu.activity.window")}</button>
+      <button type="button" id="act-x" title="${t("b.common.close")}">✕</button></span></div><iframe src="/activity"></iframe></div>`);
     document.getElementById("act-out").onclick = () => { document.getElementById("act-pop").remove(); popOut(); };
     document.getElementById("act-x").onclick = () => document.getElementById("act-pop").remove();
   };

@@ -9,7 +9,7 @@ import time
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, profilecfg as PC, stores as STORES
+from ... import config as C, i18n as I, profilecfg as PC, stores as STORES
 from ...matching import normalize
 
 
@@ -50,7 +50,7 @@ def build_router(ctx) -> APIRouter:
                     w = by_title.get(t, {})
                     events.emit("price_dropped", {"title": t, "price": w.get("price"), "store": w.get("shop"),
                                                   "url": w.get("url")})
-                _notify(f"💸 {len(r['alerts'])} giochi sotto la soglia di prezzo",
+                _notify(I.tr("s.wishlist.alerts", n=len(r['alerts'])),
                         "\n".join(f"• {t}" for t in r["alerts"][:4]))
         except Exception as e:
             wish_state["log"].append(f"{type(e).__name__}: {e}")
@@ -69,13 +69,13 @@ def build_router(ctx) -> APIRouter:
         try:
             return {"results": W.search(cfg, q)}
         except Exception as e:
-            raise HTTPException(502, f"Ricerca non riuscita: {e}")
+            raise HTTPException(502, I.tr("s.wishlist.searchFail", e=e))
 
     @router.post("/api/wishlist/add")
     def api_wishlist_add(body: dict = Body(...)):
         title = (body.get("title") or "").strip()
         if not title:
-            raise HTTPException(400, "Serve un titolo")
+            raise HTTPException(400, I.tr("s.wishlist.needTitle"))
         wid = body.get("id") or ("steam:" + body["steam_appid"] if body.get("steam_appid") else "t:" + normalize(title))
         target = body.get("target")
         user.wish_add(wid, title, str(body.get("steam_appid") or ""), str(body.get("itad_id") or ""),
@@ -93,7 +93,7 @@ def build_router(ctx) -> APIRouter:
         finally:
             c.close()
         if not sid:
-            raise HTTPException(400, "Account Steam non trovato: collegalo in Impostazioni › Account")
+            raise HTTPException(400, I.tr("s.wishlist.steamMissing"))
         try:
             items = W.steam_wishlist(sid)
         except Exception as e:
@@ -145,7 +145,7 @@ def build_router(ctx) -> APIRouter:
         """Dettaglio dei prezzi di un gioco: Steam, key piu' economica (GG.deals), offerte degli store (ITAD) e storico."""
         w = next((x for x in user.wishlist() if x["id"] == wid), None)
         if not w:
-            raise HTTPException(404, "Gioco non nella lista")
+            raise HTTPException(404, I.tr("s.wishlist.notInList"))
         d = json.loads(w["aks"] or "{}")
         s = W.settings(cfg)
         if s["itad_key"] and w["itad_id"] and time.time() - (d.get("hist_at") or 0) > 24 * 3600:
@@ -154,7 +154,7 @@ def build_router(ctx) -> APIRouter:
                     d["hist"], d["hist_at"] = W.itad_history(c, s["itad_key"], w["itad_id"], s["country"]), time.time()
                 user.wish_update(wid, aks=json.dumps(d))
             except (httpx.HTTPError, ValueError) as e:
-                wish_state["log"].append(f"IsThereAnyDeal, storico: {type(e).__name__}: {e}")
+                wish_state["log"].append(I.tr("s.wishlist.itadHistory", err=f"{type(e).__name__}: {e}"))
         return {"id": wid, "title": w["title"], "steam_appid": w["steam_appid"], "checked": w["checked"],
                 "currency": w["currency"] or "EUR", "detail": d, "history": user.wish_history(3650).get(wid, []),
                 "key_low": w["key_low"], "key_url": w["key_url"], "has_itad": bool(s["itad_key"]), "has_gg": bool(s["gg_key"])}
