@@ -21,7 +21,9 @@ CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
 CLIENT_SECRET = "daafbccc737745039dffe53d94fc76cf"
 OAUTH = "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token"
 LIBRARY = "https://library-service.live.use1a.on.epicgames.com/library/api/public/items"
-CATALOG = "https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{ns}/bulk/items"
+PLAYTIME = "https://library-service.live.use1a.on.epicgames.com/library/api/public/playtime/account/{acc}/all"
+ASSETS = "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/Windows"
+CATALOG ="https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{ns}/bulk/items"
 LOGIN_URL = ("https://www.epicgames.com/id/login?redirectUrl=" +
              quote(f"https://www.epicgames.com/id/api/redirect?clientId={CLIENT_ID}&responseType=code", safe=""))
 MANIFESTS = Path(r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests")
@@ -87,16 +89,41 @@ class Epic(StoreProvider):
 
     def installed(self) -> dict[str, dict]:
         out = {}
-        if MANIFESTS.exists():
-            for f in MANIFESTS.glob("*.item"):
+        # Durante un aggiornamento (o una verifica) il launcher sposta il manifest in Pending/ come "incompleto":
+        # se esiste il manifest dell'installazione precedente il gioco e' comunque installato (es. Fortnite).
+        # I manifest in Pending vengono letti per primi, cosi' quelli completi nella cartella principale vincono.
+        for folder in (MANIFESTS / "Pending", MANIFESTS):
+            if not folder.exists():
+                continue
+            for f in folder.glob("*.item"):
                 try:
                     d = json.loads(f.read_text(encoding="utf-8", errors="ignore"))
                 except ValueError:
                     continue
-                if d.get("bIsIncompleteInstall") or d.get("CatalogNamespace") == "ue":
+                if d.get("CatalogNamespace") == "ue":
+                    continue
+                if d.get("bIsIncompleteInstall") and not Path(d.get("CompleteManifestPath") or "?").is_file():
                     continue
                 out[d.get("CatalogItemId")] = d
         return out
+
+    async def _played(self, h: dict, known: set) -> tuple[list[dict], dict[str, float]]:
+        """Giochi free-to-play (Fortnite, Rocket League...) che non stanno nella libreria dell'account ma che
+        l'account ha giocato: il tempo di gioco e' per artefatto, gli asset del launcher danno namespace e id."""
+        acc = PC.get(self.cfg, "epic", {}).get("account_id")
+        if not acc:
+            return [], {}
+        r = await request(self.client, "GET", PLAYTIME.format(acc=acc), headers=h)
+        rows = r.json() if r is not None and r.status_code == 200 else []
+        times = {x.get("artifactId"): float(x.get("totalTime") or 0) for x in rows if isinstance(x, dict) and x.get("artifactId")}
+        if not times:
+            return [], {}
+        r = await request(self.client, "GET", ASSETS, params={"label": "Live"}, headers=h)
+        assets = r.json() if r is not None and r.status_code == 200 else []
+        extra = [{"namespace": a["namespace"], "catalogItemId": a["catalogItemId"], "appName": a["appName"]}
+                 for a in assets if isinstance(a, dict) and a.get("appName") in times
+                 and a.get("namespace") and a.get("catalogItemId") and a["catalogItemId"] not in known]
+        return extra, times
 
     async def fetch(self) -> list[StoreGame]:
         inst = self.installed()
@@ -126,6 +153,8 @@ class Epic(StoreProvider):
             cursor = (d.get("responseMetadata") or {}).get("nextCursor")
             if not cursor:
                 break
+        played = await self._played(h, {r["catalogItemId"] for r in records})
+        records += played[0]
         # dettagli dal catalogo, raggruppati per namespace
         by_ns: dict[str, list[dict]] = {}
         for rec in records:
@@ -160,6 +189,7 @@ class Epic(StoreProvider):
                     "cover": imgs.get("DieselGameBoxTall") or imgs.get("OfferImageTall"),
                     "hero": imgs.get("DieselGameBox") or imgs.get("OfferImageWide"),
                     "logo": imgs.get("DieselGameBoxLogo"), "icon": imgs.get("Thumbnail")}.items() if v}
+                g.playtime = g.playtime or played[1].get(app, 0)
                 games[cid] = g
         self.log(f"Epic: {len(games)} giochi posseduti, {sum(g.installed for g in games.values())} installati")
         return list(games.values())

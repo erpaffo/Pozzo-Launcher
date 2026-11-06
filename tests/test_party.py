@@ -225,3 +225,9 @@ def test_settings_register_protocol(env):
 def test_settings_register_protocol_non_bool_400(env):
     r = env.c.post("/api/party/settings", json={"register_protocol": "abc"})
     assert r.status_code == 400 and r.json()["detail"] == "register_protocol deve essere true o false"
+
+
+def test_stesso_gioco_altro_dump(env):
+    # chiave diversa (nome file/dimensione diversi) ma stessa console e stesso titolo: lo trova
+    assert env.c.post("/api/party/preview", json={"code": _code(k="snes/altrodump", t="super game")}).json()["have"] is True
+    assert env.c.post("/api/party/preview", json={"code": _code(k="nes/altrodump", t="Super Game")}).json()["have"] is False

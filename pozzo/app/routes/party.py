@@ -9,6 +9,7 @@ import time
 
 from fastapi import APIRouter, Body, HTTPException
 
+from ...matching import normalize
 from ... import config as C, i18n as I, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR
 from ...library import launcher as L
 from ...remote.certs import lan_ips
@@ -78,7 +79,7 @@ def build_router(ctx) -> APIRouter:
         try:
             port = int(body.get("port") or (conf.get("eden_port") or NP.EDEN_PORT if eden else conf.get("port") or NP.PORT))
             info = {"v": 1, "k": g["key"], "e": emu, "c": "" if eden else plan.get("core") or "", "h": host, "p": port,
-                    "n": nick, "x": int(time.time()) + NP.TTL}
+                    "n": nick, "t": g["title"][:50], "x": int(time.time()) + NP.TTL}
             if pw:
                 info["w"] = pw
             code = NP.encode(info)
@@ -140,6 +141,15 @@ def build_router(ctx) -> APIRouter:
         active.clear()
         return {"ok": True}
 
+    def _find(t: dict) -> dict | None:
+        """Il gioco dell'invito nella mia libreria. La chiave dipende da nome file e dimensione (nessun CRC per
+        Switch): due dump dello stesso gioco hanno chiavi diverse, quindi si ripiega su console + titolo."""
+        g = lib.by_key.get(t["k"])
+        if g or not t.get("t"):
+            return g
+        pid, want = t["k"].split("/")[0], normalize(t["t"])
+        return next((x for x in lib.by_key.values() if x["key"].split("/")[0] == pid and normalize(x["title"]) == want), None)
+
     def _decode(body: dict) -> dict:
         try:
             return NP.decode(NP.extract_code(str(body.get("code") or "")))
@@ -178,13 +188,13 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/party/preview")
     def api_party_preview(body: dict = Body(...)):
         t = _decode(body)
-        g = lib.by_key.get(t["k"])
+        g = _find(t)
         return {"title": g["title"] if g else t["k"], "nick": t["n"], "host": t["h"], "port": t["p"], "have": bool(g)}
 
     @router.post("/api/party/join")
     def api_party_join(body: dict = Body(...)):
         t = _decode(body)
-        g = lib.by_key.get(t["k"])
+        g = _find(t)
         if not g:
             raise HTTPException(404, I.tr("s.party.notInLibrary"))
         if t.get("e") == "eden":

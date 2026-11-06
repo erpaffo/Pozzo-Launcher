@@ -439,7 +439,7 @@ async function loadAccounts() {
                       </li>`}</ol>
              <span class="row tight"><input class="field grow" placeholder="${t("h.acc.pasteHere")}">
              <button class="btn primary" data-acc-code="${x.id}">${t("h.acc.confirm")}</button>
-             <a href="#" data-acc-login="${x.id}">${t("h.acc.reopen")}</a></span></div>`;
+             <a href="#" data-acc-login="${x.id}" data-browser="1">${t("h.acc.reopen")}</a></span></div>`;
     } else if (a.note) ctrl = `<span class="muted small">${esc(a.note)}</span>`;
     const st = x.detected ? `<span class="status-ok">✓ ${t("h.acc.detected")}</span>` : `<span class="muted">${t("h.acc.notFound")}</span>`;
     return `<tr><td><label class="chk"><input type="checkbox" data-acc-enable="${x.id}" ${x.enabled ? "checked" : ""}> <b>${esc(x.name)}</b></label>
@@ -462,8 +462,14 @@ async function accountAction(t) {
       pollStores(true);
     } else if (t.dataset.accLogin) {
       const x = SET.accounts.stores.find((s) => s.id === id);
-      // Il login si fa nel browser predefinito: le finestre integrate vengono bloccate da Google/Apple
-      // ("Accedi con Google" non funzionerebbe). Poi si incolla qui il risultato.
+      // Prima la finestra integrata: cattura da sola il codice (nessun copia-incolla).
+      const pw = window.pywebview && window.pywebview.api;
+      if (pw && pw.login && !t.dataset.browser) {
+        const r = await pw.login(id);
+        if (r && r.ok) { toast(window.t("h.acc.linked")); pollStores(true); return loadAccounts(); }
+      }
+      // Fallback (app nel browser, accesso annullato, o "Accedi con Google/Apple" che la finestra integrata
+      // non regge): login nel browser predefinito, poi si incolla qui il risultato.
       await api("/api/open", { body: { url: x.login_url } });
       const box = document.querySelector(`.acc-manual[data-for="${id}"]`);
       box.hidden = false;

@@ -253,7 +253,8 @@ function vlist(box, host, items, cell, { cols = () => 1, gap = 0, rowClass = "" 
   box.onscroll = draw;
   box.__vlObserver?.disconnect();
   // ridimensionando la finestra cambia il numero di schede per riga: si rifanno le righe
-  box.__vlObserver = new ResizeObserver(() => { if (Math.max(1, cols()) !== c) split(); draw(); });
+  // se la vista e' stata sostituita (es. si e' passati allo Store) l'host non c'e' piu': cols() leggerebbe un elemento null
+  box.__vlObserver = new ResizeObserver(() => { if (!host.isConnected) return; if (Math.max(1, cols()) !== c) split(); draw(); });
   box.__vlObserver.observe(box);
   draw();
 }
