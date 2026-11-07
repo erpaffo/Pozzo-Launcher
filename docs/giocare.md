@@ -309,6 +309,21 @@ supportati). Per Eden cerca nella cartella predefinita `%APPDATA%\eden\screensho
 `user\screenshots` accanto all'exe e nel percorso personalizzato letto da `qt-config.ini`. Le schermate si sfogliano
 nella vista **📷 Schermate** e si possono fare anche dal telefono.
 
+### Overlay in gioco
+
+Durante una partita (Windows) **Ctrl+Shift+O** o **Select + R3** sul controller aprono un overlay sopra il gioco con il
+tempo di sessione, la schermata, la pausa, «Chiudi gioco», gli obiettivi, gli appunti dell'estensione Diario (se
+installata) e i comandi della musica. Si chiude con lo stesso tasto, con **Esc** o con **B**, e il fuoco torna al gioco.
+La scorciatoia si cambia nelle impostazioni delle schermate. L'overlay funziona con i giochi in finestra e a schermo intero
+senza bordi: **non si disegna sopra i giochi a schermo intero esclusivo**.
+
+### Obiettivi dal vivo
+
+Per i giochi Steam avviati con un emulatore Steam, Pozzo guarda durante la partita i file degli obiettivi di Goldberg/GSE
+(`%APPDATA%\Goldberg SteamEmu Saves`), EMPRESS, CODEX e RUNE e mostra un avviso per ogni obiettivo nuovo. Nome e icona
+vengono dallo schema Steam se hai la chiave API; senza, si usa l'id ripulito. Avvisi e suono si scelgono nelle impostazioni
+delle schermate (⚙). RPCS3, SmartSteamEmu e CreamAPI non sono supportati.
+
 ## RetroAchievements
 
 In **Impostazioni › Store › RetroAchievements** inserisci il tuo utente e la Web API key. Nel dettaglio dei giochi

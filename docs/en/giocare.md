@@ -312,6 +312,20 @@ supported emulators). For Eden, it searches the default `%APPDATA%\eden\screensh
 `user\screenshots` next to the exe, and custom paths read from `qt-config.ini`. Screenshots can be browsed
 in the **📷 Screenshots** view and can also be triggered from your phone.
 
+### In-game overlay
+
+During a session (Windows) **Ctrl+Shift+O** or **Select + R3** on the controller open an overlay on top of the game with
+the session timer, screenshot, pause, "Close game", achievements, notes from the Diary extension (if installed) and music
+controls. Close it with the same key, **Esc** or **B**; focus returns to the game. Change the shortcut in the screenshot
+settings. The overlay works with windowed and borderless-fullscreen games: **it cannot be drawn over exclusive fullscreen games**.
+
+### Live achievements
+
+For Steam games run with a Steam emulator, Pozzo watches the achievement files of Goldberg/GSE
+(`%APPDATA%\Goldberg SteamEmu Saves`), EMPRESS, CODEX and RUNE during the session and shows an alert for each new unlock.
+Name and icon come from the Steam schema if you set an API key; otherwise the cleaned-up id is used. Alerts and sound are set
+in the screenshot settings (⚙). RPCS3, SmartSteamEmu and CreamAPI are not supported.
+
 ## RetroAchievements
 
 In **Settings › Stores › RetroAchievements**, enter your username and Web API key. Retro game details cards will display

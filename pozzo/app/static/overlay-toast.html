@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Pozzo Toast</title>
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; }
+  #t { display: none; align-items: center; gap: 14px; margin: 6px; padding: 12px 16px; border-radius: 12px; color: #fff;
+    background: rgba(21, 24, 33, .96); border: 1px solid #5b8cff; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  #t.on { display: flex; animation: in .25s ease-out; }
+  @keyframes in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; } img[hidden] { display: none; }
+  small { color: #5b8cff; display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  b { display: block; font-size: 17px; } span { font-size: 13px; color: #aab; }
+</style>
+</head>
+<body>
+<div id="t"><img id="i" alt="" hidden><div><small id="k"></small><b id="n"></b><span id="d"></span></div></div>
+<script src="/static/i18n.js"></script>
+<script>
+// suoni generati con WebAudio: nessun file audio
+const TONES = { soft: [[660, 0, .18], [880, .14, .28]], classic: [[523, 0, .12], [659, .12, .12], [784, .24, .12], [1047, .36, .4]] };
+function beep(kind) {
+  const seq = TONES[kind]; if (!seq) return;
+  try {
+    const a = new AudioContext(), g = a.createGain(); g.gain.value = .12; g.connect(a.destination);
+    seq.forEach(([f, at, len]) => { const o = a.createOscillator(); o.type = kind === "soft" ? "sine" : "square"; o.frequency.value = f;
+      o.connect(g); o.start(a.currentTime + at); o.stop(a.currentTime + at + len); });
+  } catch (e) {}
+}
+window.showToast = (x) => {
+  document.getElementById("k").textContent = (x.key && window.t ? t(x.key) : x.title) || "";
+  document.getElementById("n").textContent = x.text || "";
+  document.getElementById("d").textContent = x.desc || "";
+  const i = document.getElementById("i"); i.hidden = !x.icon; if (x.icon) i.src = x.icon;
+  const box = document.getElementById("t"); box.classList.remove("on"); void box.offsetWidth; box.classList.add("on");
+  beep(x.sound);
+};
+</script>
+</body>
+</html>

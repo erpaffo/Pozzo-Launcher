@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="it" data-mode="desktop">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pozzo Overlay</title>
+<link rel="stylesheet" href="/static/app.css?v={{v}}">
+<link rel="stylesheet" href="/static/overlay.css?v={{v}}">
+</head>
+<body class="ov">
+<div id="ov-back"></div>
+<main class="ov-card" role="dialog" aria-modal="true">
+  <header>
+    <img id="ov-cover" alt="" hidden>
+    <div><h1 id="ov-title"></h1><div class="ov-time" id="ov-time">0:00</div><div class="muted" data-i18n="o.overlay.time">Tempo di sessione</div></div>
+  </header>
+  <p id="ov-none" class="muted" hidden data-i18n="o.overlay.none">Nessun gioco in esecuzione</p>
+  <div class="ov-actions">
+    <button id="ov-shot" data-i18n="o.overlay.shot">Schermata</button>
+    <button id="ov-pause" data-i18n="o.overlay.pause">Pausa</button>
+    <button id="ov-stop" class="bad" data-i18n="o.overlay.stop">Chiudi gioco</button>
+    <button id="ov-close" data-i18n="o.overlay.close">Chiudi overlay</button>
+  </div>
+  <section id="ov-ach" hidden><h2 data-i18n="o.overlay.ach">Obiettivi</h2><div id="ov-ach-txt"></div><div class="ov-bar"><i id="ov-ach-bar"></i></div></section>
+  <section id="ov-notes" hidden><h2 data-i18n="o.overlay.notes">Appunti</h2><ul id="ov-notes-list"></ul></section>
+  <section class="ov-music"><h2 data-i18n="o.overlay.music">Musica</h2>
+    <button data-media="previous" aria-label="previous">&#9198;</button><button data-media="play_pause" aria-label="play/pause">&#9199;</button><button data-media="next" aria-label="next">&#9197;</button></section>
+</main>
+<script src="/static/i18n.js?v={{v}}"></script>
+<script src="/static/overlay.js?v={{v}}"></script>
+</body>
+</html>

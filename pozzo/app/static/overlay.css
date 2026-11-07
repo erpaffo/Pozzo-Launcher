@@ -1,0 +1,18 @@
+/* trasparente: la finestra e' senza sfondo, lo scurisce #ov-back */
+html, body.ov { background: transparent; overflow: hidden; height: 100%; }
+#ov-back { position: fixed; inset: 0; background: rgba(0, 0, 0, .62); }
+.ov-card { position: relative; width: min(760px, 92vw); margin: 6vh auto 0; max-height: 88vh; overflow: auto; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 16px; padding: 28px 32px; font-size: 22px; color: var(--fg); }
+.ov-card header { display: flex; gap: 20px; align-items: center; margin-bottom: 18px; }
+.ov-card header img { width: 96px; height: 128px; object-fit: cover; border-radius: 8px; }
+.ov-card h1 { margin: 0; font-size: 34px; }
+.ov-card h2 { font-size: 20px; margin: 22px 0 8px; color: var(--muted); font-weight: 600; }
+.ov-time { font-size: 44px; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
+.ov-actions, .ov-music { display: flex; gap: 12px; flex-wrap: wrap; }
+.ov-music h2 { width: 100%; margin-bottom: 0; }
+.ov-card button { font-size: 22px; padding: 12px 22px; background: var(--bg-3); border: 2px solid var(--line); border-radius: 10px; color: var(--fg); cursor: pointer; }
+.ov-card button:focus, .ov-card button:hover { outline: none; border-color: var(--accent); }
+.ov-card button.bad { color: var(--bad); }
+.ov-bar { height: 10px; border-radius: 5px; background: var(--bg-3); overflow: hidden; margin-top: 8px; }
+.ov-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+#ov-notes-list { margin: 0; padding-left: 22px; font-size: 20px; }

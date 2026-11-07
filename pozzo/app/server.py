@@ -256,6 +256,15 @@ def create_app(cfg) -> FastAPI:
     shots = SC.Shots(cfg.cache, Path(cfg.cache) / "userdata.db")
     launcher = L.Launcher(cfg, user, on_event=events.emit, shots=shots, profile_of=user.profile,
                           prelaunch=lambda st: _ds_prelaunch(st))
+    from .. import overlay as OV
+    overlay = OV.Overlay(cfg, launcher)  # finestra d'overlay in gioco: si aggancia alla finestra nativa in run_desktop
+    events.on("game_started", overlay.game_started)
+    events.on("game_stopped", overlay.game_stopped)
+    app.state.overlay = overlay
+    from ..liveach import LiveAch
+    live = LiveAch(cfg, overlay)  # avvisi degli obiettivi scritti dagli emulatori Steam
+    events.on("game_started", live.game_started)
+    events.on("game_stopped", live.game_stopped)
     from ..remote import phone as PH
     phone_hub = PH.PhoneHub(cfg, C.save_settings)
     PH.register(app, phone_hub, STATIC)
@@ -437,7 +446,7 @@ def create_app(cfg) -> FastAPI:
     # parti condivise; ogni modulo aggiunge le funzioni che servono ai moduli successivi (vars(ctx).update)
     ctx = SimpleNamespace(
         app=app, cfg=cfg, lib=lib, user=user, users=users, user_of=user_of, sync=sync, events=events,
-        launcher=launcher, shots=shots, phone_hub=phone_hub, ds=ds, view=view, job=job, state=state,
+        launcher=launcher, shots=shots, overlay=overlay, phone_hub=phone_hub, ds=ds, view=view, job=job, state=state,
         activity_hidden=activity_hidden, lib_payloads=lib_payloads, thumbs_dir=thumbs_dir,
         plugin_errors=plugin_errors, _claim=_claim, watcher=watcher, discord=discord, spotify=spotify, discord_voice=discord_voice,
         SpotifyError=SpotifyError, DiscordVoiceError=DiscordVoiceError, SY=SY, SC=SC, PH=PH, stop=stop)
@@ -654,7 +663,8 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
             raise SystemExit(f"Porta {port} occupata da un altro programma: scegline un'altra con --port")
         print(f"Porta {port} occupata da un altro programma: uso la {free}")
         port = free
-    app = LocalGuard(create_app(cfg), port)  # il server del telefono usa l'app senza guardia, dietro PhoneGate
+    inner = create_app(cfg)
+    app = LocalGuard(inner, port)  # il server del telefono usa l'app senza guardia, dietro PhoneGate
     url = f"http://127.0.0.1:{port}/"
     start_url = url + ("bigpicture" if bigpicture else "")
     if browser:
@@ -877,6 +887,10 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
 
         # chiusa la finestra principale si chiude anche quella delle attivita' (altrimenti l'app resta aperta)
         main_win.events.closed += lambda: activity_win.get("w") and activity_win["w"].destroy()
+        inner.state.overlay.attach(url)
+        # il suono degli avvisi (WebAudio) parte senza un clic dentro la finestra
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
+                                                              + " --autoplay-policy=no-user-gesture-required").strip()
         # private_mode=False + cartella fissa: senza, la finestra butta via il localStorage alla chiusura
         # (console preferite, filtri, ordinamenti...)
         webview.start(private_mode=False, storage_path=str(Path(cfg.cache).parent / "webview"))
