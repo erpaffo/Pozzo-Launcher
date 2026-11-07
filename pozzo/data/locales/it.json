@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "Gioco sconosciuto",
  "s.notify.queueDone": "Download finiti",
  "s.notify.queueDoneBody": "{n} completati",
- "s.notify.queueDoneFailed": "{n} falliti"
+ "s.notify.queueDoneFailed": "{n} falliti",
+ "f.raextra.heading": "RetroArch: bezel, shader, cheat",
+ "f.raextra.notRetroarch": "Questo gioco non si avvia con RetroArch",
+ "f.raextra.noCfg": "Cartella di RetroArch non trovata (manca retroarch.cfg)",
+ "f.raextra.noCheats": "Nessun cheat trovato per questo gioco",
+ "f.raextra.bezel": "Bezel",
+ "f.raextra.shader": "Shader",
+ "f.raextra.cheats": "Cheat",
+ "f.raextra.none": "Nessuno",
+ "f.raextra.inherit": "Predefinito",
+ "f.raextra.choose": "Scegli bezel…",
+ "f.raextra.loadCheats": "Cerca cheat",
+ "f.raextra.core": "Salva come predefinito del core ({core})",
+ "f.raextra.saved": "Salvato",
+ "f.raextra.restartNote": "Si applica al prossimo avvio del gioco."
 }

@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "Unbekanntes Spiel",
  "s.notify.queueDone": "Downloads beendet",
  "s.notify.queueDoneBody": "{n} abgeschlossen",
- "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen",
+ "f.raextra.heading": "RetroArch: Bezel, Shader, Cheats",
+ "f.raextra.notRetroarch": "Dieses Spiel startet nicht mit RetroArch",
+ "f.raextra.noCfg": "RetroArch-Ordner nicht gefunden (retroarch.cfg fehlt)",
+ "f.raextra.noCheats": "Keine Cheats für dieses Spiel gefunden",
+ "f.raextra.bezel": "Bezel",
+ "f.raextra.shader": "Shader",
+ "f.raextra.cheats": "Cheats",
+ "f.raextra.none": "Keiner",
+ "f.raextra.inherit": "Standard",
+ "f.raextra.choose": "Bezel wählen…",
+ "f.raextra.loadCheats": "Cheats suchen",
+ "f.raextra.core": "Als Standard für den Core speichern ({core})",
+ "f.raextra.saved": "Gespeichert",
+ "f.raextra.restartNote": "Gilt beim nächsten Start des Spiels."
 }

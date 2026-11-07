@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "Неизвестная игра",
  "s.notify.queueDone": "Загрузки завершены",
  "s.notify.queueDoneBody": "Завершено: {n}",
- "s.notify.queueDoneFailed": "Ошибок: {n}"
+ "s.notify.queueDoneFailed": "Ошибок: {n}",
+ "f.raextra.heading": "RetroArch: бордюр, шейдер, читы",
+ "f.raextra.notRetroarch": "Эта игра не запускается через RetroArch",
+ "f.raextra.noCfg": "Папка RetroArch не найдена (нет retroarch.cfg)",
+ "f.raextra.noCheats": "Читы для этой игры не найдены",
+ "f.raextra.bezel": "Бордюр (bezel)",
+ "f.raextra.shader": "Шейдер",
+ "f.raextra.cheats": "Читы",
+ "f.raextra.none": "Нет",
+ "f.raextra.inherit": "По умолчанию",
+ "f.raextra.choose": "Выбрать бордюр…",
+ "f.raextra.loadCheats": "Найти читы",
+ "f.raextra.core": "Сохранить по умолчанию для ядра ({core})",
+ "f.raextra.saved": "Сохранено",
+ "f.raextra.restartNote": "Применяется при следующем запуске игры."
 }
