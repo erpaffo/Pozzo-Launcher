@@ -146,6 +146,36 @@ GitHub API rate limits.
 - **Mods** via Thunderstore: install and manage directly from the port page. GameBanana is linked externally.
 - Port **saves** integrate seamlessly into per-game save versioning (see [Playing Games](giocare.md#salvataggi)).
 
+## Friends
+
+The **Friends** panel (under the button at the top) shows your friends' online presence and lets you add them with
+their **friend code** (`#PZ-1234`) or username; you can copy your own code from the same panel.
+
+Two separate switches, **off by default**, decide what you share: **Share my playtime** and **Share my achievements**.
+If you turn them on, friends receive your 50 most played games (and the achievements) through the Supabase service,
+encrypted with a key derived between you and each friend. When they are off, nothing is sent.
+
+With this data you can:
+
+- **Compare** playtime with a friend on the **games in common**;
+- see each friend's **recent activity**;
+- find the **Friends who play it** line in a game's details.
+
+If a friend has not shared data yet, the panel says so: data updates when they are online.
+
+## DualSense and DualShock 4
+
+With a DualSense or a DualShock 4 the controller **battery** appears in the top bar and in Big Picture. In
+**Settings › Controller** you can also enable the **lightbar colour from the game's cover art** and a **light
+vibration** while you navigate the menus.
+
+## Twitch Streams and YouTube Videos
+
+The **Twitch and YouTube** extension (installed from the extensions Store, see [Extensions](ESTENSIONI.md)) adds a
+**📺 Streams and videos** section to each game's details: live Twitch streams and YouTube videos (trailers and guides),
+which you can watch in the card. Keys go in **Settings › Streaming**: Twitch Client ID and Client Secret (a free app on
+dev.twitch.tv) and, optionally, a YouTube Data API key. Without keys, links to the Twitch and YouTube search remain.
+
 ## Windows Notifications
 
 With **Settings › 🧩 Integrations › 🔔 Windows Notifications** enabled (on by default), Pozzo Launcher delivers native Windows

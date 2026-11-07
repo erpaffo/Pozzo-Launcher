@@ -142,6 +142,10 @@ Lo scrive l'app; si può modificare a mano con l'app chiusa. Le sezioni più uti
 | `app.phone` | Telefono: `touchscreen` (secondo schermo nei giochi DS e 3DS), `screen_idle` (secondi senza tocchi prima che lo schermo inferiore torni sul PC), `mouse`, `mic_device`, `public_url` (indirizzo del tunnel per l'ospite), `video_addr` (indirizzo per Moonlight), `pad` (aspetto, sensibilità e posizioni dei tasti, comuni a tutti i telefoni) |
 | `app.discord` | Presenza su Discord: `enabled`, `client_id`, `show_time` |
 | `app.notify` | Notifiche di Windows (`false` per spegnerle; di base attive su Windows) |
+| `app.merge_stores`, `app.store_order` | Unione dello stesso gioco su più store (default `true`) e ordine degli store preferiti, per esempio `["steam", "gog", "epic"]` |
+| `app.video_snap`, `app.video_max_mb` | Video snap (spenti di default) e tetto in MB per clip (default 30) |
+| `app.libshare` | Libreria condivisa: console e giochi condivisi, inviti e accesso da internet (si gestisce da Impostazioni › Controller) |
+| `app.archive_run` | `dir`: cartella temporanea per gli archivi estratti a ogni avvio (vuota = quella predefinita) |
 | `app.after_jobs` | Al termine delle operazioni lunghe: `none`, `sleep` o `shutdown` |
 | `app.save_dir` | Cartella delle versioni dei salvataggi (vuota = `<cache>/saves`); mettendoci quella di Ludusavi le copie sono condivise |
 

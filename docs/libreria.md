@@ -120,6 +120,12 @@ Il pannello **Scopri** filtra e ordina la vista corrente per trovare cosa giocar
 Si combina con un **genere** e un **decennio**. Quando un filtro Scopri decide l'ordine, l'ordinamento normale si
 disattiva.
 
+### Console senza giochi: «Altre console»
+
+Le console si vedono **tutte**, anche quelle senza giochi né store: queste stanno nel gruppo ripiegabile **Altre
+console**, così puoi aggiungere lo store anche a loro. Aggiungere gli store a una console (dall'editor, da Minerva o da
+Link → Store) la popola subito, senza riavviare l'applicazione.
+
 ## Il dettaglio di un gioco
 
 Il pannello di dettaglio mostra copertina, sfondo, descrizione, sviluppatore, editore, generi, anno, giocatori,
@@ -168,6 +174,26 @@ Funziona anche per i giochi a cui le fonti non hanno trovato nulla, come Hearths
 Con un solo posto da guardare, l'immagine scelta vale ovunque: griglia, scheda, Big Picture, telefono e pagina web
 esportata.
 
+### Video snap
+
+Brevi clip di gameplay (da ScreenScraper) partono al passaggio del mouse sulla copertina, nella scheda del gioco, in
+Big Picture e nel salvaschermo. Sono **spenti di default**: si attivano in **Impostazioni › Aspetto** con **Scarica
+video snap** e si scaricano alla prossima raccolta dei dati (tetto di 30 MB a clip, quindi occupano disco e banda).
+Rispettano l'impostazione delle animazioni.
+
+### Clip nella galleria
+
+Nella vista **📷 Schermate** compaiono anche i clip video (`.mp4`, `.webm`, `.mkv`) di Xbox Game Bar, NVIDIA ShadowPlay
+e AMD ReLive creati durante la sessione: si importano da soli e si riproducono dalla galleria. I video **non vengono
+copiati**: la galleria usa il file originale, quindi se lo sposti o lo cancelli sparisce anche da lì.
+
+### Obiettivi di Steam, GOG ed Epic
+
+Nella scheda del gioco gli obiettivi di Steam, GOG ed Epic compaiono (barra di progresso, icone, bloccati e
+sbloccati, rarità) accanto a RetroAchievements. La pagina **Obiettivi sbloccati** mostra i totali per store dei giochi
+di cui hai aperto la scheda almeno una volta. Per Steam servono la chiave API e lo SteamID (**Impostazioni › Store ›
+Account**, verificati al salvataggio); GOG ed Epic usano l'account già collegato e leggono solo i giochi **installati**.
+
 ## Una versione per gioco
 
 Le versioni regionali e le revisioni dello stesso gioco sono **raggruppate** in una sola scheda: Rubino, Ruby, Rubin
@@ -177,7 +203,9 @@ configurazione; le altre restano nel dettaglio.
 
 Preferiti, tempo di gioco, stato e collezioni valgono per **tutto il gioco**, cioè per tutte le sue versioni. Lo
 stesso vale per un gioco PC presente su più store (per esempio Steam ed Epic): è una scheda sola con più versioni, e
-la principale è quella installata.
+la principale è quella installata. Lo store che avvia il gioco si sceglie in **Impostazioni › Libreria**, con **Unisci i
+giochi presenti su più store** e l'elenco degli **store preferiti** in ordine (di default Steam, GOG, Epic); spegnendo
+l'opzione ogni store torna una scheda a sé. Il tempo di gioco è la somma delle versioni.
 
 ## Collezioni
 

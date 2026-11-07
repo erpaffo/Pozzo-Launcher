@@ -227,6 +227,38 @@ streaming box (Nvidia Shield, Apple TV 4K, Google TV Streamer) rather than a bui
 - **Phone or iPad**: use Moonlight's on-screen controls or a paired Bluetooth controller.
 - **Phone as controller** for a game displayed on your TV or monitor: using the phone web app detailed above.
 
+## Shared Library for Family and Friends
+
+You can let family and friends browse, download and play in the browser part of your library, with another Pozzo or from
+a plain web page. **Nothing is shared by default**, and settings, accounts and saves never leave the PC.
+
+### What to Share and Invites
+
+In **Settings › Controller › Share your library** choose the **whole consoles** and the **single games** to share, then
+create an invite with a **guest name** and a **validity in days**. An invite is for **one person only**: the code and the
+link (with QR) are shown **only once**, right after creating it, so send them to the guest. In the Invites list each one
+shows its state (waiting, in use, expired) and last access, and **Revoke** removes access immediately.
+
+### At Home or From the Internet
+
+By default the library is reachable only on your home network. **Reachable from the internet** opens the port on the
+router with **UPnP** and shows the external address; if the router does not answer UPnP, open the port by hand. The
+option is off by default.
+
+### What the Guest Sees
+
+- With **another Pozzo**: in **Settings › Account** they add the **Pozzo remote** store with the address
+  (`https://host:8766`), invite code, server name and optionally a destination folder, then press **Pair**. The server
+  certificate is pinned at the first pairing. Shared games appear in the library like in another store and are
+  downloaded from there.
+- **From the browser**: they open the invite link and enter the code.
+
+Either way, the guest browses the shared games, downloads them and plays light-console ROMs in the browser (see
+[Play in the Browser](giocare.md#play-in-the-browser)).
+
+**Limits**: single ROMs download with resume, while **folders travel as zip and, if interrupted, restart from the
+beginning**. One download at a time per guest.
+
 ## Playing with a Remote Friend
 
 A friend can join your game session from their home: their phone becomes a **player 2 controller** and video streams via

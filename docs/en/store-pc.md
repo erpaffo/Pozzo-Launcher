@@ -33,6 +33,30 @@ is that of the account used most recently on the PC, or specified in `[stores.st
 the authorization code and from that point on reads the list of owned games. Your password never passes
 through the app.
 
+### Epic, GOG and Amazon Without the Official Client
+
+In the game details, the **Without the official client** section lets you install, update, verify and uninstall games,
+see and install DLC and, for Epic only, sync saves with the cloud (GOG and Amazon: no cloud). Pozzo uses `legendary`,
+`gogdl` and `nile`, the same open source utilities as Heroic: they are downloaded from GitHub on first use and are not
+bundled with Pozzo (third-party programs, GPL). They use the account already connected in **Settings › Account** (for
+Amazon there is a dedicated sign-in there). Downloads go through the queue, with pause and resume, and games installed
+this way appear as installed and start without opening any launcher.
+
+### Steam Without the Client (SteamCMD)
+
+On owned but not installed games, **Download with SteamCMD** downloads the game without opening Steam. SteamCMD
+downloads itself; sign-in, with the Steam Guard code, is done once in **Settings › Stores** (Pozzo does not store the
+password). The download is in the Downloads queue, with pause and resume, and the game enters the library when it
+finishes. **Limit**: games with Steam DRM still need the Steam client running to start.
+
+### Network Folder as a Store
+
+In **Settings › Account** enter one or more **network folders**, one per line (`\\NAS\Games`, a mapped drive or a
+local folder) containing installers, archives (`.zip`, `.7z`, `.rar`) and game folders. Games appear as owned and
+ready to install: **Install** copies with progress, then extracts or runs the setup (silent for GOG/Inno installers,
+if you want); at the end the game enters the library and starts like the others. A `pozzo.json` file in the game
+folder can fix the title, executable and arguments. WebDAV is not supported; SMB needs your Windows credentials.
+
 ## Adding Any Game
 
 Clicking **＋** next to *PC* lets you select an `.exe`: the game enters the library under PC games. Cover art and images
@@ -62,10 +86,20 @@ The workflow for `.exe` games and applications remains unchanged.
 Adding a game is instantaneous and does not trigger a store update: the entry appears immediately, while cover art
 and images arrive in the background.
 
+## Exporting to Steam
+
+**Settings › Stores › Export to Steam** adds Pozzo's games (all, favorites only, or some platforms) to your Steam
+library as non-Steam games, with cover art, so Steam Input, Steam Deck and Big Picture work. Games always start
+through Pozzo, so playtime and automations stay active. Entries already in Steam are not touched, a copy of
+`shortcuts.vdf` is made before writing, and **Remove Pozzo entries** removes only the ones Pozzo created. **Steam must
+be closed** (also from the tray icon).
+
 ## Same Game on Multiple Stores
 
 A game owned across multiple stores (for example, Steam and Epic) is merged into **a single card** with multiple versions.
-The primary version is the installed one. Favorites, completion status, and playtime apply across all versions.
+The primary version is the installed one. Favorites, completion status, and playtime apply across all versions (playtime is the sum). The game starts from your
+preferred store, in the order you choose. To keep separate cards, untick **Merge games owned on multiple stores** in
+**Settings › Library** (on by default); it applies from the next library rebuild and deletes nothing.
 
 ## Store Game Metadata
 

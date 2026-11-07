@@ -146,6 +146,38 @@ limite di richieste a GitHub.
 - **Mod** da Thunderstore: installa e rimuovi dalla pagina del port. GameBanana è disponibile solo come link.
 - I **salvataggi** del port entrano nelle copie dei salvataggi per gioco (vedi [Giocare](giocare.md#salvataggi)).
 
+## Amici
+
+Il pannello **Amici** (sotto il pulsante in alto) mostra la presenza online degli amici e permette di aggiungerli con
+il loro **codice amico** (`#PZ-1234`) o il nome utente; il tuo codice si copia dallo stesso pannello.
+
+Due interruttori separati, **spenti di default**, decidono cosa condividi: **Condividi il tempo di gioco** e
+**Condividi gli obiettivi**. Se li accendi, gli amici ricevono i tuoi 50 giochi più giocati (e gli obiettivi) tramite
+il servizio Supabase, in forma cifrata con una chiave che si ricava tra te e ciascun amico. Se sono spenti non viene
+inviato nulla.
+
+Con questi dati puoi:
+
+- **Confrontare** il tempo di gioco con un amico sui **giochi in comune**;
+- vedere l'**attività recente** di ogni amico;
+- trovare nel dettaglio di un gioco la riga **Amici che ci giocano**.
+
+Se un amico non ha ancora condiviso dati, il pannello lo dice: i dati si aggiornano quando è in linea.
+
+## DualSense e DualShock 4
+
+Con un DualSense o un DualShock 4 la **batteria** del controller compare nella barra in alto e in Big Picture. In
+**Impostazioni › Controller** si possono attivare anche il **colore della barra luminosa dalla copertina** del gioco e
+una **vibrazione leggera** mentre navighi nei menu.
+
+## Dirette Twitch e video YouTube
+
+L'estensione **Twitch e YouTube** (si installa dallo Store delle estensioni, vedi [Estensioni](ESTENSIONI.md))
+aggiunge nel dettaglio di ogni gioco la sezione **📺 Dirette e video**: le dirette Twitch in corso e i video YouTube
+(trailer e guide), che si guardano nella scheda. Le chiavi si inseriscono in **Impostazioni › Streaming**: Client ID e
+Client Secret di Twitch (un'app gratuita su dev.twitch.tv) e, facoltativa, una chiave YouTube Data API. Senza chiavi
+restano i collegamenti alla ricerca su Twitch e YouTube.
+
 ## Avvisi di Windows
 
 Con **Impostazioni › 🧩 Integrazioni › 🔔 Notifiche di Windows** attive (lo sono di base) Pozzo Launcher avvisa con una

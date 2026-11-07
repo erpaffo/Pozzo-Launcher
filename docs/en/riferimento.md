@@ -141,6 +141,10 @@ Written by the app; can be edited manually when the app is closed. Most useful s
 | `app.phone` | Phone: `touchscreen` (secondary screen in DS and 3DS games), `screen_idle` (idle seconds before touch screen reverts to PC), `mouse`, `mic_device`, `public_url` (tunnel address for guests), `video_addr` (address for Moonlight), `pad` (appearance, sensitivity, and button layouts, shared across all phones) |
 | `app.discord` | Discord Rich Presence: `enabled`, `client_id`, `show_time` |
 | `app.notify` | Windows notifications (`false` to disable; active by default on Windows) |
+| `app.merge_stores`, `app.store_order` | Merging the same game across stores (default `true`) and the preferred store order, e.g. `["steam", "gog", "epic"]` |
+| `app.video_snap`, `app.video_max_mb` | Video snaps (off by default) and the per-clip cap in MB (default 30) |
+| `app.libshare` | Shared library: shared consoles and games, invites and internet access (managed from Settings › Controller) |
+| `app.archive_run` | `dir`: temporary folder for archives extracted at each launch (empty = default) |
 | `app.after_jobs` | Action upon completion of long tasks: `none`, `sleep`, or `shutdown` |
 | `app.save_dir` | Directory for save versions (empty = `<cache>/saves`); pointing to Ludusavi's folder enables shared backups |
 

@@ -429,6 +429,7 @@ To test an extension locally in your launcher, `python tools/extensions.py insta
 | **Deals and Bundles** | Real-time price tracking for wishlisted games (with "Historical Low" badges), active IsThereAnyDeal bundles tagged "For you" when including tracked or owned games, and currently claimable free games |
 | **Local Media** | Movies, TV series, and music from local PC folders browsable as a dedicated media library: title recognition, local artwork support (poster.jpg, folder.jpg), playback resume, and support for internal or external media players |
 | **Web Recipes** | Movies and podcast catalogs from legitimate public web directories and feeds (e.g., Internet Archive and NASA podcasts) extracted via declarative TOML recipes without executable code; features ETag caching, robots.txt compliance, metadata details, episodes, and direct playback |
+| **Twitch and YouTube** | in each game's details, live Twitch streams and YouTube videos (trailers and guides); personal keys in Settings › Streaming |
 
 **Store Minerva + Switch** stores its presets in `PRESETS` (`backend.py`): adding additional repositories requires only a single line
 (`{"console": ["https://…"]}`). Because listings for a console may use different layout formats
