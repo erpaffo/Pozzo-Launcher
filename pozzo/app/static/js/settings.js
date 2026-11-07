@@ -276,7 +276,7 @@ function showTab(tab) {
   else if (id === "sistema") { loadHealth(); loadAbout(); loadSystemErrors(); }
   else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); watchStatusStart(); api("/api/status").then(showStatus); }
   else if (id === "fonti") { loadSources(); pollHltb(); pollCollart(); }
-  else if (id === "store") { loadAccounts(); loadPcStores(); }
+  else if (id === "store") { loadAccounts(); loadPcStores(); loadSteamExport(); }
   else if (id === "emulatori") loadEmu();
   else if (id === "controller" || id === "streaming") loadRemote();
   else if (id === "integrazioni") loadIntegrations();

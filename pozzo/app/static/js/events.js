@@ -437,6 +437,17 @@ function bind() {
     try { await api("/api/ra", { body }); toast(t("g.ev.ra.linked")); $("#ra-key").value = ""; loadAccounts(); }
     catch (e) { toast(e.message, true); }
   };
+  const sxRun = async (go, key, params) => {
+    $("#sx-info").textContent = "";
+    try {
+      const r = await go();
+      $("#sx-info").textContent = t(key, { n: r[params], a: r.art, k: r.kept });
+    } catch (e) { toast(e.message, true); }
+  };
+  $("#sx-what").onchange = () => { $("#sx-plats").hidden = $("#sx-what").value !== "platforms"; };
+  $("#sx-go").onclick = () => sxRun(() => api("/api/steam-export", { body: {
+    account: $("#sx-user").value, what: $("#sx-what").value, platforms: [...$("#sx-plats").selectedOptions].map((o) => o.value) } }), "g.steamx.done", "added");
+  $("#sx-rm").onclick = () => sxRun(() => api(`/api/steam-export?account=${encodeURIComponent($("#sx-user").value)}`, { method: "DELETE" }), "g.steamx.removed", "removed");
   $("#xf-pick").onclick = async () => { const p = window.pywebview?.api ? await pickPath("folder") : null; if (p) $("#xf-out").value = p; };
   // la pagina web ha un titolo proprio: il campo compare solo per quel formato
   $("#xf-format").onchange = () => { $("#xf-title-row").hidden = $("#xf-format").value !== "html"; };
