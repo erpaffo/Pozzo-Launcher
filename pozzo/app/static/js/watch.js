@@ -40,6 +40,14 @@ async function watchStatusStart() {
     box.dataset.bound = "1";
     autosaveControl(box, (enabled) => api("/api/app/watch-roms", { body: { enabled } }).then(watchStatusStart));
   }
+  const mg = $("#merge-stores"), mo = $("#merge-order");
+  if (mg && !mg.dataset.bound) {
+    mg.dataset.bound = "1";
+    const save = () => api("/api/app/merge-stores", { body: { enabled: mg.checked, order: mo.value.split(",") } });
+    autosaveControl(mg, save);
+    autosaveControl(mo, save);
+    api("/api/app/merge-stores").then((m) => { mg.checked = m.enabled; mo.value = m.order.join(", "); }).catch(() => {});
+  }
   try {
     const w = await api("/api/library/watch");
     if (document.activeElement !== box) box.checked = !!w.enabled;
