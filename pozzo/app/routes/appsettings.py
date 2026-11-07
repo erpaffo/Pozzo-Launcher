@@ -235,7 +235,7 @@ def build_router(ctx) -> APIRouter:
     @router.get("/api/app/merge-stores")
     def api_merge_get():
         from ...library.build import DEFAULT_STORE_PREF
-        return {"enabled": cfg.app.get("merge_stores") is True, "order": cfg.app.get("store_order") or DEFAULT_STORE_PREF}
+        return {"enabled": cfg.app.get("merge_stores") is not False, "order": cfg.app.get("store_order") or DEFAULT_STORE_PREF}
 
     @router.post("/api/app/merge-stores")
     def api_merge_set(body: dict = Body(...)):

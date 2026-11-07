@@ -45,8 +45,12 @@ def test_custom_order():
 
 
 def test_off_does_not_merge():
-    es = _entries()
+    es = _entries(merge_stores=False)
     assert len({e["grp"] for e in es}) == 3 and all(e["primary"] == 1 for e in es)
+
+
+def test_default_keeps_merging():
+    assert len({e["grp"] for e in _entries()}) == 2
 
 
 if __name__ == "__main__":

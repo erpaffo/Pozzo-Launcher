@@ -346,7 +346,7 @@ def _store_entries(cfg, cache) -> list[dict]:
     # preferenza tra gli store (impostazione "Unisci i giochi presenti su più store"), gli altri in coda
     pref = [x for x in (cfg.app.get("store_order") or DEFAULT_STORE_PREF) if isinstance(x, str)]
     order = {sid: i for i, sid in enumerate(pref + [x for x in STORE_ORDER if x not in pref])}
-    merge = cfg.app.get("merge_stores") is True
+    merge = cfg.app.get("merge_stores") is not False
     groups: dict[str, list[dict]] = defaultdict(list)
     for e in entries:
         if not merge:
