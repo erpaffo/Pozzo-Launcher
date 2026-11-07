@@ -118,7 +118,8 @@ def _safe(name: str) -> str:
 
 
 def list_remote(server: dict) -> list[dict]:
-    return call(server, "GET", "/api/lib-share/list")["games"]
+    # ref finisce in nomi di file e cartelle locali: un server malevolo non deve poterci mettere «..» o separatori
+    return [g for g in call(server, "GET", "/api/lib-share/list")["games"] if re.fullmatch(r"[0-9a-f]{12}", str(g.get("ref", "")))]
 
 
 def fetch_cover(server: dict, g: dict, folder: Path) -> str:

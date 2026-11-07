@@ -113,12 +113,12 @@ def build_router(ctx) -> APIRouter:
         d = _guest(request)
         g = _game(gid)
         one = LS.single_file(g)
-        items = [] if one else LS.entries(g)
-        if not one and not items:
-            raise HTTPException(404, "File del gioco non trovati")
         if not LS.take(d["id"]):
             raise HTTPException(429, "Un download alla volta", headers={"Retry-After": "30"})
         try:
+            items = [] if one else LS.entries(g)
+            if not one and not items:
+                raise HTTPException(404, "File del gioco non trovati")
             if one:
                 size = one.stat().st_size
                 try:

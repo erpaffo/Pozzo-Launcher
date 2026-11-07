@@ -264,3 +264,35 @@ def test_norm_url():
     for bad in ("http://x", "https://u:p@x", "https://x/a/b"):
         with pytest.raises(ValueError):
             PR.norm_url(bad)
+
+def test_zip_senza_giunzioni_ntfs(tmp_path):
+    import subprocess
+    outside = tmp_path / "fuori"
+    outside.mkdir()
+    (outside / "segreto.txt").write_text("x")
+    folder = tmp_path / "g"
+    folder.mkdir()
+    (folder / "ok.bin").write_bytes(b"1")
+    if subprocess.run(["cmd", "/c", "mklink", "/J", str(folder / "j"), str(outside)], capture_output=True).returncode:
+        pytest.skip("giunzioni non disponibili")
+    assert [a for _, a in LS.entries({"files": [str(folder)]})] == ["g/ok.bin"]
+
+
+def test_un_solo_scorrimento_se_il_download_e_rifiutato(env, monkeypatch):
+    app, hub, gate, token, *_ = env
+    LS._ACTIVE.clear()
+    dev = hub.device_for(token)["id"]
+    assert LS.take(dev)
+    walked = []
+    monkeypatch.setattr(LS, "entries", lambda g: walked.append(1) or [])
+    assert gate.get("/api/lib-share/download/2", headers=H(token)).status_code == 429
+    assert not walked  # la cartella non si scorre se il download viene rifiutato
+    LS._ACTIVE.clear()
+
+
+def test_client_scarta_riferimenti_ostili(monkeypatch):
+    from pozzo.stores import pozzoremote as PR
+    games = [{"id": 1, "ref": "0123456789ab"}, {"id": 2, "ref": "/../.."}, {"id": 3, "ref": "..\.."}, {"id": 4}]
+    monkeypatch.setattr(PR, "call", lambda *a, **k: {"games": games})
+    assert [g["id"] for g in PR.list_remote({})] == [1]
+

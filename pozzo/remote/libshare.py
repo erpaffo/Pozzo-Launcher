@@ -61,6 +61,11 @@ def ref(g: dict) -> str:
     return hashlib.sha1(str(g["key"]).encode()).hexdigest()[:12]
 
 
+def _link(p: Path) -> bool:
+    """Link simbolico o giunzione NTFS (is_symlink() non vede le giunzioni su Windows)."""
+    return p.is_symlink() or bool(getattr(os.path, "isjunction", lambda _: False)(p))
+
+
 def entries(g: dict) -> list[tuple[Path, str]]:
     """[(file, nome nello zip)] dei file del gioco. Solo quelli elencati dalla libreria (le cartelle per intero),
     senza link simbolici: una cartella condivisa non puo' portare fuori file di altre parti del disco."""
@@ -72,16 +77,16 @@ def entries(g: dict) -> list[tuple[Path, str]]:
             out.append((p, arc))
     for f in g.get("files") or []:
         p = Path(f)
-        if p.is_symlink():
+        if _link(p):
             continue
         if p.is_file():
             add(p, p.name)
         elif p.is_dir():
             for root, dirs, names in os.walk(p):  # followlinks=False
-                dirs[:] = sorted(d for d in dirs if not (Path(root) / d).is_symlink())
+                dirs[:] = sorted(d for d in dirs if not _link(Path(root) / d))
                 for n in sorted(names):
                     fp = Path(root) / n
-                    if not fp.is_symlink() and fp.is_file():
+                    if not _link(fp) and fp.is_file():
                         add(fp, "/".join([p.name, *fp.relative_to(p).parts]))
     return out
 
@@ -91,7 +96,7 @@ def single_file(g: dict) -> Path | None:
     files = g.get("files") or []
     if len(files) == 1:
         p = Path(files[0])
-        if p.is_file() and not p.is_symlink():
+        if p.is_file() and not _link(p):
             return p
     return None
 
