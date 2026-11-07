@@ -462,10 +462,13 @@ def create_app(cfg) -> FastAPI:
             time.sleep(1)
         if not stop.is_set():
             phone_hub.start(app)
+            from ..remote import libshare as LS
+            if LS.conf(cfg)["internet"]:  # la mappatura UPnP non sopravvive al riavvio
+                LS.open_upnp(phone_hub)
 
     def _phone_startup():
         # il server HTTPS serve anche ai PC abbinati per la sincronizzazione in rete
-        if phone_hub.conf.get("enabled") or any(d.get("kind") == "pc" for d in phone_hub.conf["devices"]):
+        if phone_hub.conf.get("enabled") or any(d.get("kind") in ("pc", "lib") for d in phone_hub.conf["devices"]):
             threading.Thread(target=_phone_start, daemon=True).start()
         threading.Thread(target=ctx._sync_loop, daemon=True).start()
         threading.Thread(target=ctx._wish_loop, daemon=True).start()
@@ -474,6 +477,8 @@ def create_app(cfg) -> FastAPI:
     def _phone_shutdown():
         stop.set()
         phone_hub.stop()
+        from ..remote import libshare
+        libshare.close_upnp(phone_hub)
         # chiude i database aperti dall'app: su Windows un file ancora aperto impedisce di spostare
         # o cancellare la cartella dati (e nei test il file temporaneo resterebbe bloccato)
         watcher.stop()

@@ -425,6 +425,17 @@ async function loadAccounts() {
         <input class="field grow" id="ns-dest" value="${esc(a.dest || "")}" placeholder="${t("h.acc.netDest")}">
         <label class="chk"><input type="checkbox" id="ns-silent" ${a.silent ? "checked" : ""}> ${t("h.acc.netSilent")}</label>
         <button class="btn" data-acc-save="netstore">${t("h.common.save")}</button></div>`;
+    } else if (x.id === "pozzoremote") {
+      ctrl = `<div class="acc-steam">
+        <p class="muted small">${t("h.acc.pr.intro")}</p>
+        ${(a.servers || []).map((s) => `<div class="row tight">🔗 <b>${esc(s.name)}</b> <span class="muted small">${esc(s.url)} · ${t("h.acc.pr.fp", { fp: esc(s.fp) })}</span>
+          <button class="btn" data-pr-remove="${esc(s.id)}">${t("h.acc.pr.remove")}</button></div>`).join("")}
+        <div class="row tight"><input class="field grow" id="pr-url" placeholder="${t("h.acc.pr.url")}" autocomplete="off">
+          <input class="field" id="pr-code" placeholder="${t("h.acc.pr.code")}" autocomplete="off">
+          <input class="field" id="pr-name" placeholder="${t("h.acc.pr.name")}" autocomplete="off">
+          <button class="btn primary" data-pr-add>${t("h.acc.pr.add")}</button></div>
+        <div class="row tight"><input class="field grow" id="pr-dest" value="${esc(a.dest || "")}" placeholder="${t("h.acc.pr.dest")}">
+          <button class="btn" data-pr-dest>${t("h.common.save")}</button></div></div>`;
     } else if (x.id === "steam") {
       const accs = (a.accounts || []).map((u) => `<option value="${esc(u.steamid)}" ${u.steamid === a.steamid ? "selected" : ""}>${esc(u.persona || u.steamid)}</option>`).join("");
       ctrl = `<div class="acc-steam">
@@ -458,6 +469,18 @@ async function loadAccounts() {
   }).join("");
   renderJobInto($("#acc-progress"), d.job);
   if (d.job.status === "running") pollStores();
+}
+
+async function prAction(t) {
+  try {
+    if (t.dataset.prAdd !== undefined) {
+      await api("/api/accounts/pozzoremote", { body: { action: "add", url: $("#pr-url").value, code: $("#pr-code").value, name: $("#pr-name").value } });
+      toast(window.t("h.acc.pr.paired"));
+    } else if (t.dataset.prRemove) await api("/api/accounts/pozzoremote", { body: { action: "remove", id: t.dataset.prRemove } });
+    else await api("/api/accounts/pozzoremote", { body: { action: "dest", dest: $("#pr-dest").value } });
+    loadAccounts();
+    pollStores(true);
+  } catch (e) { toast(e.message, true); }
 }
 
 async function accountAction(t) {

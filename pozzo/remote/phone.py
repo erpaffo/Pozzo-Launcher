@@ -60,11 +60,21 @@ GUEST_ALLOWED = [("GET", r"/m/api/me"), ("POST", r"/m/api/logout"), ("GET", r"/a
                  ("POST", r"/g/api/pin")]
 # pagine che anche un ospite non ancora entrato deve poter aprire
 GUEST_PUBLIC = [("GET", r"/g/?"), ("GET", r"/g/api/hello"), ("POST", r"/g/api/join")]
+# ospite della libreria condivisa (kind "lib", remote/libshare.py): solo l'elenco, le copertine, il download e «Gioca nel
+# browser» dei giochi CONDIVISI (il numero del gioco lo controlla anche il cancello: LIB_GAME). Niente salvataggi,
+# BIOS, impostazioni o altro: tutto il resto e' negato.
+LIB_ALLOWED = [("GET", r"/api/lib-share/list"), ("GET", r"/api/lib-share/cover/\d+"), ("GET", r"/api/lib-share/download/\d+"),
+               ("GET", r"/l/api/me"), ("POST", r"/l/api/logout"),
+               ("GET", r"/play/\d+"), ("GET", r"/play-assets/(ejs|ruffle)/[\w./-]+"), ("GET", r"/api/play/\d+/status"),
+               ("POST", r"/api/play/\d+/prepare"), ("GET", r"/api/play/\d+/rom/[^/]+")]
+LIB_PUBLIC = [("GET", r"/l/?"), ("POST", r"/l/api/pair")]
+LIB_GAME = re.compile(r"/(?:play|api/play|api/lib-share/(?:cover|download))/(\d+)(?:/|$)")
 _ALLOWED = [(m, re.compile(p + r"$")) for m, p in ALLOWED]
 _PC_ALLOWED = [(m, re.compile(p + r"$")) for m, p in PC_ALLOWED]
 _GUEST_ALLOWED = [(m, re.compile(p + r"$")) for m, p in GUEST_ALLOWED]
 _GUEST_PUBLIC = [(m, re.compile(p + r"$")) for m, p in GUEST_PUBLIC]
-_PUBLIC = [(m, re.compile(p + r"$")) for m, p in PUBLIC]
+_PUBLIC = [(m, re.compile(p + r"$")) for m, p in PUBLIC + LIB_PUBLIC]
+_LIB_ALLOWED = [(m, re.compile(p + r"$")) for m, p in LIB_ALLOWED]
 
 
 def _sha(token: str) -> str:
@@ -146,9 +156,14 @@ class PhoneGate:
         if not dev:
             return await self._deny(scope, receive, send, 401, "Telefono non abbinato")
         kind = dev.get("kind")
-        rules = _PC_ALLOWED if kind == "pc" else _GUEST_ALLOWED if kind == "guest" else _ALLOWED
+        rules = (_PC_ALLOWED if kind == "pc" else _GUEST_ALLOWED if kind == "guest" else _LIB_ALLOWED if kind == "lib"
+                 else _ALLOWED)
         if not any(m == method and r.match(path) for m, r in rules):
             return await self._deny(scope, receive, send, 403, "Funzione non disponibile da questo dispositivo")
+        if kind == "lib":  # ospite della libreria: mai "..", e il gioco deve essere uno di quelli condivisi
+            g = LIB_GAME.match(path)
+            if ".." in path or (g and not self.hub.lib_game_ok(int(g[1]))):
+                return await self._deny(scope, receive, send, 403, "Gioco non condiviso")
         scope.setdefault("state", {})["phone_device"] = dev["id"]
         return await self.app(scope, receive, send)
 
@@ -175,6 +190,9 @@ class PhoneHub:
         self.guest_code: str | None = None  # invito per un amico a distanza (separato dal codice dei telefoni)
         self.guest_until = 0.0
         self.guest_fails = 0
+        self.lib_game_ok = lambda gid: False  # lo imposta routes/libshare.py: il gioco e' tra quelli condivisi?
+        self.lib_fails: list[float] = []  # tentativi di codice d'invito sbagliati (finestra mobile)
+        self.lib_upnp = None  # porta aperta sul router per la libreria condivisa (upnp.open_port)
         self.server = None
         self.thread = None
         self.error = ""
@@ -215,6 +233,8 @@ class PhoneHub:
         h = _sha(token)
         for d in self.conf["devices"]:
             if secrets.compare_digest(d.get("token", ""), h):
+                if d.get("exp") and time.time() > d["exp"]:  # accesso a tempo (ospite della libreria): scaduto
+                    return None
                 if time.time() - d.get("last", 0) > 300:  # ultimo accesso, aggiornato al massimo ogni 5 minuti
                     self._touch(d["id"])
                 return d
@@ -562,7 +582,7 @@ class PhoneHub:
         from .vigem import available
         ok, err = available()
         return {"enabled": self.conf["enabled"], "running": self.running(), "error": self.error, "port": self.conf["port"],
-                "urls": self.urls(), "devices": [d for d in self.devices() if d.get("kind") not in ("pc", "guest")],
+                "urls": self.urls(), "devices": [d for d in self.devices() if d.get("kind") not in ("pc", "guest", "lib")],
                 "guests": [d for d in self.devices() if d.get("kind") == "guest"],
                 "public_url": self.conf.get("public_url", ""), "video_addr": self.conf.get("video_addr", ""),
                 "invite": self.invite(), "ca_url": self.ca_url(), "ca_installed": bool(self.conf.get("ca_installed")),
