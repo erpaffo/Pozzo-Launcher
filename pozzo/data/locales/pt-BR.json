@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Favoritos · {p}",
  "h.nav.instTotal": "instalados / total",
  "h.nav.noStore": "Nenhuma loja conectada: veja Configurações › Conta",
+ "h.nav.otherConsoles": "Outros consoles",
  "h.nav.storeExt": "Lojas de extensões",
  "h.paste.added": "Pasta adicionada: {n} {w}",
  "h.paste.askPath": "Caminho da pasta ({p})",

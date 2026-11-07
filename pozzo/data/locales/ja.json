@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "お気に入り · {p}",
  "h.nav.instTotal": "インストール済み / 合計",
  "h.nav.noStore": "ストアが連携されていません: 設定 › アカウントを確認してください",
+ "h.nav.otherConsoles": "その他のコンソール",
  "h.nav.storeExt": "ストア拡張機能",
  "h.paste.added": "フォルダーを追加しました: {n} {w}",
  "h.paste.askPath": "フォルダーのパス（{p}）",

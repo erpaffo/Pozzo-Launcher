@@ -89,6 +89,7 @@ export default function (gs) {
     }
     row.querySelector(".ls-ctl").innerHTML = `<span class="ls-ok">✓ ${esc(dest)}</span>`;
     updateTools(el);
+    if (r.added) window.dispatchEvent(new CustomEvent("pz-catalogs-changed"));
     gs.toast(r.added ? `Aggiunto come ${dest}` : `Era già configurato come ${dest}`);
   }
 

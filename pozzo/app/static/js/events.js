@@ -29,7 +29,7 @@ function bind() {
       return;
     }
     const a = e.target.closest(".nav-item");
-    if (!a) return;
+    if (!a || a.dataset.otherPlats !== undefined) return; // il gruppo «Altre console» ha il suo gestore
     if (a.dataset.pluginItem && !a.dataset.view) {
       const it = GS.ui.sidebarItems.find((x) => x.id === a.dataset.pluginItem);
       try { it?.onClick?.(GS); } catch (err) { toast(err.message, true); }
@@ -53,6 +53,12 @@ function bind() {
     if (!a) return;
     e.preventDefault();
     a.click();
+  });
+  $("#platform-list").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-other-plats]")) return;
+    let open = false;
+    try { open = localStorage.getItem("gs.otherPlatsOpen") === "1"; localStorage.setItem("gs.otherPlatsOpen", open ? "0" : "1"); } catch {}
+    renderSidebar();
   });
   $("#drawer-toggle").onclick = () => setDrawer(!$("#sidebar").classList.contains("drawer-open"));
   $("#drawer-scrim").onclick = () => setDrawer(false);
@@ -512,6 +518,7 @@ function bind() {
   $("#cat-save").onclick = async () => {
     const urls = $("#cat-urls").value.split(/\s+/).filter(Boolean);
     try { renderCatalog(await api(`/api/catalogs/${SET.catPid}`, { body: { urls } })); } catch (e) { return toast(e.message, true); }
+    refreshCatalogs();
     if (urls.length) pollCatalog(); else toast(t("g.ev.catalog.unlinked"));
   };
   $("#cat-refresh").onclick = async () => {

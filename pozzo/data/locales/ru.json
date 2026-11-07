@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Избранное · {p}",
  "h.nav.instTotal": "установлено / всего",
  "h.nav.noStore": "Ни один магазин не подключён: см. Настройки › Аккаунт",
+ "h.nav.otherConsoles": "Другие консоли",
  "h.nav.storeExt": "Магазины расширений",
  "h.paste.added": "Папка добавлена: {n} {w}",
  "h.paste.askPath": "Путь к папке ({p})",

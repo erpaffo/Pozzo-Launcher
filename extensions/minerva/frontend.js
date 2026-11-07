@@ -69,6 +69,7 @@ export default function (gs) {
         while (j.status === "running");
         if (j.status !== "done") return gs.toast("Importazione degli store non riuscita", true);
         gs.toast("Store aggiunti alle console");
+        window.dispatchEvent(new CustomEvent("pz-catalogs-changed"));
         if (el.isConnected) drawList();
       };
       btn.onclick = async () => { show(await gs.api("/plugin-api/minerva/importa", { body: {} })); follow(); };

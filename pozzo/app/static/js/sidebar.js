@@ -103,10 +103,17 @@ function renderSidebar() {
   $("#cnt-missing").textContent = c.missing || "";
   $("#cnt-hidden").textContent = c.hidden || "";
   $("#cnt-dups").textContent = S.games.filter((g) => g.store !== "online" && g.id !== g.grp.primary).length || "";
-  const plats = [...S.plats.values()].filter((p) => (c.plat.get(p.id) || S.catalogs[p.id]?.length) && p.id !== "windows").sort((a, b) => (favPlat(b.id) - favPlat(a.id)) || collator.compare(a.name, b.name)); // prima le preferite, poi A–Z
-  $("#platform-list").innerHTML = plats.map((p) =>
-    `<a class="nav-item" data-view="platform" data-id="${esc(p.id)}"><span class="ico">${platIcon(p.id)}</span>`
-    + `<span class="lbl">${favPlat(p.id) ? "★ " : ""}${esc(p.name)}</span><span class="cnt">${c.plat.get(p.id)?.toLocaleString(GSI18n.lang) || ""}</span></a>`).join("");
+  const all = [...S.plats.values()].filter((p) => p.id !== "windows").sort((a, b) => (favPlat(b.id) - favPlat(a.id)) || collator.compare(a.name, b.name)); // prima le preferite, poi A–Z
+  const used = (p) => c.plat.get(p.id) || S.catalogs[p.id]?.length || S.view.id === p.id && S.view.type === "platform";
+  const navPlat = (p) => `<a class="nav-item" data-view="platform" data-id="${esc(p.id)}"><span class="ico">${platIcon(p.id)}</span>`
+    + `<span class="lbl">${favPlat(p.id) ? "★ " : ""}${esc(p.name)}</span><span class="cnt">${c.plat.get(p.id)?.toLocaleString(GSI18n.lang) || ""}</span></a>`;
+  // console senza giochi né store: gruppo ripiegabile in fondo, per poterci comunque aggiungere il primo store
+  const empty = all.filter((p) => !used(p));
+  let otherOpen = false;
+  try { otherOpen = localStorage.getItem("gs.otherPlatsOpen") === "1"; } catch {}
+  $("#platform-list").innerHTML = all.filter(used).map(navPlat).join("")
+    + (empty.length ? `<button type="button" class="nav-item other-plats-toggle" data-other-plats aria-expanded="${otherOpen}"><span class="ico">${otherOpen ? "▾" : "▸"}</span>`
+      + `<span class="lbl">${t("h.nav.otherConsoles")}</span><span class="cnt">${empty.length}</span></button>` + (otherOpen ? empty.map(navPlat).join("") : "") : "");
   S.collCounts = c.coll;
   // PC: tutti + uno per store (installati / posseduti)
   const st = c.store;

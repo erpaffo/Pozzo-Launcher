@@ -244,6 +244,11 @@ def build_router(ctx) -> APIRouter:
         job["storemeta"].stop = True
         return job["storemeta"].state()
 
+    @router.get("/api/catalogs")
+    def api_catalogs_all():
+        """Solo gli store online per console (leggero): il front-end lo rilegge dopo ogni modifica, senza riavvio."""
+        return {"catalogs": {k: v for k, v in cfg.catalogs.items() if v}}
+
     @router.get("/api/catalogs/{pid}")
     def api_catalog_get(pid: str):
         from ...cache import Cache

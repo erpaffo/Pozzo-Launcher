@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "즐겨찾기 · {p}",
  "h.nav.instTotal": "설치됨 / 전체",
  "h.nav.noStore": "연결된 스토어가 없습니다: 설정 › 계정을 확인하세요",
+ "h.nav.otherConsoles": "기타 콘솔",
  "h.nav.storeExt": "스토어 확장 기능",
  "h.paste.added": "폴더 추가됨: {n}개 {w}",
  "h.paste.askPath": "폴더 경로 ({p})",

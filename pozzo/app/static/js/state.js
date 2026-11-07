@@ -41,6 +41,14 @@ async function loadLibrary() {
   return lib.games.rows.length > 0;
 }
 
+// store online cambiati (editor, Minerva, Link -> Store): rilegge solo {catalogs} e ridisegna barra e vista, senza riavvio
+async function refreshCatalogs() {
+  try { S.catalogs = (await api("/api/catalogs")).catalogs || {}; } catch { return; }
+  renderSidebar();
+  if (S.view.type === "platform") updateHeader();
+}
+window.addEventListener("pz-catalogs-changed", refreshCatalogs);
+
 function libraryChanged() {
   renderLanguageFilter();
   S.shop = shopGames(S.games);
