@@ -85,7 +85,7 @@ def test_before_failure_still_launches(tmp_path):
 
 def test_global_event_scripts(tmp_path):
     log = tmp_path / "g.txt"
-    dump = "import os,sys;open(sys.argv[1],'a').write(os.environ['POZZO_EVENT']+'|'+os.environ['POZZO_TITLE']+'|'+os.environ.get('POZZO_DOWNLOAD_NAME','-')+chr(10))"
+    dump = "import os,sys;open(sys.argv[1]+'.'+os.environ['POZZO_EVENT'],'w').write(os.environ['POZZO_EVENT']+'|'+os.environ['POZZO_TITLE']+'|'+os.environ.get('POZZO_DOWNLOAD_NAME','-')+chr(10))"
     cfg = C.Config()
     cfg.app["scripts"] = {k: _py(log, dump) for k in ("game_started", "game_stopped", "download_finished")}
     ev = Events()
@@ -94,6 +94,8 @@ def test_global_event_scripts(tmp_path):
     ev.emit("game_stopped", {"key": "k", "title": "T"})
     ev.emit("game_downloaded", {"title": "Dl"})
     end = time.time() + 15
-    while (not log.exists() or len(log.read_text().splitlines()) < 3) and time.time() < end:
+    # un file per evento: i tre script girano in parallelo e un file condiviso perderebbe righe
+    lines = lambda: sorted(f.read_text().strip() for f in tmp_path.glob("g.txt.*"))
+    while len(lines()) < 3 and time.time() < end:
         time.sleep(0.1)
-    assert sorted(log.read_text().splitlines()) == ["download_finished|Dl|Dl", "game_started|T|-", "game_stopped|T|-"]
+    assert lines() == ["download_finished|Dl|Dl", "game_started|T|-", "game_stopped|T|-"]
