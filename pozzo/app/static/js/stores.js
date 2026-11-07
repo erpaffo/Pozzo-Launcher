@@ -421,8 +421,7 @@ async function loadAccounts() {
       ctrl = `<span class="muted small">${t("h.acc.portsInst")}</span> <button class="btn" data-ports-open>${t("h.acc.manage")}</button>`;
     } else if (x.id === "netstore") {
       ctrl = `<div class="acc-steam">
-        <textarea class="field grow" id="ns-folders" rows="3" placeholder="${t("h.acc.netFolders")}">${esc((a.folders || []).join("
-"))}</textarea>
+        <textarea class="field grow" id="ns-folders" rows="3" placeholder="${t("h.acc.netFolders")}">${esc((a.folders || []).join("\n"))}</textarea>
         <input class="field grow" id="ns-dest" value="${esc(a.dest || "")}" placeholder="${t("h.acc.netDest")}">
         <label class="chk"><input type="checkbox" id="ns-silent" ${a.silent ? "checked" : ""}> ${t("h.acc.netSilent")}</label>
         <button class="btn" data-acc-save="netstore">${t("h.common.save")}</button></div>`;
