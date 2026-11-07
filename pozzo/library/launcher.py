@@ -455,6 +455,54 @@ LAUNCH_CHECK = 75         # secondi di attesa del processo del gioco prima di ri
 LAUNCHER_GRACE = 10 # secondi dopo la partita prima di chiudere il launcher: finisce la sincronizzazione dei salvataggi
 
 
+class _Job:
+    """Job Object di Windows: tutti i processi figli del gioco ci restano dentro, anche se il primo esce."""
+
+    def __init__(self):
+        import ctypes
+        from ctypes import wintypes
+        k = self.k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.CreateJobObjectW.restype = wintypes.HANDLE
+        k.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        k.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+        k.CloseHandle.argtypes = [wintypes.HANDLE]
+        self.h = k.CreateJobObjectW(None, None)
+        if not self.h:
+            raise OSError("CreateJobObjectW")
+
+    @staticmethod
+    def new():
+        """None fuori da Windows o se il Job non si crea: si resta sul PID del processo."""
+        if sys.platform != "win32":
+            return None
+        try:
+            return _Job()
+        except Exception:
+            return None
+
+    def add(self, proc) -> bool:
+        # shortcut: assegnato dopo Popen, un figlio avviato nei primissimi ms sfugge; creare sospeso se serve
+        try:
+            return bool(self.k.AssignProcessToJobObject(self.h, int(proc._handle)))
+        except Exception:  # processo gia' in un altro Job senza annidamento, o finto nei test
+            return False
+
+    def active(self) -> int:
+        import ctypes
+        buf = (ctypes.c_ubyte * 48)()  # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION: ActiveProcesses a offset 40
+        if not self.k.QueryInformationJobObject(self.h, 1, buf, 48, None):
+            return 0
+        return ctypes.c_uint.from_buffer(buf, 40).value
+
+    def kill(self):
+        self.k.TerminateJobObject(self.h, 1)
+
+    def close(self):
+        self.k.CloseHandle(self.h)
+
+
 def _procs_named(name: str) -> list:
     try:
         import psutil
@@ -734,9 +782,14 @@ class Launcher:
             shot_held = combo
             time.sleep(0.05)
 
-    def _wait_proc(self, proc):
-        """Aspetta la fine del processo, ma si ferma subito se l'utente preme «Chiudi gioco»."""
-        while proc.poll() is None and not self._stop_evt.is_set():
+    def _wait_proc(self, proc, job=None, comp=None):
+        """Aspetta la fine del processo (o del Job: finche' resta un figlio), ma si ferma subito se l'utente preme «Chiudi gioco»."""
+        def alive():
+            if not job:
+                return proc.poll() is None
+            # shortcut: l'app abbinata conta 1 nel Job; i suoi figli tengono viva la partita, usare un Job a parte se serve
+            return job.active() > (1 if comp and comp.poll() is None else 0)
+        while alive() and not self._stop_evt.is_set():
             self._stop_evt.wait(0.5)
 
     def stop(self) -> bool:
@@ -754,6 +807,9 @@ class Launcher:
         except ImportError:
             psutil = None
         procs = []
+        job = getattr(self, "_job", None)
+        if job:  # «Chiudi tutto»: il Job porta via anche i figli staccati
+            job.kill()
         proc = getattr(self, "_proc", None)
         if proc and proc.poll() is None:
             if psutil:
@@ -779,7 +835,7 @@ class Launcher:
                     p.kill()
                 except Exception:
                     pass
-        self.stop_found = bool(procs) or bool(proc)
+        self.stop_found = bool(procs) or bool(proc) or bool(job)
         self._stop_evt.set()  # l'attesa in _run_pc/_run finisce: tempo di gioco registrato e stato «finished»
         return True
 
@@ -911,7 +967,7 @@ class Launcher:
             except Exception as e:
                 self._set(message=f"Script «{when}» non riuscito ({type(e).__name__}): {cmd}")
 
-    def _companion(self, key: str):
+    def _companion(self, key: str, job=None):
         """Avvia (staccata) l'applicazione abbinata al gioco, se c'e'. Un errore non blocca il gioco."""
         import shlex
         pr = self.profile_of(key) or {}
@@ -919,7 +975,10 @@ class Launcher:
             return None
         try:
             args = [a.strip('"') for a in shlex.split(pr.get("companion_args") or "", posix=False)]
-            return subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
+            proc = subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
+            if job:
+                job.add(proc)
+            return proc
         except Exception as e:
             self._set(message=f"Applicazione abbinata non avviata ({type(e).__name__}): {pr['companion']}")
             return None
@@ -966,7 +1025,8 @@ class Launcher:
         lname = STORE_LAUNCHERS.get(store_id)
         quiet = bool(lname and (self.cfg.app.get("launch") or {}).get("hide_launcher", True) and not _procs_named(lname))
         self._scripts(key, "before")
-        comp = self._companion(key)
+        job = _Job.new()
+        comp = self._companion(key, job)
         self.on_event("game_launching", dict(self.state))  # sincrono: la copia dei salvataggi finisce prima del gioco
         try:
             target, args = launch["target"], launch.get("args") or []
@@ -987,13 +1047,14 @@ class Launcher:
                                  kwargs={"root_pid": proc.pid}, daemon=True).start()
             if quiet:
                 threading.Thread(target=hide_launcher_windows, args=(lname,), daemon=True).start()
+            job = job if job and proc and job.add(proc) and Path(target).name.lower() not in self.LAUNCHER_EXES else None
             self._set(status="running", message=target)
-            self._proc = proc
+            self._proc, self._job = proc, job
             self._track = launch.get("track_dir") or install_dir
             via_launcher = proc is None or Path(target).name.lower() in self.LAUNCHER_EXES
             track = launch.get("track_dir") or install_dir
             if not via_launcher:
-                self._wait_proc(proc)  # gioco avviato direttamente: si aspetta il suo processo
+                self._wait_proc(proc, job, comp)  # gioco avviato direttamente: si aspetta il suo processo (e i figli, nel Job)
             elif track and Path(track).is_dir():
                 # avviato tramite launcher: si controlla che il gioco parta davvero, altrimenti si riprova
                 # (start() riapre il launcher se nel frattempo e' stato chiuso).
@@ -1023,6 +1084,8 @@ class Launcher:
             played = time.time() - t0 if (not via_launcher or track) else 0
             self.user.record_play(key, played)
             self._end_companion(comp, key)
+            self._job = None
+            job and job.close()
             self._scripts(key, "after")
             self._fast_done(fc)
             self._set(status="finished", played=played, code=proc.returncode if proc else 0)
@@ -1108,7 +1171,8 @@ class Launcher:
                 raise LaunchError("Avvio annullato")
             self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
-            comp = self._companion(key)
+            job = _Job.new()
+            comp = self._companion(key, job)
             cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *self.next_args, *args]
             self.next_args = []  # valgono solo per questo avvio
             self.on_event("game_launching", dict(self.state))
@@ -1117,8 +1181,9 @@ class Launcher:
             import tempfile  # stderr su file temporaneo (non in memoria): serve per l'ultimo log in caso di crash
             with tempfile.TemporaryFile() as errf:  # chiuso anche se Popen o l'attesa falliscono
                 proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf)
-                self._proc, self._track = proc, None
-                self._wait_proc(proc)
+                job = job if job and job.add(proc) else None
+                self._proc, self._track, self._job = proc, None, job
+                self._wait_proc(proc, job, comp)
                 played = time.time() - t0
                 code = proc.returncode
                 stopped = self._stop_evt.is_set()  # «Chiudi gioco»: non e' un crash, qualunque sia il codice
@@ -1128,6 +1193,8 @@ class Launcher:
                     log = "\n".join(errf.read().decode("utf-8", "replace").splitlines()[-50:])
             self.user.record_play(key, played)
             self._end_companion(comp, key)
+            self._job = None
+            job and job.close()
             self._scripts(key, "after")
             run = {"time": time.time(), "code": None if stopped else code, "duration": round(played, 2), "log": log}
             # un'uscita normale di un gioco senza storico non scrive nulla
