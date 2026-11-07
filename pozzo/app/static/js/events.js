@@ -398,7 +398,7 @@ function bind() {
       api(`/api/game/${d.id}/shortcut`, { body: {} }).then(() => toast(window.t("g.ev.shortcut.created", { title: d.title })), (err) => toast(err.message, true));
     }
     else if (t.id === "d-shots-all") { e.preventDefault(); openLightbox(SHOTS.detail, 0); }
-    else if (t.closest("#d-myshots img")) { openLightbox(SHOTS.detail, +t.closest("img").dataset.i); }
+    else if (t.closest("#d-myshots [data-i]")) { openLightbox(SHOTS.detail, +t.closest("#d-myshots [data-i]").dataset.i); }
     else if (t.id === "d-scrape") {
       try { await api("/api/scan", { body: { game: d.id, mode: "missing" } }); }
       catch (err) { return toast(err.message, true); }

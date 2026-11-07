@@ -314,8 +314,16 @@ async function loadDetailShots(id) {
   if (!S.detail || S.detail.id !== id) return;
   SHOTS.detail = r.shots;
   const box = $("#d-myshots");
-  if (box) box.innerHTML = r.shots.slice(0, 12).map((s, i) => `<img loading="lazy" src="${s.url}?w=360" data-i="${i}" alt="" title="${esc(fmtDate(s.taken))} · ${esc(s.source)}">`).join("");
+  if (box) box.innerHTML = r.shots.slice(0, 12).map((s, i) => shotThumb(s, i, 360)).join("");
 }
+
+// miniatura: immagine, o per i clip il primo frame del video (preload=metadata, niente ffmpeg) con ▶
+const shotThumb = (s, i, w) => {
+  const tip = `${esc(fmtDate(s.taken))} · ${esc(s.source)}`;
+  return s.kind === "video"
+    ? `<span class="sh-vid" data-i="${i}" title="${tip}"><video src="${s.url}" preload="metadata" muted playsinline></video></span>`
+    : `<img loading="lazy" src="${s.url}?w=${w}" data-i="${i}" alt="" title="${tip}">`;
+};
 
 function openLightbox(list, i) {
   if (!list.length) return;
@@ -325,10 +333,10 @@ function openLightbox(list, i) {
     lb.innerHTML = `<div class="lb-top"><b>${esc(s.title || "")}</b><span class="muted">${esc(fmtDate(s.taken))} · ${esc(s.source)} · ${i + 1}/${list.length}</span>
       <span class="grow"></span><button class="btn" data-lb="folder">📁 ${t("h.lb.showFolder")}</button><button class="btn" data-lb="del">🗑 ${t("h.lb.delete")}</button>
       <button class="icon-btn big" data-lb="close">✕</button></div>
-      <button class="lb-arr l" data-lb="prev"${i ? "" : " disabled"}>‹</button><img class="lb-img" src="${s.url}" alt="">
+      <button class="lb-arr l" data-lb="prev"${i ? "" : " disabled"}>‹</button>${s.kind === "video" ? `<video class="lb-img" src="${s.url}" controls autoplay playsinline></video>` : `<img class="lb-img" src="${s.url}" alt="">`}
       <button class="lb-arr r" data-lb="next"${i < list.length - 1 ? "" : " disabled"}>›</button>`;
   };
-  const close = () => { lb.hidden = true; document.removeEventListener("keydown", keys, true); };
+  const close = () => { lb.querySelector("video")?.pause(); lb.hidden = true; document.removeEventListener("keydown", keys, true); };
   const keys = (e) => {
     if (e.key === "Escape") { e.stopPropagation(); close(); }
     else if (e.key === "ArrowLeft" && i > 0) { i--; draw(); }
@@ -380,10 +388,11 @@ async function renderShots(pv) {
   // un gioco per riga (gruppo): si disegnano solo i gruppi visibili
   if (d.shots.length) vlist(pv, $("#sh-rows", pv), [...groups.values()], (g) => `<section class="sh-group"><h3>${g.s.game ? `<a href="#" data-game="${g.s.game}">${esc(g.s.title)}</a>` : esc(g.s.title)}
         <span class="muted small">${esc(STORE_SHORT[g.s.platform] || platName(g.s.platform) || "")} · ${g.items.length}</span></h3>
-        <div class="sh-grid">${g.items.map((i) => `<img loading="lazy" src="${d.shots[i].url}?w=480" data-i="${i}" alt="" title="${esc(fmtDate(d.shots[i].taken))} · ${esc(d.shots[i].source)}">`).join("")}</div></section>`, { gap: 22 });
+        <div class="sh-grid">${g.items.map((i) => shotThumb(d.shots[i], i, 480)).join("")}</div></section>`, { gap: 22 });
   pv.onclick = async (e) => {
     const t = e.target;
-    if (t.matches(".sh-grid img")) return openLightbox(SHOTS.page, +t.dataset.i);
+    const thumb = t.closest(".sh-grid [data-i]");
+    if (thumb) return openLightbox(SHOTS.page, +thumb.dataset.i);
     if (t.dataset.game) { e.preventDefault(); return openDetail(+t.dataset.game); }
     if (t.id === "sh-folder") api("/api/shots/open", { body: {} });
     else if (t.id === "sh-set") $("#sh-settings").hidden = !$("#sh-settings").hidden;

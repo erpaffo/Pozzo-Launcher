@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 
 IMG_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
+VIDEO_EXT = {".mp4", ".webm", ".mkv"}  # clip: non copiati, si registra il file originale
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS screenshots(id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, file TEXT, taken REAL,
                                        source TEXT, origin TEXT UNIQUE, w INT, h INT);
@@ -40,6 +41,9 @@ class Shots:
         self.root = Path(cache_folder) / "screens"
         self.db = sqlite3.connect(db_path, check_same_thread=False)
         self.db.executescript(SCHEMA)
+        if "kind" not in {r[1] for r in self.db.execute("PRAGMA table_info(screenshots)")}:
+            self.db.execute("ALTER TABLE screenshots ADD COLUMN kind TEXT NOT NULL DEFAULT 'image'")
+            self.db.commit()
         self.lock = threading.Lock()
 
     def _dest(self, key: str, taken: float, ext: str) -> Path:
@@ -52,16 +56,18 @@ class Shots:
             p, i = d / f"{stamp}-{i}{ext}", i + 1
         return p
 
-    def _insert(self, key, path: Path, taken, source, origin, w=0, h=0) -> int | None:
-        rel = path.relative_to(self.root).as_posix()
+    def _insert(self, key, path: Path, taken, source, origin, w=0, h=0, kind="image") -> int | None:
+        # video: path assoluto del file originale (non copiato); immagini: relativo a <cache>/screens
+        rel = str(path) if kind == "video" else path.relative_to(self.root).as_posix()
         with self.lock:
             try:
-                cur = self.db.execute("INSERT INTO screenshots(key, file, taken, source, origin, w, h) VALUES(?,?,?,?,?,?,?)",
-                                      (key, rel, taken, source, origin, w, h))
+                cur = self.db.execute("INSERT INTO screenshots(key, file, taken, source, origin, w, h, kind) VALUES(?,?,?,?,?,?,?,?)",
+                                      (key, rel, taken, source, origin, w, h, kind))
                 self.db.commit()
                 return cur.lastrowid
             except sqlite3.IntegrityError:  # gia' importata
-                path.unlink(missing_ok=True)
+                if kind == "image":  # mai cancellare l'originale di un video
+                    path.unlink(missing_ok=True)
                 return None
 
     def add_image(self, key: str, img, source: str = "PozzoLauncher") -> int | None:
@@ -87,18 +93,27 @@ class Shots:
             pass
         return self._insert(key, p, taken, source, origin, w, h)
 
+    def add_clip(self, key: str, src: Path, source: str) -> int | None:
+        origin = f"file:{os.path.normcase(str(src.resolve()))}:{int(src.stat().st_mtime)}"
+        with self.lock:
+            if self.db.execute("SELECT 1 FROM screenshots WHERE origin=?", (origin,)).fetchone():
+                return None
+        taken = src.stat().st_mtime
+        return self._insert(key, src.resolve(), taken, source, origin, kind="video")
+
     def list(self, keys: list[str] | None = None, limit: int = 5000) -> list[dict]:
         with self.lock:
             if keys is None:
-                rows = self.db.execute("SELECT id, key, file, taken, source, w, h FROM screenshots ORDER BY taken DESC LIMIT ?",
+                rows = self.db.execute("SELECT id, key, file, taken, source, w, h, kind FROM screenshots ORDER BY taken DESC LIMIT ?",
                                        (limit,)).fetchall()
             else:
                 if not keys:
                     return []
                 q = ",".join("?" * len(keys))
-                rows = self.db.execute(f"SELECT id, key, file, taken, source, w, h FROM screenshots WHERE key IN ({q}) "
+                rows = self.db.execute(f"SELECT id, key, file, taken, source, w, h, kind FROM screenshots WHERE key IN ({q}) "
                                        "ORDER BY taken DESC", keys).fetchall()
-        return [{"id": r[0], "key": r[1], "file": r[2], "taken": r[3], "source": r[4], "w": r[5], "h": r[6]} for r in rows]
+        return [{"id": r[0], "key": r[1], "file": r[2], "taken": r[3], "source": r[4], "w": r[5], "h": r[6], "kind": r[7]}
+                for r in rows]
 
     def counts(self) -> dict[str, int]:
         with self.lock:
@@ -107,14 +122,18 @@ class Shots:
     def path(self, sid: int) -> Path | None:
         with self.lock:
             r = self.db.execute("SELECT file FROM screenshots WHERE id=?", (sid,)).fetchone()
-        return self.root / r[0] if r else None
+        if not r:
+            return None
+        p = Path(r[0])
+        return p if p.is_absolute() else self.root / p
 
     def delete(self, sid: int):
         p = self.path(sid)
         with self.lock:
+            kind = self.db.execute("SELECT kind FROM screenshots WHERE id=?", (sid,)).fetchone()
             self.db.execute("DELETE FROM screenshots WHERE id=?", (sid,))
             self.db.commit()
-        if p:
+        if p and kind and kind[0] == "image":  # il video originale resta dov'e'
             p.unlink(missing_ok=True)
 
 
@@ -285,8 +304,24 @@ def emulator_dirs(emulator: str, exe: str | None) -> list[Path]:
     return out
 
 
+def video_dirs() -> list[tuple[Path, str]]:
+    """Clip: Xbox Game Bar, NVIDIA (ShadowPlay), AMD (ReLive) e le cartelle <gioco> sotto Videos."""
+    v = _home("Videos")
+    out = [(v / "Captures", "Xbox Game Bar"), (v / "NVIDIA", "NVIDIA"), (v / "Radeon ReLive", "AMD")]
+    try:
+        out += [(d, "Videos") for d in v.iterdir() if d.is_dir()]
+    except OSError:
+        pass
+    seen, res = set(), []
+    for d, label in out:
+        if d.is_dir() and os.path.normcase(str(d)) not in seen:
+            seen.add(os.path.normcase(str(d)))
+            res.append((d, label))
+    return res
+
+
 def import_session(shots: Shots, key: str, emulator: str, exe: str | None, start: float, end: float) -> int:
-    """Copia le schermate create durante la sessione nelle cartelle dell'emulatore."""
+    """Copia le schermate create durante la sessione nelle cartelle dell'emulatore; i clip video vengono solo registrati."""
     n = 0
     for d in emulator_dirs(emulator, exe):
         try:
@@ -302,6 +337,18 @@ def import_session(shots: Shots, key: str, emulator: str, exe: str | None, start
                 src = "Xbox Game Bar" if "Captures" in f.parts else emulator
                 if shots.add_file(key, f, src):
                     n += 1
+    for d, label in video_dirs():
+        try:
+            files = [f for f in d.rglob("*") if f.suffix.lower() in VIDEO_EXT and f.is_file()]
+        except OSError:
+            continue
+        for f in files:
+            try:
+                mt = f.stat().st_mtime
+            except OSError:
+                continue
+            if start - 5 <= mt <= end + 90 and shots.add_clip(key, f, label):
+                n += 1
     return n
 
 

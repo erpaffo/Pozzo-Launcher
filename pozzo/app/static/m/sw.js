@@ -52,5 +52,6 @@ self.addEventListener("fetch", (e) => {
   if (u.pathname.startsWith("/m/api/")) return;   // abbinamento e impostazioni del pad: mai dalla cache
   if (req.mode === "navigate") return void e.respondWith(swr(req, "/m/"));
   if (u.pathname.startsWith("/m/") || u.pathname === "/api/library") return void e.respondWith(swr(req));
+  if (req.destination === "video") return;        // clip: Range (206) non si mette in cache
   if (u.pathname.startsWith("/img/") || u.pathname.startsWith("/shots/")) return void e.respondWith(imgFirst(req));
 });
