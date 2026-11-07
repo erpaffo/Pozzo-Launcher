@@ -7,11 +7,11 @@ import sys
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
-from fastapi.responses import FileResponse
 
 from ... import config as C, stores as STORES
 from ... import i18n as I
 from ...library import launcher as L
+from .images import file_response
 
 
 def build_router(ctx) -> APIRouter:
@@ -52,7 +52,7 @@ def build_router(ctx) -> APIRouter:
                 p = _thumb(p, min(max(w, 64), 1600))
             except Exception:
                 pass
-        return FileResponse(p, headers={"Cache-Control": "public, max-age=604800"})
+        return file_response(p, headers={"Cache-Control": "public, max-age=604800"})  # i video: Range (206)
 
     @router.delete("/api/shots/{sid}")
     def api_shot_delete(sid: int):

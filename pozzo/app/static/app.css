@@ -746,6 +746,9 @@ body.experience-home-mode #toolbar { padding-top: 9px; padding-bottom: 9px; }
 .sh-group { margin-bottom: 22px; }
 .sh-group h3 { margin: 0 0 8px; font-size: 16px; } .sh-group h3 a { color: inherit; } .sh-group h3 span { margin-left: 6px; }
 .sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.sh-vid { position: relative; display: block; cursor: pointer; }
+.sh-vid video { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; background: #000; display: block; pointer-events: none; }
+.sh-vid::after { content: "▶"; position: absolute; inset: 0; margin: auto; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 18px; line-height: 44px; text-align: center; }
 kbd { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 4px; padding: 0 5px; font-size: 12px; }
 #lightbox { position: fixed; inset: 0; z-index: 90; background: rgba(5,6,10,.94); display: flex; align-items: center; justify-content: center; }
 #lightbox[hidden] { display: none !important; }
