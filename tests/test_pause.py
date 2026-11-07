@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import time
 import types
+from pathlib import Path
 
 import psutil
 import pytest
@@ -72,3 +74,23 @@ def test_paused_interval_excluded_from_playtime(monkeypatch):
     now[0] += 30  # 30 s in pausa
     now[0] += 20  # la sessione finisce ancora in pausa: _unfreeze chiude l'intervallo
     assert ln.played_since(1000.0) == pytest.approx(10)
+
+
+def test_api_running_can_pause_only_on_windows(monkeypatch):
+    """La UI nasconde Pausa/Riprendi fuori da Windows: il flag arriva dal server (il telefono ha un altro OS)."""
+    import types
+
+    from fastapi.testclient import TestClient
+
+    from pozzo import config
+    from pozzo.app.routes import stream
+    from pozzo.app.server import create_app
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        d = Path(t)
+        cfg = config.Config(cache=d / "cache", output=d / "out")
+        cfg.config_path = d / "config.toml"
+        with TestClient(create_app(cfg)) as c:
+            monkeypatch.setattr(stream, "sys", types.SimpleNamespace(platform="linux"))
+            assert c.get("/api/running").json()["can_pause"] is False
+            monkeypatch.setattr(stream, "sys", types.SimpleNamespace(platform="win32"))
+            assert c.get("/api/running").json()["can_pause"] is True

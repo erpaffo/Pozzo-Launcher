@@ -501,7 +501,7 @@ function showRunning(msg) {
   const o = $("#bp-running");
   o.hidden = false;
   o.innerHTML = `<div class="logo big" style="color:var(--accent);font-size:3rem">◆</div><h2>${esc(BP.running?.title || "")}</h2>`
-    + `<p class="muted">${esc(msg)}</p><p><button class="btn" id="bp-pause">${BP.paused ? "▶ " + t("c.run.resume") : "⏸ " + t("c.run.pause")}</button></p><p class="muted">Per chiudere il gioco: ${t("c.run.hold", { back: glyph("back"), start: glyph("start") })}</p>`;
+    + `<p class="muted">${esc(msg)}</p>${BP.canPause ? `<p><button class="btn" id="bp-pause">${BP.paused ? "▶ " + t("c.run.resume") : "⏸ " + t("c.run.pause")}</button></p>` : ""}<p class="muted">Per chiudere il gioco: ${t("c.run.hold", { back: glyph("back"), start: glyph("start") })}</p>`;
 }
 
 async function pollRunning() {
@@ -509,6 +509,7 @@ async function pollRunning() {
   try { r = await api("/api/running"); } catch { r = {}; }
   if (["starting", "extracting", "running"].includes(r.status)) {
     BP.paused = !!r.paused;
+    BP.canPause = !!r.can_pause;
     showRunning(r.paused ? t("c.run.paused") : r.status === "extracting" ? (r.message || t("c.run.extracting")) : r.status === "starting" ? t("c.run.starting")
       : `${t("c.run.running", { emulator: r.emulator })}${r.shots ? ` (${r.shots})` : ""}`);
     if (BP.running && (r.shots || 0) > (BP.running.shots || 0)) toast(t("c.run.shot"));
