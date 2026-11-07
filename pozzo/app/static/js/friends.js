@@ -16,7 +16,9 @@ const Friends = (() => {
   let lastTrackedState = { game: null, party_code: null };
   let detailId = null; // amico aperto nel confronto
   const CACHE_KEY = "gs.social_cache", LOG_KEY = "gs.social_log";
-  // shortcut: i riepiloghi viaggiano su un canale condiviso con indirizzo `to`; chi è sul canale potrebbe leggerli, passare a un canale per coppia se serve privacy forte
+  // I riepiloghi sono cifrati per il solo destinatario; restano visibili i metadati (chi chiede a chi).
+  let myPub = null; // chiave pubblica ECDH (base64) pubblicata nella presenza
+  const keyCache = new Map(); // pk amico -> chiave AES derivata
   const friendIds = () => new Set(cachedFriends.map((f) => f.id));
 
   // Condivisione di cosa si sta giocando: spenta finché l'utente non la attiva
@@ -51,6 +53,38 @@ const Friends = (() => {
     return (mine || []).filter((g) => th.has(g.k)).map((g) => ({ k: g.k, title: g.t, mine: g.m || 0, theirs: th.get(g.k).m || 0, a: th.get(g.k).a, n: th.get(g.k).n }))
       .sort((a, b) => b.mine + b.theirs - (a.mine + a.theirs));
   }
+  // ---- cifratura (WebCrypto): ECDH P-256 -> HKDF-SHA256 -> AES-GCM 256
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  async function genKeys() {
+    const kp = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+    return { priv: await crypto.subtle.exportKey("jwk", kp.privateKey), pub: b64(await crypto.subtle.exportKey("raw", kp.publicKey)) };
+  }
+  async function deriveKey(privJwk, pubB64) {
+    const priv = await crypto.subtle.importKey("jwk", privJwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+    const pub = await crypto.subtle.importKey("raw", unb64(pubB64), { name: "ECDH", namedCurve: "P-256" }, false, []);
+    const bits = await crypto.subtle.deriveBits({ name: "ECDH", public: pub }, priv, 256);
+    const hk = await crypto.subtle.importKey("raw", bits, "HKDF", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(32), info: new TextEncoder().encode("pozzo-friends-v1") }, hk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  }
+  async function encryptSummary(key, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    return { iv: b64(iv), ct: b64(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(obj)))) };
+  }
+  async function decryptSummary(key, { iv, ct } = {}) {
+    try { return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(iv) }, key, unb64(ct)))); } catch { return null; }
+  }
+  async function ensureKeys() {
+    let k = jget("gs.social_keys", null);
+    if (!k || !k.priv || !k.pub) { k = await genKeys(); jset("gs.social_keys", k); }
+    myPub = k.pub;
+    return k;
+  }
+  async function sharedKey(friendPk) {
+    if (!keyCache.has(friendPk)) keyCache.set(friendPk, await deriveKey((await ensureKeys()).priv, friendPk));
+    return keyCache.get(friendPk);
+  }
+
   const pushActivity = (log, entry, cap = 100) => [entry, ...(log || [])].slice(0, cap);
   const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`);
 
@@ -349,11 +383,18 @@ const Friends = (() => {
     const me = getMyProfile();
     if (!p || p.to !== me.id || !friendIds().has(p.from)) return;
     if (msg.event === "fr_req") {
+      const pk = onlineUsers.get(p.from)?.pk;
+      if (!pk) return; // client senza chiave: niente riepilogo in chiaro
       const games = await mySummary();
-      if (games) bcast("fr_sum", { from: me.id, to: p.from, games });
-    } else if (msg.event === "fr_sum" && Array.isArray(p.games)) {
+      if (!games) return;
+      try { bcast("fr_sum", { from: me.id, to: p.from, ...(await encryptSummary(await sharedKey(pk), games)) }); } catch {}
+    } else if (msg.event === "fr_sum" && p.iv && p.ct) {
+      const pk = onlineUsers.get(p.from)?.pk;
+      let games = null;
+      try { if (pk) games = await decryptSummary(await sharedKey(pk), p); } catch {}
+      if (!Array.isArray(games)) return;
       const cache = jget(CACHE_KEY, {});
-      cache[p.from] = { at: Date.now(), games: p.games.slice(0, 50) };
+      cache[p.from] = { at: Date.now(), games: games.slice(0, 50) };
       jset(CACHE_KEY, cache);
       if (isOpen()) renderDialog(true);
     }
@@ -389,6 +430,7 @@ const Friends = (() => {
             friend_code: me.friend_code,
             game: game || null,
             party_code: party || null,
+            pk: myPub,
             status: game ? "in_game" : "online"
           }
         },
@@ -690,6 +732,7 @@ const Friends = (() => {
   // ------------------------------------------------------------ Inizializzazione
   async function init() {
     getMyProfile();
+    try { await ensureKeys(); } catch {}
     await syncMyProfile();
     connectRealtime();
     startLiveWatch();
@@ -715,6 +758,7 @@ const Friends = (() => {
     trackPresence,
     renderDialog,
     playingNames,
+    genKeys, deriveKey, encryptSummary, decryptSummary,
     normKey, buildSummary, commonGames, pushActivity
   };
 })();
