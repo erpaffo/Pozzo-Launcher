@@ -3435,5 +3435,17 @@
  "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required",
  "g.steamx.done": "{n} Spiele nach Steam exportiert ({a} Bilder, {k} vorhandene Einträge unverändert). Starte Steam neu.",
  "g.steamx.none": "Steam nicht gefunden oder kein Konto",
- "g.steamx.removed": "{n} Pozzo-Einträge aus Steam entfernt"
+ "g.steamx.removed": "{n} Pozzo-Einträge aus Steam entfernt",
+ "h.title.achievements": "Freigeschaltete Erfolge",
+ "a.nav.achievements": "Freigeschaltete Erfolge",
+ "f.ach.title": "Erfolge",
+ "f.ach.none": "Dieses Spiel hat keine Erfolge.",
+ "f.ach.rarity": "{p}% der Spieler",
+ "h.ach.help": "Summen der Steam-, GOG- und Epic-Erfolge für Spiele, die du mindestens einmal geöffnet hast (sie laden von der Spielseite).",
+ "h.ach.store": "{u}/{n} Erfolge · {g} Spiele · {p} abgeschlossen",
+ "h.ach.empty": "Öffne die Seite eines Steam-, GOG- oder Epic-Spiels, um die Erfolge zu laden: die Summen erscheinen hier.",
+ "f.ach.need.steam_key": "Für Steam-Erfolge brauchst du API-Schlüssel und SteamID: Einstellungen > Store > Konten.",
+ "f.ach.need.login": "Verknüpfe das Store-Konto in den Einstellungen, um Erfolge zu sehen.",
+ "f.ach.need.gog_install": "GOG-Erfolge werden von installierten Spielen gelesen: installiere das Spiel.",
+ "f.ach.need.epic_install": "Epic-Erfolge werden von installierten Spielen gelesen: installiere das Spiel."
 }

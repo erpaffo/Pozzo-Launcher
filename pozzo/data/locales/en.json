@@ -3435,5 +3435,17 @@
  "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required",
  "g.steamx.done": "Exported {n} games to Steam ({a} images, {k} existing entries left untouched). Restart Steam.",
  "g.steamx.none": "Steam not found or no account",
- "g.steamx.removed": "Removed {n} Pozzo entries from Steam"
+ "g.steamx.removed": "Removed {n} Pozzo entries from Steam",
+ "h.title.achievements": "Unlocked achievements",
+ "a.nav.achievements": "Unlocked achievements",
+ "f.ach.title": "Achievements",
+ "f.ach.none": "This game has no achievements.",
+ "f.ach.rarity": "{p}% of players",
+ "h.ach.help": "Steam, GOG and Epic achievement totals for the games you have opened at least once (they load from the game page).",
+ "h.ach.store": "{u}/{n} achievements · {g} games · {p} completed",
+ "h.ach.empty": "Open the page of a Steam, GOG or Epic game to load its achievements: the totals appear here.",
+ "f.ach.need.steam_key": "To see Steam achievements you need the API key and SteamID: Settings > Store > Accounts.",
+ "f.ach.need.login": "Link the store account in Settings to see achievements.",
+ "f.ach.need.gog_install": "GOG achievements are read from installed games: install the game.",
+ "f.ach.need.epic_install": "Epic achievements are read from installed games: install the game."
 }

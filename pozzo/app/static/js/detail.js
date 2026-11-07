@@ -205,7 +205,7 @@ async function openDetail(id) {
   loadSaves(d);
   if (online || storePages.length) loadGameLinks(d);
   if (d.platform === "switch") loadSwitchContents(d);
-  if (!pc) loadRA(d);
+  if (!pc) loadRA(d); else loadAch(d);
   if (GS.experience.detail === "modal" && !online && !d.hltb) loadHltb(d);
   GS.emit("gameOpened", d);
 }
@@ -253,6 +253,27 @@ async function loadRA(d, force = false) {
     const o = e.target.closest("[data-open]");
     if (o) { e.preventDefault(); api("/api/open", { body: { url: o.dataset.open } }); }
   };
+}
+
+/* ---- Obiettivi dei giochi PC (Steam, GOG, Epic): stessa sezione di RetroAchievements (#d-ra), stessa forma di dati per tutti gli store */
+async function loadAch(d, force = false) {
+  let r;
+  try { r = await api(`/api/game/${d.id}/achievements${force ? "?force=1" : ""}`); } catch { return; }
+  if (S.detail !== d || !r.supported) return;
+  let box = $("#d-ra");
+  if (!box) { $("#d-ext").insertAdjacentHTML("beforebegin", `<div id="d-ra"></div>`); box = $("#d-ra"); }
+  const head = (extra = "") => `<div class="d-h">🏆 ${t("f.ach.title")} ${extra}</div>`;
+  if (r.need) { box.innerHTML = head() + `<p class="muted small">${t("f.ach.need." + r.need)}</p>`; return; }
+  if (r.error) { box.innerHTML = head() + `<p class="muted small">${esc(r.error)}</p>`; return; }
+  const g = r.data, pct = g.total ? Math.round(g.unlocked / g.total * 100) : 0;
+  if (!g.total) { box.innerHTML = head() + `<p class="muted small">${t("f.ach.none")}</p>`; return; }
+  box.innerHTML = head(`<span class="muted small">${g.unlocked}/${g.total} · ${pct}%</span> <a href="#" id="ach-refresh" class="muted small">↻</a>`) + `
+    <div class="ra-bar"><span style="width:${pct}%"></span></div>
+    <div class="ra-list">${g.items.map((a) => `<div class="ra-a${a.unlocked ? " on" : ""}" title="${esc(a.description)}">
+      ${a.icon ? `<img loading="lazy" src="${remoteImg(a.icon)}" alt="" onerror="this.remove()">` : ""}
+      <span><b>${esc(a.name)}</b>${a.rarity_pct != null ? ` <span class="muted small">${t("f.ach.rarity", { p: a.rarity_pct })}</span>` : ""}
+        ${a.unlocked_at ? ` <span class="muted small">· ${new Date(a.unlocked_at * 1000).toLocaleDateString(GSI18n.lang)}</span>` : ""}<br><span class="muted small">${esc(a.description)}</span></span></div>`).join("")}</div>`;
+  box.onclick = (e) => { if (e.target.id === "ach-refresh") { e.preventDefault(); loadAch(d, true); } };
 }
 
 /* ---- Switch: aggiornamento installato e DLC presenti nella cartella del gioco */

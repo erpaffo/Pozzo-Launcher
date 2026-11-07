@@ -3435,5 +3435,17 @@
  "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required",
  "g.steamx.done": "{n} oyun Steam'e aktarıldı ({a} görsel, {k} mevcut kayıt olduğu gibi bırakıldı). Steam'i yeniden başlat.",
  "g.steamx.none": "Steam bulunamadı veya hesap yok",
- "g.steamx.removed": "Steam'den {n} Pozzo kaydı kaldırıldı"
+ "g.steamx.removed": "Steam'den {n} Pozzo kaydı kaldırıldı",
+ "h.title.achievements": "Açılan başarımlar",
+ "a.nav.achievements": "Açılan başarımlar",
+ "f.ach.title": "Başarımlar",
+ "f.ach.none": "Bu oyunda başarım yok.",
+ "f.ach.rarity": "Oyuncuların %{p}'i",
+ "h.ach.help": "En az bir kez açtığın oyunların Steam, GOG ve Epic başarım toplamları (oyun sayfasından yüklenir).",
+ "h.ach.store": "{u}/{n} başarım · {g} oyun · {p} tamamlandı",
+ "h.ach.empty": "Başarımları yüklemek için bir Steam, GOG veya Epic oyununun sayfasını aç: toplamlar burada görünür.",
+ "f.ach.need.steam_key": "Steam başarımları için API anahtarı ve SteamID gerekir: Ayarlar > Mağaza > Hesaplar.",
+ "f.ach.need.login": "Başarımları görmek için ayarlardan mağaza hesabını bağla.",
+ "f.ach.need.gog_install": "GOG başarımları yüklü oyunlardan okunur: oyunu yükle.",
+ "f.ach.need.epic_install": "Epic başarımları yüklü oyunlardan okunur: oyunu yükle."
 }

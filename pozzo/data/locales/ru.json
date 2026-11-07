@@ -3435,5 +3435,17 @@
  "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required",
  "g.steamx.done": "Экспортировано игр в Steam: {n} (изображений: {a}, существующих записей не тронуто: {k}). Перезапустите Steam.",
  "g.steamx.none": "Steam не найден или нет аккаунта",
- "g.steamx.removed": "Записей Pozzo удалено из Steam: {n}"
+ "g.steamx.removed": "Записей Pozzo удалено из Steam: {n}",
+ "h.title.achievements": "Полученные достижения",
+ "a.nav.achievements": "Полученные достижения",
+ "f.ach.title": "Достижения",
+ "f.ach.none": "В этой игре нет достижений.",
+ "f.ach.rarity": "{p}% игроков",
+ "h.ach.help": "Итоги достижений Steam, GOG и Epic для игр, которые вы открывали хотя бы раз (загружаются со страницы игры).",
+ "h.ach.store": "{u}/{n} достижений · {g} игр · {p} завершено",
+ "h.ach.empty": "Откройте страницу игры Steam, GOG или Epic, чтобы загрузить достижения: итоги появятся здесь.",
+ "f.ach.need.steam_key": "Для достижений Steam нужны ключ API и SteamID: Настройки > Магазины > Аккаунты.",
+ "f.ach.need.login": "Привяжите аккаунт магазина в настройках, чтобы видеть достижения.",
+ "f.ach.need.gog_install": "Достижения GOG читаются из установленных игр: установите игру.",
+ "f.ach.need.epic_install": "Достижения Epic читаются из установленных игр: установите игру."
 }

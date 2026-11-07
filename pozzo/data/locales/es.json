@@ -3435,5 +3435,17 @@
  "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required",
  "g.steamx.done": "{n} juegos exportados a Steam ({a} imágenes, {k} entradas existentes intactas). Reinicia Steam.",
  "g.steamx.none": "Steam no encontrado o sin cuenta",
- "g.steamx.removed": "{n} entradas de Pozzo quitadas de Steam"
+ "g.steamx.removed": "{n} entradas de Pozzo quitadas de Steam",
+ "h.title.achievements": "Logros desbloqueados",
+ "a.nav.achievements": "Logros desbloqueados",
+ "f.ach.title": "Logros",
+ "f.ach.none": "Este juego no tiene logros.",
+ "f.ach.rarity": "{p}% de los jugadores",
+ "h.ach.help": "Totales de logros de Steam, GOG y Epic de los juegos que has abierto al menos una vez (se cargan desde la ficha del juego).",
+ "h.ach.store": "{u}/{n} logros · {g} juegos · {p} completados",
+ "h.ach.empty": "Abre la ficha de un juego de Steam, GOG o Epic para cargar sus logros: los totales aparecen aquí.",
+ "f.ach.need.steam_key": "Para ver los logros de Steam hacen falta la clave API y el SteamID: Ajustes > Tienda > Cuentas.",
+ "f.ach.need.login": "Vincula la cuenta de la tienda en Ajustes para ver los logros.",
+ "f.ach.need.gog_install": "Los logros de GOG se leen de los juegos instalados: instala el juego.",
+ "f.ach.need.epic_install": "Los logros de Epic se leen de los juegos instalados: instala el juego."
 }

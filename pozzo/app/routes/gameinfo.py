@@ -131,6 +131,108 @@ def build_router(ctx) -> APIRouter:
         return {"configured": True, "supported": True, "found": True, "game": prog,
                 "url": f"https://retroachievements.org/game/{ra_id}"}
 
+    # ------------------------------------------------------------ obiettivi Steam / GOG / Epic (forma unica, vedi achievements.py)
+    from ... import achievements as ACH
+    import threading
+
+    def _ach_fetch(src: str, sid: str, creds: dict) -> dict:
+        """Chiama il provider giusto (rete: un thread o la richiesta stessa). creds: dati gia' letti dal profilo attivo."""
+        with ACH.http() as c:
+            if src == "steam":
+                return ACH.steam(c, creds["key"], creds["steamid"], sid)
+            if src == "gog":
+                t = ACH.gog_token(c, creds["refresh"])
+                PC.set(cfg, "gog", {**creds["acct"], "refresh_token": t.get("refresh_token") or creds["refresh"]})
+                return ACH.gog(c, t["access_token"], creds["client_id"], creds["user_id"], sid)
+            t = ACH.epic_token(c, creds["refresh"])
+            PC.set(cfg, "epic", {**creds["acct"], "refresh_token": t.get("refresh_token") or creds["refresh"]})
+            return ACH.epic(c, t["access_token"], creds["acct"]["account_id"], creds["sandbox"], sid)
+
+    def _ach_creds(g: dict, src: str, sid: str):
+        """(creds, None) oppure (None, motivo): il motivo e' una chiave di f.ach.need.* per l'interfaccia."""
+        if src == "steam":
+            c = PC.get(cfg, "steam", {})
+            return ({"key": c["api_key"], "steamid": c["steamid"]}, None) if c.get("api_key") and c.get("steamid") else (None, "steam_key")
+        acct = dict(PC.get(cfg, src, {}))
+        if not acct.get("refresh_token"):
+            return None, "login"
+        if src == "gog":
+            cid = ACH.gog_client_id(g.get("install_dir") or "", sid)
+            if not cid:
+                return None, "gog_install"
+            return {"refresh": acct["refresh_token"], "acct": acct, "client_id": cid, "user_id": acct.get("user_id")}, None
+        ns = ACH.epic_namespace(sid)
+        if not ns or not acct.get("account_id"):
+            return None, "epic_install"
+        return {"refresh": acct["refresh_token"], "acct": acct, "sandbox": ns}, None
+
+    @router.get("/api/game/{gid}/achievements")
+    def api_game_achievements(gid: int, force: int = 0):
+        """Obiettivi del gioco di uno store (Steam, GOG, Epic). Cache 1 ora: se e' scaduta si risponde subito con i dati
+        vecchi e si aggiorna in un thread (la scheda li ricarica col pulsante), senza cache o con force=1 si chiede alla rete."""
+        from ...cache import Cache
+        g = lib.game(gid)
+        src, _, sid = (g.get("key") or "").partition("/")[2].partition(":")
+        if src not in ("steam", "gog", "epic") or not sid:
+            return {"supported": False}
+        creds, need = _ach_creds(g, src, sid)
+        if need:
+            return {"supported": True, "need": need, "source": src}
+        k = f"ach:{src}:{sid}"
+        cache = Cache(cfg.cache)
+        try:
+            fresh = None if force else cache.kv_get(k, max_age=3600)
+            if fresh:
+                return {"supported": True, "data": fresh}
+            stale = None if force else cache.kv_get(k)
+
+            pid = PC.active(cfg)
+
+            def run():
+                c2 = Cache(cfg.cache)
+                try:
+                    with PC.override(pid):  # il thread non eredita il profilo del dispositivo (serve a salvare il token rinnovato)
+                        c2.kv_set(k, {**_ach_fetch(src, sid, creds), "title": g["title"]})
+                except ACH.AchError:
+                    pass  # i dati vecchi restano
+                finally:
+                    c2.close()
+            if stale:
+                threading.Thread(target=run, daemon=True).start()
+                return {"supported": True, "data": stale, "refreshing": True}
+            try:
+                data = {**_ach_fetch(src, sid, creds), "title": g["title"]}
+            except ACH.AchError as e:
+                return {"supported": True, "source": src, "error": str(e)}
+            cache.kv_set(k, data)
+            return {"supported": True, "data": data}
+        finally:
+            cache.close()
+
+    @router.get("/api/achievements")
+    def api_achievements():
+        """Totali per store dei giochi di cui gli obiettivi sono gia' in cache (si caricano aprendo la scheda del gioco)."""
+        from ...cache import Cache
+        cache = Cache(cfg.cache)
+        try:
+            rows = cache.db.execute("SELECT v FROM kv WHERE k LIKE 'ach:%'").fetchall()
+        finally:
+            cache.close()
+        stores: dict[str, dict] = {}
+        games = []
+        for (v,) in rows:
+            d = json.loads(v)
+            if not d.get("total"):
+                continue
+            s = stores.setdefault(d["source"], {"games": 0, "total": 0, "unlocked": 0, "perfect": 0})
+            s["games"] += 1
+            s["total"] += d["total"]
+            s["unlocked"] += d["unlocked"]
+            s["perfect"] += d["unlocked"] == d["total"]
+            games.append({"source": d["source"], "title": d.get("title") or d["game_id"], "total": d["total"], "unlocked": d["unlocked"]})
+        games.sort(key=lambda x: (-x["unlocked"] / x["total"], x["title"].lower()))
+        return {"stores": stores, "games": games}
+
     # ------------------------------------------------------------ esportazione per altri frontend (ES-DE, Pegasus)
     export_state = {"running": False}
 
