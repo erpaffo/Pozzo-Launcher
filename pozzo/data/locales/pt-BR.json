@@ -1223,6 +1223,8 @@
  "f.btn.play": "Jogar",
  "f.btn.play_fast": "Jogar a partir de disco rápido",
  "f.btn.play_fast_title": "Copia o jogo para um disco rápido (SSD) e o inicia a partir dele: carregamentos mais rápidos. Ao final da partida a cópia é excluída, salvo outra escolha nas configurações.",
+ "f.btn.webplay": "Jogar no navegador",
+ "f.btn.webplay_title": "Executa o jogo dentro do Pozzo com EmulatorJS (ou Ruffle para Flash). O emulador é baixado no primeiro uso.",
  "f.btn.remove": "Remover",
  "f.btn.retry": "Tentar novamente",
  "f.btn.show": "Mostrar",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "Jogo desconhecido",
  "s.notify.queueDone": "Downloads concluídos",
  "s.notify.queueDoneBody": "{n} concluídos",
- "s.notify.queueDoneFailed": "{n} com falha"
+ "s.notify.queueDoneFailed": "{n} com falha",
+ "w.play.preparing": "Preparando o emulador...",
+ "w.play.downloading": "Baixando o emulador... {pct}%",
+ "w.play.error": "Não foi possível iniciar o jogo: {msg}",
+ "w.play.noBios": "A BIOS do console é necessária: coloque-a na pasta de BIOS (veja Configurações > BIOS)."
 }

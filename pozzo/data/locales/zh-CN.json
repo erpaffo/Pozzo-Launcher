@@ -1223,6 +1223,8 @@
  "f.btn.play": "游玩",
  "f.btn.play_fast": "从快速磁盘游玩",
  "f.btn.play_fast_title": "将游戏复制到快速磁盘（SSD）并从那里启动：加载更快。游戏结束后该副本会被删除，除非你在设置中另行选择。",
+ "f.btn.webplay": "在浏览器中游玩",
+ "f.btn.webplay_title": "在 Pozzo 内通过 EmulatorJS(Flash 使用 Ruffle)运行游戏。模拟器会在首次使用时下载。",
  "f.btn.remove": "移除",
  "f.btn.retry": "重试",
  "f.btn.show": "显示",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "未知游戏",
  "s.notify.queueDone": "下载已完成",
  "s.notify.queueDoneBody": "{n} 个已完成",
- "s.notify.queueDoneFailed": "{n} 个失败"
+ "s.notify.queueDoneFailed": "{n} 个失败",
+ "w.play.preparing": "正在准备模拟器...",
+ "w.play.downloading": "正在下载模拟器... {pct}%",
+ "w.play.error": "无法启动游戏:{msg}",
+ "w.play.noBios": "需要主机的 BIOS:请放入 BIOS 文件夹(见 设置 > BIOS)。"
 }

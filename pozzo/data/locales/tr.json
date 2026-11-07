@@ -1223,6 +1223,8 @@
  "f.btn.play": "Oyna",
  "f.btn.play_fast": "Hızlı diskten oyna",
  "f.btn.play_fast_title": "Oyunu hızlı bir diske (SSD) kopyalayıp oradan başlatır: yüklemeler daha hızlı olur. Oyun bitince kopya silinir; ayarlardan değiştirilebilir.",
+ "f.btn.webplay": "Tarayıcıda oyna",
+ "f.btn.webplay_title": "Oyunu Pozzo içinde EmulatorJS (Flash için Ruffle) ile çalıştırır. Emülatör ilk kullanımda indirilir.",
  "f.btn.remove": "Kaldır",
  "f.btn.retry": "Yeniden dene",
  "f.btn.show": "Göster",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "w.play.preparing": "Emülatör hazırlanıyor...",
+ "w.play.downloading": "Emülatör indiriliyor... %{pct}",
+ "w.play.error": "Oyun başlatılamadı: {msg}",
+ "w.play.noBios": "Konsolun BIOS dosyası gerekli: BIOS klasörüne koy (Ayarlar > BIOS'a bak)."
 }

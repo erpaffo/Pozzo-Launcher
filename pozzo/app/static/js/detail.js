@@ -124,6 +124,7 @@ async function openDetail(id) {
     : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ ${t("f.btn.play")}</button>`
       // stesse condizioni di d-play: copia su SSD, avvio e cancellazione della copia lato backend (flag fast)
       + `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="${t("f.btn.play_fast_title")}">⚡ ${t("f.btn.play_fast")}</button>`
+      + (d.webplay ? `<button class="btn" id="d-webplay" title="${t("f.btn.webplay_title")}">🌐 ${t("f.btn.webplay")}</button>` : "")
       + `<button class="btn" id="d-diagnose" title="${t("f.btn.diagnose_title")}">❔ ${t("f.btn.diagnose")}</button>`
       + (d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? t("f.party.invite_title") : t("f.party.unavailable_title")}">👥 ${t("f.party.button")}</button>` : "");
   const actions = GS.ui.gameActions.filter((a) => { try { return !a.when || a.when(d); } catch { return false; } });
@@ -877,10 +878,11 @@ if (typeof window !== "undefined") window.openDiagnose = openDiagnose;
 
 // in node (test) il file si carica senza DOM
 if (typeof document !== "undefined") document.addEventListener("click", (e) => {
-  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose");
+  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose, #d-webplay");
   if (!t) return;
   if (t.id === "join-btn") openJoin();
   else if (t.id === "d-play-fast") { if (S.detail) play(S.detail.id, { fast: true }); } // stesso flusso di d-play (events.js)
+  else if (t.id === "d-webplay") { if (S.detail) openWebPlay(S.detail.id); }
   else if (t.id === "d-diagnose") { if (S.detail) openDiagnose(S.detail.id); }
   else if (S.detail) openParty(S.detail);
 });

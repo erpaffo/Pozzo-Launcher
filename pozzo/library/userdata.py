@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS wishlist(id TEXT PRIMARY KEY, title TEXT, steam_appid
 CREATE TABLE IF NOT EXISTS wish_prices(id TEXT, day TEXT, price REAL, key_price REAL, PRIMARY KEY(id, day));
 -- ora dell'ultima modifica di ogni dato personale (tbl, id, campo): serve alla sincronizzazione tra PC.
 -- field "__deleted__" = cancellato a quell'ora (cosi' la cancellazione arriva anche sull'altro PC)
+-- salvataggi di "Gioca nel browser" (sram e stato): stanno qui cosi' il backup li copia con il resto
+-- shortcut: la sincronizzazione tra PC non li porta, solo il backup
+CREATE TABLE IF NOT EXISTS web_saves(key TEXT, kind TEXT, data BLOB, t REAL, PRIMARY KEY(key, kind));
 CREATE TABLE IF NOT EXISTS sync_times(tbl TEXT, id TEXT, field TEXT, t REAL, PRIMARY KEY(tbl, id, field));
 """
 # impostazioni del PC, comuni a tutti i profili: stanno sempre in userdata.db (il profilo principale)
@@ -104,6 +107,13 @@ class UserData:
             self.db.executemany("INSERT OR REPLACE INTO sync_times VALUES(?, ?, ?, ?)",
                                 [(tbl, id_, f, now) for f in fields])
             self.db.commit()
+
+    def web_save(self, key: str, kind: str) -> bytes | None:
+        r = self._q("SELECT data FROM web_saves WHERE key=? AND kind=?", (key, kind))
+        return bytes(r[0][0]) if r else None
+
+    def set_web_save(self, key: str, kind: str, data: bytes):
+        self._exec("INSERT OR REPLACE INTO web_saves VALUES(?, ?, ?, ?)", (key, kind, data, time.time()))
 
     # ------------------------------------------------------------ giochi
     def games(self) -> dict[str, dict]:

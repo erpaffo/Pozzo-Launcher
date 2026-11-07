@@ -1223,6 +1223,8 @@
  "f.btn.play": "プレイ",
  "f.btn.play_fast": "高速ディスクからプレイ",
  "f.btn.play_fast_title": "ゲームを高速ディスク（SSD）にコピーして、そこから起動します。読み込みが速くなります。終了後、設定で変更しない限りコピーは削除されます。",
+ "f.btn.webplay": "ブラウザで遊ぶ",
+ "f.btn.webplay_title": "EmulatorJS(Flash は Ruffle)で Pozzo 内でゲームを起動します。エミュレーターは初回使用時にダウンロードされます。",
  "f.btn.remove": "削除",
  "f.btn.retry": "再試行",
  "f.btn.show": "表示",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "不明なゲーム",
  "s.notify.queueDone": "ダウンロードが完了しました",
  "s.notify.queueDoneBody": "{n} 件完了",
- "s.notify.queueDoneFailed": "{n} 件失敗"
+ "s.notify.queueDoneFailed": "{n} 件失敗",
+ "w.play.preparing": "エミュレーターを準備しています...",
+ "w.play.downloading": "エミュレーターをダウンロード中... {pct}%",
+ "w.play.error": "ゲームを起動できません: {msg}",
+ "w.play.noBios": "本体の BIOS が必要です。BIOS フォルダーに置いてください(設定 > BIOS を参照)。"
 }

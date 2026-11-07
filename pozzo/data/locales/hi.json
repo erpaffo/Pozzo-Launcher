@@ -1223,6 +1223,8 @@
  "f.btn.play": "खेलें",
  "f.btn.play_fast": "तेज़ डिस्क से खेलें",
  "f.btn.play_fast_title": "गेम को तेज़ डिस्क (SSD) पर कॉपी करके वहीं से चलाएँ: लोडिंग तेज़ होती है। खेल खत्म होने पर कॉपी मिटा दी जाती है, जब तक सेटिंग्स में अलग न चुना हो।",
+ "f.btn.webplay": "ब्राउज़र में खेलें",
+ "f.btn.webplay_title": "गेम को Pozzo के अंदर EmulatorJS (Flash के लिए Ruffle) से चलाता है। एमुलेटर पहली बार उपयोग पर डाउनलोड होता है।",
  "f.btn.remove": "हटाएँ",
  "f.btn.retry": "फिर से कोशिश करें",
  "f.btn.show": "दिखाएँ",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "अज्ञात गेम",
  "s.notify.queueDone": "डाउनलोड पूरे हुए",
  "s.notify.queueDoneBody": "{n} पूरे हुए",
- "s.notify.queueDoneFailed": "{n} विफल"
+ "s.notify.queueDoneFailed": "{n} विफल",
+ "w.play.preparing": "एमुलेटर तैयार हो रहा है...",
+ "w.play.downloading": "एमुलेटर डाउनलोड हो रहा है... {pct}%",
+ "w.play.error": "गेम शुरू नहीं हो सका: {msg}",
+ "w.play.noBios": "कंसोल का BIOS चाहिए: उसे BIOS फ़ोल्डर में रखें (सेटिंग > BIOS देखें)।"
 }

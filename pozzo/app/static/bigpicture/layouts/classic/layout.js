@@ -195,6 +195,7 @@
         this.buttons = [];
         if (pc && !d.installed) this.buttons.push({ label: "⬇ " + t("c.action.install"), cls: "main", run: () => installGame(d) });
         else this.buttons.push({ label: "▶ " + t("c.action.play"), cls: "main", run: () => playGame(d), disabled: !d.emulator });
+        if (d.webplay) this.buttons.push({ label: "🌐 " + t("f.btn.webplay"), run: () => { location.href = `/play/${id}`; } });
         const stOrder = ["", "backlog", "playing", "done", "dropped"];
         const st = d.user.status || "";
         if (!d.store || d.store !== "online") this.buttons.push({ label: st ? `${STATUS[st].icon} ${STATUS[st].label}` : "📋 " + t("c.game.status"),

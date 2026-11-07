@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, Response
 
-from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
+from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES, webplay
 from ...downloads.engines import torrent as TOR
 from ...downloads.engines.http import safe_name as _safe_name
 from ...library import launcher as L
@@ -226,6 +226,7 @@ def build_router(ctx) -> APIRouter:
                 "store": g.get("store"), "store_name": STORE_NAMES.get(g.get("store"), ""),
                 "installed": bool(g.get("installed")) if g.get("store") else True,
                 "can_install": bool(g.get("install_uri")), "page": g.get("page"),
+                "webplay": bool(webplay.plan(g)),
                 "store_playtime": g.get("store_playtime") or 0,
                 "ports": [] if g.get("store") else _port_links()["by_grp"].get(g["grp"], []),
                 "emulator": (STORE_NAMES.get(g.get("store"), "PC") if g.get("store")

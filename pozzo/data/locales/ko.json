@@ -1223,6 +1223,8 @@
  "f.btn.play": "플레이",
  "f.btn.play_fast": "빠른 디스크에서 플레이",
  "f.btn.play_fast_title": "게임을 빠른 디스크(SSD)에 복사한 뒤 그곳에서 실행합니다. 로딩이 더 빨라집니다. 게임이 끝나면 설정에서 달리 선택하지 않는 한 복사본을 삭제합니다.",
+ "f.btn.webplay": "브라우저에서 플레이",
+ "f.btn.webplay_title": "Pozzo 안에서 EmulatorJS(Flash는 Ruffle)로 게임을 실행합니다. 에뮬레이터는 처음 사용할 때 다운로드됩니다.",
  "f.btn.remove": "제거",
  "f.btn.retry": "다시 시도",
  "f.btn.show": "표시",
@@ -3377,5 +3379,9 @@
  "s.reco.unknownGame": "알 수 없는 게임",
  "s.notify.queueDone": "다운로드 완료",
  "s.notify.queueDoneBody": "{n}개 완료",
- "s.notify.queueDoneFailed": "{n}개 실패"
+ "s.notify.queueDoneFailed": "{n}개 실패",
+ "w.play.preparing": "에뮬레이터 준비 중...",
+ "w.play.downloading": "에뮬레이터 다운로드 중... {pct}%",
+ "w.play.error": "게임을 시작할 수 없습니다: {msg}",
+ "w.play.noBios": "콘솔 BIOS가 필요합니다. BIOS 폴더에 넣어 주세요(설정 > BIOS 참고)."
 }
