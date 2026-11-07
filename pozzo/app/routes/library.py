@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
 from ...downloads.engines import torrent as TOR
 from ...downloads.engines.http import safe_name as _safe_name
-from ...library import launcher as L
+from ...library import automation as A, launcher as L
 from ..icons import CREDIT
 from ..server import STORE_NAMES, _hltb_main, _json, _players, _players_label
 
@@ -533,6 +533,11 @@ def build_router(ctx) -> APIRouter:
             if not Path(data["companion"]).is_file():
                 raise HTTPException(400, I.tr("s.library.companionMissing"))
         data = {k: v for k, v in data.items() if v}
+        try:  # automazioni: solo da qui (API del desktop), mai dalle rotte del telefono
+            if auto := A.clean(body.get(A.KEY)):
+                data[A.KEY] = auto
+        except ValueError:
+            raise HTTPException(400, I.tr("s.library.badAuto"))
         if data.get("preset") not in (None, "inherit", "leave", "quality", "performance", "faithful"):
             raise HTTPException(400, I.tr("s.library.badPreset"))
         if data.get("emulator") and data["emulator"] not in L.EMULATOR_NAMES:

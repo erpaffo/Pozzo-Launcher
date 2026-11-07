@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Unknown game",
  "s.notify.queueDone": "Downloads finished",
  "s.notify.queueDoneBody": "{n} completed",
- "s.notify.queueDoneFailed": "{n} failed"
+ "s.notify.queueDoneFailed": "{n} failed",
+ "a.prof.auto": "Automations",
+ "a.prof.autoHint": "Script variables: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. System actions are Windows only and are restored when the game ends.",
+ "a.prof.autoBefore": "Command before launch",
+ "a.prof.autoAfter": "Command after exit",
+ "a.prof.autoCwd": "Working folder",
+ "a.prof.autoWait": "Wait for it to finish",
+ "a.prof.autoRes": "Resolution and refresh rate",
+ "a.prof.autoPower": "Power plan (GUID)",
+ "a.prof.autoKill": "Close these processes before launch",
+ "a.prof.autoHdr": "Toggle HDR (Win+Alt+B) while playing",
+ "e.gs.saved": "Global scripts saved",
+ "s.library.badAuto": "Invalid automations: check the resolution (e.g. 1920x1080@60) and the power plan GUID"
 }

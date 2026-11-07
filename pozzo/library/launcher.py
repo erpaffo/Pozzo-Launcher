@@ -31,7 +31,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
-from . import fastcopy
+from . import automation, fastcopy
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -260,7 +260,7 @@ def plan(cfg, platform: P.Platform, profile: dict | None = None, prefer: str | N
     {emulator, exe, core, args, profile} oppure None. prefer/skip: id candidato (emulatore[:core]) da
     preferire o da saltare (alternativa dopo un crash)."""
     over = dict(cfg.launch.get(platform.id, {}))
-    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY,)}
+    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY, automation.KEY)}
     if prof:
         emu = prof.get("emulator") or over.get("emulator")
         if emu:
@@ -967,6 +967,20 @@ class Launcher:
             except Exception as e:
                 self._set(message=f"Script «{when}» non riuscito ({type(e).__name__}): {cmd}")
 
+    def _auto_begin(self, key: str, platform: str) -> "automation.Session":
+        """Automazioni del gioco (profilo «auto»): script prima e azioni di sistema. Chiamare _auto_end in un finally."""
+        conf = (self.profile_of(key) or {}).get(automation.KEY) or {}
+        ses = automation.Session(conf, lambda ev: automation.env_for(ev, key, self.state.get("title"), platform, self.state.get("exe"),),
+                                 lambda m: self._set(message=m))
+        ses.begin()
+        return ses
+
+    def _auto_end(self, ses):
+        try:
+            ses.end()
+        except Exception as e:  # il ripristino non deve nascondere l'esito della partita
+            self._set(message=f"Automazioni: {type(e).__name__}: {e}")
+
     def _companion(self, key: str, job=None):
         """Avvia (staccata) l'applicazione abbinata al gioco, se c'e'. Un errore non blocca il gioco."""
         import shlex
@@ -1025,6 +1039,7 @@ class Launcher:
         lname = STORE_LAUNCHERS.get(store_id)
         quiet = bool(lname and (self.cfg.app.get("launch") or {}).get("hide_launcher", True) and not _procs_named(lname))
         self._scripts(key, "before")
+        ses = self._auto_begin(key, self.state.get("emulator") or "")
         job = _Job.new()
         comp = self._companion(key, job)
         self.on_event("game_launching", dict(self.state))  # sincrono: la copia dei salvataggi finisce prima del gioco
@@ -1087,6 +1102,7 @@ class Launcher:
             self._job = None
             job and job.close()
             self._scripts(key, "after")
+            self._auto_end(ses)
             self._fast_done(fc)
             self._set(status="finished", played=played, code=proc.returncode if proc else 0)
             if launcher and not launcher_was_open:  # solo se l'ha aperto il gioco: un launcher gia' aperto resta
@@ -1099,6 +1115,8 @@ class Launcher:
         except Exception as e:
             self._end_companion(comp, key)
             self._set(status="error", message=f"{type(e).__name__}: {e}")
+        finally:
+            self._auto_end(ses)  # anche dopo un crash o un errore: risoluzione, piano energetico e HDR tornano come prima
 
     def _set(self, **kw):
         with self.lock:
@@ -1151,6 +1169,7 @@ class Launcher:
                 self._fast_remove(fc["dir"])
 
     def _run_emu(self, key: str, platform: P.Platform, path: Path, pl: dict, src: Path, fc: dict, retry: bool = False):
+        ses = None
         try:
             target = resolve_target(platform, src)
             if _needs_extract(pl, platform, target):
@@ -1171,6 +1190,7 @@ class Launcher:
                 raise LaunchError("Avvio annullato")
             self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
+            ses = self._auto_begin(key, platform.id)
             job = _Job.new()
             comp = self._companion(key, job)
             cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *self.next_args, *args]
@@ -1196,6 +1216,7 @@ class Launcher:
             self._job = None
             job and job.close()
             self._scripts(key, "after")
+            self._auto_end(ses)
             run = {"time": time.time(), "code": None if stopped else code, "duration": round(played, 2), "log": log}
             # un'uscita normale di un gioco senza storico non scrive nulla
             ent = _crash_update(self.cfg, key, lambda e: e["runs"].append(run)) if _quick(run) or key in _crash_load(self.cfg) else {"runs": [run]}
@@ -1227,3 +1248,5 @@ class Launcher:
             self._set(status="error", message=str(e))
         except Exception as e:
             self._set(status="error", message=f"{type(e).__name__}: {e}")
+        finally:
+            ses and self._auto_end(ses)

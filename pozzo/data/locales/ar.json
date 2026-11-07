@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "لعبة غير معروفة",
  "s.notify.queueDone": "انتهت التنزيلات",
  "s.notify.queueDoneBody": "اكتمل {n}",
- "s.notify.queueDoneFailed": "فشل {n}"
+ "s.notify.queueDoneFailed": "فشل {n}",
+ "a.prof.auto": "الأتمتة",
+ "a.prof.autoHint": "متغيرات النصوص: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. إجراءات النظام لـ Windows فقط وتُستعاد عند انتهاء الجلسة.",
+ "a.prof.autoBefore": "أمر قبل التشغيل",
+ "a.prof.autoAfter": "أمر بعد الإغلاق",
+ "a.prof.autoCwd": "مجلد العمل",
+ "a.prof.autoWait": "انتظر حتى ينتهي",
+ "a.prof.autoRes": "الدقة ومعدل التحديث",
+ "a.prof.autoPower": "خطة الطاقة (GUID)",
+ "a.prof.autoKill": "أغلق هذه العمليات قبل التشغيل",
+ "a.prof.autoHdr": "تبديل HDR (Win+Alt+B) أثناء اللعب",
+ "e.gs.saved": "تم حفظ النصوص العامة",
+ "s.library.badAuto": "أتمتة غير صالحة: تحقق من الدقة (مثل 1920x1080@60) ومعرّف GUID لخطة الطاقة"
 }

@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Unbekanntes Spiel",
  "s.notify.queueDone": "Downloads beendet",
  "s.notify.queueDoneBody": "{n} abgeschlossen",
- "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen",
+ "a.prof.auto": "Automatisierungen",
+ "a.prof.autoHint": "Skript-Variablen: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Systemaktionen gibt es nur unter Windows und werden am Ende der Sitzung zurückgesetzt.",
+ "a.prof.autoBefore": "Befehl vor dem Start",
+ "a.prof.autoAfter": "Befehl nach dem Beenden",
+ "a.prof.autoCwd": "Arbeitsordner",
+ "a.prof.autoWait": "Auf Ende warten",
+ "a.prof.autoRes": "Auflösung und Bildwiederholrate",
+ "a.prof.autoPower": "Energiesparplan (GUID)",
+ "a.prof.autoKill": "Diese Prozesse vor dem Start beenden",
+ "a.prof.autoHdr": "HDR (Win+Alt+B) während des Spiels umschalten",
+ "e.gs.saved": "Globale Skripte gespeichert",
+ "s.library.badAuto": "Ungültige Automatisierungen: Auflösung (z. B. 1920x1080@60) und GUID des Energiesparplans prüfen"
 }

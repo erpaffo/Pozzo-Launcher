@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Gioco sconosciuto",
  "s.notify.queueDone": "Download finiti",
  "s.notify.queueDoneBody": "{n} completati",
- "s.notify.queueDoneFailed": "{n} falliti"
+ "s.notify.queueDoneFailed": "{n} falliti",
+ "a.prof.auto": "Automazioni",
+ "a.prof.autoHint": "Variabili per gli script: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Le azioni di sistema sono solo per Windows e tornano come prima a fine partita.",
+ "a.prof.autoBefore": "Comando prima dell'avvio",
+ "a.prof.autoAfter": "Comando dopo la chiusura",
+ "a.prof.autoCwd": "Cartella di lavoro",
+ "a.prof.autoWait": "Aspetta che finisca",
+ "a.prof.autoRes": "Risoluzione e frequenza",
+ "a.prof.autoPower": "Piano energetico (GUID)",
+ "a.prof.autoKill": "Chiudi questi processi prima dell'avvio",
+ "a.prof.autoHdr": "Attiva/disattiva l'HDR (Win+Alt+B) durante il gioco",
+ "e.gs.saved": "Script globali salvati",
+ "s.library.badAuto": "Automazioni non valide: controlla risoluzione (es. 1920x1080@60) e GUID del piano energetico"
 }

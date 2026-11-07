@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Неизвестная игра",
  "s.notify.queueDone": "Загрузки завершены",
  "s.notify.queueDoneBody": "Завершено: {n}",
- "s.notify.queueDoneFailed": "Ошибок: {n}"
+ "s.notify.queueDoneFailed": "Ошибок: {n}",
+ "a.prof.auto": "Автоматизации",
+ "a.prof.autoHint": "Переменные для скриптов: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Системные действия работают только в Windows и отменяются в конце сессии.",
+ "a.prof.autoBefore": "Команда перед запуском",
+ "a.prof.autoAfter": "Команда после закрытия",
+ "a.prof.autoCwd": "Рабочая папка",
+ "a.prof.autoWait": "Дождаться завершения",
+ "a.prof.autoRes": "Разрешение и частота",
+ "a.prof.autoPower": "Схема питания (GUID)",
+ "a.prof.autoKill": "Закрыть эти процессы перед запуском",
+ "a.prof.autoHdr": "Переключать HDR (Win+Alt+B) на время игры",
+ "e.gs.saved": "Глобальные скрипты сохранены",
+ "s.library.badAuto": "Неверные автоматизации: проверьте разрешение (напр. 1920x1080@60) и GUID схемы питания"
 }

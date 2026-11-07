@@ -416,6 +416,14 @@ async function openProfile(d) {
   $("#pf-comp-exe").value = p.companion || "";
   $("#pf-comp-args").value = p.companion_args || "";
   $("#pf-comp-kill").checked = p.companion_close === "1";
+  const au = p.auto || {};
+  for (const w of ["b", "a"]) {
+    const n = w === "b" ? "before" : "after";
+    $(`#pf-au-${w}cmd`).value = au[`${n}_cmd`] || ""; $(`#pf-au-${w}cwd`).value = au[`${n}_cwd`] || "";
+    $(`#pf-au-${w}wait`).checked = au[`${n}_wait`] ?? (w === "b");
+  }
+  $("#pf-au-res").value = au.res || ""; $("#pf-au-power").value = au.power || "";
+  $("#pf-au-kill").value = (au.kill || []).join(", "); $("#pf-au-hdr").checked = !!au.hdr;
   $("#pf-emu-box").hidden = !!PF.pc; // giochi PC: solo gli script
   if (PF.pc) {  // niente emulatore: si azzerano i campi rimasti dal gioco aperto prima
     $("#pf-emu").innerHTML = ""; $("#pf-core").innerHTML = "";
@@ -451,7 +459,10 @@ async function saveProfile(reset = false) {
   if (!PF) return toast(t("h.prof.notLoaded"), true);
   // app da avviare insieme al gioco (facoltativa), per giochi PC e console: tre campi nel profilo
   const comp = { companion: $("#pf-comp-exe").value.trim(), companion_args: $("#pf-comp-args").value.trim(),
-    companion_close: $("#pf-comp-kill").checked ? "1" : "" };
+    companion_close: $("#pf-comp-kill").checked ? "1" : "",
+    auto: { before_cmd: $("#pf-au-bcmd").value, before_cwd: $("#pf-au-bcwd").value, before_wait: $("#pf-au-bwait").checked,
+      after_cmd: $("#pf-au-acmd").value, after_cwd: $("#pf-au-acwd").value, after_wait: $("#pf-au-await").checked,
+      res: $("#pf-au-res").value, power: $("#pf-au-power").value, kill: $("#pf-au-kill").value, hdr: $("#pf-au-hdr").checked } };
   try {
     PF = Object.assign(PF, reset ? await api(`/api/game/${PF.id}/profile`, { method: "DELETE" })
       : await api(`/api/game/${PF.id}/profile`, { body: PF.pc ? { before: $("#pf-before").value, after: $("#pf-after").value, ...comp }

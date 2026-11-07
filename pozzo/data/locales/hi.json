@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "अज्ञात गेम",
  "s.notify.queueDone": "डाउनलोड पूरे हुए",
  "s.notify.queueDoneBody": "{n} पूरे हुए",
- "s.notify.queueDoneFailed": "{n} विफल"
+ "s.notify.queueDoneFailed": "{n} विफल",
+ "a.prof.auto": "स्वचालन",
+ "a.prof.autoHint": "स्क्रिप्ट के वेरिएबल: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT। सिस्टम क्रियाएँ केवल Windows पर हैं और सत्र खत्म होने पर पहले जैसी हो जाती हैं।",
+ "a.prof.autoBefore": "शुरू करने से पहले का कमांड",
+ "a.prof.autoAfter": "बंद होने के बाद का कमांड",
+ "a.prof.autoCwd": "कार्य फ़ोल्डर",
+ "a.prof.autoWait": "खत्म होने तक प्रतीक्षा करें",
+ "a.prof.autoRes": "रिज़ॉल्यूशन और रिफ्रेश रेट",
+ "a.prof.autoPower": "पावर प्लान (GUID)",
+ "a.prof.autoKill": "शुरू करने से पहले ये प्रोसेस बंद करें",
+ "a.prof.autoHdr": "खेलते समय HDR (Win+Alt+B) बदलें",
+ "e.gs.saved": "ग्लोबल स्क्रिप्ट सहेजी गईं",
+ "s.library.badAuto": "अमान्य स्वचालन: रिज़ॉल्यूशन (जैसे 1920x1080@60) और पावर प्लान का GUID जाँचें"
 }

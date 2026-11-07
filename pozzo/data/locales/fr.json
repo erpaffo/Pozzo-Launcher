@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Jeu inconnu",
  "s.notify.queueDone": "Téléchargements terminés",
  "s.notify.queueDoneBody": "{n} terminés",
- "s.notify.queueDoneFailed": "{n} échoués"
+ "s.notify.queueDoneFailed": "{n} échoués",
+ "a.prof.auto": "Automatisations",
+ "a.prof.autoHint": "Variables des scripts : POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Les actions système sont réservées à Windows et sont rétablies à la fin de la partie.",
+ "a.prof.autoBefore": "Commande avant le lancement",
+ "a.prof.autoAfter": "Commande après la fermeture",
+ "a.prof.autoCwd": "Dossier de travail",
+ "a.prof.autoWait": "Attendre la fin",
+ "a.prof.autoRes": "Résolution et fréquence",
+ "a.prof.autoPower": "Mode d'alimentation (GUID)",
+ "a.prof.autoKill": "Fermer ces processus avant le lancement",
+ "a.prof.autoHdr": "Activer/désactiver le HDR (Win+Alt+B) pendant le jeu",
+ "e.gs.saved": "Scripts globaux enregistrés",
+ "s.library.badAuto": "Automatisations non valides : vérifiez la résolution (ex. 1920x1080@60) et le GUID du mode d'alimentation"
 }

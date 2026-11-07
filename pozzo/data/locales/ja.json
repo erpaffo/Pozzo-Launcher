@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "不明なゲーム",
  "s.notify.queueDone": "ダウンロードが完了しました",
  "s.notify.queueDoneBody": "{n} 件完了",
- "s.notify.queueDoneFailed": "{n} 件失敗"
+ "s.notify.queueDoneFailed": "{n} 件失敗",
+ "a.prof.auto": "自動化",
+ "a.prof.autoHint": "スクリプト用変数: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT。システム操作は Windows 専用で、セッション終了時に元に戻ります。",
+ "a.prof.autoBefore": "起動前のコマンド",
+ "a.prof.autoAfter": "終了後のコマンド",
+ "a.prof.autoCwd": "作業フォルダー",
+ "a.prof.autoWait": "終了を待つ",
+ "a.prof.autoRes": "解像度とリフレッシュレート",
+ "a.prof.autoPower": "電源プラン (GUID)",
+ "a.prof.autoKill": "起動前にこれらのプロセスを終了",
+ "a.prof.autoHdr": "プレイ中に HDR (Win+Alt+B) を切り替える",
+ "e.gs.saved": "グローバルスクリプトを保存しました",
+ "s.library.badAuto": "自動化が無効です。解像度 (例: 1920x1080@60) と電源プランの GUID を確認してください"
 }

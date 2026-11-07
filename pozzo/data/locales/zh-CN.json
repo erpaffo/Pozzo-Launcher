@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "未知游戏",
  "s.notify.queueDone": "下载已完成",
  "s.notify.queueDoneBody": "{n} 个已完成",
- "s.notify.queueDoneFailed": "{n} 个失败"
+ "s.notify.queueDoneFailed": "{n} 个失败",
+ "a.prof.auto": "自动化",
+ "a.prof.autoHint": "脚本变量：POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT。系统操作仅限 Windows，会在游戏结束时恢复。",
+ "a.prof.autoBefore": "启动前命令",
+ "a.prof.autoAfter": "关闭后命令",
+ "a.prof.autoCwd": "工作目录",
+ "a.prof.autoWait": "等待其结束",
+ "a.prof.autoRes": "分辨率和刷新率",
+ "a.prof.autoPower": "电源计划 (GUID)",
+ "a.prof.autoKill": "启动前关闭这些进程",
+ "a.prof.autoHdr": "游戏期间切换 HDR (Win+Alt+B)",
+ "e.gs.saved": "全局脚本已保存",
+ "s.library.badAuto": "自动化无效：请检查分辨率（如 1920x1080@60）和电源计划 GUID"
 }

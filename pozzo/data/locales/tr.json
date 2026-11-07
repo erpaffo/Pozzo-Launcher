@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "a.prof.auto": "Otomasyonlar",
+ "a.prof.autoHint": "Betik değişkenleri: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Sistem eylemleri yalnızca Windows içindir ve oyun bitince eski haline döner.",
+ "a.prof.autoBefore": "Başlatmadan önceki komut",
+ "a.prof.autoAfter": "Kapandıktan sonraki komut",
+ "a.prof.autoCwd": "Çalışma klasörü",
+ "a.prof.autoWait": "Bitmesini bekle",
+ "a.prof.autoRes": "Çözünürlük ve yenileme hızı",
+ "a.prof.autoPower": "Güç planı (GUID)",
+ "a.prof.autoKill": "Başlatmadan önce bu işlemleri kapat",
+ "a.prof.autoHdr": "Oyun sırasında HDR'yi (Win+Alt+B) aç/kapat",
+ "e.gs.saved": "Genel betikler kaydedildi",
+ "s.library.badAuto": "Geçersiz otomasyonlar: çözünürlüğü (örn. 1920x1080@60) ve güç planı GUID'ini kontrol edin"
 }
