@@ -219,6 +219,8 @@ class ScreenScraper(Source):
         res = Result(fields=f)
         medias = j.get("medias", []) or []
         for mtype, ss_types in MEDIA_TYPES.items():
+            if mtype == "video" and not self.cfg.wants_media("video"):
+                continue
             if mtype == "cover" and game.platform.arcade:
                 ss_types = ARCADE_COVER
             for t in ss_types:

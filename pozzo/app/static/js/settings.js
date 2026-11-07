@@ -374,6 +374,12 @@ function initUiPrefs() {
   const ca = $("#ui-cover-accent");
   ca.checked = p.coverAccent;
   if (!ca.dataset.bound) { ca.dataset.bound = "1"; autosaveControl(ca, (v) => uiSavePrefs({ coverAccent: !!v })); }
+  const vs = $("#ui-video-snap");
+  if (!vs.dataset.bound) {
+    vs.dataset.bound = "1";
+    api("/api/app/video-snap").then((r) => { vs.checked = !!r.enabled; }).catch(() => {});
+    autosaveControl(vs, async (v) => { await api("/api/app/video-snap", { body: { enabled: !!v } }); GSVideo.reset(); });
+  }
   fill("#ui-density", [["comfortable", t("e.density.comfortable")], ["compact", t("e.density.compact")]], p.density, (v) => uiSavePrefs({ density: v }));
   fill("#ui-idle", GSUi.IDLE.map((m) => [m, m ? t("e.idle.minutes", { m }) : t("e.idle.off")]), p.idle, (v) => uiSavePrefs({ idle: +v }));
 

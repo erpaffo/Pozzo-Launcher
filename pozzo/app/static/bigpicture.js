@@ -92,6 +92,7 @@ window.addEventListener("storage", (e) => { if (e.key === "gs.ui") setGlow(glowI
 let bgTimer = 0, bgFront = 0, glowId = null;
 function setBackground(id) {
   clearTimeout(bgTimer);
+  GSVideo.stop($("#bp-bg"));
   glowId = id || null;
   setGlow(glowId);
   bgTimer = setTimeout(async () => {
@@ -100,6 +101,7 @@ function setBackground(id) {
     const src = m.hero || m.screenshot || m.fanart || m.header || m.title || m.cover;
     const layers = document.querySelectorAll("#bp-bg .bg-img");
     const next = layers[1 - bgFront];
+    if (m.video && glowId === id) GSVideo.attach($("#bp-bg"), id, { delay: 800 }); // il gioco selezionato, dopo una breve pausa
     if (!src) { layers.forEach((l) => l.classList.remove("on")); return; }
     next.style.backgroundImage = `url("${src}?w=1280")`;
     next.classList.add("on");
@@ -705,6 +707,8 @@ async function attractNext() {
   next.classList.toggle("poster", !shot);
   next.style.backgroundImage = `url("${shot ? shot + (shot.includes("?") ? "&" : "?") + "w=1280" : `/img/${g.id}/cover?w=640`}")`;
   next.classList.add("on");
+  GSVideo.stop(next); GSVideo.stop(layers[attractFront]);
+  if (d?.media?.video) GSVideo.attach(next, g.id); // salvaschermo: la clip se c'e', altrimenti la schermata
   layers[attractFront].classList.remove("on");
   attractFront = 1 - attractFront;
   attractEl.querySelector(".at-info b").textContent = g.title;
@@ -725,7 +729,7 @@ const idle = GSUi.createIdle({
   stop() {
     clearTimeout(attractTimer);
     attractEl.hidden = true;
-    attractEl.querySelectorAll(".at-slide").forEach((l) => { l.classList.remove("on"); l.style.backgroundImage = ""; });
+    attractEl.querySelectorAll(".at-slide").forEach((l) => { GSVideo.stop(l); l.classList.remove("on"); l.style.backgroundImage = ""; });
   },
   setT: (f, ms) => setTimeout(f, ms),
   clearT: (t) => clearTimeout(t),
