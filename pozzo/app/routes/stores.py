@@ -116,6 +116,57 @@ def build_router(ctx) -> APIRouter:
         return {"ok": True}
     vars(ctx).update(_netstore_install=_netstore_install)
 
+    @router.post("/api/accounts/pozzoremote")
+    def api_account_pozzoremote(body: dict = Body(...)):
+        """Librerie di altri Pozzo: aggiungi (indirizzo + codice d'invito: abbina e fissa il certificato), togli, cartella."""
+        import secrets
+        from ...stores import pozzoremote as PR
+        cur = dict(cfg.stores.get("pozzoremote", {}))
+        svs = list(cur.get("servers") or [])
+        act = body.get("action")
+        if act == "add":
+            try:
+                p = PR.pair(str(body.get("url") or ""), str(body.get("code") or ""), str(body.get("me") or "Pozzo"))
+            except (ValueError, RuntimeError, OSError) as e:
+                raise HTTPException(400, I.tr("s.pozzoremote.pairFail", e=e))
+            svs = [x for x in svs if x["url"] != p["url"]] + [{"id": secrets.token_hex(4), "name": str(body.get("name") or p["url"])[:40],
+                                                               **p}]
+        elif act == "remove":
+            svs = [x for x in svs if x["id"] != body.get("id")]
+        elif act == "dest":
+            cur["dest"] = str(body.get("dest") or "").strip()
+        else:
+            raise HTTPException(400)
+        cur["servers"] = svs
+        C.save_settings(cfg, stores={"pozzoremote": cur})
+        _start_store_job(["pozzoremote"])
+        return api_accounts()
+
+    def _pozzoremote_install(gid: str):
+        import asyncio
+        from ...cache import Cache
+        from ...stores import pozzoremote as PR
+
+        def after(ok):
+            if not ok:
+                return
+            c = Cache(cfg.cache)
+            try:
+                asyncio.run(STORES.refresh(cfg, c, only=["pozzoremote"], images=False))
+            finally:
+                c.close()
+            build(cfg)
+            lib.load()
+            events.emit("library_built", {})
+        try:
+            PR.start(cfg, lambda: Cache(cfg.cache), gid, after, I.tr)
+        except LookupError as e:
+            raise HTTPException(404, str(e))
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        return {"ok": True}
+    vars(ctx).update(_pozzoremote_install=_pozzoremote_install)
+
     @router.post("/api/accounts/{sid}/code")
     def api_account_code(sid: str, body: dict = Body(...)):
         """Completa il login (Epic/GOG) con il codice/pagina/URL ottenuti dalla pagina ufficiale."""

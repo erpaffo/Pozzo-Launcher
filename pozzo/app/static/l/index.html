@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pozzo Launcher</title>
+<style>
+  :root { color-scheme: dark; --bg:#0f1117; --card:#1a1d27; --fg:#e8eaf0; --mut:#98a0b3; --acc:#4aa3ff; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px system-ui,sans-serif; padding:16px; }
+  h1 { font-size:20px; margin:0 0 12px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input { background:var(--card); color:var(--fg); border:1px solid #333a4d; border-radius:8px; padding:10px; font-size:16px; }
+  button, a.btn { background:var(--acc); color:#06121f; border:0; border-radius:8px; padding:10px 14px; font-weight:600; text-decoration:none; cursor:pointer; font-size:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-top:14px; }
+  .g { background:var(--card); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  .g img, .g .nocover { width:100%; aspect-ratio:3/4; object-fit:cover; background:#242838; display:block; }
+  .g .b { padding:8px; display:flex; flex-direction:column; gap:6px; flex:1; }
+  .g small { color:var(--mut); }
+  .g .acts { margin-top:auto; display:flex; gap:6px; flex-wrap:wrap; }
+  .err { color:#ff8080; min-height:1.2em; }
+</style>
+</head>
+<body>
+<h1 id="h">Pozzo Launcher</h1>
+<div id="login" hidden>
+  <p id="intro"></p>
+  <div class="row"><input id="code" autocomplete="off" autocapitalize="characters" maxlength="16"><input id="name" maxlength="40">
+    <button id="go"></button></div>
+  <p class="err" id="err"></p>
+</div>
+<div id="lib" hidden>
+  <div class="row"><input id="q"><button id="out"></button></div>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+"use strict";
+const T = {
+  it: { intro: "Inserisci il codice dell'invito per sfogliare la libreria.", code: "Codice", name: "Il tuo nome", go: "Entra",
+        q: "Cerca", out: "Esci", dl: "Scarica", play: "Gioca qui", zip: "cartella: scaricata come zip, senza ripresa", bad: "Codice non valido" },
+  en: { intro: "Enter the invite code to browse the library.", code: "Code", name: "Your name", go: "Join",
+        q: "Search", out: "Leave", dl: "Download", play: "Play here", zip: "folder: downloaded as a zip, not resumable", bad: "Invalid code" },
+};
+const L = T[(navigator.language || "en").slice(0, 2)] || T.en;
+const $ = (id) => document.getElementById(id);
+$("intro").textContent = L.intro; $("code").placeholder = L.code; $("name").placeholder = L.name;
+$("go").textContent = L.go; $("q").placeholder = L.q; $("out").textContent = L.out;
+const hash = new URLSearchParams(location.hash.slice(1));
+if (hash.get("code")) $("code").value = hash.get("code");
+history.replaceState(null, "", location.pathname);  // il codice non resta nell'indirizzo
+let games = [];
+function mb(n) { return n ? (n / 1048576 >= 1024 ? (n / 1073741824).toFixed(1) + " GB" : Math.round(n / 1048576) + " MB") : ""; }
+function draw() {
+  const q = $("q").value.trim().toLowerCase(), g = $("grid");
+  g.textContent = "";
+  for (const x of games.filter((x) => !q || x.title.toLowerCase().includes(q))) {
+    const c = document.createElement("div"); c.className = "g";
+    if (x.cover) { const i = document.createElement("img"); i.loading = "lazy"; i.alt = ""; i.src = x.cover; c.append(i); }
+    else { const d = document.createElement("div"); d.className = "nocover"; c.append(d); }
+    const b = document.createElement("div"); b.className = "b";
+    const t = document.createElement("b"); t.textContent = x.title;
+    const s = document.createElement("small"); s.textContent = [x.platform, mb(x.size)].filter(Boolean).join(" · ");
+    const a = document.createElement("div"); a.className = "acts";
+    const dl = document.createElement("a"); dl.className = "btn"; dl.textContent = L.dl; dl.href = "/api/lib-share/download/" + x.id;
+    if (x.kind === "zip") dl.title = L.zip;
+    a.append(dl);
+    if (x.play) { const p = document.createElement("a"); p.className = "btn"; p.textContent = L.play; p.href = "/play/" + x.id; p.target = "_blank"; a.append(p); }
+    b.append(t, s, a); c.append(b); g.append(c);
+  }
+}
+async function load() {
+  const r = await fetch("/api/lib-share/list");
+  if (!r.ok) { $("login").hidden = false; $("lib").hidden = true; return; }
+  games = (await r.json()).games; $("login").hidden = true; $("lib").hidden = false; draw();
+}
+$("q").oninput = draw;
+$("go").onclick = async () => {
+  $("err").textContent = "";
+  const r = await fetch("/l/api/pair", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: $("code").value, name: $("name").value }) });
+  if (!r.ok) { $("err").textContent = ((await r.json().catch(() => ({}))).detail) || L.bad; return; }
+  load();
+};
+$("out").onclick = async () => { await fetch("/l/api/logout", { method: "POST" }); location.reload(); };
+load();
+</script>
+</body>
+</html>

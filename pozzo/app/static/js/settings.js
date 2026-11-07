@@ -278,7 +278,7 @@ function showTab(tab) {
   else if (id === "fonti") { loadSources(); pollHltb(); pollCollart(); }
   else if (id === "store") { loadAccounts(); loadPcStores(); loadSteamExport(); }
   else if (id === "emulatori") loadEmu();
-  else if (id === "controller" || id === "streaming") loadRemote();
+  else if (id === "controller" || id === "streaming") { loadRemote(); if (id === "controller") loadLibShare(); }
   else if (id === "integrazioni") loadIntegrations();
   else if (id === "aspetto" || id === "estensioni") { loadAppearance(); if (id === "aspetto") initUiPrefs(); }
   else if (id === "dati") { loadBackups(); loadSync(); loadSaveDir(); loadMaintenance(); }

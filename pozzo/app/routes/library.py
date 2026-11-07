@@ -274,6 +274,8 @@ def build_router(ctx) -> APIRouter:
             raise HTTPException(400, I.tr("s.library.noInstallLink"))
         if g["install_uri"].startswith("pozzo-netstore:"):  # cartella di rete: copia/estrazione/setup in background
             return ctx._netstore_install(g["install_uri"].split(":", 1)[1])
+        if g["install_uri"].startswith("pozzo-pozzoremote:"):  # libreria di un altro Pozzo: download dal server
+            return ctx._pozzoremote_install(g["install_uri"].split(":", 1)[1])
         try:
             L.open_uri(g["install_uri"])  # steam://install/<id>, com.epicgames.launcher://…?action=install: come il pulsante Installa del client
         except L.LaunchError as e:
