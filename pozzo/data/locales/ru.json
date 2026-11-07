@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Неизвестная игра",
  "s.notify.queueDone": "Загрузки завершены",
  "s.notify.queueDoneBody": "Завершено: {n}",
- "s.notify.queueDoneFailed": "Ошибок: {n}"
+ "s.notify.queueDoneFailed": "Ошибок: {n}",
+ "h.acc.netFolders": "Сетевые папки, по одной в строке (напр. \\NAS\\Games)",
+ "h.acc.netDest": "Установить в (пусто = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Тихая установка (только установщики GOG/Inno)",
+ "h.acc.netSaved": "Сетевые папки сохранены",
+ "s.netstore.busy": "Установка уже идёт",
+ "s.netstore.copy": "Копирование из сети…",
+ "s.netstore.extract": "Распаковка архива…",
+ "s.netstore.run": "Идёт установка (следите за её окном)…",
+ "s.netstore.done": "В библиотеке: {title}",
+ "s.netstore.noExe": "В установленной игре не найден исполняемый файл",
+ "s.netstore.notRecognized": "Установка завершена, но игра не распознана",
+ "s.netstore.gone": "Игры больше нет в сетевой папке"
 }

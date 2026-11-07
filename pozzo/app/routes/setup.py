@@ -31,7 +31,7 @@ def build_router(ctx) -> APIRouter:
         try:
             out = []
             for P_ in STORES.PROVIDERS:
-                if P_.id in ("manual", "ports"):  # giochi aggiunti a mano e port PC non sono uno store da importare
+                if P_.id in ("manual", "ports", "netstore"):  # giochi aggiunti a mano e port PC non sono uno store da importare
                     continue
                 try:
                     det = P_(cfg, c, None, lambda *a: None).detected()

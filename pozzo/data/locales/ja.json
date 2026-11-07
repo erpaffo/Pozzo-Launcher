@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "不明なゲーム",
  "s.notify.queueDone": "ダウンロードが完了しました",
  "s.notify.queueDoneBody": "{n} 件完了",
- "s.notify.queueDoneFailed": "{n} 件失敗"
+ "s.notify.queueDoneFailed": "{n} 件失敗",
+ "h.acc.netFolders": "ネットワークフォルダー(1行に1つ、例: \\NAS\\Games)",
+ "h.acc.netDest": "インストール先(空欄 = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "サイレントインストール(GOG/Innoインストーラーのみ)",
+ "h.acc.netSaved": "ネットワークフォルダーを保存しました",
+ "s.netstore.busy": "インストールはすでに進行中です",
+ "s.netstore.copy": "ネットワークからコピー中…",
+ "s.netstore.extract": "アーカイブを展開中…",
+ "s.netstore.run": "セットアップ実行中(ウィンドウを確認してください)…",
+ "s.netstore.done": "ライブラリに追加: {title}",
+ "s.netstore.noExe": "インストールしたゲームに実行ファイルが見つかりません",
+ "s.netstore.notRecognized": "インストールは完了しましたが、ゲームを認識できませんでした",
+ "s.netstore.gone": "ゲームはネットワークフォルダーにありません"
 }

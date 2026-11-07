@@ -205,7 +205,7 @@
   async function stepStores() {
     body().innerHTML = `<p role="status">${t("b.onb.stores.searching")}</p>`;
     try {
-      ui.stores = (await call("/api/accounts")).stores.filter((s) => !["manual", "ports"].includes(s.id));
+      ui.stores = (await call("/api/accounts")).stores.filter((s) => !["manual", "ports", "netstore"].includes(s.id));
     } catch (e) {
       if (root && st.step === 2) body().innerHTML = `<p class="onb-msg" role="status">${t("b.onb.stores.unavailable", {errore: esc(e.message)})}</p>`;
       return;

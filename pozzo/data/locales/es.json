@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Juego desconocido",
  "s.notify.queueDone": "Descargas terminadas",
  "s.notify.queueDoneBody": "{n} completadas",
- "s.notify.queueDoneFailed": "{n} fallidas"
+ "s.notify.queueDoneFailed": "{n} fallidas",
+ "h.acc.netFolders": "Carpetas de red, una por línea (p. ej. \\NAS\\Juegos)",
+ "h.acc.netDest": "Instalar en (vacío = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Instalación silenciosa (solo instaladores GOG/Inno)",
+ "h.acc.netSaved": "Carpetas de red guardadas",
+ "s.netstore.busy": "La instalación ya está en curso",
+ "s.netstore.copy": "Copiando desde la red…",
+ "s.netstore.extract": "Extrayendo el archivo…",
+ "s.netstore.run": "Instalador en curso (sigue su ventana)…",
+ "s.netstore.done": "En la biblioteca: {title}",
+ "s.netstore.noExe": "No se encontró ningún ejecutable en el juego instalado",
+ "s.netstore.notRecognized": "Instalación terminada, pero no se reconoció el juego",
+ "s.netstore.gone": "El juego ya no está en la carpeta de red"
 }

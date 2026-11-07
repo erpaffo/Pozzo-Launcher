@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Gioco sconosciuto",
  "s.notify.queueDone": "Download finiti",
  "s.notify.queueDoneBody": "{n} completati",
- "s.notify.queueDoneFailed": "{n} falliti"
+ "s.notify.queueDoneFailed": "{n} falliti",
+ "h.acc.netFolders": "Cartelle di rete, una per riga (es. \\NAS\\Giochi)",
+ "h.acc.netDest": "Installa in (vuoto = Documenti\\Games\\Pozzo)",
+ "h.acc.netSilent": "Installazione silenziosa (solo installer GOG/Inno)",
+ "h.acc.netSaved": "Cartelle di rete salvate",
+ "s.netstore.busy": "Installazione già in corso",
+ "s.netstore.copy": "Copio dalla rete…",
+ "s.netstore.extract": "Estraggo l'archivio…",
+ "s.netstore.run": "Setup in corso (segui la finestra)…",
+ "s.netstore.done": "In libreria: {title}",
+ "s.netstore.noExe": "Nessun eseguibile trovato nel gioco installato",
+ "s.netstore.notRecognized": "Installazione finita, ma non ho riconosciuto il gioco",
+ "s.netstore.gone": "Il gioco non è più nella cartella di rete"
 }

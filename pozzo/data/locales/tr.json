@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "h.acc.netFolders": "Ağ klasörleri, satır başına bir tane (ör. \\NAS\\Oyunlar)",
+ "h.acc.netDest": "Şuraya kur (boş = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Sessiz kurulum (yalnızca GOG/Inno kurucuları)",
+ "h.acc.netSaved": "Ağ klasörleri kaydedildi",
+ "s.netstore.busy": "Kurulum zaten sürüyor",
+ "s.netstore.copy": "Ağdan kopyalanıyor…",
+ "s.netstore.extract": "Arşiv çıkarılıyor…",
+ "s.netstore.run": "Kurulum çalışıyor (penceresini izleyin)…",
+ "s.netstore.done": "Kütüphanede: {title}",
+ "s.netstore.noExe": "Kurulan oyunda çalıştırılabilir dosya bulunamadı",
+ "s.netstore.notRecognized": "Kurulum bitti ama oyun tanınmadı",
+ "s.netstore.gone": "Oyun artık ağ klasöründe değil"
 }

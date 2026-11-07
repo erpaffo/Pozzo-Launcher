@@ -1,0 +1,2 @@
+### Aggiunto
+- Cartella di rete come store: indica in Impostazioni › Account una o più cartelle (\NAS\Giochi, unità mappata o cartella locale) con installer, archivi (.zip/.7z/.rar) e cartelle di giochi. I giochi compaiono come posseduti da installare, con «Installa»: copia con avanzamento, estrazione o setup (silenzioso per gli installer GOG/Inno, se vuoi), poi il gioco entra in libreria e si avvia come gli altri. Una `pozzo.json` nella cartella del gioco può fissare titolo, eseguibile e argomenti. WebDAV non è supportato; per SMB servono le credenziali di Windows.

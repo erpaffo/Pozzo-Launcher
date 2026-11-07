@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Unknown game",
  "s.notify.queueDone": "Downloads finished",
  "s.notify.queueDoneBody": "{n} completed",
- "s.notify.queueDoneFailed": "{n} failed"
+ "s.notify.queueDoneFailed": "{n} failed",
+ "h.acc.netFolders": "Network folders, one per line (e.g. \\NAS\\Games)",
+ "h.acc.netDest": "Install to (empty = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Silent install (GOG/Inno installers only)",
+ "h.acc.netSaved": "Network folders saved",
+ "s.netstore.busy": "Installation already in progress",
+ "s.netstore.copy": "Copying from the network…",
+ "s.netstore.extract": "Extracting the archive…",
+ "s.netstore.run": "Setup running (follow its window)…",
+ "s.netstore.done": "In library: {title}",
+ "s.netstore.noExe": "No executable found in the installed game",
+ "s.netstore.notRecognized": "Installation finished, but the game was not recognized",
+ "s.netstore.gone": "The game is no longer in the network folder"
 }
