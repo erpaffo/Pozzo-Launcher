@@ -32,7 +32,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
-from . import automation, fastcopy, foreground
+from . import automation, fastcopy, foreground, magpie
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -768,6 +768,7 @@ class Launcher:
         self._paused_total = 0.0  # secondi in pausa nella sessione: non contano come tempo di gioco
         self._comp_pid = None
         self._fg = None  # foreground.Watcher della sessione
+        self._mp = None  # magpie.Scaler della sessione
         atexit.register(self._unfreeze)  # mai lasciare un processo sospeso se Pozzo esce
         try:  # copie «disco veloce» rimaste da un crash (tenute se l'utente le vuole riusare)
             if (cfg.app.get("fastcopy") or {}).get("delete_after", True):
@@ -1117,7 +1118,17 @@ class Launcher:
         ses = automation.Session(conf, lambda ev: automation.env_for(ev, key, self.state.get("title"), platform, self.state.get("exe"),),
                                  lambda m: self._set(message=m))
         ses.begin()
+        self._mp = None
+        if conf.get("magpie") and sys.platform == "win32":  # upscaling: Magpie parte col gioco in primo piano (_fg_emit)
+            self._mp = magpie.Scaler(self.cfg, self.state.get("title") or "Pozzo", conf["magpie"], lambda m: self._set(message=m))
+            self._mp.prepare()
+            ses.undo.append(self._mp.stop)
         return ses
+
+    def _fg_emit(self, name: str, data: dict):
+        self.on_event(name, data)
+        if name == "game_foreground" and self._mp:
+            self._mp.start(data.get("pid") or 0)
 
     def _auto_end(self, ses):
         try:
@@ -1276,7 +1287,7 @@ class Launcher:
             except Exception:  # i dati utente non devono impedire di giocare
                 pass
             self.on_event("game_started", st)
-            self._fg = foreground.Watcher(self._session_pids, self.on_event)
+            self._fg = foreground.Watcher(self._session_pids, self._fg_emit)
             self._fg.start()
             self._start_capture()
             threading.Thread(target=self._watch_combo, daemon=True).start()

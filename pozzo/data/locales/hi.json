@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "पावर प्लान (GUID)",
  "a.prof.autoKill": "शुरू करने से पहले ये प्रोसेस बंद करें",
  "a.prof.autoHdr": "खेलते समय HDR (Win+Alt+B) बदलें",
+ "a.prof.autoMagpie": "Magpie से अपस्केलिंग (पहले उपयोग पर डाउनलोड होता है; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "कोई नहीं",
  "e.gs.saved": "ग्लोबल स्क्रिप्ट सहेजी गईं",
  "s.library.badAuto": "अमान्य स्वचालन: रिज़ॉल्यूशन (जैसे 1920x1080@60) और पावर प्लान का GUID जाँचें"
 }

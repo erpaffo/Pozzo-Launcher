@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "Power plan (GUID)",
  "a.prof.autoKill": "Close these processes before launch",
  "a.prof.autoHdr": "Toggle HDR (Win+Alt+B) while playing",
+ "a.prof.autoMagpie": "Upscaling with Magpie (downloaded on first use; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "None",
  "e.gs.saved": "Global scripts saved",
  "s.library.badAuto": "Invalid automations: check the resolution (e.g. 1920x1080@60) and the power plan GUID"
 }

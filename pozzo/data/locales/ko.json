@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "전원 관리 옵션 (GUID)",
  "a.prof.autoKill": "실행 전에 이 프로세스 종료",
  "a.prof.autoHdr": "플레이 중 HDR(Win+Alt+B) 전환",
+ "a.prof.autoMagpie": "Magpie 업스케일링(처음 사용할 때 다운로드, Windows 10 1903 이상)",
+ "a.prof.autoMagpieOff": "없음",
  "e.gs.saved": "전역 스크립트를 저장했습니다",
  "s.library.badAuto": "잘못된 자동화: 해상도(예: 1920x1080@60)와 전원 관리 옵션 GUID를 확인하세요"
 }

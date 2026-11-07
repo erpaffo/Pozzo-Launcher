@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "电源计划 (GUID)",
  "a.prof.autoKill": "启动前关闭这些进程",
  "a.prof.autoHdr": "游戏期间切换 HDR (Win+Alt+B)",
+ "a.prof.autoMagpie": "使用 Magpie 放大(首次使用时下载;Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "无",
  "e.gs.saved": "全局脚本已保存",
  "s.library.badAuto": "自动化无效：请检查分辨率（如 1920x1080@60）和电源计划 GUID"
 }

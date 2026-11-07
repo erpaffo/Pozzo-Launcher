@@ -49,6 +49,10 @@ def clean(body: dict) -> dict:
         out["kill"] = [n for n in kill if re.fullmatch(r"[\w .()+-]+\.exe", n, re.I)]
     if b.get("hdr"):
         out["hdr"] = True
+    if mp := str(b.get("magpie") or "").strip():
+        if mp not in ("fsr", "anime4k", "integer", "lanczos"):
+            raise ValueError("magpie")
+        out["magpie"] = mp
     return out
 
 

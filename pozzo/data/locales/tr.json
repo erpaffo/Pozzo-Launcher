@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "Güç planı (GUID)",
  "a.prof.autoKill": "Başlatmadan önce bu işlemleri kapat",
  "a.prof.autoHdr": "Oyun sırasında HDR'yi (Win+Alt+B) aç/kapat",
+ "a.prof.autoMagpie": "Magpie ile yükseltme (ilk kullanımda indirilir; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "Yok",
  "e.gs.saved": "Genel betikler kaydedildi",
  "s.library.badAuto": "Geçersiz otomasyonlar: çözünürlüğü (örn. 1920x1080@60) ve güç planı GUID'ini kontrol edin"
 }

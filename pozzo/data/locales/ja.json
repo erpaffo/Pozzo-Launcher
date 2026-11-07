@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "電源プラン (GUID)",
  "a.prof.autoKill": "起動前にこれらのプロセスを終了",
  "a.prof.autoHdr": "プレイ中に HDR (Win+Alt+B) を切り替える",
+ "a.prof.autoMagpie": "Magpie でアップスケール(初回使用時にダウンロード。Windows 10 1903 以降)",
+ "a.prof.autoMagpieOff": "なし",
  "e.gs.saved": "グローバルスクリプトを保存しました",
  "s.library.badAuto": "自動化が無効です。解像度 (例: 1920x1080@60) と電源プランの GUID を確認してください"
 }

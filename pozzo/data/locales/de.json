@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "Energiesparplan (GUID)",
  "a.prof.autoKill": "Diese Prozesse vor dem Start beenden",
  "a.prof.autoHdr": "HDR (Win+Alt+B) während des Spiels umschalten",
+ "a.prof.autoMagpie": "Hochskalierung mit Magpie (wird bei der ersten Nutzung geladen; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "Keine",
  "e.gs.saved": "Globale Skripte gespeichert",
  "s.library.badAuto": "Ungültige Automatisierungen: Auflösung (z. B. 1920x1080@60) und GUID des Energiesparplans prüfen"
 }

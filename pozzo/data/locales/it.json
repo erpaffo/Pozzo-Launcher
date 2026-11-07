@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "Piano energetico (GUID)",
  "a.prof.autoKill": "Chiudi questi processi prima dell'avvio",
  "a.prof.autoHdr": "Attiva/disattiva l'HDR (Win+Alt+B) durante il gioco",
+ "a.prof.autoMagpie": "Upscaling con Magpie (si scarica al primo uso; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "Nessuno",
  "e.gs.saved": "Script globali salvati",
  "s.library.badAuto": "Automazioni non valide: controlla risoluzione (es. 1920x1080@60) e GUID del piano energetico"
 }

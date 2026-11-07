@@ -216,6 +216,8 @@
       <label><span data-i18n="a.prof.autoPower">Piano energetico (GUID)</span> <input class="field" id="pf-au-power" placeholder="8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"></label>
       <label class="wide"><span data-i18n="a.prof.autoKill">Chiudi questi processi prima dell'avvio</span> <input class="field" id="pf-au-kill" placeholder="OneDrive.exe, Discord.exe"></label>
       <label class="chk wide"><input type="checkbox" id="pf-au-hdr"> <span data-i18n="a.prof.autoHdr">Attiva/disattiva l'HDR (Win+Alt+B) durante il gioco</span></label>
+      <label class="wide"><span data-i18n="a.prof.autoMagpie">Upscaling con Magpie (si scarica al primo uso; Windows 10 1903+)</span>
+        <select class="field" id="pf-au-magpie"><option value="" data-i18n="a.prof.autoMagpieOff">Nessuno</option><option value="fsr">FSR</option><option value="anime4k">Anime4K</option><option value="integer">Integer Scale 2x</option><option value="lanczos">Lanczos</option></select></label>
     </div>
     <div class="row end"><button class="btn" id="pf-reset" data-i18n="a.prof.reset">Ripristina predefinito</button><span class="grow"></span>
       <button class="btn" id="pf-cancel" data-i18n="a.common.cancel">Annulla</button><button class="btn primary" id="pf-save" data-i18n="a.common.save">Salva</button></div>

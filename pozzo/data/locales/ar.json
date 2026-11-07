@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "خطة الطاقة (GUID)",
  "a.prof.autoKill": "أغلق هذه العمليات قبل التشغيل",
  "a.prof.autoHdr": "تبديل HDR (Win+Alt+B) أثناء اللعب",
+ "a.prof.autoMagpie": "رفع الدقة باستخدام Magpie (يُنزَّل عند أول استخدام؛ Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "بدون",
  "e.gs.saved": "تم حفظ النصوص العامة",
  "s.library.badAuto": "أتمتة غير صالحة: تحقق من الدقة (مثل 1920x1080@60) ومعرّف GUID لخطة الطاقة"
 }

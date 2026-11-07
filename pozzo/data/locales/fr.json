@@ -3396,6 +3396,8 @@
  "a.prof.autoPower": "Mode d'alimentation (GUID)",
  "a.prof.autoKill": "Fermer ces processus avant le lancement",
  "a.prof.autoHdr": "Activer/désactiver le HDR (Win+Alt+B) pendant le jeu",
+ "a.prof.autoMagpie": "Mise à l'échelle avec Magpie (téléchargé à la première utilisation ; Windows 10 1903+)",
+ "a.prof.autoMagpieOff": "Aucune",
  "e.gs.saved": "Scripts globaux enregistrés",
  "s.library.badAuto": "Automatisations non valides : vérifiez la résolution (ex. 1920x1080@60) et le GUID du mode d'alimentation"
 }
