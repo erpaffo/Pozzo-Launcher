@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "不明なゲーム",
  "s.notify.queueDone": "ダウンロードが完了しました",
  "s.notify.queueDoneBody": "{n} 件完了",
- "s.notify.queueDoneFailed": "{n} 件失敗"
+ "s.notify.queueDoneFailed": "{n} 件失敗",
+ "j.ctl.ds.led": "カバーアートからライトバーの色を決める",
+ "j.ctl.ds.rumble": "ナビゲーション時の振動",
+ "a.pad.battery": "コントローラーの電池残量: {n}%"
 }

@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "j.ctl.ds.led": "Kapaktan ışık çubuğu rengi",
+ "j.ctl.ds.rumble": "Gezinirken titreşim",
+ "a.pad.battery": "Kol pili: %{n}"
 }

@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "알 수 없는 게임",
  "s.notify.queueDone": "다운로드 완료",
  "s.notify.queueDoneBody": "{n}개 완료",
- "s.notify.queueDoneFailed": "{n}개 실패"
+ "s.notify.queueDoneFailed": "{n}개 실패",
+ "j.ctl.ds.led": "커버 이미지로 라이트바 색상 설정",
+ "j.ctl.ds.rumble": "탐색 중 진동",
+ "a.pad.battery": "컨트롤러 배터리: {n}%"
 }

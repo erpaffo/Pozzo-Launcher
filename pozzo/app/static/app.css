@@ -2284,3 +2284,6 @@ button.gs-ranking-item:hover, button.gs-ranking-item:focus-visible { border-colo
 
 .gs-quick-actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .gs-quick-actions-grid .btn { justify-content: center; }
+
+.ds-bat { font-size: .85rem; color: var(--muted); white-space: nowrap; align-self: center; }
+.ds-bat.low { color: #e5534b; }

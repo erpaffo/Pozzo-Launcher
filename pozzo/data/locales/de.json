@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "Unbekanntes Spiel",
  "s.notify.queueDone": "Downloads beendet",
  "s.notify.queueDoneBody": "{n} abgeschlossen",
- "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen",
+ "j.ctl.ds.led": "Lichtleistenfarbe aus dem Cover",
+ "j.ctl.ds.rumble": "Vibration bei der Navigation",
+ "a.pad.battery": "Controller-Akku: {n}%"
 }

@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "未知游戏",
  "s.notify.queueDone": "下载已完成",
  "s.notify.queueDoneBody": "{n} 个已完成",
- "s.notify.queueDoneFailed": "{n} 个失败"
+ "s.notify.queueDoneFailed": "{n} 个失败",
+ "j.ctl.ds.led": "根据封面设置灯条颜色",
+ "j.ctl.ds.rumble": "导航时振动",
+ "a.pad.battery": "手柄电量：{n}%"
 }

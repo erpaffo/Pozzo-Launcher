@@ -68,6 +68,7 @@ async function play(id, body = {}) {
   if (r.ask) { const w = await askWindow(); return w && play(id, { ...body, ...w }); } // «disco veloce» resta anche dopo la scelta della finestra
   const btn = S.detail?.id === id && $("#d-play");
   if (btn) { btn.classList.add("mo-launch"); btn.addEventListener("animationend", () => btn.classList.remove("mo-launch"), { once: true }); }
+  window.Dualsense?.led(id, true);
   pollRunning();
 }
 
@@ -384,6 +385,7 @@ async function pollRunning() {
   } else {
     bar.hidden = true;
     if (S.running && S.running.started === r.started) {
+      window.Dualsense?.led(null, true);
       if (r.status === "error") launchErrorToast(r);
       if (r.status === "finished") {
         toast(t("h.run.ended", {time: fmtTime(r.played)}) + (r.shots ? " · " + t("h.run.shots", {n: r.shots, w: r.shots === 1 ? t("h.run.shot1") : t("h.run.shotN")}) : ""));

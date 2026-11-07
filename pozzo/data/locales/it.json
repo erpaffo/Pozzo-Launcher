@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "Gioco sconosciuto",
  "s.notify.queueDone": "Download finiti",
  "s.notify.queueDoneBody": "{n} completati",
- "s.notify.queueDoneFailed": "{n} falliti"
+ "s.notify.queueDoneFailed": "{n} falliti",
+ "j.ctl.ds.led": "Colore della barra luminosa dalla copertina",
+ "j.ctl.ds.rumble": "Vibrazione nella navigazione",
+ "a.pad.battery": "Batteria del controller: {n}%"
 }

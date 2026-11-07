@@ -250,3 +250,6 @@ html[data-bptext="xlarge"] .shelf h2 { font-size: 1.3rem; }
 #bp-attract .at-info b { display: block; font-size: 2.4rem; }
 #bp-attract .at-info span { font-size: 1.2rem; opacity: .85; }
 @keyframes at-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+.ds-bat { flex: none; font-size: 1.05rem; color: var(--muted); }
+.ds-bat.low { color: #e5534b; }

@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "Неизвестная игра",
  "s.notify.queueDone": "Загрузки завершены",
  "s.notify.queueDoneBody": "Завершено: {n}",
- "s.notify.queueDoneFailed": "Ошибок: {n}"
+ "s.notify.queueDoneFailed": "Ошибок: {n}",
+ "j.ctl.ds.led": "Цвет световой панели по обложке",
+ "j.ctl.ds.rumble": "Вибрация при навигации",
+ "a.pad.battery": "Заряд геймпада: {n}%"
 }

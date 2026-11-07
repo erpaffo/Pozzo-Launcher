@@ -27,6 +27,7 @@ function announce(text) {
 
 let actx = null;
 function beep(kind) {
+  if (kind === "move") window.Dualsense?.tick();
   if (!Pad.sound) return;
   try {
     actx = actx || new AudioContext();

@@ -91,6 +91,7 @@ window.addEventListener("storage", (e) => { if (e.key === "gs.ui") setGlow(glowI
 
 let bgTimer = 0, bgFront = 0, glowId = null;
 function setBackground(id) {
+  window.Dualsense?.led(id);
   clearTimeout(bgTimer);
   glowId = id || null;
   setGlow(glowId);
@@ -487,6 +488,7 @@ async function playGame(d, body = {}) {
     return push(gridScreen(t("c.mode.title"), items, cur().tab, { text: true, unit: t("c.unit.options") }));
   }
   beep("ok");
+  window.Dualsense?.led(d.id, true);
   BP.running = { id: d.id, title: d.title };
   showRunning(t("c.run.starting"));
   pollRunning();
@@ -516,6 +518,7 @@ async function pollRunning() {
     if (r.status === "error") toast(r.message, true);
     else if (r.status === "finished" && r.played > 30) toast(`${t("c.run.session", { time: fmtTime(r.played) })}${r.shots ? ` · 📷 ${r.shots}` : ""}`);
     BP.running = null;
+    window.Dualsense?.led(cur().d?.id ?? null, true);
     try { window.pywebview?.api?.focus_window?.(); } catch { /* browser */ }
     await reloadLibrary();
   }

@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "अज्ञात गेम",
  "s.notify.queueDone": "डाउनलोड पूरे हुए",
  "s.notify.queueDoneBody": "{n} पूरे हुए",
- "s.notify.queueDoneFailed": "{n} विफल"
+ "s.notify.queueDoneFailed": "{n} विफल",
+ "j.ctl.ds.led": "कवर से लाइटबार का रंग",
+ "j.ctl.ds.rumble": "नेविगेशन में वाइब्रेशन",
+ "a.pad.battery": "कंट्रोलर की बैटरी: {n}%"
 }

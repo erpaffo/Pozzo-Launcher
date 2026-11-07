@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "Unknown game",
  "s.notify.queueDone": "Downloads finished",
  "s.notify.queueDoneBody": "{n} completed",
- "s.notify.queueDoneFailed": "{n} failed"
+ "s.notify.queueDoneFailed": "{n} failed",
+ "j.ctl.ds.led": "Lightbar colour from the cover art",
+ "j.ctl.ds.rumble": "Vibration when navigating",
+ "a.pad.battery": "Controller battery: {n}%"
 }

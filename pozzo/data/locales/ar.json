@@ -3377,5 +3377,8 @@
  "s.reco.unknownGame": "لعبة غير معروفة",
  "s.notify.queueDone": "انتهت التنزيلات",
  "s.notify.queueDoneBody": "اكتمل {n}",
- "s.notify.queueDoneFailed": "فشل {n}"
+ "s.notify.queueDoneFailed": "فشل {n}",
+ "j.ctl.ds.led": "لون شريط الإضاءة من الغلاف",
+ "j.ctl.ds.rumble": "الاهتزاز أثناء التنقل",
+ "a.pad.battery": "بطارية وحدة التحكم: {n}%"
 }
