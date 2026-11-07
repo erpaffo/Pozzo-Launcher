@@ -3546,5 +3546,6 @@
  "o.overlay.close": "オーバーレイを閉じる",
  "o.overlay.ach": "実績",
  "o.overlay.notes": "メモ",
- "o.overlay.music": "音楽"
+ "o.overlay.music": "音楽",
+ "o.toast.unlocked": "実績を解除しました"
 }

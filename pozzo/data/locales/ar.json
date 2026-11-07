@@ -3546,5 +3546,6 @@
  "o.overlay.close": "إغلاق الطبقة",
  "o.overlay.ach": "الإنجازات",
  "o.overlay.notes": "ملاحظات",
- "o.overlay.music": "الموسيقى"
+ "o.overlay.music": "الموسيقى",
+ "o.toast.unlocked": "تم فتح إنجاز"
 }

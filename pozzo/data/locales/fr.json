@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Fermer l'overlay",
  "o.overlay.ach": "Succès",
  "o.overlay.notes": "Notes",
- "o.overlay.music": "Musique"
+ "o.overlay.music": "Musique",
+ "o.toast.unlocked": "Succès débloqué"
 }

@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Katmanı kapat",
  "o.overlay.ach": "Başarımlar",
  "o.overlay.notes": "Notlar",
- "o.overlay.music": "Müzik"
+ "o.overlay.music": "Müzik",
+ "o.toast.unlocked": "Başarım kazanıldı"
 }

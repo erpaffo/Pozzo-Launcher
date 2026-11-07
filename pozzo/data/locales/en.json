@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Close overlay",
  "o.overlay.ach": "Achievements",
  "o.overlay.notes": "Notes",
- "o.overlay.music": "Music"
+ "o.overlay.music": "Music",
+ "o.toast.unlocked": "Achievement unlocked"
 }

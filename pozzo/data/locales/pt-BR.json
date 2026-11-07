@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Fechar overlay",
  "o.overlay.ach": "Conquistas",
  "o.overlay.notes": "Notas",
- "o.overlay.music": "Música"
+ "o.overlay.music": "Música",
+ "o.toast.unlocked": "Conquista desbloqueada"
 }

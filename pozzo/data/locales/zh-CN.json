@@ -3546,5 +3546,6 @@
  "o.overlay.close": "关闭悬浮层",
  "o.overlay.ach": "成就",
  "o.overlay.notes": "笔记",
- "o.overlay.music": "音乐"
+ "o.overlay.music": "音乐",
+ "o.toast.unlocked": "成就已解锁"
 }

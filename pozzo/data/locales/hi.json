@@ -3546,5 +3546,6 @@
  "o.overlay.close": "ओवरले बंद करें",
  "o.overlay.ach": "उपलब्धियाँ",
  "o.overlay.notes": "नोट्स",
- "o.overlay.music": "संगीत"
+ "o.overlay.music": "संगीत",
+ "o.toast.unlocked": "उपलब्धि अनलॉक हुई"
 }

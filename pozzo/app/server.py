@@ -261,6 +261,10 @@ def create_app(cfg) -> FastAPI:
     events.on("game_started", overlay.game_started)
     events.on("game_stopped", overlay.game_stopped)
     app.state.overlay = overlay
+    from ..liveach import LiveAch
+    live = LiveAch(cfg, overlay)  # avvisi degli obiettivi scritti dagli emulatori Steam
+    events.on("game_started", live.game_started)
+    events.on("game_stopped", live.game_stopped)
     from ..remote import phone as PH
     phone_hub = PH.PhoneHub(cfg, C.save_settings)
     PH.register(app, phone_hub, STATIC)

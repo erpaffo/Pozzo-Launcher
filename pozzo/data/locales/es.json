@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Cerrar overlay",
  "o.overlay.ach": "Logros",
  "o.overlay.notes": "Notas",
- "o.overlay.music": "Música"
+ "o.overlay.music": "Música",
+ "o.toast.unlocked": "Logro desbloqueado"
 }

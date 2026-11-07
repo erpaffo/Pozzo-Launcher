@@ -3546,5 +3546,6 @@
  "o.overlay.close": "오버레이 닫기",
  "o.overlay.ach": "업적",
  "o.overlay.notes": "메모",
- "o.overlay.music": "음악"
+ "o.overlay.music": "음악",
+ "o.toast.unlocked": "업적 달성"
 }

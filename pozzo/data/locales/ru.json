@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Закрыть оверлей",
  "o.overlay.ach": "Достижения",
  "o.overlay.notes": "Заметки",
- "o.overlay.music": "Музыка"
+ "o.overlay.music": "Музыка",
+ "o.toast.unlocked": "Достижение получено"
 }

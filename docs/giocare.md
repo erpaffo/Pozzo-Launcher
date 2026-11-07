@@ -317,6 +317,13 @@ installata) e i comandi della musica. Si chiude con lo stesso tasto, con **Esc**
 La scorciatoia si cambia nelle impostazioni delle schermate. L'overlay funziona con i giochi in finestra e a schermo intero
 senza bordi: **non si disegna sopra i giochi a schermo intero esclusivo**.
 
+### Obiettivi dal vivo
+
+Per i giochi Steam avviati con un emulatore Steam, Pozzo guarda durante la partita i file degli obiettivi di Goldberg/GSE
+(`%APPDATA%\Goldberg SteamEmu Saves`), EMPRESS, CODEX e RUNE e mostra un avviso per ogni obiettivo nuovo. Nome e icona
+vengono dallo schema Steam se hai la chiave API; senza, si usa l'id ripulito. Avvisi e suono si scelgono nelle impostazioni
+delle schermate (⚙). RPCS3, SmartSteamEmu e CreamAPI non sono supportati.
+
 ## RetroAchievements
 
 In **Impostazioni › Store › RetroAchievements** inserisci il tuo utente e la Web API key. Nel dettaglio dei giochi

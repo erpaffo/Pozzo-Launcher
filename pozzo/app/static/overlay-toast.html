@@ -16,6 +16,7 @@
 </head>
 <body>
 <div id="t"><img id="i" alt="" hidden><div><small id="k"></small><b id="n"></b><span id="d"></span></div></div>
+<script src="/static/i18n.js"></script>
 <script>
 // suoni generati con WebAudio: nessun file audio
 const TONES = { soft: [[660, 0, .18], [880, .14, .28]], classic: [[523, 0, .12], [659, .12, .12], [784, .24, .12], [1047, .36, .4]] };
@@ -28,11 +29,11 @@ function beep(kind) {
   } catch (e) {}
 }
 window.showToast = (x) => {
-  document.getElementById("k").textContent = x.title || "";
+  document.getElementById("k").textContent = (x.key && window.t ? t(x.key) : x.title) || "";
   document.getElementById("n").textContent = x.text || "";
   document.getElementById("d").textContent = x.desc || "";
   const i = document.getElementById("i"); i.hidden = !x.icon; if (x.icon) i.src = x.icon;
-  const t = document.getElementById("t"); t.classList.remove("on"); void t.offsetWidth; t.classList.add("on");
+  const box = document.getElementById("t"); box.classList.remove("on"); void box.offsetWidth; box.classList.add("on");
   beep(x.sound);
 };
 </script>

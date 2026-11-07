@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Overlay schließen",
  "o.overlay.ach": "Erfolge",
  "o.overlay.notes": "Notizen",
- "o.overlay.music": "Musik"
+ "o.overlay.music": "Musik",
+ "o.toast.unlocked": "Erfolg freigeschaltet"
 }

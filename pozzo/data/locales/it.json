@@ -3546,5 +3546,6 @@
  "o.overlay.close": "Chiudi overlay",
  "o.overlay.ach": "Obiettivi",
  "o.overlay.notes": "Appunti",
- "o.overlay.music": "Musica"
+ "o.overlay.music": "Musica",
+ "o.toast.unlocked": "Obiettivo sbloccato"
 }
