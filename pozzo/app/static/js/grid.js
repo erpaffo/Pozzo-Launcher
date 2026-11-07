@@ -349,11 +349,11 @@ layer.addEventListener("keydown", (e) => {
   moveFocus(e.key, e.ctrlKey);
 });
 // video snap: la copertina ferma ~600 ms sotto il mouse lo avvia nella tessera (uno alla volta, si ferma uscendo)
-const tileCover = (id) => layer.querySelector(`.tile[data-id="${id}"] .cover`);
+const snapCover = (id) => layer.querySelector(`.tile[data-id="${id}"] .cover`);
 const snapHover = GSVideo.createHover({
   setT: (f, ms) => setTimeout(f, ms), clearT: (x) => clearTimeout(x),
-  play: (id) => { const c = tileCover(id); if (c) GSVideo.attach(c, id, { after: c.querySelector("img, .ph") }); },
-  stop: (id) => { const c = tileCover(id); if (c) GSVideo.stop(c); },
+  play: (id) => { const c = snapCover(id); if (c) GSVideo.attach(c, id, { after: c.querySelector("img, .ph") }); },
+  stop: (id) => { const c = snapCover(id); if (c) GSVideo.stop(c); },
 });
 layer.addEventListener("mouseover", (e) => { const tl = e.target.closest?.(".tile[data-id]"); if (tl) snapHover.enter(tl.dataset.id); });
 layer.addEventListener("mouseout", (e) => { const tl = e.target.closest?.(".tile[data-id]"); if (tl && !tl.contains(e.relatedTarget)) snapHover.leave(tl.dataset.id); });

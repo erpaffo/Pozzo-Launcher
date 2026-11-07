@@ -21,7 +21,9 @@ function makeCtx(rows) {
   };
   ctx.S = { rows, nodes: new Map(), cols: 3, th: 100, gap: 10, pad: 0, items: [], detail: null, total: 0 };
   ctx.box = scroller;
+  ctx.window = ctx; // videosnap.js pubblica GSVideo su window
   vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "pozzo", "app", "static", "videosnap.js"), "utf8"), ctx); // grid.js usa GSVideo
   vm.runInContext(src, ctx);
   // la tessera vera (copertina, badge) non serve: la sostituisce un elemento minimo con fuoco registrato
   ctx.tileEl = (g) => ({

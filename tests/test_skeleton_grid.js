@@ -49,6 +49,7 @@ vm.runInContext(read("motion-settings.js"), ctx);
 ctx.S = {
   items: [], games: [], rows: [], total: 0, cols: 1, tw: 170, th: 260, gap: 18, pad: 22, zoom: 170, nodes: new Map(),
 };
+vm.runInContext(read("videosnap.js"), ctx); // come lo script di index.html: grid.js usa GSVideo
 vm.runInContext(read("js/grid.js"), ctx);
 // loading() sta in state.js (con molto altro): si esegue solo quella funzione
 const loadingSrc = read("js/state.js").match(/function loading\(text\) \{[\s\S]*?\n\}/)[0];
