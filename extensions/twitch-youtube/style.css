@@ -1,0 +1,8 @@
+.tv-box h4 { margin: 12px 0 6px; }
+.tv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.tv-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: inherit; text-decoration: none; }
+.tv-media { position: relative; aspect-ratio: 16 / 9; background: var(--bg-3); border-radius: 6px; overflow: hidden; }
+.tv-media iframe, .tv-thumb { width: 100%; height: 100%; border: 0; object-fit: cover; display: block; }
+.tv-play { position: absolute; inset: 0; border: 0; background: rgba(0, 0, 0, .35); color: #fff; font-size: 32px; cursor: pointer; }
+.tv-live { position: absolute; left: 6px; top: 6px; background: #e91916; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.tv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
