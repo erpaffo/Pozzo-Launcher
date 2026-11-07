@@ -75,6 +75,23 @@ def _silence_proactor_pipe_reset() -> None:
                     pass
 
         asyncio.proactor_events._ProactorBasePipeTransport._call_connection_lost = safe_call
+
+        # chiusura dell'app: una connessione accettata un attimo prima di server.close() viene agganciata
+        # dopo, a server gia' chiuso -> AssertionError "self._sockets is not None" nel terminale.
+        # La si accoglie e la si chiude appena il transport e' pronto (siamo ancora nel suo __init__)
+        import asyncio.base_events
+        orig_attach = asyncio.base_events.Server._attach
+
+        def safe_attach(self, *transport):  # 3.13+: _attach(transport); 3.12: _attach() con un contatore
+            if self._sockets is not None:
+                return orig_attach(self, *transport)
+            if transport:
+                self._clients.add(transport[0])  # _detach la togliera' alla chiusura, come per le altre
+                self._loop.call_soon(transport[0].close)
+            else:
+                self._active_count += 1  # _detach lo riporta indietro
+
+        asyncio.base_events.Server._attach = safe_attach
     except Exception:
         pass
 

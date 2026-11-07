@@ -202,6 +202,28 @@ def test_sse():
     print("ok  SSE: eventi in streaming e ascoltatori rimossi")
 
 
+def test_late_connection_after_close():
+    """Windows: una connessione accettata mentre il server si chiude non deve dare AssertionError."""
+    import asyncio
+    import socket
+
+    async def go():
+        srv = await asyncio.start_server(lambda r, w: None, "127.0.0.1", 0)
+        srv.close()  # _sockets = None, come allo spegnimento
+        a, b = socket.socketpair()
+        tr, _ = await asyncio.get_running_loop().connect_accepted_socket(asyncio.Protocol, a)
+        tr._server = srv
+        srv._attach(*((tr,) if sys.version_info >= (3, 13) else ()))  # prima: AssertionError
+        await asyncio.sleep(0.05)
+        if sys.version_info >= (3, 13):
+            assert tr.is_closing(), "la connessione tardiva va chiusa"
+        b.close()
+
+    if sys.platform == "win32":
+        asyncio.run(go())
+    print("ok  connessione tardiva a server chiuso: nessun AssertionError")
+
+
 def main():
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         tmp = Path(t)
