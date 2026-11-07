@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "Unbekanntes Spiel",
  "s.notify.queueDone": "Downloads beendet",
  "s.notify.queueDoneBody": "{n} abgeschlossen",
- "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen",
+ "fr.shareTime": "Spielzeit teilen",
+ "fr.shareAch": "Erfolge teilen",
+ "fr.privacy": "Wenn aktiv, erhalten Freunde über den Supabase-Dienst deine 50 meistgespielten Spiele (und Erfolge, falls aktiv). Ausgeschaltet wird nichts gesendet.",
+ "fr.activity": "Letzte Aktivität",
+ "fr.noActivity": "Keine Aktivität",
+ "fr.back": "Zurück",
+ "fr.common": "Gemeinsame Spiele",
+ "fr.noCommon": "Keine gemeinsamen Spiele (oder dein Freund teilt keine Spielzeit)",
+ "fr.updated": "aktualisiert am {date}",
+ "fr.you": "Du",
+ "fr.achv": "{n}/{m} Erfolge",
+ "fr.noData": "{name} hat noch keine Daten geteilt: Sie werden aktualisiert, wenn die Person online ist.",
+ "fr.friendsPlaying": "Freunde, die es spielen",
+ "fr.compare": "Vergleichen"
 }

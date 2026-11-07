@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "fr.shareTime": "Oyun süresini paylaş",
+ "fr.shareAch": "Başarımları paylaş",
+ "fr.privacy": "Açıkken arkadaşların en çok oynadığın 50 oyunu (ve açıksa başarımları) Supabase hizmeti üzerinden alır. Kapalıyken hiçbir şey gönderilmez.",
+ "fr.activity": "Son etkinlik",
+ "fr.noActivity": "Etkinlik yok",
+ "fr.back": "Geri",
+ "fr.common": "Ortak oyunlar",
+ "fr.noCommon": "Ortak oyun yok (veya arkadaşın oyun süresini paylaşmıyor)",
+ "fr.updated": "{date} tarihinde güncellendi",
+ "fr.you": "Sen",
+ "fr.achv": "{n}/{m} başarım",
+ "fr.noData": "{name} henüz veri paylaşmadı: çevrimiçi olunca güncellenir.",
+ "fr.friendsPlaying": "Oynayan arkadaşlar",
+ "fr.compare": "Karşılaştır"
 }

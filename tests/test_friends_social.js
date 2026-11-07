@@ -67,6 +67,24 @@ function runTests() {
   assert.strictEqual(me.id, me2.id, "Id deve essere persistito");
   assert.strictEqual(me.friend_code, me2.friend_code, "Friend code deve essere persistito");
 
+  // Funzioni pure: riepilogo con interruttori, giochi in comune, tetto del registro attività
+  const games = [{ title: "Zelda: BotW", minutes: 120, last: 5 }, { title: "Doom", minutes: 30, last: 6 }, { title: "Mai", minutes: 0 }];
+  const ach = [{ title: "doom", unlocked: 3, total: 10 }];
+  assert.strictEqual(Friends.buildSummary({ games, ach }), null, "tutto spento: niente da inviare");
+  const st = Friends.buildSummary({ games, ach, time: true });
+  assert.strictEqual(JSON.stringify(st.map((g) => g.k)), '["zeldabotw","doom"]');
+  assert(st.every((g) => g.a === undefined), "senza il consenso gli obiettivi non escono");
+  const sa = Friends.buildSummary({ games, ach, achievements: true });
+  assert.strictEqual(JSON.stringify(sa.map((g) => [g.k, g.a, g.n, g.m])), '[["doom",3,10,null]]', "solo obiettivi: niente tempi");
+  const sb = Friends.buildSummary({ games, ach, time: true, achievements: true, max: 1 });
+  assert.strictEqual(sb.length, 1);
+  const common = Friends.commonGames(st, [{ k: "doom", t: "Doom", m: 500 }, { k: "altro", t: "Altro", m: 9 }, { k: "zeldabotw", t: "Z" }]);
+  assert.strictEqual(JSON.stringify(common.map((c) => [c.k, c.mine, c.theirs])), '[["doom",30,500],["zeldabotw",120,0]]');
+  let log = [];
+  for (let i = 0; i < 130; i++) log = Friends.pushActivity(log, { i });
+  assert.strictEqual(log.length, 100);
+  assert.strictEqual(log[0].i, 129);
+
   console.log("ok test_friends_social.js");
 }
 

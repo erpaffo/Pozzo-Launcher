@@ -98,6 +98,7 @@ async function openDetail(id) {
     [t("f.dl.region"), d.region], [t("f.dl.size"), fmtSize(d.size)],
     [t("f.dl.playtime"), u.playtime ? fmtTime(u.playtime) : ""], [t("f.dl.last_played"), u.last_played ? fmtDate(u.last_played) : ""],
     [t("f.dl.launches"), u.play_count || ""],
+    [t("fr.friendsPlaying"), window.Friends?.playingNames?.(d.title) || ""],
     [t("f.dl.playtime_on", {store: d.store_name || "store"}), d.store_playtime ? fmtTime(d.store_playtime) : ""],
   ].filter(([, v]) => v !== null && v !== undefined && v !== "");
   const shots = ["screenshot", "title", "wheel", "fanart", "marquee", "header"].filter((k) => d.media[k]);

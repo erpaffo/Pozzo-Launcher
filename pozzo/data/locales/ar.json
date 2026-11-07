@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "لعبة غير معروفة",
  "s.notify.queueDone": "انتهت التنزيلات",
  "s.notify.queueDoneBody": "اكتمل {n}",
- "s.notify.queueDoneFailed": "فشل {n}"
+ "s.notify.queueDoneFailed": "فشل {n}",
+ "fr.shareTime": "مشاركة وقت اللعب",
+ "fr.shareAch": "مشاركة الإنجازات",
+ "fr.privacy": "عند التفعيل يتلقى أصدقاؤك أكثر 50 لعبة لعبتها (والإنجازات إن كانت مفعّلة) عبر خدمة Supabase. عند الإيقاف لا يُرسل شيء.",
+ "fr.activity": "النشاط الأخير",
+ "fr.noActivity": "لا يوجد نشاط",
+ "fr.back": "رجوع",
+ "fr.common": "ألعاب مشتركة",
+ "fr.noCommon": "لا توجد ألعاب مشتركة (أو أن صديقك لا يشارك وقت اللعب)",
+ "fr.updated": "آخر تحديث {date}",
+ "fr.you": "أنت",
+ "fr.achv": "{n}/{m} إنجازات",
+ "fr.noData": "{name} لم يشارك أي بيانات بعد: تُحدَّث عندما يكون متصلاً.",
+ "fr.friendsPlaying": "الأصدقاء الذين يلعبونها",
+ "fr.compare": "قارن"
 }

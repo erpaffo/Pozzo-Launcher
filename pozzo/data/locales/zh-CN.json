@@ -3377,5 +3377,19 @@
  "s.reco.unknownGame": "未知游戏",
  "s.notify.queueDone": "下载已完成",
  "s.notify.queueDoneBody": "{n} 个已完成",
- "s.notify.queueDoneFailed": "{n} 个失败"
+ "s.notify.queueDoneFailed": "{n} 个失败",
+ "fr.shareTime": "分享游戏时长",
+ "fr.shareAch": "分享成就",
+ "fr.privacy": "开启后,好友将通过 Supabase 服务收到你游玩时间最长的 50 款游戏(若开启成就则含成就)。关闭时不会发送任何内容。",
+ "fr.activity": "最近动态",
+ "fr.noActivity": "暂无动态",
+ "fr.back": "返回",
+ "fr.common": "共同游戏",
+ "fr.noCommon": "没有共同游戏(或好友未分享游戏时长)",
+ "fr.updated": "更新于 {date}",
+ "fr.you": "你",
+ "fr.achv": "成就 {n}/{m}",
+ "fr.noData": "{name} 尚未分享数据:对方上线后会更新。",
+ "fr.friendsPlaying": "在玩这款游戏的好友",
+ "fr.compare": "对比"
 }
