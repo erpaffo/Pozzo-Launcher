@@ -53,7 +53,8 @@ class LaunchBox(Source):
 
     async def lookup(self, game: Game) -> Result | None:
         files = [game.stem] + ([Path(game.inner_name).stem] if game.inner_name else [])
-        r = self.db.find(game.platform.id, _titles(game), files=files, year=_year(game))
+        hashed = game.canonical if game.match_by == "hash" else None  # titolo DAT trovato dall'hash (libretro)
+        r = self.db.find(game.platform.id, _titles(game), files=files, year=_year(game), hash_title=hashed)
         if not r:
             return None
         f = {"title": r["name"], "description": r["overview"], "developer": r["developer"], "publisher": r["publisher"],

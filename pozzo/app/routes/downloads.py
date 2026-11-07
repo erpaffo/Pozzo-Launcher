@@ -97,9 +97,13 @@ def build_router(ctx) -> APIRouter:
         out = []
         for u in links:
             try:
+                # sha256/mirrors solo se il chiamante (catalogo, DAT, store) li conosce: add() li valida
+                extra = {k: body[k] for k in ("sha256", "mirrors") if body.get(k)}
+                if len(links) > 1:
+                    extra.pop("sha256", None)  # un hash vale per un file solo
                 out.append(mgr.add(u, body.get("save_path") or "", priority=body.get("priority") or 0,
                                    category=body.get("category") or "", start_at=body.get("start_at"),
-                                   days=body.get("days")).view())
+                                   days=body.get("days"), **extra).view())
             except ValueError as e:
                 raise HTTPException(400, str(e))
         return {"ok": True, "tasks": out}
@@ -132,7 +136,7 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/downloads/debrid/{svc}/test")
     def api_downloads_debrid_test(svc: str):
         if svc not in debrid.SERVICES:
-            raise HTTPException(404, "Servizio sconosciuto")
+            raise HTTPException(404, I.tr("s.downloads.unknownService"))
         key = (mgr._raw()["debrid"].get(svc) or {}).get("key")
         if not key:
             return {"ok": False, "user": "", "premium": False, "expires": None, "error": I.tr("s.downloads.no_key")}

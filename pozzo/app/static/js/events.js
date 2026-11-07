@@ -587,6 +587,16 @@ function bind() {
     pollBulk();
   });
   $("#scan-plan").onclick = showPlan;
+  $("#imp-go").onclick = async () => {
+    const fmt = $("#imp-fmt").value, dir = fmt === "heroic" || fmt === "launchbox" && confirm(t("k.lib.imp.pickFolder"));
+    const p = window.pywebview?.api ? await pickPath(dir ? "folder" : "file") : prompt(t("k.lib.imp.pathPrompt"));
+    if (!p) return;
+    try {
+      const r = await api("/api/import/" + fmt, { body: { path: p } });
+      $("#imp-out").textContent = t("k.lib.imp.result", { matched: r.matched, added: r.added, skipped: r.skipped, favorites: r.favorites, playtime: r.playtime, collections: r.collections });
+      reload(true);
+    } catch (e) { toast(e.message, true); }
+  };
   $("#setup-open").onclick = async () => { closeSettings(); await SETUP.open(true); await reload(true); };
   $("#roms-change").onclick = async () => {
     let p = window.pywebview?.api ? await pickPath("folder") : prompt(t("g.ev.roms.prompt"), $("#scan-root").textContent);
@@ -699,6 +709,7 @@ function bind() {
     SHOTS.hotkey = d.settings.hotkey ? d.settings.hotkey.split("+").map((k) => k[0].toUpperCase() + k.slice(1)).join("+") : "—";
   }).catch(() => {});
   $("#smart-new").onclick = () => openSmart();
+  initSavedFilters();
   $("#smart-dlg").addEventListener("click", (e) => {
     const c = e.target.closest(".sm-chip");
     if (!c) return;

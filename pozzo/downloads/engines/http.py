@@ -11,6 +11,7 @@ from urllib.parse import unquote, urlparse, urlsplit
 
 import httpx
 
+from .. import hosts
 from ..task import mb
 
 RETRIES = 5
@@ -19,6 +20,10 @@ MIN_SEGMENT = 2 * 1024 * 1024  # sotto questa dimensione un solo flusso basta
 # link che valgono una richiesta sola: ogni richiesta in piu' (anche il controllo) dà 410 Gone
 ONE_TIME = ('1fichier.com',)
 URL_TTL = 6 * 3600  # secondi: un link diretto risolto si riprova alla ripresa (se e' scaduto si risolve di nuovo)
+
+
+class HashMismatch(ValueError):
+    """Il file scaricato non ha lo SHA-256 dichiarato dal catalogo: e' in quarantena, non in libreria."""
 
 
 class Bucket:
@@ -77,6 +82,22 @@ def _sparse(f) -> None:
 
 
 async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve, gate=None) -> None:
+    """Come _run, ma se il file non ha lo SHA-256 atteso (options["sha256"]) riparte dal prossimo link di options["mirrors"]."""
+    while True:
+        try:
+            return await _run(task, client, bucket, segments, resolve, gate)
+        except HashMismatch as e:
+            alts = task.options.get("mirrors") or []
+            if not alts:
+                raise
+            task.source = alts.pop(0)
+            for k in ("url", "url_at", "part", "segs", "tag"):
+                task.options.pop(k, None)
+            task.size = task.done = 0
+            task.log(f"{e}; provo un altro mirror ({len(alts)} rimasti)", "warn")
+
+
+async def _run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, resolve, gate=None) -> None:
     """Scarica `task` fino alla fine. Lo stato per riprendere sta in task.options (segs, tag, url): il manager lo salva."""
     url = task.options.get("url")
     gated = False  # gate (coda per lo scaricamento) una volta sola in tutto run
@@ -88,6 +109,8 @@ async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, re
                 gated = True
                 await gate()
             return await _fetch(task, client, bucket, segments, url, time.time())
+        except HashMismatch:
+            raise
         except (httpx.HTTPStatusError, httpx.TransportError, ValueError) as e:
             task.log(f"Link di prima non più valido ({type(e).__name__}): lo risolvo di nuovo", "warn")
         task.options.pop("url", None)
@@ -95,6 +118,8 @@ async def run(task, client: httpx.AsyncClient, bucket: Bucket, segments: int, re
     t0 = time.time()
     url = await asyncio.to_thread(resolve, task.source)  # senza tetto: l'attesa dei lock del browser non conta
     task.log(f"Link risolto in {time.time() - t0:.1f} s")
+    if url != task.source:  # uscito da pagine di terzi: mai verso la rete locale (l'utente puo' scrivere a mano un link LAN)
+        await asyncio.to_thread(hosts.assert_public, url)
     host = urlsplit(url).hostname or ""
     if not any(host == h or host.endswith("." + h) for h in ONE_TIME):  # un link monouso non si riusa
         task.options.update(url=url, url_at=time.time())
@@ -221,6 +246,14 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
     reuse = first if segs[0][2] == 0 else None
     await asyncio.gather(worker(0, reuse), *(worker(i) for i in range(1, len(segs))))
     sync_done()
+    want = (task.options.get("sha256") or "").lower()
+    if want:  # nessun hash dichiarato = nessun blocco
+        from ... import ports  # import qui: ports e' pesante
+        if await asyncio.to_thread(ports._sha256, part) != want:
+            q = dest / ".quarantena"
+            q.mkdir(exist_ok=True)
+            part.replace(q / f"{int(time.time())}-{final.name}")
+            raise HashMismatch(f"SHA-256 diverso da quello atteso: {final.name} messo in quarantena")
     final.unlink(missing_ok=True)
     part.replace(final)
     for k in ("segs", "url", "url_at"):

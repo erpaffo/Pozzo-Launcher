@@ -63,3 +63,87 @@ def test_sparse_imposta_attributo_windows(tmp_path):
         H._sparse(f)
         f.truncate(1024 * 1024)
     assert ctypes.windll.kernel32.GetFileAttributesW(str(p)) & 0x200
+
+
+# ---- SHA-256 + quarantena + failover mirror, SSRF
+def _serve(files):
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Hd(BaseHTTPRequestHandler):
+        def do_GET(self):
+            b = files[self.path]
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(b)))
+            self.end_headers()
+            self.wfile.write(b)
+
+        def log_message(self, *a):
+            pass
+
+    s = ThreadingHTTPServer(("127.0.0.1", 0), Hd)
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    return s, f"http://127.0.0.1:{s.server_port}"
+
+
+def _task(tmp_path, src, **opts):
+    from pozzo.downloads.task import DownloadTask
+    return DownloadTask(source=src, save_path=str(tmp_path), options=opts)
+
+
+def _go(task):
+    import httpx
+
+    async def main():
+        async with httpx.AsyncClient() as c:
+            await H.run(task, c, H.Bucket(), 1, lambda u: u)
+    asyncio.run(main())
+
+
+def test_sha_ok_nessun_hash_e_mismatch_con_failover(tmp_path):
+    import hashlib
+    good = b"gioco vero"
+    s, base = _serve({"/bad.bin": b"corrotto!!", "/ok.bin": good})
+    try:
+        t = _task(tmp_path, base + "/ok.bin")
+        _go(t)  # nessun hash: nessun blocco
+        assert (tmp_path / "ok.bin").read_bytes() == good
+        want = hashlib.sha256(good).hexdigest()
+        t = _task(tmp_path / "b", base + "/bad.bin", sha256=want, mirrors=[base + "/ok.bin"])
+        (tmp_path / "b").mkdir()
+        _go(t)  # primo mirror corrotto -> quarantena, poi il secondo
+        assert (tmp_path / "b" / "bad.bin").read_bytes() == good  # il nome del task resta, il contenuto e' del mirror buono
+        q = list((tmp_path / "b" / ".quarantena").iterdir())
+        assert len(q) == 1 and q[0].read_bytes() == b"corrotto!!"
+    finally:
+        s.shutdown()
+
+
+def test_sha_mismatch_senza_mirror_fallisce(tmp_path):
+    s, base = _serve({"/bad.bin": b"x"})
+    try:
+        t = _task(tmp_path, base + "/bad.bin", sha256="0" * 64)
+        with pytest.raises(H.HashMismatch):
+            _go(t)
+        assert not (tmp_path / "bad.bin").exists() and (tmp_path / ".quarantena").exists()
+    finally:
+        s.shutdown()
+
+
+def test_assert_public_blocca_rete_locale():
+    from pozzo.downloads import hosts
+    for u in ("http://127.0.0.1/f", "http://192.168.1.5/f", "http://169.254.169.254/x", "http://[::1]/f", "ftp://example.com/f"):
+        with pytest.raises(ValueError):
+            hosts.assert_public(u)
+    hosts.assert_public("http://host-che-non-esiste.invalid/f")  # non risolve: lo dira' httpx
+
+
+def test_resolved_verso_lan_rifiutato(tmp_path):
+    task = SimpleNamespace(options={}, source="https://ouo.io/x", log=lambda *a, **k: None)
+    with pytest.raises(ValueError, match="rete locale"):
+        asyncio.run(H.run(task, None, None, 1, lambda s: "http://10.0.0.2/f.bin"))
+
+
+def test_scanner_ignora_quarantena(tmp_path):
+    from pozzo import scanner
+    assert scanner._ignored(tmp_path / ".quarantena") is True  # le cartelle col punto non entrano in libreria

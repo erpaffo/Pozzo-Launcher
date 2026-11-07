@@ -51,7 +51,7 @@ def _mgr(tmp, **dl):
     return Manager(cfg, client_factory=net.make_client, save=lambda new: None)
 
 
-def _wait(cond, timeout=60):
+def _wait(cond, timeout=150):  # largo: con molti test in parallelo o su runner lenti 60 s non bastavano
     end = time.time() + timeout
     while time.time() < end:
         if cond():

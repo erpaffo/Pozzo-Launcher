@@ -161,6 +161,25 @@ def build_router(ctx) -> APIRouter:
                                      include_unowned=unowned)
         return {"items": memo("recommend", (limit, unowned), build)}
 
+    @router.get("/api/similar/{gid}")
+    def api_similar(gid: int, limit: int = 8):
+        """Giochi simili a uno solo (generi, decennio, sviluppatore, serie, titolo), posseduti e non."""
+        games = visible()
+        target = next((g for g in games if g["id"] == gid), None)
+        if target is None:
+            raise HTTPException(404, I.tr("s.reco.unknownGame"))
+        by_id, mine = personal(games)
+        # gusto = solo quello del gioco aperto, non del profilo
+        gusto = {"genres": [(x, 1.0) for x in target.get("genres") or []],
+                 "decades": [(str(target["year"] // 10 * 10), 1.0)] if target.get("year") else []}
+        cands = [{**c, **{k: mine[c["id"]][k] for k in ("hidden", "status", "playtime", "my_rating", "favorite")}}
+                 if c["id"] in mine else c for c in shortlist(games, gusto, [target], cap=500)]
+        idx = memo("index", (), lambda: build_index(games), personal_data=False)
+        subset = {c["id"]: c for c in [*cands, *related(idx, target)]}
+        items = similar.recommend(cands, gusto, [target], franchise.group(list(subset.values())),
+                                  limit=max(1, min(limit, 30)))
+        return {"items": [{**i, "owned": by_id[i["id"]].get("store") != "online"} for i in items]}
+
     @router.get("/api/top/roms")
     def api_top_roms(console: str = "all", limit: int = 100):
         limit = max(1, min(limit, 1000))

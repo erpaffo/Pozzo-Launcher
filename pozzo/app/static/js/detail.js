@@ -195,6 +195,7 @@ async function openDetail(id) {
       + (v.store && !v.installed ? `<button class="btn" data-install="${v.id}">⬇</button>`
         : `<button class="btn" data-play="${v.id}" ${d.emulator ? "" : "disabled"}>▶</button>`) + `</div>`).join("")}</div>` : ""}
     <div id="d-saves"></div>
+    <div id="d-similar"></div>
     <div id="d-ext"></div>
     <div class="d-h">${t("f.files.heading")}</div>
     <div class="files">${d.files.map(esc).join("<br>")}${d.crc ? `<br>CRC ${esc(d.crc)}` : ""}
@@ -208,11 +209,32 @@ async function openDetail(id) {
   if (typeof loadDetailNoclient === "function") loadDetailNoclient(d);
   if (d.shots) loadDetailShots(d.id);
   loadSaves(d);
+  loadSimilar(d);
   if (online || storePages.length) loadGameLinks(d);
   if (d.platform === "switch") loadSwitchContents(d);
   if (!pc) loadRA(d); else loadAch(d);
   if (GS.experience.detail === "modal" && !online && !d.hltb) loadHltb(d);
   GS.emit("gameOpened", d);
+}
+
+/* ---- Giochi simili (GET /api/similar/{id}): anche non posseduti, con «Aggiungi alla wishlist» */
+async function loadSimilar(d) {
+  let r;
+  try { r = await api(`/api/similar/${d.id}`); } catch { return; }
+  const box = $("#d-similar");
+  if (!box || S.detail !== d || !r.items.length) return;
+  box.innerHTML = `<div class="d-h">${t("f.sim.heading")}</div>` + r.items.map((i) => `<div class="sv-row" data-sim="${i.id}">
+    <span>${i.owned ? `<a href="#" data-sim-open="${i.id}">${esc(i.title)}</a>` : esc(i.title)}</span>
+    <span class="muted small">${esc(i.reasons.map((x) => x.text).join(" · "))}</span>
+    ${i.owned ? `<span class="muted small">${t("f.sim.owned")}</span>` : `<button class="btn" data-sim-wish="${esc(i.title)}">${t("f.sim.addWish")}</button>`}</div>`).join("");
+  box.onclick = async (e) => {
+    const w = e.target.closest("[data-sim-wish]"), o = e.target.closest("[data-sim-open]");
+    if (o) { e.preventDefault(); openDetail(+o.dataset.simOpen); }
+    if (!w) return;
+    w.disabled = true;
+    try { await api("/api/wishlist/add", { body: { title: w.dataset.simWish } }); w.textContent = t("f.sim.inWish"); }
+    catch (err) { w.disabled = false; toast(err.message, true); }
+  };
 }
 
 /* ---- HowLongToBeat: tessere con le ore; null = ancora in cerca, {} = nessun dato */

@@ -1,0 +1,10 @@
+{
+  "_come_modificare": "Una voce per evento. nome e inizio (AAAA-MM-GG) sono obbligatori; fine, luogo e url sono facoltativi. Le date di partenza sono indicative: verificale sul sito ufficiale dell'evento.",
+  "eventi": [
+    {"nome": "Summer Game Fest", "inizio": "2026-06-05", "luogo": "Los Angeles", "url": "https://www.summergamefest.com/"},
+    {"nome": "Xbox Games Showcase", "inizio": "2026-06-07", "luogo": "Online", "url": "https://news.xbox.com/"},
+    {"nome": "Nintendo Direct (giugno)", "inizio": "2026-06-16", "luogo": "Online", "url": "https://www.nintendo.com/"},
+    {"nome": "Gamescom", "inizio": "2026-08-26", "fine": "2026-08-30", "luogo": "Colonia", "url": "https://www.gamescom.global/"},
+    {"nome": "Tokyo Game Show", "inizio": "2026-09-17", "fine": "2026-09-21", "luogo": "Chiba", "url": "https://tgs.computer-entertainment.org/"}
+  ]
+}

@@ -315,9 +315,12 @@ def build_router(ctx) -> APIRouter:
     def api_torrent(gid: int):
         g = lib.game(gid)
         mag = (g.get("launch") or {}).get("magnet")
+        single = _single_magnet(g)  # anche senza magnet del set: la pagina Minerva basta
+        mag = mag or single
         if not mag:
+            if _download_pages(g):  # altri store: niente torrent di set, ma i link dei file si scelgono dall'elenco
+                return JSONResponse({"ok": False, "action": "links", "error": I.tr("s.library.noTorrentUseLinks")}, status_code=409)
             raise HTTPException(400, I.tr("s.library.noMagnet"))
-        single = _single_magnet(g)
         file = g.get("canonical") or g["title"]
         mgr = getattr(ctx, "downloads", None)  # costruito dopo questo modulo (ultimo in ORDER)
         if mgr and TOR.available():
@@ -438,9 +441,12 @@ def build_router(ctx) -> APIRouter:
         tasks, failed = [], []
         # più file (le parti di un archivio) in una cartella sola: l'estrazione parte quando ci sono tutte
         folder = str(Path(mgr.settings()["dir"]).expanduser() / _safe_name(g["title"])) if len(urls) > 1 else ""
+        extra = {k: body[k] for k in ("sha256", "mirrors") if body.get(k)}
+        if len(urls) > 1:
+            extra.pop("sha256", None)  # un hash vale per un file solo
         for u in urls:
             try:
-                tasks.append(mgr.add(u, save_path=folder, category=g.get("platform") or "", game_id=gid).view())
+                tasks.append(mgr.add(u, save_path=folder, category=g.get("platform") or "", game_id=gid, **extra).view())
             except ValueError as e:
                 failed.append({"link": u, "error": str(e)})
         if not tasks:
@@ -536,7 +542,7 @@ def build_router(ctx) -> APIRouter:
     def api_profile_save(gid: int, body: dict = Body(...)):
         g = lib.get(gid)
         fields = (*L.SCRIPT_KEYS, *L.COMPANION_KEYS) if g.get("store") else \
-            ("emulator", "core", "exe", "args", "extra", L.PRESET_KEY, *L.SCRIPT_KEYS, *L.COMPANION_KEYS)
+            ("emulator", "core", "exe", "args", "extra", L.PRESET_KEY, L.FULLSCREEN_KEY, *L.SCRIPT_KEYS, *L.COMPANION_KEYS)
         data = {k: str(body.get(k) or "").strip() for k in fields}
         if data.get("companion"):
             data["companion"] = data["companion"].strip('"')

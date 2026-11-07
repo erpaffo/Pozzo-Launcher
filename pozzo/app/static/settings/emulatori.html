@@ -45,6 +45,14 @@
   Battle.net, Amazon) a fine partita, se l'aveva aperto il gioco</span></label>
 <label class="chk"><input type="checkbox" id="ln-splash" checked> <span data-i18n="j.emu.launch.splash">Mostra uno splash all'avvio dei giochi</span></label>
 <div class="row end"><button class="btn primary" id="ln-save" type="button" data-i18n="j.common.save">Salva</button></div>
+<h3 data-i18n="j.emu.crash.title">Se l'emulatore si chiude subito</h3>
+<p class="muted small" data-i18n="j.emu.crash.desc">Quando un gioco si chiude subito due volte di fila, Pozzo può proporre un emulatore o un core alternativo.</p>
+<label class="small" for="crash-mode" data-i18n="j.emu.crash.mode">Comportamento</label>
+<div class="row"><select id="crash-mode" class="field grow">
+  <option value="propose" data-i18n="j.emu.crash.propose">Proponi l'alternativa</option>
+  <option value="apply" data-i18n="j.emu.crash.apply">Riprova da solo con l'alternativa</option>
+  <option value="off" data-i18n="j.emu.crash.off">Non fare niente</option>
+</select></div>
 <h3 data-i18n="j.emu.fast.title">Disco veloce</h3>
 <p class="muted small" data-i18n="j.emu.fast.desc">Copia il gioco su un disco veloce (SSD) prima di avviarlo, per caricamenti più rapidi se la libreria sta su un HDD.</p>
 <label class="small" for="fc-dir" data-i18n="j.emu.fast.dir">Cartella delle copie temporanee</label>

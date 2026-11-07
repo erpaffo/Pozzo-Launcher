@@ -40,6 +40,8 @@ def sse(events, heartbeat: float = 15.0):
             except queue.Empty:
                 yield ": ping\n\n"
                 continue
+            if item is None:  # Events.close(): l'app si sta chiudendo
+                return
             data = json.dumps(item.get("data") or {}, ensure_ascii=False, default=str)
             yield f"event: {item.get('event')}\ndata: {data}\n\n"
     finally:

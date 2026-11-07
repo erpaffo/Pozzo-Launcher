@@ -261,7 +261,14 @@
   async function carica() {
     try { mostra(await global.api("/api/app/fastcopy")); } catch (e) { global.toast(e.message, true); }
     try { campo("pl-proto").checked = !!(await global.api("/api/party")).register_protocol; } catch (e) { global.toast(e.message, true); }
+    try { campo("crash-mode").value = (await global.api("/api/app/crash-fallback")).mode; } catch (e) { global.toast(e.message, true); }
   }
+
+  doc.addEventListener("change", async (ev) => {
+    if (!ev.target || ev.target.id !== "crash-mode") return;
+    try { await global.api("/api/app/crash-fallback", { body: { mode: ev.target.value } }); }
+    catch (e) { global.toast(e.message, true); carica(); }  // ripristina il valore salvato
+  });
 
   // registrazione del link pozzo:// (scheda Avvio); in caso di errore ripristina il valore precedente
   doc.addEventListener("change", async (ev) => {

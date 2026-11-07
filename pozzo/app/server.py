@@ -677,7 +677,8 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
         threading.Timer(1.0, lambda: webbrowser.open(start_url)).start()
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
         return
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning",
+                                           timeout_graceful_shutdown=1))  # SSE/keep-alive aperti non devono tenere la chiusura appesa
     t = threading.Thread(target=server.run, daemon=True)
     t.start()
     while not server.started:
@@ -891,7 +892,18 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
             threading.Thread(target=show_anyway, daemon=True).start()
 
         # chiusa la finestra principale si chiude anche quella delle attivita' (altrimenti l'app resta aperta)
-        main_win.events.closed += lambda: activity_win.get("w") and activity_win["w"].destroy()
+        def close_all():
+            # webview.start() torna solo a finestre tutte chiuse: overlay, HUD, toast, Media, login e download
+            # da browser (anche nascosti o fuori schermo) tenevano vivo il processo dopo la X
+            for w in list(webview.windows):
+                if w is not main_win:
+                    try:
+                        w.destroy()
+                    except Exception:
+                        pass
+            # rete di sicurezza: se start() non torna comunque, si esce lo stesso
+            threading.Timer(8, os._exit, args=(0,)).start()
+        main_win.events.closed += close_all
         inner.state.overlay.attach(url)
         # il suono degli avvisi (WebAudio) parte senza un clic dentro la finestra
         os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
@@ -905,6 +917,7 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
         webbrowser.open(start_url)
         t.join()
     finally:
+        inner.state.events.close()  # prima di fermare il server: gli SSE aperti finiscono da soli, senza traceback
         server.should_exit = True
         try:
             from .. import notify

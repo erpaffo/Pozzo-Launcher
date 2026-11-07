@@ -151,6 +151,48 @@ function renderStatusList() {
     + `<span class="cnt">${n[id] || ""}</span></a>`).join("");
 }
 
+/* ---- filtri salvati: ricerca, filtri della barra, ordine e raggruppamento sotto un nome */
+function renderSavedFilters() {
+  $("#sf-list").innerHTML = (S.savedF || []).map((x) => `<a class="nav-item" role="button" tabindex="0" data-sf="${esc(x.id)}">`
+    + `<span class="ico">▽</span><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span>`
+    + `<button class="icon-btn sf-del" data-sf-del="${esc(x.id)}" title="${t("a.common.delete")}" aria-label="${t("a.common.delete")}">✕</button></a>`).join("");
+}
+async function saveFilters(items) {
+  try { S.savedF = (await api("/api/filters", { body: { items } })).items; } catch (e) { return toast(e.message, true); }
+  renderSavedFilters();
+}
+function currentFilter() {
+  return { disc: { ...S.disc }, lang: S.langFilter, sort: S.sort, group: S.group, search: S.search, inst: S.instFilter };
+}
+function applyFilter(f) {
+  S.disc = { preset: "", genre: "", decade: "", ...f.disc }; store.set("disc", S.disc);
+  S.langFilter = f.lang || ""; store.set("language", S.langFilter);
+  if (f.sort) { S.sort = f.sort; store.set("sorts", { ...store.get("sorts", {}), [S.view.type]: S.sort }); }
+  S.group = f.group || ""; store.set("group", S.group);
+  S.search = f.search || ""; $("#search").value = S.search;
+  S.instFilter = f.inst || "all"; store.set("instFilter", S.instFilter); $("#inst-filter").value = S.instFilter;
+  $("#language-filter").value = S.langFilter;
+  if (![...$("#sort").options].some((o) => o.value === S.sort)) S.sort = "title";
+  $("#sort").value = S.sort; $("#group").value = S.group;
+  renderDiscTools();
+  refreshGrid();
+}
+async function initSavedFilters() {
+  try { S.savedF = (await api("/api/filters")).items; } catch { S.savedF = []; }
+  renderSavedFilters();
+  $("#sf-new").onclick = () => {
+    const name = (prompt(t("a.nav.filterName")) || "").trim();
+    if (name) saveFilters((S.savedF || []).concat([{ id: "f" + Date.now().toString(36), name, f: currentFilter() }]));
+  };
+  $("#sf-list").addEventListener("click", (e) => {
+    const del = e.target.closest("[data-sf-del]");
+    if (del) { e.stopPropagation(); return saveFilters(S.savedF.filter((x) => x.id !== del.dataset.sfDel)); }
+    const a = e.target.closest("[data-sf]");
+    const x = a && S.savedF.find((y) => y.id === a.dataset.sf);
+    if (x) applyFilter(x.f);
+  });
+}
+
 function renderSmartList() {
   $("#smart-list").innerHTML = S.smart.map((x) => `<a class="nav-item" data-view="smart" data-id="${esc(x.id)}">`
     + `<span class="ico">${esc(x.icon || "⚡")}</span><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span>`

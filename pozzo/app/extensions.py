@@ -117,6 +117,20 @@ class Events:
         with self.lock:
             self.subs.discard(q)
 
+    def close(self):
+        """Chiusura dell'app: ogni stream SSE riceve None e finisce, cosi' uvicorn non deve cancellarlo."""
+        with self.lock:
+            subs = list(self.subs)
+        for q in subs:
+            try:
+                q.put_nowait(None)
+            except queue.Full:  # coda piena di eventi non letti: si fa posto al segnale di fine
+                try:
+                    q.get_nowait()
+                    q.put_nowait(None)
+                except (queue.Empty, queue.Full):
+                    pass
+
     def emit(self, name: str, data: dict | None = None):
         payload = data or {}
         with self.lock:

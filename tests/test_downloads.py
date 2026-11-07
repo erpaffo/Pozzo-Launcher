@@ -69,6 +69,10 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
 
+@pytest.fixture(autouse=True)
+def _lan_ok(monkeypatch):
+    monkeypatch.setattr(H.hosts, "assert_public", lambda u: None)  # i server di prova stanno su 127.0.0.1
+
 @pytest.fixture(scope="module")
 def server():
     s = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

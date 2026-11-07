@@ -90,3 +90,13 @@ def test_apply_riprova_e_ricorda(env, tmp):
     assert L._crash_load(cfg)["gba/x"]["fallback"] == "retroarch:gpsp"
     _run(ln, rom)  # il prossimo avvio usa direttamente l'alternativa ricordata
     assert ln.state["status"] == "finished" and "gpsp" in ln.state["message"], ln.state
+
+
+def test_off_non_propone_alternativa(env, tmp):
+    ln, cfg, rom = env
+    cfg.app["crash_fallback"] = "off"
+    Path(str(rom) + ".code").write_text("1")
+    _run(ln, rom)
+    _run(ln, rom)  # secondo crash di fila: con "off" niente proposta né riprova
+    assert ln.state["status"] == "error" and ln.state.get("fallback") is None, ln.state
+    assert L._crash_load(cfg)["gba/x"]["runs"]  # il crash resta registrato

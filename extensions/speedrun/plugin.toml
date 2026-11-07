@@ -1,0 +1,13 @@
+[plugin]
+name = "Speedrun"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "⏱️"
+description = "Record del mondo e link a speedrun.com per i giochi della tua libreria, direttamente nel dettaglio del gioco."
+long_description = "Per ogni gioco della libreria mostra il primo posto in classifica delle categorie principali su speedrun.com (tempo, giocatore e link alla run) e il link alla pagina del gioco. I dati sono in cache per 24 ore e il launcher rispetta un intervallo minimo tra le richieste al sito."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri il dettaglio di un gioco: nella sezione «Speedrun» trovi i record del mondo.\n3. Il link «Pagina su speedrun.com» porta alla pagina del gioco sul sito.\n4. Se il gioco ha un titolo simile a un altro su speedrun.com, il record può essere di quel gioco: in quel caso controlla il link."
+features = ["Record del mondo delle categorie principali nel dettaglio gioco", "Link alla pagina del gioco e alle singole run su speedrun.com", "Cache di 24 ore e attesa tra le richieste: poche chiamate al sito", "Rete verso un solo host: www.speedrun.com"]
+api = 1
+min_app = "0.7.1"
+permissions = ["rete:www.speedrun.com", "libreria:lettura"]
+load = "lazy"

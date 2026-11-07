@@ -189,6 +189,16 @@ def test_sse():
     assert "event: game_stopped" in next(gen)
     gen.close()
     assert not ev.subs, "chiudendo il flusso l'ascoltatore deve sparire"
+
+    # chiusura dell'app: il flusso finisce subito, anche con la coda piena (niente attesa del heartbeat)
+    gen = sse(ev, heartbeat=60)
+    next(gen)
+    for i in range(150):
+        ev.emit("x", {"i": i})
+    ev.close()
+    t0 = time.time()
+    assert sum(1 for _ in gen) == 99 and time.time() - t0 < 2, "close() deve terminare il flusso"
+    assert not ev.subs
     print("ok  SSE: eventi in streaming e ascoltatori rimossi")
 
 

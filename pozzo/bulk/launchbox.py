@@ -8,6 +8,7 @@ scaricano dal CDN di LaunchBox con un ritmo moderato (vedi policy "launchbox_ima
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import zipfile
 import xml.etree.ElementTree as ET
@@ -192,8 +193,9 @@ class LaunchBoxDB(BulkDB):
         return cache[pid]
 
     def find(self, pid: str, titles: list[str], files: list[str] = (), year: int | None = None,
-             steam_appid: str | None = None, fuzzy: int = 92) -> dict | None:
-        """Cerca un gioco: SteamAppId, nome file (Files.xml), nome esatto/alternativo, poi fuzzy."""
+             steam_appid: str | None = None, fuzzy: int = 92, hash_title: str | None = None) -> dict | None:
+        """Cerca un gioco: SteamAppId, nome file (Files.xml), titolo canonico del DAT trovato per hash (CRC/SHA1:
+        LaunchBox non espone hash, quindi l'hash risolve il titolo No-Intro/Redump), nome esatto/alternativo, poi fuzzy."""
         pid = ALIASES.get(pid, pid)
         c = self.con()
         ix = self._index(pid)
@@ -206,6 +208,10 @@ class LaunchBoxDB(BulkDB):
             name = ix["files"].get(f.lower())
             if name is not None:
                 ids = list(ix["norm"].get(normalize(name), ()))
+        if hash_title:  # anche senza tag regione/revisione: "Game (USA) (Rev 1)" -> "Game"
+            for n in (normalize(hash_title), normalize(re.sub(r"\s*[(\[].*", "", hash_title))):
+                if not ids and n:
+                    ids = list(ix["norm"].get(n, ())) or list(ix["alt"].get(n, ()))
         norms = [normalize(t) for t in titles if t]
         for n in norms:
             if ids:

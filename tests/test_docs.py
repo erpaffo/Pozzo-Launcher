@@ -63,8 +63,9 @@ def main():
     assert not unused, f"immagini non citate: {sorted(unused)}"
 
     nav = yaml.safe_load((ROOT / "mkdocs.yml").read_text(encoding="utf-8"))["nav"]
+    existing = {p.relative_to(DOCS).as_posix() for p in DOCS.rglob("*.md")}  # anche le pagine tradotte (en/...)
     for name in nav_files(nav):
-        assert name in pages, f"mkdocs.yml: pagina mancante {name}"
+        assert name in existing, f"mkdocs.yml: pagina mancante {name}"
 
     print(f"ok  manuale: {len(used)} immagini citate, link interni validi, {len(pages)} pagine")
 

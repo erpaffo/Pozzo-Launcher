@@ -93,6 +93,34 @@
       ]
     },
     {
+      "id": "eventi-fiere",
+      "name": "Eventi e fiere",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Calendario di Gamescom, Summer Game Fest, Nintendo Direct e delle altre fiere videoludiche, con promemoria a 7 giorni e a 1 giorno dall'inizio.",
+      "min_app": "0.7.1",
+      "base": "eventi-fiere/",
+      "files": {
+        "backend.py": "9bee8242c20c483100669d34f81ebc0a623ed4b40d838bd770b2d9ca061410f9",
+        "eventi.json": "f058487f7622c07f9cd7b1fc54e8479cba38cda3fa42a6a656a53f597cb6eb05",
+        "frontend.js": "f3e53bdd60b4122b0e13bb49e00939915156eb42610bea7f60f9241edf481f47",
+        "plugin.toml": "01e4b9226f944235c45ae56a672c0a017df5aa775afd56eed9613ebc8604c341"
+      },
+      "icon": "🎮",
+      "long_description": "Tiene sotto controllo le date dei grandi eventi del videogioco. Il calendario è un file JSON locale che puoi modificare: aggiungi, correggi o togli eventi quando vuoi, senza collegarti a internet. Pozzo Launcher ti avvisa con una notifica quando un evento è vicino.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Eventi e fiere» dalla barra laterale: trovi gli eventi in ordine di data con i giorni che mancano.\n3. Riceverai una notifica 7 giorni prima e 1 giorno prima dell'inizio.\n4. Per cambiare le date modifica eventi.json nella cartella dati dell'estensione (dentro la cartella di Pozzo Launcher, sotto «eventi-fiere»); le modifiche si vedono al ricaricamento della pagina.",
+      "features": [
+        "Calendario di fiere e presentazioni videoludiche, ordinato per data",
+        "Promemoria automatici a 7 e a 1 giorno dall'inizio",
+        "Elenco modificabile in un file JSON locale, senza fonti web",
+        "Nessuna connessione di rete"
+      ],
+      "permissions": [
+        "notifiche",
+        "impostazioni"
+      ]
+    },
+    {
       "id": "limite-tempo",
       "name": "Limite di tempo",
       "version": "1.0",
@@ -538,6 +566,33 @@
         "rete:store.steampowered.com",
         "libreria:lettura",
         "impostazioni"
+      ]
+    },
+    {
+      "id": "speedrun",
+      "name": "Speedrun",
+      "version": "1.0",
+      "author": "Pozzo Launcher",
+      "description": "Record del mondo e link a speedrun.com per i giochi della tua libreria, direttamente nel dettaglio del gioco.",
+      "min_app": "0.7.1",
+      "base": "speedrun/",
+      "files": {
+        "backend.py": "402ed9826edd173b0bffdbd5ed8a8c3102d3fd411aea9d607215024e3265a6b6",
+        "frontend.js": "b12a04cf0cdb41c547583a2bff245bd4b5e4b8cdb74531c6c45ca9c7c3dbf4be",
+        "plugin.toml": "276ec04bf540962c69c479ea4893dbb0c77bdfd48cbe899004785a6a43967255"
+      },
+      "icon": "⏱️",
+      "long_description": "Per ogni gioco della libreria mostra il primo posto in classifica delle categorie principali su speedrun.com (tempo, giocatore e link alla run) e il link alla pagina del gioco. I dati sono in cache per 24 ore e il launcher rispetta un intervallo minimo tra le richieste al sito.",
+      "how_it_works": "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri il dettaglio di un gioco: nella sezione «Speedrun» trovi i record del mondo.\n3. Il link «Pagina su speedrun.com» porta alla pagina del gioco sul sito.\n4. Se il gioco ha un titolo simile a un altro su speedrun.com, il record può essere di quel gioco: in quel caso controlla il link.",
+      "features": [
+        "Record del mondo delle categorie principali nel dettaglio gioco",
+        "Link alla pagina del gioco e alle singole run su speedrun.com",
+        "Cache di 24 ore e attesa tra le richieste: poche chiamate al sito",
+        "Rete verso un solo host: www.speedrun.com"
+      ],
+      "permissions": [
+        "rete:www.speedrun.com",
+        "libreria:lettura"
       ]
     },
     {

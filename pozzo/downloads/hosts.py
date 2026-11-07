@@ -12,7 +12,9 @@ resta com'è: il motore HTTP rifiuta di salvare una pagina HTML, quindi l'errore
 
 from __future__ import annotations
 
+import ipaddress
 import re
+import socket
 from urllib.parse import urljoin, urlsplit
 
 import httpx
@@ -31,6 +33,21 @@ HEADERS = {"User-Agent": UA, "Accept": "text/html,application/xhtml+xml", "Accep
 
 def host(url: str) -> str:
     return (urlsplit(url or "").hostname or "").lower().removeprefix("www.")
+
+
+def assert_public(url: str) -> None:
+    """ValueError se il link (uscito da una pagina o da un accorciatore) punta a una rete locale: SSRF. Bloccante (DNS).
+    shortcut: un host che non si risolve passa (httpx fallira' dopo); i redirect del client dei download si controllano nel manager (_redirect_public); quelli dei resolver in hosts/multiup no, migliorare se serve."""
+    u = urlsplit(url or "")
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise ValueError("Link non valido: serve un indirizzo http(s)")
+    try:
+        ips = {a[4][0] for a in socket.getaddrinfo(u.hostname, u.port or 443)}
+    except socket.gaierror:
+        return
+    for ip in ips:
+        if not ipaddress.ip_address(ip.split("%")[0]).is_global:
+            raise ValueError(f"Link rifiutato: {u.hostname} punta a una rete locale. Scegli un altro provider")
 
 
 _FILE_PATH = re.compile(r"\.(nsp|xci|nsz|zip|rar|7z|iso|bin|pkg|dmg|torrent)$", re.I)

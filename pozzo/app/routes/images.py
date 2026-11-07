@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import httpx
-import os
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
@@ -253,6 +251,9 @@ def build_router(ctx) -> APIRouter:
 
     def _pregen_thumbs():
         """Genera in background le miniature delle copertine, cosi' lo scorrimento e' fluido da subito."""
+        # dopo il catalogo online e con un thread solo: all'avvio 4 thread (decine di migliaia di stat) si
+        # sommavano a libreria e finestra e portavano la CPU al 100%; le miniature che servono si fanno al volo
+        lib.full.wait()
         with lib.lock:
             srcs = [Path(cfg.cache) / g["media"]["cover"] for g in lib.games
                     if "cover" in g["media"] and not g["media"]["cover"].startswith("url:")]
@@ -266,8 +267,8 @@ def build_router(ctx) -> APIRouter:
                 pass
             state["thumbs_done"] += 1
 
-        with ThreadPoolExecutor(max(1, (os.cpu_count() or 4) // 2)) as ex:
-            list(ex.map(one, srcs))
+        for s in srcs:
+            one(s)
 
     REMOTE_HOSTS = ("cdn.allkeyshop.com", "www.gamerpower.com", "gamerpower.com", "cdn1.epicgames.com",
                     "shared.akamai.steamstatic.com", "cdn.akamai.steamstatic.com", "assets.isthereanydeal.com",

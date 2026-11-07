@@ -233,6 +233,20 @@ def build_router(ctx) -> APIRouter:
         cfg.app["fastcopy"] = fc
         return _fastcopy_state()
 
+    @router.get("/api/app/crash-fallback")
+    def api_crash_get():
+        return {"mode": cfg.app.get("crash_fallback", "propose")}
+
+    @router.post("/api/app/crash-fallback")
+    def api_crash_set(body: dict = Body(...)):
+        """Crash all'avvio: propose un'alternativa, la applica da sola o non fa niente."""
+        mode = str(body.get("mode") or "")
+        if mode not in ("propose", "apply", "off"):
+            raise HTTPException(400, "crash_fallback: propose, apply o off")
+        C.save_settings(cfg, app={"crash_fallback": mode})
+        cfg.app["crash_fallback"] = mode
+        return api_crash_get()
+
     @router.get("/api/library/watch")
     def api_watch_get():
         """Stato del rilevamento automatico delle cartelle ROM (impostazioni › Libreria)."""

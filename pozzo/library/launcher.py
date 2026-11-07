@@ -119,6 +119,15 @@ STANDALONE_ARGS = {
     "sharpemu": ["{rom}"],
 }
 
+# opzione «schermo intero» del profilo del gioco: flag nativo degli emulatori che lo hanno (certi), per gli altri
+# (rpcs3, flycast, vita3k, shadps4, sharpemu) ci pensa set_window_mode, che vale per tutti
+FULLSCREEN_KEY = "fullscreen"
+FULLSCREEN_ARGS = {
+    RA: ["-f"], "dolphin": ["-C", "Dolphin.Display.Fullscreen=True"], "pcsx2": ["-fullscreen"], "duckstation": ["-fullscreen"],
+    "ppsspp": ["--fullscreen"], "cemu": ["-f"], "ryujinx": ["--fullscreen"], "eden": ["-f"], "xenia": ["--fullscreen=true"],
+    "xemu": ["-full-screen"], "azahar": ["-f"], "lime3ds": ["-f"], "citra": ["-f"], "melonds": ["-f"],
+}
+
 # nomi degli eseguibili per la ricerca automatica degli emulatori in una cartella
 KNOWN_EXES = {
     "retroarch": ["retroarch.exe", "retroarch"],
@@ -261,7 +270,7 @@ def plan(cfg, platform: P.Platform, profile: dict | None = None, prefer: str | N
     {emulator, exe, core, args, profile} oppure None. prefer/skip: id candidato (emulatore[:core]) da
     preferire o da saltare (alternativa dopo un crash)."""
     over = dict(cfg.launch.get(platform.id, {}))
-    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY, automation.KEY)}
+    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY, FULLSCREEN_KEY, automation.KEY)}
     if prof:
         emu = prof.get("emulator") or over.get("emulator")
         if emu:
@@ -1391,7 +1400,8 @@ class Launcher:
             ses = self._auto_begin(key, platform.id)
             job = _Job.new()
             comp = self._companion(key, job)
-            cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *self.next_args, *args]
+            full = bool((self.profile_of(key) or {}).get(FULLSCREEN_KEY))
+            cmd = [pl["exe"], *(FULLSCREEN_ARGS.get(pl["emulator"], []) if full else []), *self.prelaunch(dict(self.state)), *self.next_args, *args]
             self.next_args = []  # valgono solo per questo avvio
             self.on_event("game_launching", dict(self.state))
             self._set(status="running", message=" ".join(f'"{c}"' if " " in c else c for c in cmd))
@@ -1401,6 +1411,9 @@ class Launcher:
                 proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf)
                 job = job if job and job.add(proc) else None
                 self._proc, self._track, self._job = proc, None, job
+                if full:  # rete di sicurezza per ogni emulatore: se la finestra non copre lo schermo, ci pensa Pozzo
+                    threading.Thread(target=set_window_mode, args=(str(Path(pl["exe"]).parent), "fullscreen"),
+                                     kwargs={"root_pid": proc.pid}, daemon=True).start()
                 self._wait_proc(proc, job, comp)
                 played = self.played_since(t0)
                 code = proc.returncode
@@ -1426,7 +1439,7 @@ class Launcher:
             if _quick(run) and streak >= 2:
                 alt = plan(self.cfg, platform, self.profile_of(key), skip=cand_id(pl))
                 fb = None
-                if alt and cand_id(alt) != cand_id(pl):
+                if alt and cand_id(alt) != cand_id(pl) and self.cfg.app.get("crash_fallback") != "off":
                     fb = {"kind": "core" if alt["core"] else "preset", "id": cand_id(alt),
                           "label": f"core {alt['core']}" if alt["core"] else f"emulatore {alt['emulator']}"}
                 if fb and not retry and self.cfg.app.get("crash_fallback", "propose") == "apply":

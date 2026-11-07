@@ -385,6 +385,8 @@ async function renderShots(pv) {
       <p class="muted small">${t("h.overlay.hint")}</p>
       <label class="chk"><input type="checkbox" id="sh-ov-ach"${d.overlay?.achievements ? " checked" : ""}> ${t("h.overlay.ach")}</label>
       <label>${t("h.overlay.sound")} <select class="field" id="sh-ov-snd">${["none", "soft", "classic"].map((s) => `<option value="${s}"${d.overlay?.sound === s ? " selected" : ""}>${t("h.overlay.snd." + s)}</option>`).join("")}</select></label>
+      <label class="chk"><input type="checkbox" id="sh-ov-hud"${d.overlay?.hud ? " checked" : ""}> ${t("h.overlay.hud")}</label>
+      <label>${t("h.overlay.hudCorner")} <select class="field" id="sh-ov-corner">${["tl", "tr", "bl", "br"].map((c) => `<option value="${c}"${(d.overlay?.hud_corner || "tl") === c ? " selected" : ""}>${t("h.overlay.corner." + c)}</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> ${t("h.shots.padLabel")}</label>
       <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> ${t("h.shots.emuLabel")}</label>
       <button class="btn primary" id="sh-save">${t("h.common.save")}</button></div>
@@ -408,7 +410,7 @@ async function renderShots(pv) {
     } else if (t.id === "sh-save") {
       try {
         await api("/api/shots/settings", { body: { hotkey: $("#sh-hotkey").value, pause_hotkey: $("#sh-pause-hotkey").value, pad: $("#sh-pad").checked, import_emulator: $("#sh-emu").checked } });
-        await api("/api/overlay/settings", { body: { hotkey: $("#sh-ov-hotkey").value, achievements: $("#sh-ov-ach").checked, sound: $("#sh-ov-snd").value } });
+        await api("/api/overlay/settings", { body: { hotkey: $("#sh-ov-hotkey").value, achievements: $("#sh-ov-ach").checked, sound: $("#sh-ov-snd").value, hud: $("#sh-ov-hud").checked, hud_corner: $("#sh-ov-corner").value } });
         toast(window.t("h.shots.settingsSaved"));
         renderShots(pv);
       } catch (err) { toast(err.message, true); }
@@ -458,6 +460,7 @@ async function openProfile(d) {
   $("#pf-exe").value = p.exe || "";
   $("#pf-args").value = p.args || "";
   $("#pf-extra").value = p.extra || "";
+  $("#pf-fullscreen").checked = p.fullscreen === "1";
   pfRefresh();
   $("#prof-dlg").showModal();
 }
@@ -488,7 +491,7 @@ async function saveProfile(reset = false) {
     PF = Object.assign(PF, reset ? await api(`/api/game/${PF.id}/profile`, { method: "DELETE" })
       : await api(`/api/game/${PF.id}/profile`, { body: PF.pc ? { before: $("#pf-before").value, after: $("#pf-after").value, ...comp }
         : { emulator: $("#pf-emu").value, core: $("#pf-emu").value === "retroarch" || !$("#pf-emu").value ? $("#pf-core").value : "",
-          exe: $("#pf-exe").value, args: $("#pf-args").value, extra: $("#pf-extra").value, before: $("#pf-before").value, after: $("#pf-after").value, ...comp } }));
+          exe: $("#pf-exe").value, args: $("#pf-args").value, extra: $("#pf-extra").value, fullscreen: $("#pf-fullscreen").checked ? "1" : "", before: $("#pf-before").value, after: $("#pf-after").value, ...comp } }));
   } catch (e) { return toast(e.message, true); }
   $("#prof-dlg").close();
   toast(reset ? t("h.prof.removed") : t("h.prof.saved"));

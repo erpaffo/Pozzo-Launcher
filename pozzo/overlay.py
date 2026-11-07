@@ -12,8 +12,10 @@ import sys
 import threading
 import time
 
-DEFAULTS = {"hotkey": "ctrl+shift+o", "achievements": True, "sound": "soft"}
+DEFAULTS = {"hotkey": "ctrl+shift+o", "achievements": True, "sound": "soft", "hud": False, "hud_corner": "tl"}
 SOUNDS = ("none", "soft", "classic")
+CORNERS = ("tl", "tr", "bl", "br")  # il toast sta in alto a destra: il default dell'HUD e' in alto a sinistra
+HUD_W, HUD_H = 190, 64
 TOAST_SECONDS = 5.0
 TOAST_MAX = 6  # code piu' lunghe scartano le piu' vecchie: un avviso in ritardo di un minuto non serve
 XINPUT_BACK, XINPUT_R3 = 0x0020, 0x0080
@@ -38,6 +40,12 @@ def clean(body: dict, cur: dict) -> dict:
         if body["sound"] not in SOUNDS:
             raise ValueError("sound")
         out["sound"] = body["sound"]
+    if "hud" in body:
+        out["hud"] = bool(body["hud"])
+    if "hud_corner" in body:
+        if body["hud_corner"] not in CORNERS:
+            raise ValueError("hud_corner")
+        out["hud_corner"] = body["hud_corner"]
     return out
 
 
@@ -74,6 +82,7 @@ class Overlay:
         self.url = None  # base dell'app, impostata da attach() quando c'e' una finestra nativa
         self.wins: dict = {}
         self.visible = False
+        self.hud_on = False
         self.active = False  # sessione di gioco in corso: scorciatoia e pad attivi
         self.queue = ToastQueue()
         self._wake = threading.Event()
@@ -93,9 +102,11 @@ class Overlay:
             self._hotkey = screens.Hotkey(hk, self.toggle)
             self._hotkey.start()
         threading.Thread(target=self._watch_pad, daemon=True).start()
+        threading.Thread(target=self.show_hud, daemon=True).start()
 
     def game_stopped(self, _st=None):
         self.active = False
+        self.hide_hud()
         if self._hotkey:
             self._hotkey.stop()
             self._hotkey = None
@@ -126,6 +137,12 @@ class Overlay:
                       resizable=False, background_color="#000000")
         if which == "overlay":  # a tutto schermo: sfondo scurito e scheda al centro
             w = webview.create_window("Pozzo Overlay", f"{self.url}overlay", x=0, y=0, width=sw, height=sh, **common)
+        elif which == "hud":
+            m = 16
+            c = settings(self.cfg)["hud_corner"]
+            x = m if c[1] == "l" else sw - HUD_W - m
+            y = m if c[0] == "t" else sh - HUD_H - m
+            w = webview.create_window("Pozzo HUD", f"{self.url}overlay/hud", x=x, y=y, width=HUD_W, height=HUD_H, focus=False, **common)
         else:  # focus=False: WS_EX_NOACTIVATE, il toast non ruba mai il fuoco al gioco
             w = webview.create_window("Pozzo Toast", f"{self.url}overlay/toast", x=sw - 420, y=24, width=400,
                                       height=110, focus=False, **common)
@@ -144,12 +161,59 @@ class Overlay:
         except Exception:
             pass
 
+    def _click_through(self, w):
+        """WS_EX_TRANSPARENT | LAYERED | NOACTIVATE: l'HUD non intercetta ne' clic ne' fuoco."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            u = ctypes.windll.user32
+            h = w.native.Handle.ToInt64()
+            u.SetWindowLongPtrW(h, -20, u.GetWindowLongPtrW(h, -20) | 0x20 | 0x80000 | 0x8000000)
+        except Exception:
+            pass
+
+    def show_hud(self):
+        if not self.url or not settings(self.cfg)["hud"]:
+            return
+        try:
+            w = self._win("hud")
+            w.events.loaded.wait(5)
+            self._click_through(w)
+            w.show()
+            self.hud_on = True
+        except Exception:
+            pass
+
+    def hide_hud(self):
+        w = self.wins.get("hud")
+        if w is None or not self.hud_on:
+            return
+        self.hud_on = False
+        try:
+            w.hide()
+        except Exception:
+            pass
+
+    def apply_hud(self):
+        """Dopo un cambio di impostazioni: la finestra si ricrea per cambiare angolo, o si nasconde se spenta."""
+        w = self.wins.pop("hud", None)
+        if w is not None:
+            try:
+                w.destroy()
+            except Exception:
+                pass
+        self.hud_on = False
+        if self.active:
+            threading.Thread(target=self.show_hud, daemon=True).start()
+
     def show(self) -> bool:
         if not self.url or self.launcher.running().get("status") != "running":
             return False
         with self.lock:
             try:
                 w = self._win("overlay")
+                w.events.loaded.wait(5)  # prima apertura: finestra appena creata, senza attesa si vede bianco finche' la pagina non carica
                 w.show()
                 self._front(w)
                 w.evaluate_js("window.ovRefresh && ovRefresh()")
@@ -165,6 +229,7 @@ class Overlay:
                 return False
             self.visible = False
             try:
+                w.evaluate_js("window.ovHide && ovHide()")  # ferma timer e polling della pagina prima di nasconderla
                 w.hide()
             except Exception:
                 pass

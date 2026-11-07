@@ -3,8 +3,10 @@
 Serve alla CI: un test bloccato (per esempio una chiamata di rete che non risponde) faceva restare il
 job appeso per sempre, senza dire dove. Qui ogni script e' un processo a se': se supera il limite gli si
 chiede un dump dei thread (SIGABRT + faulthandler) e poi viene terminato, cosi' il log dice dove si e'
-fermato. Uso: python packaging/run_tests.py [--shard K/N] [nome_test.py ...]
+fermato. Uso: python packaging/run_tests.py [--shard K/N] [-j N] [nome_test.py ...]
 (--shard: solo la K-esima di N parti, per dividere la suite su piu' job della CI)
+(-j N: N script in parallelo sulla stessa macchina, 0 = un processo per core; l'output di ogni script
+esce tutto insieme alla fine. Default 1 = in sequenza, con output in diretta)
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ import signal
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,22 +47,27 @@ def limit() -> float:
         return 180.0
 
 
-def run(name: str, timeout: float) -> bool:
+def run(name: str, timeout: float, capture: bool = False) -> bool:
     path = ROOT / "tests" / name
     if not path.is_file():
         print(f"!! {name}: file mancante", flush=True)
         return False
-    print(f"\n=== {name}", flush=True)
+    out: list[str] = [f"\n=== {name}"]  # in parallelo si stampa tutto insieme, per non mescolare i log
     env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1", "POZZO_NO_SAMPLE": "1"}
     start = time.time()
     text = path.read_text(encoding="utf-8", errors="replace")
     cmd = [sys.executable, "-X", "faulthandler"]
     cmd += ["-m", "pytest", "-q", str(path)] if NEEDS_PYTEST.search(text) else [str(path)]
-    proc = subprocess.Popen(cmd, cwd=ROOT, env=env)
+    pipe = subprocess.PIPE if capture else None
+    proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=pipe, stderr=subprocess.STDOUT if capture else None,
+                            text=True, encoding="utf-8", errors="replace")
+    ok, text_out = False, ""
     try:
-        code = proc.wait(timeout=timeout)
+        text_out, _ = proc.communicate(timeout=timeout)
+        ok = proc.returncode == 0
+        out.append(f"--- {name}: {'ok' if ok else 'FALLITO'} in {time.time() - start:.1f} s")
     except subprocess.TimeoutExpired:
-        print(f"!! {name}: fermo da piu' di {timeout:.0f} s, dump dei thread e interruzione", flush=True)
+        out.append(f"!! {name}: fermo da piu' di {timeout:.0f} s, dump dei thread e interruzione")
         if os.name == "posix":
             proc.send_signal(signal.SIGABRT)  # faulthandler stampa dove sono ferme le pile
             try:
@@ -68,11 +76,11 @@ def run(name: str, timeout: float) -> bool:
                 pass
         if proc.poll() is None:
             proc.kill()
-            proc.wait()
-        return False
-    took = time.time() - start
-    print(f"--- {name}: {'ok' if code == 0 else 'FALLITO'} in {took:.1f} s", flush=True)
-    return code == 0
+        text_out, _ = proc.communicate()
+    if capture and text_out:
+        out.insert(1, text_out.rstrip())
+    print("\n".join(out), flush=True)
+    return ok
 
 
 def main(argv: list[str]) -> int:
@@ -80,11 +88,19 @@ def main(argv: list[str]) -> int:
     if argv[:1] == ["--shard"]:
         k, n = (int(x) for x in argv[1].split("/"))
         shard, argv = (k, n), argv[2:]
+    jobs = 1
+    if argv[:1] == ["-j"]:
+        jobs, argv = int(argv[1]) or os.cpu_count() or 1, argv[2:]
     wanted = argv or discover()
     if shard:  # a turno, cosi' i test pesanti (e2e) si distribuiscono
         wanted = wanted[shard[0] - 1 :: shard[1]]
     timeout = limit()
-    failed = [name for name in wanted if not run(name, timeout)]
+    if jobs > 1:
+        with ThreadPoolExecutor(jobs) as pool:
+            results = list(pool.map(lambda n: run(n, timeout, capture=True), wanted))
+    else:
+        results = [run(n, timeout) for n in wanted]
+    failed = [n for n, ok in zip(wanted, results) if not ok]
     print(flush=True)
     if failed:
         print(f"TEST DA SISTEMARE ({len(failed)}): " + ", ".join(failed), flush=True)

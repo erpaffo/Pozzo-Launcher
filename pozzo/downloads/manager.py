@@ -418,6 +418,10 @@ class Manager:
                 raise ValueError("File .torrent non trovato")
         elif kind == "http" and not source.lower().startswith(SCHEMES):
             raise ValueError("Serve un link http(s)")
+        if "sha256" in opts and not re.fullmatch(r"[0-9a-fA-F]{64}", str(opts["sha256"])):
+            raise ValueError("SHA-256 non valido")
+        if not all(isinstance(m, str) and m.lower().startswith(SCHEMES) for m in opts.get("mirrors") or []):
+            raise ValueError("I mirror devono essere link http(s)")
         dest = Path(save_path or self.settings()["dir"]).expanduser()
         try:
             dest.mkdir(parents=True, exist_ok=True)
@@ -641,6 +645,14 @@ class Manager:
             client = self.client_factory(http2=False)
         except TypeError:  # factory senza il parametro (test)
             client = self.client_factory()
+        async def _redirect_public(r):  # catena di redirect: un link pubblico non puo' rimbalzare verso la LAN
+            loc = r.headers.get("location")
+            if r.is_redirect and loc:
+                to = r.request.url.join(loc)
+                if to.host != r.request.url.host:  # shortcut: stesso host non si ricontrolla, un link LAN scritto a mano resta valido
+                    await asyncio.to_thread(hosts.assert_public, str(to))
+        if hasattr(client, "event_hooks"):
+            client.event_hooks["response"].append(_redirect_public)
         async with client:
             self._client = client
             opened = False

@@ -964,7 +964,12 @@ def test_list_nasconde_provider_rimossi_schede_canale_e_duplicati(tmp_path, monk
     assert [(i["title"], i.get("poster")) for i in out] == [("Dup", "http://p/x.jpg")]
 
     res = gs.post("stream4me/cleanup", {})
-    assert res["ok"] and res["removed"] == 2
+    # oltre al provider rimosso e alla scheda "d" cadono anche le schede-canale generate dal catalogo (si rifanno)
+    assert res["ok"] and res["removed"] >= 2
+    conn = sqlite3.connect(tmp_path / "ricette-web-cache" / "ricette.db")
+    left = {r[0] for r in conn.execute("SELECT id FROM items WHERE id IN ('a', 'b', 'c', 'd')")}
+    conn.close()
+    assert left == {"a", "b"}
 
 
 def test_ricerca_generale_interroga_tutti_i_provider_anche_se_uno_fallisce_o_e_lento(tmp_path, monkeypatch):

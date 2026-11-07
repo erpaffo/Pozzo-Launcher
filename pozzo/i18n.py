@@ -10,7 +10,6 @@ from pathlib import Path
 DIR = Path(__file__).parent / "data" / "locales"
 SOURCE = "it"
 current: ContextVar[str] = ContextVar("lang", default=SOURCE)  # lingua della richiesta in corso (cookie gs_lang)
-RTL = frozenset(("ar", "he", "fa", "ur"))
 
 
 def languages() -> list[str]:
@@ -40,6 +39,8 @@ def tr(key: str, lang: str | None = None, **params) -> str:
 def from_request(cookie: str | None, accept: str | None) -> str:
     """Lingua per la richiesta: cookie gs_lang, poi Accept-Language, poi italiano."""
     have = languages()
+    if cookie and cookie not in have:  # lingua salvata e non piu' disponibile: inglese
+        return "en"
     for cand in [cookie or ""] + [part.split(";")[0].strip() for part in (accept or "").split(",")]:
         for c in (cand, cand.split("-")[0]):
             if c in have:

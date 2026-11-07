@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Pozzo HUD</title>
+<style>html, body { background: transparent; }</style>
+<link rel="stylesheet" href="/static/app.css?v={{v}}">
+<style>
+  html, body { margin: 0; overflow: hidden; height: 100%; }
+  #h { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 12px;
+    border-radius: 12px; background: rgba(15, 17, 21, .82); color: var(--fg); font: 600 13px/1.25 "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  #h-time { font-size: 20px; color: var(--accent); }
+  #h-st { color: #c3c8d6; font-weight: 500; }
+</style>
+</head>
+<body>
+<div id="h" role="status"><div id="h-time">0:00</div><div id="h-st"></div></div>
+<script src="/static/i18n.js?v={{v}}"></script>
+<script>
+// HUD leggero: nessuna richiesta se la finestra e' nascosta; una sola richiesta (tempo + metriche) ogni 2 s
+const $ = (s) => document.querySelector(s);
+let started = null;
+const fmt = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s % 60).padStart(2, "0"); };
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const s = await (await fetch("/api/overlay/stats")).json();
+    started = s.started;
+    $("#h-st").textContent = `${t("o.overlay.cpu")} ${s.cpu}% · ${t("o.overlay.ram")} ${s.ram}%`;
+  } catch (e) { /* server non raggiungibile: restano gli ultimi valori */ }
+}
+setInterval(() => { if (!document.hidden) $("#h-time").textContent = started ? fmt(Date.now() / 1000 - started) : "0:00"; }, 1000);
+setInterval(poll, 2000);
+window.addEventListener("load", () => setTimeout(poll, 300));
+</script>
+</body>
+</html>

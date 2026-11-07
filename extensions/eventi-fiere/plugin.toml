@@ -1,0 +1,12 @@
+[plugin]
+name = "Eventi e fiere"
+version = "1.0"
+author = "Pozzo Launcher"
+icon = "🎮"
+description = "Calendario di Gamescom, Summer Game Fest, Nintendo Direct e delle altre fiere videoludiche, con promemoria a 7 giorni e a 1 giorno dall'inizio."
+long_description = "Tiene sotto controllo le date dei grandi eventi del videogioco. Il calendario è un file JSON locale che puoi modificare: aggiungi, correggi o togli eventi quando vuoi, senza collegarti a internet. Pozzo Launcher ti avvisa con una notifica quando un evento è vicino."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Apri «Eventi e fiere» dalla barra laterale: trovi gli eventi in ordine di data con i giorni che mancano.\n3. Riceverai una notifica 7 giorni prima e 1 giorno prima dell'inizio.\n4. Per cambiare le date modifica eventi.json nella cartella dati dell'estensione (dentro la cartella di Pozzo Launcher, sotto «eventi-fiere»); le modifiche si vedono al ricaricamento della pagina."
+features = ["Calendario di fiere e presentazioni videoludiche, ordinato per data", "Promemoria automatici a 7 e a 1 giorno dall'inizio", "Elenco modificabile in un file JSON locale, senza fonti web", "Nessuna connessione di rete"]
+api = 1
+min_app = "0.7.1"
+permissions = ["notifiche", "impostazioni"]

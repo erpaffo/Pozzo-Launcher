@@ -128,6 +128,13 @@ class UserData:
                    f"ON CONFLICT(key) DO UPDATE SET {field}=excluded.{field}", (key, value))
         self._stamp("game", key, field)
 
+    def set_playtime(self, key: str, seconds: float, last_played: float = 0):
+        """Tempo di gioco importato da un altro launcher (valore assoluto, non una sessione)."""
+        self._exec("INSERT INTO user_games(key, playtime, last_played) VALUES(?, ?, NULLIF(?, 0)) "
+                   "ON CONFLICT(key) DO UPDATE SET playtime=excluded.playtime, "
+                   "last_played=MAX(COALESCE(last_played, 0), COALESCE(excluded.last_played, 0))", (key, seconds, last_played))
+        self._stamp("game", key, "playtime", "last_played")
+
     def mark_started(self, key: str):
         """Partita appena avviata (dal PC, dal telefono o da Moonlight): subito in «Giocati di recente» e «In corso»,
         senza aspettare la fine della sessione (tempo e avvii si contano in record_play)."""

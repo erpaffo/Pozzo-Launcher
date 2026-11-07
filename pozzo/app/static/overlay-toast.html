@@ -11,11 +11,14 @@
   @keyframes in { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
   img { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; } img[hidden] { display: none; }
   small { color: #5b8cff; display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
-  b { display: block; font-size: 17px; } span { font-size: 13px; color: #aab; }
+  #t > div { min-width: 0; }
+  b { display: block; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  span { font-size: 13px; color: #aab; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  @media (prefers-reduced-motion: reduce) { #t.on { animation: none; } }
 </style>
 </head>
 <body>
-<div id="t"><img id="i" alt="" hidden><div><small id="k"></small><b id="n"></b><span id="d"></span></div></div>
+<div role="status" aria-live="polite"><div id="t"><img id="i" alt="" hidden><div><small id="k"></small><b id="n"></b><span id="d"></span></div></div></div>
 <script src="/static/i18n.js"></script>
 <script>
 // suoni generati con WebAudio: nessun file audio

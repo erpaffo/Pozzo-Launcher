@@ -1,18 +1,43 @@
 /* trasparente: la finestra e' senza sfondo, lo scurisce #ov-back */
 html, body.ov { background: transparent; overflow: hidden; height: 100%; }
-#ov-back { position: fixed; inset: 0; background: rgba(0, 0, 0, .62); }
-.ov-card { position: relative; width: min(760px, 92vw); margin: 6vh auto 0; max-height: 88vh; overflow: auto; background: var(--bg-2); border: 1px solid var(--line);
-  border-radius: 16px; padding: 28px 32px; font-size: 22px; color: var(--fg); }
+body.ov {
+  --ov-glass: color-mix(in srgb, var(--bg-2) 94%, transparent);  /* niente blur: dietro c'e' il gioco, che la pagina non puo' sfocare, e a tutto schermo costa GPU */
+  --ov-r: 18px; --ov-ease: cubic-bezier(.2, .8, .2, 1);
+}
+#ov-back { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); animation: ov-fade .18s var(--ov-ease); }
+.ov-card { position: relative; width: min(760px, 92vw); margin: 6vh auto 0; max-height: 88vh; overflow: auto;
+  background: var(--ov-glass); border: 1px solid var(--line);
+  border-radius: var(--ov-r); padding: 28px 32px; font-size: 22px; color: var(--fg);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06); animation: ov-in .2s var(--ov-ease); }
 .ov-card header { display: flex; gap: 20px; align-items: center; margin-bottom: 18px; }
-.ov-card header img { width: 96px; height: 128px; object-fit: cover; border-radius: 8px; }
-.ov-card h1 { margin: 0; font-size: 34px; }
-.ov-card h2 { font-size: 20px; margin: 22px 0 8px; color: var(--muted); font-weight: 600; }
-.ov-time { font-size: 44px; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); }
+.ov-card header img { width: 96px; height: 128px; object-fit: cover; border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.ov-card h1 { margin: 0; font-size: 34px; line-height: 1.15; }
+.ov-card h2 { font-size: 15px; margin: 24px 0 8px; color: var(--muted); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.ov-time { font-size: 44px; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); line-height: 1.1; }
 .ov-actions, .ov-music { display: flex; gap: 12px; flex-wrap: wrap; }
 .ov-music h2 { width: 100%; margin-bottom: 0; }
-.ov-card button { font-size: 22px; padding: 12px 22px; background: var(--bg-3); border: 2px solid var(--line); border-radius: 10px; color: var(--fg); cursor: pointer; }
-.ov-card button:focus, .ov-card button:hover { outline: none; border-color: var(--accent); }
+.ov-card button { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; font-size: 20px; padding: 10px 20px;
+  background: var(--bg-3); border: 2px solid transparent; border-radius: 12px; color: var(--fg); cursor: pointer;
+  transition: transform .12s var(--ov-ease), border-color .12s, background .12s; }
+.ov-card button svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ov-card button:hover { background: color-mix(in srgb, var(--bg-3) 70%, var(--accent)); }
+.ov-card button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-color: var(--accent); }
+.ov-card button:disabled { opacity: .5; cursor: default; }
+.ov-card header > div { min-width: 0; }
+.ov-card h1, #ov-notes-list li { overflow-wrap: anywhere; }
+@media (forced-colors: active) { .ov-card button { border-color: ButtonText; } .ov-card button:focus-visible { outline-color: Highlight; } }
 .ov-card button.bad { color: var(--bad); }
+.ov-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.ov-card .ov-tabs button { min-height: 44px; font-size: 18px; padding: 8px 16px; background: transparent; color: var(--muted); }
+.ov-card .ov-tabs button[aria-selected="true"] { background: var(--bg-3); color: var(--fg); border-color: var(--line); }
+.ov-card [hidden] { display: none; }
+.ov-stat { display: grid; grid-template-columns: 6em 1fr; align-items: center; gap: 4px 16px; margin-bottom: 18px; }
+.ov-stat b { font-variant-numeric: tabular-nums; text-align: end; }
+.ov-stat .ov-bar { grid-column: 1 / -1; margin-top: 0; }
+#ov-emu-msg { margin: 14px 0 0; font-size: 18px; overflow-wrap: anywhere; }
 .ov-bar { height: 10px; border-radius: 5px; background: var(--bg-3); overflow: hidden; margin-top: 8px; }
-.ov-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+.ov-bar i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 5px; transform: scaleX(0); transform-origin: left; transition: transform .4s var(--ov-ease); }  /* scaleX, non width: niente layout a ogni aggiornamento */
 #ov-notes-list { margin: 0; padding-left: 22px; font-size: 20px; }
+@keyframes ov-in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@keyframes ov-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #ov-back, .ov-card { animation: none; } .ov-card button, .ov-bar i { transition: none; } }

@@ -15,8 +15,11 @@
   };
   const pick = async () => {
     const list = (await (await fetch("/api/i18n")).json()).languages;
-    const want = localStorage.getItem("gs.lang") || navigator.language || "it";
-    return [want, want.split("-")[0]].find((l) => list.includes(l)) || "it";
+    const saved = localStorage.getItem("gs.lang");
+    const want = saved || navigator.language || "it";
+    const hit = [want, want.split("-")[0]].find((l) => list.includes(l));
+    if (saved && !hit) localStorage.setItem("gs.lang", "en");  // lingua salvata non piu' disponibile: inglese
+    return hit || (saved ? "en" : "it");
   };
   const init = async () => {
     try {
@@ -25,7 +28,6 @@
       strings = r.strings;
       document.cookie = `gs_lang=${localStorage.getItem("gs.lang") ? lang : ""}; path=/; max-age=31536000; samesite=lax`;  // il server risponde nella stessa lingua
       document.documentElement.lang = lang;
-      document.documentElement.dir = r.dir;
       applyDom();
     } catch (e) { /* senza catalogo restano le chiavi/testi scritti nell'HTML */ }
   };

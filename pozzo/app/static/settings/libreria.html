@@ -42,3 +42,15 @@
 <p class="muted small" data-i18n="k.lib.rebuild.p">Ricalcola giochi, versioni e collezioni dalla cache, senza scaricare nulla.</p>
 <pre id="build-log" class="log"></pre>
 <p class="muted" id="thumbs-info"></p>
+
+<h3 data-i18n="k.lib.imp.title">Importa da un altro launcher</h3>
+<div class="row">
+  <select id="imp-fmt" class="field">
+    <option value="playnite">Playnite (JSON)</option><option value="launchbox" data-i18n="k.lib.imp.fmtLaunchbox">LaunchBox (XML o cartella)</option>
+    <option value="lutris">Lutris (pga.db)</option><option value="heroic" data-i18n="k.lib.imp.fmtHeroic">Heroic (cartella di configurazione)</option>
+    <option value="pegasus">Pegasus (metadata.pegasus.txt)</option>
+  </select>
+  <button class="btn" id="imp-go" type="button" data-i18n="k.lib.imp.go">⇪ Importa…</button>
+</div>
+<p class="muted small" data-i18n="k.lib.imp.note">Porta giochi gia' presenti, tempo di gioco, preferiti e raccolte. Non copia mai file di gioco e non cancella nulla.</p>
+<p class="muted small" id="imp-out"></p>
