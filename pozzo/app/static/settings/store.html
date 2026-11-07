@@ -4,6 +4,11 @@
   <tbody id="acc-table"></tbody></table>
 <div class="row end"><span class="muted small" id="acc-info"></span><button class="btn primary" id="acc-refresh" data-i18n="k.store.btn.refresh">↻ Aggiorna store</button></div>
 <div id="acc-progress"></div>
+<h4 data-i18n="k.store.h.steamcmd">Steam senza client (SteamCMD)</h4>
+<p class="muted small" data-i18n="k.store.p.steamcmd">Scarica e aggiorna i giochi Steam che possiedi senza aprire Steam, con SteamCMD (si scarica da solo al primo uso). Pozzo non salva la password: SteamCMD tiene da solo la sessione. I giochi con DRM di Steam richiedono comunque il client Steam in esecuzione.</p>
+<div class="row wrap"><span class="muted grow" id="scmd-status"></span>
+  <button class="btn" id="scmd-login" type="button" data-i18n="k.store.steamcmd.login">Accedi</button>
+  <button class="btn" id="scmd-logout" type="button" hidden data-i18n="k.store.steamcmd.logout">Esci</button></div>
 <h4 data-i18n="k.store.h.update">Aggiornamento degli store</h4>
 <p class="muted small" data-i18n-html="k.store.p.update">Gli elenchi letti restano salvati nella cache: all'avvio i giochi degli store
   ci sono <b>già</b> e l'app può rileggere i siti in sottofondo. Più store vengono letti in parallelo

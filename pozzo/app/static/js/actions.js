@@ -141,6 +141,7 @@ function openCtx(e, g) {
   if (g.store !== "online") rows.push({ l: "🔗 " + t("h.act.apps"), f: () => openProfile(g) });
   if (g.store && !["online", "manual"].includes(g.store)) {
     if (!g.installed) rows.push({ l: "⬇ " + t("h.grid.install"), f: () => installGame(g.id) });
+    if (!g.installed && g.store === "steam") rows.push({ l: "⬇ " + t("h.steamcmd.menu"), f: () => steamcmdDownload(g.id) });
     rows.push({ l: "🛒 " + t("h.act.storePage"), f: () => api(`/api/game/${g.id}/store-page`, { body: {} }) });
   }
   if (wofAvailable(g)) rows.push({ l: "🗜 " + t("w.wof.title"), f: () => openWof(g) });

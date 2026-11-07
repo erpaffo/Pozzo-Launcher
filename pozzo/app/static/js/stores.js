@@ -406,6 +406,7 @@ async function pollStoreRefresh() {
 
 /* ---- impostazioni › account degli store */
 async function loadAccounts() {
+  loadSteamcmd();
   loadStoreRefresh(); // blocco «Aggiornamento degli store»: indipendente dagli account
   api("/api/ra").then((r) => { $("#ra-user").value = r.username; $("#ra-key").placeholder = r.has_key ? t("h.acc.raSaved") : ""; }).catch(() => {});
   let d;
@@ -560,6 +561,7 @@ async function enterBigPicture() {
   location.href = "/bigpicture";
 }
 
+<<<<<<< HEAD
 // esporta in Steam
 async function loadSteamExport() {
   let r;
@@ -569,3 +571,69 @@ async function loadSteamExport() {
   $("#sx-info").textContent = r.users.length ? "" : t("g.steamx.none");
   for (const b of ["#sx-go", "#sx-rm"]) $(b).disabled = !r.users.length;
 }
+=======
+/* ---- Steam senza client (SteamCMD): accesso interattivo, la password non viene salvata da Pozzo */
+function steamcmdLogin() {
+  return new Promise((resolve) => {
+    let dlg = document.getElementById("scmd-dlg");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "scmd-dlg";
+      dlg.className = "small-dlg";
+      dlg.setAttribute("aria-labelledby", "scmd-title");
+      document.body.appendChild(dlg);
+    }
+    dlg.innerHTML = `<form method="dialog" class="dlg-head"><h2 id="scmd-title">${t("h.steamcmd.title")}</h2><button class="icon-btn" value="" aria-label="${t("f.btn.close")}">✕</button></form>
+      <form class="dlg-body" id="scmd-form" autocomplete="off">
+        <p class="muted small">${t("h.steamcmd.hint")}</p>
+        <label>${t("h.steamcmd.user")}<input class="field" id="scmd-user" required autocomplete="off"></label>
+        <label>${t("h.steamcmd.password")}<input class="field" id="scmd-pass" type="password" required autocomplete="off"></label>
+        <label>${t("h.steamcmd.guard")}<input class="field" id="scmd-guard" autocomplete="off" maxlength="12"></label>
+        <p class="err" id="scmd-err" role="alert" hidden></p>
+        <div class="row end"><button class="btn primary" id="scmd-go" type="submit">${t("h.steamcmd.login")}</button></div>
+      </form>`;
+    let ok = false;
+    dlg.onclose = () => resolve(ok);
+    dlg.querySelector("#scmd-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const go = dlg.querySelector("#scmd-go"), err = dlg.querySelector("#scmd-err");
+      go.disabled = true; err.hidden = true;
+      try {
+        await api("/api/steamcmd/login", { body: { user: $("#scmd-user").value.trim(), password: $("#scmd-pass").value, guard: $("#scmd-guard").value.trim() } });
+        ok = true; $("#scmd-pass").value = ""; dlg.close();
+      } catch (x) { err.textContent = x.message; err.hidden = false; go.disabled = false; $("#scmd-pass").value = ""; }
+    };
+    dlg.showModal();
+    dlg.querySelector("#scmd-user").focus();
+  });
+}
+
+async function steamcmdDownload(gameId) {
+  try {
+    let st = await api("/api/steamcmd");
+    if (!st.logged_in && !(await steamcmdLogin())) return;
+    if (!confirm(t("h.steamcmd.drm"))) return;
+    await api("/api/steamcmd/install", { body: { game_id: gameId } });
+    toast(t("h.steamcmd.started"));
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadSteamcmd() {
+  const box = $("#scmd-status");
+  if (!box) return;
+  try {
+    const st = await api("/api/steamcmd");
+    box.textContent = st.logged_in ? t("h.steamcmd.loggedAs", {user: st.user}) : t("h.steamcmd.notLogged");
+    $("#scmd-logout").hidden = !st.logged_in;
+  } catch { box.textContent = ""; }
+}
+
+if (typeof document !== "undefined") document.addEventListener("click", async (e) => {
+  const b = e.target.closest && e.target.closest("#scmd-login, #scmd-logout, #d-scmd");
+  if (!b) return;
+  if (b.id === "d-scmd") return steamcmdDownload(S.detail.id);
+  if (b.id === "scmd-login") await steamcmdLogin();
+  else try { await api("/api/steamcmd/logout", { body: {} }); } catch (x) { toast(x.message, true); }
+  loadSteamcmd();
+});
+>>>>>>> feat/w2-steamcmd

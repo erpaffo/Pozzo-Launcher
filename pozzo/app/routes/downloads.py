@@ -14,7 +14,7 @@ from ... import storelinks as SL
 from .. import browserdl
 from ...cache import Cache
 from ...downloads import bandwidth, debrid, finish, hosts, install, multiup, resolvers
-from ...downloads.engines import http as HTTP, torrent as TOR
+from ...downloads.engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from ...downloads.extract import queue_forecast
 from ...downloads.manager import Manager
 from ..apiv1 import sse
@@ -58,7 +58,7 @@ def build_router(ctx) -> APIRouter:
     resolvers.register(hosts.resolve,  # pagina dell'host (datanodes, 1fichier…) -> file vero
                        lambda u: I.tr("s.downloads.find_file_on", host=hosts.host(u)) if hosts.is_host_page(u) else "")
     browserdl.SHOW["fn"] = lambda: bool(mgr.settings().get("show_browser"))  # finestra del browser visibile per seguirla
-    mgr.on_completed = lambda t: finish.run(t, mgr, ctx)  # estrae e mette il gioco in libreria
+    mgr.on_completed = lambda t: (STEAMCMD.finish if t.type == "steamcmd" else finish.run)(t, mgr, ctx)  # estrae e mette il gioco in libreria
     def _queue_done(ok: int, failed: int):
         from ... import notify
         body = I.tr("s.notify.queueDoneBody", n=ok) + (" · " + I.tr("s.notify.queueDoneFailed", n=failed) if failed else "")
