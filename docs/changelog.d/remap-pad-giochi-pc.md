@@ -1,0 +1,2 @@
+### Aggiunto
+Remap del pad per i giochi PC: nelle Automazioni del gioco si possono riassegnare i tasti, impostare la zona morta degli stick, scambiarli, invertire l'asse Y e attivare il turbo. Pozzo legge il pad fisico e lo inoltra a un controller Xbox 360 virtuale (serve ViGEmBus); con HidHide installato il pad fisico viene nascosto durante la partita e sempre ripristinato, altrimenti compare un avviso.

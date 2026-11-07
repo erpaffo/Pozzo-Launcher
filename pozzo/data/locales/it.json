@@ -3530,5 +3530,12 @@
  "fr.noData": "{name} non ha ancora condiviso dati: si aggiornano quando è in linea.",
  "fr.friendsPlaying": "Amici che ci giocano",
  "fr.compare": "Confronta",
- "a.prof.autoArchive": "Archivio .zip/.7z/.rar: estrai in una cartella temporanea a ogni avvio e cancella a fine partita (i salvataggi si conservano)"
+ "a.prof.autoArchive": "Archivio .zip/.7z/.rar: estrai in una cartella temporanea a ogni avvio e cancella a fine partita (i salvataggi si conservano)",
+ "a.prof.autoPad": "Remap del pad (richiede ViGEmBus; il pad fisico viene riletto e inoltrato a un pad virtuale)",
+ "a.prof.autoPadMap": "Tasti da rimappare (es. a=b, b=a, lb=lt; tasti: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: tasto:Hz (es. a:10, x:8)",
+ "a.prof.autoPadDz": "Zona morta degli stick (0-30%)",
+ "a.prof.autoPadSwap": "Scambia gli stick",
+ "a.prof.autoPadInv": "Inverti l'asse Y",
+ "a.prof.autoPadHint": "Senza HidHide il gioco potrebbe vedere due controller (quello fisico e quello virtuale). Con HidHide installato il pad fisico viene nascosto durante la partita e poi ripristinato."
 }

@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import sys
 import threading
+import weakref
 from ctypes import c_short, c_uint, c_ushort, c_void_p
 from pathlib import Path
 
@@ -37,6 +38,7 @@ NOTIFICATION = ctypes.CFUNCTYPE(None, c_void_p, c_void_p, ctypes.c_ubyte, ctypes
 _lib = None
 _client = None
 _lock = threading.Lock()
+_pads: "weakref.WeakSet[VirtualPad]" = weakref.WeakSet()  # i controller virtuali vivi di questo processo
 
 
 def _dll_path() -> Path:
@@ -109,6 +111,11 @@ def available() -> tuple[bool, str]:
         return False, str(e)
 
 
+def virtual_indices() -> set[int]:
+    """Indici XInput dei nostri controller virtuali (da non leggere come se fossero pad fisici)."""
+    return {i for p in list(_pads) if (i := p.user_index()) is not None}
+
+
 class VirtualPad:
     """Un controller Xbox 360 virtuale; si scollega con close().
     on_rumble(grande, piccolo): chiamata (da un thread del driver) quando il gioco fa vibrare il controller, valori 0-255."""
@@ -123,6 +130,7 @@ class VirtualPad:
             self.target = None
             raise ViGEmError(f"Impossibile creare il controller virtuale (codice {err:#x})")
         self.report = XUSB_REPORT()
+        _pads.add(self)
         self.on_rumble = on_rumble  # si puo' cambiare dopo (scambio dei giocatori)
 
         def cb(_client, _target, large, small, _led, _user):

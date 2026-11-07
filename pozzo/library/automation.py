@@ -14,6 +14,8 @@ import subprocess
 import sys
 import threading
 
+from . import padremap
+
 log = logging.getLogger(__name__)
 
 KEY = "auto"  # chiave del profilo del gioco (userdata) che contiene la configurazione
@@ -51,6 +53,8 @@ def clean(body: dict) -> dict:
         out["hdr"] = True
     if b.get("archive"):  # archivio estratto in temp a ogni avvio (vedi archiverun)
         out["archive"] = True
+    if pad := padremap.clean(b.get("pad")):
+        out["pad"] = pad
     if mp := str(b.get("magpie") or "").strip():
         if mp not in ("fsr", "anime4k", "integer", "lanczos"):
             raise ValueError("magpie")
@@ -177,7 +181,8 @@ class Session:
         if sys.platform != "win32":
             return
         steps = [("chiusura processi", lambda: c.get("kill") and kill_processes(c["kill"])),
-                 ("risoluzione", self._res), ("piano energetico", self._power), ("HDR", self._hdr)]
+                 ("risoluzione", self._res), ("piano energetico", self._power), ("HDR", self._hdr),
+                 ("remap del pad", self._pad)]
         for name, fn in steps:
             try:
                 fn()
@@ -203,6 +208,12 @@ class Session:
             toggle_hdr()
             # shortcut: Win+Alt+B inverte lo stato senza poterlo leggere; se l'HDR era gia' acceso lo spegne (e a fine partita lo riaccende)
             self.undo.append(toggle_hdr)
+
+    def _pad(self):
+        if self.conf.get("pad"):
+            rm = padremap.Remapper(self.conf["pad"], self.report)
+            rm.start()  # se fallisce ripristina da solo (pad virtuale, HidHide)
+            self.undo.append(rm.stop)
 
     def end(self):
         if self.done:  # chiamato sia a fine partita sia nel finally

@@ -3530,5 +3530,12 @@
  "fr.noData": "{name} n'a encore partagé aucune donnée : elles se mettent à jour quand il est en ligne.",
  "fr.friendsPlaying": "Amis qui y jouent",
  "fr.compare": "Comparer",
- "a.prof.autoArchive": "Archive .zip/.7z/.rar : extraire dans un dossier temporaire à chaque lancement et le supprimer à la fin de la partie (les sauvegardes sont conservées)"
+ "a.prof.autoArchive": "Archive .zip/.7z/.rar : extraire dans un dossier temporaire à chaque lancement et le supprimer à la fin de la partie (les sauvegardes sont conservées)",
+ "a.prof.autoPad": "Remappage de la manette (nécessite ViGEmBus ; la manette physique est lue et renvoyée vers une manette virtuelle)",
+ "a.prof.autoPadMap": "Boutons à remapper (ex. a=b, b=a, lb=lt ; boutons : a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo : bouton:Hz (ex. a:10, x:8)",
+ "a.prof.autoPadDz": "Zone morte des sticks (0-30 %)",
+ "a.prof.autoPadSwap": "Inverser les sticks",
+ "a.prof.autoPadInv": "Inverser l'axe Y",
+ "a.prof.autoPadHint": "Sans HidHide, le jeu peut voir deux manettes (la physique et la virtuelle). Avec HidHide installé, la manette physique est masquée pendant la partie puis rétablie."
 }

@@ -3530,5 +3530,12 @@
  "fr.noData": "{name} aún no ha compartido datos: se actualizan cuando esté en línea.",
  "fr.friendsPlaying": "Amigos que lo juegan",
  "fr.compare": "Comparar",
- "a.prof.autoArchive": "Archivo .zip/.7z/.rar: extraer a una carpeta temporal en cada inicio y borrarla al terminar la partida (las partidas guardadas se conservan)"
+ "a.prof.autoArchive": "Archivo .zip/.7z/.rar: extraer a una carpeta temporal en cada inicio y borrarla al terminar la partida (las partidas guardadas se conservan)",
+ "a.prof.autoPad": "Remapeo del mando (requiere ViGEmBus; el mando físico se lee y se reenvía a uno virtual)",
+ "a.prof.autoPadMap": "Botones a remapear (p. ej. a=b, b=a, lb=lt; botones: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: botón:Hz (p. ej. a:10, x:8)",
+ "a.prof.autoPadDz": "Zona muerta de los sticks (0-30 %)",
+ "a.prof.autoPadSwap": "Intercambiar los sticks",
+ "a.prof.autoPadInv": "Invertir el eje Y",
+ "a.prof.autoPadHint": "Sin HidHide el juego podría ver dos mandos (el físico y el virtual). Con HidHide instalado, el mando físico se oculta durante la partida y luego se restaura."
 }

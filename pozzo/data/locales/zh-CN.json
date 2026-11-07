@@ -3530,5 +3530,12 @@
  "fr.noData": "{name} 尚未分享数据:对方上线后会更新。",
  "fr.friendsPlaying": "在玩这款游戏的好友",
  "fr.compare": "对比",
- "a.prof.autoArchive": "压缩包 .zip/.7z/.rar:每次启动时解压到临时文件夹,游戏结束后删除(存档会保留)"
+ "a.prof.autoArchive": "压缩包 .zip/.7z/.rar:每次启动时解压到临时文件夹,游戏结束后删除(存档会保留)",
+ "a.prof.autoPad": "手柄按键重映射(需要 ViGEmBus;读取实体手柄并转发到虚拟手柄)",
+ "a.prof.autoPadMap": "要重映射的按键(例如 a=b, b=a, lb=lt;按键:a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "连发:按键:Hz(例如 a:10, x:8)",
+ "a.prof.autoPadDz": "摇杆死区(0-30%)",
+ "a.prof.autoPadSwap": "交换左右摇杆",
+ "a.prof.autoPadInv": "反转 Y 轴",
+ "a.prof.autoPadHint": "没有 HidHide 时,游戏可能同时看到两个手柄(实体和虚拟)。安装 HidHide 后,游戏期间会隐藏实体手柄,结束后恢复。"
 }
