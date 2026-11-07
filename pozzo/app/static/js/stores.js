@@ -561,7 +561,6 @@ async function enterBigPicture() {
   location.href = "/bigpicture";
 }
 
-<<<<<<< HEAD
 // esporta in Steam
 async function loadSteamExport() {
   let r;
@@ -571,7 +570,7 @@ async function loadSteamExport() {
   $("#sx-info").textContent = r.users.length ? "" : t("g.steamx.none");
   for (const b of ["#sx-go", "#sx-rm"]) $(b).disabled = !r.users.length;
 }
-=======
+
 /* ---- Steam senza client (SteamCMD): accesso interattivo, la password non viene salvata da Pozzo */
 function steamcmdLogin() {
   return new Promise((resolve) => {
@@ -636,4 +635,3 @@ if (typeof document !== "undefined") document.addEventListener("click", async (e
   else try { await api("/api/steamcmd/logout", { body: {} }); } catch (x) { toast(x.message, true); }
   loadSteamcmd();
 });
->>>>>>> feat/w2-steamcmd
