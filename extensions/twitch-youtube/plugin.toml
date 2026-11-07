@@ -1,0 +1,18 @@
+[plugin]
+name = "Twitch e YouTube"
+version = "1.0.0"
+author = "Pozzo Launcher"
+icon = "📺"
+description = "Dirette Twitch in corso e video YouTube (trailer e guide) nel dettaglio di ogni gioco."
+long_description = "Nella scheda di ogni gioco trovi la sezione «Dirette e video»: le dirette Twitch in corso per quel titolo e i video YouTube più utili, cioè trailer e guide. Le dirette si aprono nel browser; i video si guardano direttamente nella scheda oppure nel browser. Usa le tue chiavi gratuite: un'app Twitch per le dirette e, se vuoi i video, una chiave YouTube Data API. Senza chiavi resta comunque un collegamento diretto alla ricerca su Twitch e YouTube."
+how_it_works = "1. Installa l'estensione e riavvia Pozzo Launcher.\n2. Crea un'app gratuita su dev.twitch.tv e copia Client ID e Client Secret in Impostazioni › Streaming (facoltativo: anche una chiave «YouTube Data API v3» da Google Cloud).\n3. Apri la scheda di un gioco: la sezione «📺 Dirette e video» mostra le dirette in corso e i video.\n4. Clicca su una diretta per aprirla nel browser; clicca ▶ su un video per guardarlo nella scheda."
+features = [
+  "Dirette Twitch in corso per il gioco, con spettatori e anteprima",
+  "Video YouTube: trailer e guide, guardabili nella scheda del gioco",
+  "Collegamenti alla ricerca su Twitch e YouTube sempre disponibili",
+  "Chiavi personali, salvate solo sul tuo PC",
+  "Risultati in cache per 10 minuti"
+]
+api = 2
+min_app = "0.15.0"
+permissions = ["rete:api.twitch.tv", "rete:id.twitch.tv", "rete:www.googleapis.com", "impostazioni"]
