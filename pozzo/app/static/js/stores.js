@@ -559,3 +559,13 @@ async function enterBigPicture() {
   try { if (pw && pw.set_fullscreen) await pw.set_fullscreen(true); } catch { /* browser */ }
   location.href = "/bigpicture";
 }
+
+// esporta in Steam
+async function loadSteamExport() {
+  let r;
+  try { r = await api("/api/steam-export"); } catch { r = { users: [] }; }
+  $("#sx-user").innerHTML = r.users.map((u) => `<option value="${esc(u.id)}">${esc(u.name || u.id)}</option>`).join("");
+  $("#sx-plats").innerHTML = (r.platforms || []).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+  $("#sx-info").textContent = r.users.length ? "" : t("g.steamx.none");
+  for (const b of ["#sx-go", "#sx-rm"]) $(b).disabled = !r.users.length;
+}

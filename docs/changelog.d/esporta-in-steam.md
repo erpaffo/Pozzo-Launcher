@@ -1,0 +1,2 @@
+### Aggiunto
+- Impostazioni › Store › «Esporta in Steam»: i giochi di Pozzo (tutti, preferiti o per piattaforma) compaiono in Steam come giochi non-Steam con copertine, così funzionano Steam Input, Steam Deck e Big Picture. Si avviano sempre tramite Pozzo (tempo di gioco e automazioni restano attivi). Le voci già presenti in Steam non vengono toccate, prima di scrivere viene fatta una copia di `shortcuts.vdf`, e un pulsante rimuove solo le voci di Pozzo. Steam deve essere chiuso.

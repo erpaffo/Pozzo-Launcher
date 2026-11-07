@@ -57,3 +57,16 @@
   <label>Web API key <input class="field" id="ra-key" type="password" autocomplete="new-password"></label>
   <button class="btn" id="ra-save" data-i18n="k.store.ra.save">Salva e prova</button>
 </div>
+<h4 data-i18n="k.steamx.h">Esporta in Steam</h4>
+<p class="muted small" data-i18n="k.steamx.p"></p>
+<div class="row wrap">
+  <label><span data-i18n="k.steamx.user">Account Steam</span> <select class="field" id="sx-user"></select></label>
+  <label><span data-i18n="k.steamx.what">Cosa esportare</span> <select class="field" id="sx-what">
+    <option value="all" data-i18n="k.steamx.all">Tutti i giochi</option>
+    <option value="favorites" data-i18n="k.steamx.fav">Solo i preferiti</option>
+    <option value="platforms" data-i18n="k.steamx.plat">Alcune piattaforme</option></select></label>
+  <select class="field" id="sx-plats" multiple size="4" hidden></select>
+  <button class="btn primary" id="sx-go" type="button" data-i18n="k.steamx.go">Esporta</button>
+  <button class="btn" id="sx-rm" type="button" data-i18n="k.steamx.rm">Rimuovi le voci di Pozzo</button>
+</div>
+<div class="muted small" id="sx-info"></div>
