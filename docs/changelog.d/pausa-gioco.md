@@ -1,2 +1,0 @@
-### Aggiunto
-Pausa del gioco su Windows: congela il gioco in corso (come Nyrna) e libera CPU e GPU anche nei giochi senza pausa. Si attiva con Ctrl+Shift+P (configurabile nelle impostazioni delle schermate), con Select+L1 sul controller o dal pulsante «Pausa» nella barra del gioco, nella Big Picture e dal telefono. Il tempo in pausa non conta nel tempo di gioco e a fine sessione il gioco riprende sempre.

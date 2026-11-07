@@ -1,2 +1,0 @@
-### Aggiunto
-Splash all'avvio dei giochi: premendo Gioca compare subito a tutto schermo l'immagine del gioco con il logo e un piccolo indicatore di caricamento, anche in Big Picture. Sparisce appena la finestra del gioco passa in primo piano (o dopo 60 secondi, o se l'avvio fallisce). Si disattiva da Emulatori, «Mostra uno splash all'avvio dei giochi». Su Windows, mentre il gioco è in primo piano, l'interfaccia di Pozzo si mette a riposo: animazioni ferme e audio/video di anteprima in pausa, e riparte quando torni a Pozzo.

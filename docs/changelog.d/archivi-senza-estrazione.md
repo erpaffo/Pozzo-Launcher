@@ -1,2 +1,0 @@
-### Aggiunto
-Archivi senza estrazione fissa: per un gioco PC o una ROM in .zip/.7z/.rar, l'opzione nelle Automazioni lo estrae in una cartella temporanea a ogni avvio (controllando prima lo spazio libero) e la cancella a fine partita. I file nuovi o cambiati durante il gioco (salvataggi, configurazioni) si conservano e si riapplicano all'avvio successivo; se non si riescono a salvare la cartella resta e l'app avvisa.

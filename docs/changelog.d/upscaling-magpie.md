@@ -1,2 +1,0 @@
-### Aggiunto
-Upscaling con Magpie: nel profilo del gioco, in «Automazioni», puoi scegliere FSR, Anime4K, Integer Scale o Lanczos per ingrandire il gioco in finestra a schermo intero. Magpie (Windows 10 1903 o successivo) si scarica da GitHub al primo utilizzo; quando la finestra del gioco passa in primo piano Pozzo prepara il suo profilo e lo avvia nella tray, e a fine partita lo chiude se l'ha aperto lui.
