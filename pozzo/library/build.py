@@ -294,10 +294,13 @@ APP_GENRE = "Applicazione"
 # finisce nella colonna `content`, cosi' si possono mostrare, filtrare e nascondere.
 
 
+DEFAULT_STORE_PREF = ["steam", "gog", "epic", "xbox", "amazon", "battlenet"]
+
+
 def _store_entries(cfg, cache) -> list[dict]:
     """Giochi degli store (istantanee in cache) come voci della piattaforma 'windows'.
-    Lo stesso gioco su piu' store (es. Steam + Epic) diventa un gruppo con piu' versioni:
-    principale quella installata, poi nell'ordine degli store."""
+    Con cfg.app["merge_stores"] lo stesso gioco su piu' store (es. Steam + Epic) diventa un gruppo con piu' versioni:
+    principale quella installata, poi nell'ordine di preferenza degli store."""
     from types import SimpleNamespace
 
     from ..stores import STORE_ORDER, load_snapshots
@@ -340,9 +343,14 @@ def _store_entries(cfg, cache) -> list[dict]:
         e["ratings"] = combine({"launchbox": m["rating"]} if m.get("rating") else {})
         if e.pop("kind", "game") == "app":  # le applicazioni si riconoscono dal genere (nessuna colonna in piu')
             e["genres"] = [APP_GENRE]
-    order = {sid: i for i, sid in enumerate(STORE_ORDER)}
+    # preferenza tra gli store (impostazione "Unisci i giochi presenti su più store"), gli altri in coda
+    pref = [x for x in (cfg.app.get("store_order") or DEFAULT_STORE_PREF) if isinstance(x, str)]
+    order = {sid: i for i, sid in enumerate(pref + [x for x in STORE_ORDER if x not in pref])}
+    merge = cfg.app.get("merge_stores") is not False
     groups: dict[str, list[dict]] = defaultdict(list)
     for e in entries:
+        if not merge:
+            e["grp"] = e["key"]  # senza unione ogni voce resta un gioco a sé (le voci salvate non cambiano)
         groups[e["grp"]].append(e)
     for members in groups.values():
         best = min(members, key=lambda e: (not e["installed"], order.get(e["store"], 99)))

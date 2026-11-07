@@ -86,7 +86,7 @@ def build_router(ctx) -> APIRouter:
                      grp_idx[g["grp"]], g["rating"], g["developer"] or "", ", ".join(g["genres"]), g["found"],
                      g["region"] or "", g.get("store") or "", 1 if g.get("store") is None else g.get("installed") or 0,
                      g.get("size") or 0, g.get("rating_count") or 0, g.get("rating_critics"), _players(g.get("players"), g["platform"]),
-                     round((g.get("store_playtime") or 0) / 60), _hltb_main(g.get("hltb")), g.get("content") or "game"]
+                     round(sum(m.get("store_playtime") or 0 for m in lib.groups[g["grp"]]) / 60), _hltb_main(g.get("hltb")), g.get("content") or "game"]
                     for g in sel]
             plats = defaultdict(int)
             for members in lib.groups.values():
@@ -226,7 +226,7 @@ def build_router(ctx) -> APIRouter:
                 "store": g.get("store"), "store_name": STORE_NAMES.get(g.get("store"), ""),
                 "installed": bool(g.get("installed")) if g.get("store") else True,
                 "can_install": bool(g.get("install_uri")), "page": g.get("page"),
-                "store_playtime": g.get("store_playtime") or 0,
+                "store_playtime": sum(m.get("store_playtime") or 0 for m in lib.groups[g["grp"]]),
                 "ports": [] if g.get("store") else _port_links()["by_grp"].get(g["grp"], []),
                 "emulator": (STORE_NAMES.get(g.get("store"), "PC") if g.get("store")
                              else (plan["emulator"] + (f" ({plan['core']})" if plan["core"] else "")) if plan else None)}

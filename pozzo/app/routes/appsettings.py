@@ -247,6 +247,21 @@ def build_router(ctx) -> APIRouter:
         cfg.app["watch_roms"] = conf
         return ctx.watcher.status()
 
+    @router.get("/api/app/merge-stores")
+    def api_merge_get():
+        from ...library.build import DEFAULT_STORE_PREF
+        return {"enabled": cfg.app.get("merge_stores") is not False, "order": cfg.app.get("store_order") or DEFAULT_STORE_PREF}
+
+    @router.post("/api/app/merge-stores")
+    def api_merge_set(body: dict = Body(...)):
+        """Vale dalla prossima ricostruzione della libreria (le voci salvate non si toccano)."""
+        conf = {"merge_stores": bool(body.get("enabled"))}
+        if "order" in body:
+            conf["store_order"] = [x.strip().lower() for x in body["order"] if isinstance(x, str) and x.strip()]
+        C.save_settings(cfg, app=conf)
+        cfg.app.update(conf)
+        return api_merge_get()
+
     @router.get("/api/app/notify")
     def api_notify_get():
         return {"enabled": cfg.app.get("notify") is not False, "available": sys.platform == "win32"}
