@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} başarım",
  "fr.noData": "{name} henüz veri paylaşmadı: çevrimiçi olunca güncellenir.",
  "fr.friendsPlaying": "Oynayan arkadaşlar",
- "fr.compare": "Karşılaştır"
+ "fr.compare": "Karşılaştır",
+ "h.overlay.hotkey": "Oyun içi katman (kısayol)",
+ "h.overlay.hint": "Katman, pencereli ve çerçevesiz tam ekran oyunların üzerinde açılır; özel tam ekran oyunların üzerinde gösterilemez. Kontrolcüde: Select + R3.",
+ "h.overlay.ach": "Oynarken başarım bildirimleri",
+ "h.overlay.sound": "Bildirim sesi",
+ "h.overlay.snd.none": "Yok",
+ "h.overlay.snd.soft": "Yumuşak",
+ "h.overlay.snd.classic": "Klasik",
+ "o.overlay.time": "Oturum süresi",
+ "o.overlay.none": "Çalışan oyun yok",
+ "o.overlay.shot": "Ekran görüntüsü",
+ "o.overlay.pause": "Duraklat",
+ "o.overlay.resume": "Devam et",
+ "o.overlay.stop": "Oyunu kapat",
+ "o.overlay.close": "Katmanı kapat",
+ "o.overlay.ach": "Başarımlar",
+ "o.overlay.notes": "Notlar",
+ "o.overlay.music": "Müzik"
 }

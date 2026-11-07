@@ -3529,5 +3529,22 @@
  "fr.achv": "実績 {n}/{m}",
  "fr.noData": "{name} はまだデータを共有していません。オンラインになると更新されます。",
  "fr.friendsPlaying": "このゲームを遊んでいるフレンド",
- "fr.compare": "比較"
+ "fr.compare": "比較",
+ "h.overlay.hotkey": "ゲーム内オーバーレイ(ショートカット)",
+ "h.overlay.hint": "オーバーレイはウィンドウ表示とボーダーレス全画面のゲームの上に表示されます。排他的全画面のゲームの上には描画できません。コントローラー: Select + R3。",
+ "h.overlay.ach": "プレイ中の実績通知",
+ "h.overlay.sound": "通知音",
+ "h.overlay.snd.none": "なし",
+ "h.overlay.snd.soft": "やわらかい",
+ "h.overlay.snd.classic": "クラシック",
+ "o.overlay.time": "セッション時間",
+ "o.overlay.none": "実行中のゲームはありません",
+ "o.overlay.shot": "スクリーンショット",
+ "o.overlay.pause": "一時停止",
+ "o.overlay.resume": "再開",
+ "o.overlay.stop": "ゲームを終了",
+ "o.overlay.close": "オーバーレイを閉じる",
+ "o.overlay.ach": "実績",
+ "o.overlay.notes": "メモ",
+ "o.overlay.music": "音楽"
 }

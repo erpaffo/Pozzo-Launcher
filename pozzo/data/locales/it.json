@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} obiettivi",
  "fr.noData": "{name} non ha ancora condiviso dati: si aggiornano quando è in linea.",
  "fr.friendsPlaying": "Amici che ci giocano",
- "fr.compare": "Confronta"
+ "fr.compare": "Confronta",
+ "h.overlay.hotkey": "Overlay in gioco (scorciatoia)",
+ "h.overlay.hint": "L'overlay si apre sopra i giochi in finestra o a schermo intero senza bordi; non si vede sopra i giochi a schermo intero esclusivo. Dal controller: Select + R3.",
+ "h.overlay.ach": "Avvisi degli obiettivi durante il gioco",
+ "h.overlay.sound": "Suono degli avvisi",
+ "h.overlay.snd.none": "Nessuno",
+ "h.overlay.snd.soft": "Morbido",
+ "h.overlay.snd.classic": "Classico",
+ "o.overlay.time": "Tempo di sessione",
+ "o.overlay.none": "Nessun gioco in esecuzione",
+ "o.overlay.shot": "Schermata",
+ "o.overlay.pause": "Pausa",
+ "o.overlay.resume": "Riprendi",
+ "o.overlay.stop": "Chiudi gioco",
+ "o.overlay.close": "Chiudi overlay",
+ "o.overlay.ach": "Obiettivi",
+ "o.overlay.notes": "Appunti",
+ "o.overlay.music": "Musica"
 }

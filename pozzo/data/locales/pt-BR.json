@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} conquistas",
  "fr.noData": "{name} ainda não compartilhou dados: eles são atualizados quando estiver online.",
  "fr.friendsPlaying": "Amigos que jogam",
- "fr.compare": "Comparar"
+ "fr.compare": "Comparar",
+ "h.overlay.hotkey": "Overlay no jogo (atalho)",
+ "h.overlay.hint": "O overlay abre sobre jogos em janela ou em tela cheia sem bordas; não pode ser exibido sobre jogos em tela cheia exclusiva. No controle: Select + R3.",
+ "h.overlay.ach": "Avisos de conquistas durante o jogo",
+ "h.overlay.sound": "Som dos avisos",
+ "h.overlay.snd.none": "Nenhum",
+ "h.overlay.snd.soft": "Suave",
+ "h.overlay.snd.classic": "Clássico",
+ "o.overlay.time": "Tempo de sessão",
+ "o.overlay.none": "Nenhum jogo em execução",
+ "o.overlay.shot": "Captura de tela",
+ "o.overlay.pause": "Pausar",
+ "o.overlay.resume": "Continuar",
+ "o.overlay.stop": "Fechar jogo",
+ "o.overlay.close": "Fechar overlay",
+ "o.overlay.ach": "Conquistas",
+ "o.overlay.notes": "Notas",
+ "o.overlay.music": "Música"
 }

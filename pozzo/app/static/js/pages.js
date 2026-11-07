@@ -381,6 +381,10 @@ async function renderShots(pv) {
     <div class="wl-settings" id="sh-settings" hidden>
       <label>Scorciatoia da tastiera <input class="field" id="sh-hotkey" value="${esc(st.hotkey || "")}" placeholder="es. ctrl+shift+s, f10"></label>
       <label>${t("h.shots.pauseHotkey")} <input class="field" id="sh-pause-hotkey" value="${esc(st.pause_hotkey || "")}" placeholder="ctrl+shift+p"></label>
+      <label>${t("h.overlay.hotkey")} <input class="field" id="sh-ov-hotkey" value="${esc(d.overlay.hotkey || "")}" placeholder="ctrl+shift+o"></label>
+      <p class="muted small">${t("h.overlay.hint")}</p>
+      <label class="chk"><input type="checkbox" id="sh-ov-ach"${d.overlay.achievements ? " checked" : ""}> ${t("h.overlay.ach")}</label>
+      <label>${t("h.overlay.sound")} <select class="field" id="sh-ov-snd">${["none", "soft", "classic"].map((s) => `<option value="${s}"${d.overlay.sound === s ? " selected" : ""}>${t("h.overlay.snd." + s)}</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> ${t("h.shots.padLabel")}</label>
       <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> ${t("h.shots.emuLabel")}</label>
       <button class="btn primary" id="sh-save">${t("h.common.save")}</button></div>
@@ -404,6 +408,7 @@ async function renderShots(pv) {
     } else if (t.id === "sh-save") {
       try {
         await api("/api/shots/settings", { body: { hotkey: $("#sh-hotkey").value, pause_hotkey: $("#sh-pause-hotkey").value, pad: $("#sh-pad").checked, import_emulator: $("#sh-emu").checked } });
+        await api("/api/overlay/settings", { body: { hotkey: $("#sh-ov-hotkey").value, achievements: $("#sh-ov-ach").checked, sound: $("#sh-ov-snd").value } });
         toast(window.t("h.shots.settingsSaved"));
         renderShots(pv);
       } catch (err) { toast(err.message, true); }

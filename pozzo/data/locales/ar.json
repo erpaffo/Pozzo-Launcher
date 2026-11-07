@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} إنجازات",
  "fr.noData": "{name} لم يشارك أي بيانات بعد: تُحدَّث عندما يكون متصلاً.",
  "fr.friendsPlaying": "الأصدقاء الذين يلعبونها",
- "fr.compare": "قارن"
+ "fr.compare": "قارن",
+ "h.overlay.hotkey": "طبقة اللعبة (اختصار)",
+ "h.overlay.hint": "تظهر الطبقة فوق الألعاب في وضع النافذة أو ملء الشاشة بلا إطار، ولا يمكن عرضها فوق الألعاب بملء الشاشة الحصري. على وحدة التحكم: Select + R3.",
+ "h.overlay.ach": "تنبيهات الإنجازات أثناء اللعب",
+ "h.overlay.sound": "صوت التنبيهات",
+ "h.overlay.snd.none": "بدون",
+ "h.overlay.snd.soft": "ناعم",
+ "h.overlay.snd.classic": "كلاسيكي",
+ "o.overlay.time": "مدة الجلسة",
+ "o.overlay.none": "لا توجد لعبة قيد التشغيل",
+ "o.overlay.shot": "لقطة شاشة",
+ "o.overlay.pause": "إيقاف مؤقت",
+ "o.overlay.resume": "استئناف",
+ "o.overlay.stop": "إغلاق اللعبة",
+ "o.overlay.close": "إغلاق الطبقة",
+ "o.overlay.ach": "الإنجازات",
+ "o.overlay.notes": "ملاحظات",
+ "o.overlay.music": "الموسيقى"
 }

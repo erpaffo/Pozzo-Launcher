@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} logros",
  "fr.noData": "{name} aún no ha compartido datos: se actualizan cuando esté en línea.",
  "fr.friendsPlaying": "Amigos que lo juegan",
- "fr.compare": "Comparar"
+ "fr.compare": "Comparar",
+ "h.overlay.hotkey": "Overlay en el juego (atajo)",
+ "h.overlay.hint": "El overlay se abre sobre juegos en ventana o en pantalla completa sin bordes; no puede mostrarse sobre juegos en pantalla completa exclusiva. Con mando: Select + R3.",
+ "h.overlay.ach": "Avisos de logros mientras juegas",
+ "h.overlay.sound": "Sonido de los avisos",
+ "h.overlay.snd.none": "Ninguno",
+ "h.overlay.snd.soft": "Suave",
+ "h.overlay.snd.classic": "Clásico",
+ "o.overlay.time": "Tiempo de sesión",
+ "o.overlay.none": "Ningún juego en ejecución",
+ "o.overlay.shot": "Captura",
+ "o.overlay.pause": "Pausa",
+ "o.overlay.resume": "Reanudar",
+ "o.overlay.stop": "Cerrar juego",
+ "o.overlay.close": "Cerrar overlay",
+ "o.overlay.ach": "Logros",
+ "o.overlay.notes": "Notas",
+ "o.overlay.music": "Música"
 }

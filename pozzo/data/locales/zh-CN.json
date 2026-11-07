@@ -3529,5 +3529,22 @@
  "fr.achv": "成就 {n}/{m}",
  "fr.noData": "{name} 尚未分享数据:对方上线后会更新。",
  "fr.friendsPlaying": "在玩这款游戏的好友",
- "fr.compare": "对比"
+ "fr.compare": "对比",
+ "h.overlay.hotkey": "游戏内悬浮层(快捷键)",
+ "h.overlay.hint": "悬浮层可显示在窗口模式和无边框全屏游戏之上,无法显示在独占全屏游戏之上。手柄:Select + R3。",
+ "h.overlay.ach": "游戏中的成就提醒",
+ "h.overlay.sound": "提醒音效",
+ "h.overlay.snd.none": "无",
+ "h.overlay.snd.soft": "柔和",
+ "h.overlay.snd.classic": "经典",
+ "o.overlay.time": "本次游戏时长",
+ "o.overlay.none": "没有正在运行的游戏",
+ "o.overlay.shot": "截图",
+ "o.overlay.pause": "暂停",
+ "o.overlay.resume": "继续",
+ "o.overlay.stop": "关闭游戏",
+ "o.overlay.close": "关闭悬浮层",
+ "o.overlay.ach": "成就",
+ "o.overlay.notes": "笔记",
+ "o.overlay.music": "音乐"
 }

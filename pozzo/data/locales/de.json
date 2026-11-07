@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} Erfolge",
  "fr.noData": "{name} hat noch keine Daten geteilt: Sie werden aktualisiert, wenn die Person online ist.",
  "fr.friendsPlaying": "Freunde, die es spielen",
- "fr.compare": "Vergleichen"
+ "fr.compare": "Vergleichen",
+ "h.overlay.hotkey": "Overlay im Spiel (Tastenkürzel)",
+ "h.overlay.hint": "Das Overlay öffnet sich über Spielen im Fenster- oder randlosen Vollbildmodus; über exklusivem Vollbild kann es nicht angezeigt werden. Am Controller: Select + R3.",
+ "h.overlay.ach": "Erfolgsmeldungen während des Spiels",
+ "h.overlay.sound": "Meldungston",
+ "h.overlay.snd.none": "Keiner",
+ "h.overlay.snd.soft": "Sanft",
+ "h.overlay.snd.classic": "Klassisch",
+ "o.overlay.time": "Sitzungsdauer",
+ "o.overlay.none": "Kein Spiel läuft",
+ "o.overlay.shot": "Screenshot",
+ "o.overlay.pause": "Pause",
+ "o.overlay.resume": "Fortsetzen",
+ "o.overlay.stop": "Spiel beenden",
+ "o.overlay.close": "Overlay schließen",
+ "o.overlay.ach": "Erfolge",
+ "o.overlay.notes": "Notizen",
+ "o.overlay.music": "Musik"
 }

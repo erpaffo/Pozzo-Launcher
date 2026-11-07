@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, stores as STORES
+from ... import config as C, overlay as OV, stores as STORES
 from ... import i18n as I
 from ...library import launcher as L
 from .images import file_response
@@ -40,7 +40,7 @@ def build_router(ctx) -> APIRouter:
                             "platform": prim.get("store") or prim["platform"]})
             else:
                 out.append(_shot_payload(s))
-        return {"shots": out, "folder": str(shots.root), "settings": SC.settings(cfg)}
+        return {"shots": out, "folder": str(shots.root), "settings": SC.settings(cfg), "overlay": OV.settings(cfg)}
 
     @router.get("/shots/{sid}")
     def shot_file(sid: int, w: int = 0):

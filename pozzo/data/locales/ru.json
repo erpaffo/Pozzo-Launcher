@@ -3529,5 +3529,22 @@
  "fr.achv": "Достижения: {n}/{m}",
  "fr.noData": "{name} ещё не поделился данными: они обновятся, когда он будет в сети.",
  "fr.friendsPlaying": "Друзья, которые в неё играют",
- "fr.compare": "Сравнить"
+ "fr.compare": "Сравнить",
+ "h.overlay.hotkey": "Оверлей в игре (сочетание клавиш)",
+ "h.overlay.hint": "Оверлей открывается поверх игр в окне и в полноэкранном режиме без рамки; поверх игр в эксклюзивном полноэкранном режиме он не отображается. На геймпаде: Select + R3.",
+ "h.overlay.ach": "Уведомления о достижениях во время игры",
+ "h.overlay.sound": "Звук уведомлений",
+ "h.overlay.snd.none": "Нет",
+ "h.overlay.snd.soft": "Мягкий",
+ "h.overlay.snd.classic": "Классический",
+ "o.overlay.time": "Время сессии",
+ "o.overlay.none": "Нет запущенной игры",
+ "o.overlay.shot": "Скриншот",
+ "o.overlay.pause": "Пауза",
+ "o.overlay.resume": "Продолжить",
+ "o.overlay.stop": "Закрыть игру",
+ "o.overlay.close": "Закрыть оверлей",
+ "o.overlay.ach": "Достижения",
+ "o.overlay.notes": "Заметки",
+ "o.overlay.music": "Музыка"
 }

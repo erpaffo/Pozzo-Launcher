@@ -3529,5 +3529,22 @@
  "fr.achv": "{n}/{m} succès",
  "fr.noData": "{name} n'a encore partagé aucune donnée : elles se mettent à jour quand il est en ligne.",
  "fr.friendsPlaying": "Amis qui y jouent",
- "fr.compare": "Comparer"
+ "fr.compare": "Comparer",
+ "h.overlay.hotkey": "Overlay en jeu (raccourci)",
+ "h.overlay.hint": "L'overlay s'affiche par-dessus les jeux en fenêtre ou en plein écran sans bordure ; il ne peut pas s'afficher sur les jeux en plein écran exclusif. À la manette : Select + R3.",
+ "h.overlay.ach": "Alertes de succès pendant le jeu",
+ "h.overlay.sound": "Son des alertes",
+ "h.overlay.snd.none": "Aucun",
+ "h.overlay.snd.soft": "Doux",
+ "h.overlay.snd.classic": "Classique",
+ "o.overlay.time": "Durée de la session",
+ "o.overlay.none": "Aucun jeu en cours",
+ "o.overlay.shot": "Capture d'écran",
+ "o.overlay.pause": "Pause",
+ "o.overlay.resume": "Reprendre",
+ "o.overlay.stop": "Fermer le jeu",
+ "o.overlay.close": "Fermer l'overlay",
+ "o.overlay.ach": "Succès",
+ "o.overlay.notes": "Notes",
+ "o.overlay.music": "Musique"
 }
