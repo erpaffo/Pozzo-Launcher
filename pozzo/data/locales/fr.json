@@ -1226,6 +1226,8 @@
  "f.btn.play": "Jouer",
  "f.btn.play_fast": "Jouer depuis un disque rapide",
  "f.btn.play_fast_title": "Copie le jeu sur un disque rapide (SSD) et le lance de là : chargements plus rapides. En fin de partie la copie est supprimée, sauf autre choix dans les paramètres.",
+ "f.btn.webplay": "Jouer dans le navigateur",
+ "f.btn.webplay_title": "Lance le jeu dans Pozzo avec EmulatorJS (ou Ruffle pour Flash). L'émulateur est téléchargé à la première utilisation.",
  "f.btn.remove": "Retirer",
  "f.btn.retry": "Réessayer",
  "f.btn.show": "Afficher",
@@ -3477,5 +3479,9 @@
  "s.steamcmd.exitCode": "SteamCMD s'est terminé avec le code {rc}",
  "s.steamcmd.noExe": "Aucun exécutable trouvé dans {path} : ajoutez le jeu à la main via « Ajouter un jeu »",
  "s.steamcmd.drmWarning": "Si le jeu utilise le DRM Steam, le client Steam doit être en cours d'exécution pour le lancer.",
- "s.steamcmd.notSteam": "Ce n'est pas un jeu Steam"
+ "s.steamcmd.notSteam": "Ce n'est pas un jeu Steam",
+ "w.play.preparing": "Préparation de l'émulateur...",
+ "w.play.downloading": "Téléchargement de l'émulateur... {pct}%",
+ "w.play.error": "Impossible de lancer le jeu : {msg}",
+ "w.play.noBios": "Le BIOS de la console est requis : placez-le dans le dossier des BIOS (voir Réglages > BIOS)."
 }

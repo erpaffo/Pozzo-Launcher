@@ -194,6 +194,7 @@ def create_app(cfg) -> FastAPI:
     app.state.cfg = cfg  # LocalGuard lo legge per il token dell'API
     BOOT.done("config")
     lib = Library(cfg)
+    app.state.lib = lib  # per i test
     with BOOT.phase("library", "Libreria"):
         lib.load(online=False)
     threading.Thread(target=lib.load, daemon=True).start()

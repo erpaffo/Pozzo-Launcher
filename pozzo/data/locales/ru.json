@@ -1226,6 +1226,8 @@
  "f.btn.play": "Играть",
  "f.btn.play_fast": "Играть с быстрого диска",
  "f.btn.play_fast_title": "Копирует игру на быстрый диск (SSD) и запускает её оттуда: загрузки быстрее. По окончании партии копия удаляется, если в настройках не выбрано иное.",
+ "f.btn.webplay": "Играть в браузере",
+ "f.btn.webplay_title": "Запускает игру внутри Pozzo через EmulatorJS (для Flash — Ruffle). Эмулятор скачивается при первом запуске.",
  "f.btn.remove": "Убрать",
  "f.btn.retry": "Повторить",
  "f.btn.show": "Показать",
@@ -3477,5 +3479,9 @@
  "s.steamcmd.exitCode": "SteamCMD завершился с кодом {rc}",
  "s.steamcmd.noExe": "В {path} не найден исполняемый файл: добавьте игру вручную через «Добавить игру»",
  "s.steamcmd.drmWarning": "Если игра использует DRM Steam, для её запуска нужен работающий клиент Steam.",
- "s.steamcmd.notSteam": "Это не игра Steam"
+ "s.steamcmd.notSteam": "Это не игра Steam",
+ "w.play.preparing": "Подготовка эмулятора...",
+ "w.play.downloading": "Загрузка эмулятора... {pct}%",
+ "w.play.error": "Не удалось запустить игру: {msg}",
+ "w.play.noBios": "Нужен BIOS консоли: положите его в папку BIOS (см. Настройки > BIOS)."
 }

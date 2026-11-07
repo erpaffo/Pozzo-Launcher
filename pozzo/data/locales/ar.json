@@ -1226,6 +1226,8 @@
  "f.btn.play": "العب",
  "f.btn.play_fast": "العب من قرص سريع",
  "f.btn.play_fast_title": "انسخ اللعبة إلى قرص سريع (SSD) وشغّلها منه: تحميل أسرع. عند انتهاء الجلسة تُحذف النسخة، إلا إذا غيّرت ذلك في الإعدادات.",
+ "f.btn.webplay": "العب في المتصفح",
+ "f.btn.webplay_title": "يشغّل اللعبة داخل Pozzo عبر EmulatorJS (أو Ruffle لألعاب Flash). يُنزَّل المحاكي عند أول استخدام.",
  "f.btn.remove": "إزالة",
  "f.btn.retry": "إعادة المحاولة",
  "f.btn.show": "عرض",
@@ -3477,5 +3479,9 @@
  "s.steamcmd.exitCode": "انتهى SteamCMD بالرمز {rc}",
  "s.steamcmd.noExe": "لم يُعثر على ملف تنفيذي في {path}: أضف اللعبة يدويًا من «إضافة لعبة»",
  "s.steamcmd.drmWarning": "إذا كانت اللعبة تستخدم Steam DRM فيجب أن يكون عميل Steam قيد التشغيل لتشغيلها.",
- "s.steamcmd.notSteam": "هذه ليست لعبة Steam"
+ "s.steamcmd.notSteam": "هذه ليست لعبة Steam",
+ "w.play.preparing": "جارٍ تجهيز المحاكي...",
+ "w.play.downloading": "جارٍ تنزيل المحاكي... {pct}%",
+ "w.play.error": "تعذّر تشغيل اللعبة: {msg}",
+ "w.play.noBios": "يلزم BIOS الجهاز: ضعه في مجلد BIOS (انظر الإعدادات > BIOS)."
 }

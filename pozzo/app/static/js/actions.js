@@ -128,6 +128,11 @@ function ctxRemovals(g) {
   return out;
 }
 
+/** «Gioca nel browser» (EmulatorJS/Ruffle): finestra della pagina /play/{id}; le console giocabili le dice il server. */
+let WEBPLAY = new Set();
+try { if (typeof document !== "undefined") api("/api/webplay/platforms").then((r) => { WEBPLAY = new Set(r.platforms); }).catch(() => {}); } catch { /* senza API (test) */ }
+function openWebPlay(id) { window.open(`/play/${id}`, "pozzo-play", "popup,width=1024,height=768"); }
+
 function openCtx(e, g) {
   closeCtx();
   const grp = g.grp, rem = ctxRemovals(g);
@@ -135,6 +140,7 @@ function openCtx(e, g) {
   const pt = { getBoundingClientRect: () => ({ left: e.clientX, bottom: e.clientY }) };
   const rows = [];
   if (g.store !== "online") rows.push({ l: "▶ " + t("h.act.play"), f: () => play(g.id) });
+  if (!g.store && WEBPLAY.has(g.platform)) rows.push({ l: "🌐 " + t("f.btn.webplay"), f: () => openWebPlay(g.id) });
   rows.push({ l: t("h.common.details"), f: () => openDetail(g.id) });
   if (!g.store) rows.push({ l: "📂 " + t("h.lb.showFolder"), f: () => api(`/api/game/${g.id}/open-folder`, { body: {} }) });
   rows.push({ l: "🖼 " + t("h.act.images"), f: () => openMediaPick(g) });

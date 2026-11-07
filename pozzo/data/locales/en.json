@@ -1226,6 +1226,8 @@
  "f.btn.play": "Play",
  "f.btn.play_fast": "Play from fast drive",
  "f.btn.play_fast_title": "Copy the game to a fast drive (SSD) and launch it from there for faster loading. When you finish playing, the copy is deleted, unless you choose otherwise in the settings.",
+ "f.btn.webplay": "Play in browser",
+ "f.btn.webplay_title": "Runs the game inside Pozzo with EmulatorJS (or Ruffle for Flash). The emulator is downloaded on first use.",
  "f.btn.remove": "Remove",
  "f.btn.retry": "Retry",
  "f.btn.show": "Show",
@@ -3477,5 +3479,9 @@
  "s.steamcmd.exitCode": "SteamCMD exited with code {rc}",
  "s.steamcmd.noExe": "No executable found in {path}: add the game manually from “Add game”",
  "s.steamcmd.drmWarning": "If the game uses Steam DRM, the Steam client must be running to launch it.",
- "s.steamcmd.notSteam": "This is not a Steam game"
+ "s.steamcmd.notSteam": "This is not a Steam game",
+ "w.play.preparing": "Preparing the emulator...",
+ "w.play.downloading": "Downloading the emulator... {pct}%",
+ "w.play.error": "Cannot start the game: {msg}",
+ "w.play.noBios": "The console BIOS is required: put it in the BIOS folder (see Settings > BIOS)."
 }

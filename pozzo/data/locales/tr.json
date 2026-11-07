@@ -1226,6 +1226,8 @@
  "f.btn.play": "Oyna",
  "f.btn.play_fast": "Hızlı diskten oyna",
  "f.btn.play_fast_title": "Oyunu hızlı bir diske (SSD) kopyalayıp oradan başlatır: yüklemeler daha hızlı olur. Oyun bitince kopya silinir; ayarlardan değiştirilebilir.",
+ "f.btn.webplay": "Tarayıcıda oyna",
+ "f.btn.webplay_title": "Oyunu Pozzo içinde EmulatorJS (Flash için Ruffle) ile çalıştırır. Emülatör ilk kullanımda indirilir.",
  "f.btn.remove": "Kaldır",
  "f.btn.retry": "Yeniden dene",
  "f.btn.show": "Göster",
@@ -3477,5 +3479,9 @@
  "s.steamcmd.exitCode": "SteamCMD {rc} koduyla sonlandı",
  "s.steamcmd.noExe": "{path} içinde çalıştırılabilir dosya bulunamadı: oyunu «Oyun ekle» ile elle ekleyin",
  "s.steamcmd.drmWarning": "Oyun Steam DRM kullanıyorsa başlatmak için Steam istemcisinin çalışıyor olması gerekir.",
- "s.steamcmd.notSteam": "Bu bir Steam oyunu değil"
+ "s.steamcmd.notSteam": "Bu bir Steam oyunu değil",
+ "w.play.preparing": "Emülatör hazırlanıyor...",
+ "w.play.downloading": "Emülatör indiriliyor... %{pct}",
+ "w.play.error": "Oyun başlatılamadı: {msg}",
+ "w.play.noBios": "Konsolun BIOS dosyası gerekli: BIOS klasörüne koy (Ayarlar > BIOS'a bak)."
 }

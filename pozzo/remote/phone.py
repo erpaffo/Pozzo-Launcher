@@ -46,6 +46,9 @@ ALLOWED = [
     ("WS", r"/m/screen"), ("GET", r"/m/api/pad"), ("POST", r"/m/api/pad"),
     ("POST", r"/api/media/remote/command"), ("GET", r"/api/media/remote/state"),  # telecomando del lettore Media
     ("POST", r"/m/api/downloads"),  # link condivisi al telefono: vanno in coda sul PC
+    # Gioca nel browser: pagina, emulatore scaricato, ROM/BIOS del gioco in libreria e salvataggi
+    ("GET", r"/play/\d+"), ("GET", r"/play-assets/(ejs|ruffle)/[\w./-]+"), ("GET", r"/api/play/\d+/(status|save)"),
+    ("POST", r"/api/play/\d+/(prepare|save)"), ("GET", r"/api/play/\d+/(rom|bios)/[^/]+"),
 ]
 PLAYER_COLORS = ["#4aa3ff", "#ff5f5f", "#3ddc84", "#f5c518"]  # giocatore 1..4 (come i LED dei controller)
 PUBLIC = [("GET", r"/m/?"), ("GET", r"/m/static/[\w.-]+"), ("GET", r"/m/manifest\.webmanifest"), ("POST", r"/m/api/pair"),
