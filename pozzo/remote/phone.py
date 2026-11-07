@@ -192,6 +192,7 @@ class PhoneHub:
         self.guest_fails = 0
         self.lib_game_ok = lambda gid: False  # lo imposta routes/libshare.py: il gioco e' tra quelli condivisi?
         self.lib_fails: list[float] = []  # tentativi di codice d'invito sbagliati (finestra mobile)
+        self.lib_ip_fails: dict[str, list[float]] = {}  # lo stesso, per indirizzo di chi si connette
         self.lib_upnp = None  # porta aperta sul router per la libreria condivisa (upnp.open_port)
         self.server = None
         self.thread = None

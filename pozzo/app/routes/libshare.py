@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -55,7 +56,8 @@ def build_router(ctx) -> APIRouter:
     def l_pair(request: Request, body: dict = Body(...)):
         """Entra con il codice dell'invito. Il browser riceve il cookie; Pozzo (client=true) anche il token."""
         try:
-            token = LS.pair(hub, str(body.get("code") or ""), str(body.get("name") or ""))
+            token = LS.pair(hub, str(body.get("code") or ""), str(body.get("name") or ""),
+                           request.client.host if request.client else "")
         except ValueError as e:
             raise HTTPException(403, str(e))
         dev = hub.device_for(token)
@@ -113,8 +115,12 @@ def build_router(ctx) -> APIRouter:
         d = _guest(request)
         g = _game(gid)
         one = LS.single_file(g)
-        if not LS.take(d["id"]):
+        tok = LS.take(d["id"])
+        if not tok:
             raise HTTPException(429, "Un download alla volta", headers={"Retry-After": "30"})
+        def alive() -> bool:  # l'invito e' ancora valido? (revoca o scadenza a meta' download)
+            x = next((x for x in hub.conf["devices"] if x["id"] == d["id"]), None)
+            return bool(x and not (x.get("exp") and time.time() > x["exp"]))
         try:
             items = [] if one else LS.entries(g)
             if not one and not items:
@@ -124,20 +130,20 @@ def build_router(ctx) -> APIRouter:
                 try:
                     rng = LS.parse_range(request.headers.get("range"), size)
                 except ValueError:
-                    LS._free(d["id"])
+                    LS._free(d["id"], tok)
                     return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
                 start, end = rng or (0, size - 1)
                 name = one.name
                 headers = {**NOSNIFF, "Accept-Ranges": "bytes", "Content-Length": str(max(0, end - start + 1))}
                 if rng:
                     headers["Content-Range"] = f"bytes {start}-{end}/{size}"
-                body = LS.file_chunks(one, start, end, d["id"])
+                body = LS.file_chunks(one, start, end, d["id"], tok, alive)
                 status = 206 if rng else 200
             else:
                 name = (re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", g["title"]).strip() or "gioco") + ".zip"
-                headers, body, status = {**NOSNIFF, "Accept-Ranges": "none"}, LS.zip_chunks(items, d["id"]), 200
+                headers, body, status = {**NOSNIFF, "Accept-Ranges": "none"}, LS.zip_chunks(items, d["id"], tok, alive), 200
         except Exception:
-            LS._free(d["id"])
+            LS._free(d["id"], tok)
             raise
         headers["Content-Disposition"] = "attachment; filename=\"download\"; filename*=UTF-8''" + quote(name, safe="")
         return StreamingResponse(body, status_code=status, media_type="application/octet-stream", headers=headers)

@@ -296,3 +296,48 @@ def test_client_scarta_riferimenti_ostili(monkeypatch):
     monkeypatch.setattr(PR, "call", lambda *a, **k: {"games": games})
     assert [g["id"] for g in PR.list_remote({})] == [1]
 
+
+def test_lease_per_flusso_scaduto_non_libera_il_nuovo(env, monkeypatch):
+    LS._ACTIVE.clear()
+    t1 = LS.take("d")
+    assert t1 and LS.take("d") is None
+    LS._ACTIVE["d"] = (t1, 0)  # flusso fermo: lease scaduto
+    t2 = LS.take("d")
+    assert t2 and t2 != t1
+    LS._free("d", t1)  # il vecchio finisce: non deve liberare il turno del nuovo
+    assert LS.take("d") is None
+    LS._free("d", t2)
+    assert LS.take("d")
+    LS._ACTIVE.clear()
+
+
+def test_blocco_per_ip(env):
+    app, hub, gate, token, cfg, code = env
+    for _ in range(LS.MAX_FAILS):
+        with pytest.raises(ValueError):
+            LS.pair(hub, "SBAGLIATO1", "x", "1.2.3.4")
+    _, code2 = LS.new_invite(hub, "B", 1)
+    with pytest.raises(ValueError):
+        LS.pair(hub, code2, "x", "1.2.3.4")  # quell'indirizzo e' bloccato
+    assert LS.pair(hub, code2, "x", "5.6.7.8")  # un altro no
+
+
+def test_revoca_durante_il_download(env):
+    app, hub, gate, token, *_ = env
+    LS._ACTIVE.clear()
+    dev = hub.device_for(token)["id"]
+    tok = LS.take(dev)
+    f = app.state.lib.by_id[1]["files"][0]
+    from pathlib import Path
+    ok = [True]
+    old = LS.CHECK_EVERY
+    LS.CHECK_EVERY = 0
+    try:
+        g = LS.file_chunks(Path(f), 0, 100, dev, tok, lambda: ok[0])
+        assert next(g)
+        ok[0] = False
+        assert list(g) == []  # revocato: il flusso si ferma
+    finally:
+        LS.CHECK_EVERY = old
+    assert LS.take(dev)  # e il turno e' stato liberato
+    LS._ACTIVE.clear()

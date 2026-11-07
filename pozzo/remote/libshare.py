@@ -22,10 +22,12 @@ from pathlib import Path
 
 ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # senza 0/O/1/I
 CODE_LEN = 10
-MAX_FAILS, FAIL_WINDOW = 10, 600  # codici sbagliati ammessi in 10 minuti (in totale, da chiunque)
+MAX_FAILS, FAIL_WINDOW = 10, 600  # codici sbagliati ammessi in 10 minuti per indirizzo; in totale 10 volte tanti (rete di sicurezza)
+GLOBAL_FAILS = MAX_FAILS * 10
+CHECK_EVERY = 1.0  # ogni quanto un flusso in corso ricontrolla che l'ospite non sia stato revocato o scaduto
 LEASE = 30  # un download alla volta per ospite: si libera da solo se il flusso si ferma per 30 s
 CHUNK = 256 * 1024
-_ACTIVE: dict[str, float] = {}
+_ACTIVE: dict[str, tuple[str, float]] = {}  # ospite -> (token del flusso, ultimo movimento)
 _LOCK = threading.Lock()
 
 
@@ -116,12 +118,16 @@ def _norm(code: str) -> str:
     return "".join(str(code).upper().split()).replace("-", "")
 
 
-def pair(hub, code: str, name: str) -> str:
+def pair(hub, code: str, name: str, ip: str = "") -> str:
     """Token dell'ospite; ValueError se il codice e' sbagliato, scaduto, gia' usato o ci sono stati troppi tentativi."""
     with hub.lock:
         now = time.time()
         hub.lib_fails[:] = [t for t in hub.lib_fails if now - t < FAIL_WINDOW]
-        if len(hub.lib_fails) >= MAX_FAILS:
+        mine = [t for t in hub.lib_ip_fails.get(ip, []) if now - t < FAIL_WINDOW]
+        for k in [k for k, v in hub.lib_ip_fails.items() if not v or now - v[-1] >= FAIL_WINDOW]:
+            del hub.lib_ip_fails[k]  # niente crescita senza fine
+        hub.lib_ip_fails[ip] = mine
+        if len(mine) >= MAX_FAILS or len(hub.lib_fails) >= GLOBAL_FAILS:
             raise ValueError("Troppi tentativi sbagliati: riprova tra qualche minuto")
         h = _sha(_norm(code))
         invites = [dict(i) for i in hub.conf.get("lib_invites", [])]
@@ -131,6 +137,7 @@ def pair(hub, code: str, name: str) -> str:
                 hit = i
         if not hit or hit["used"] or now > hit["exp"]:
             hub.lib_fails.append(now)
+            mine.append(now)
             raise ValueError("Invito non valido, scaduto o gia' usato")
         token = secrets.token_urlsafe(32)
         dev = {"id": secrets.token_hex(6), "name": (name or hit["name"]).strip()[:40], "token": _sha(token),
@@ -175,21 +182,27 @@ def close_upnp(hub) -> None:
 
 
 # ------------------------------------------------------------------ download
-def take(dev: str) -> bool:
-    """Un download alla volta per ospite."""
+def take(dev: str) -> str | None:
+    """Un download alla volta per ospite: ritorna il token del flusso (None se ce n'e' gia' uno attivo)."""
     with _LOCK:
-        if time.time() - _ACTIVE.get(dev, 0) < LEASE:
-            return False
-        _ACTIVE[dev] = time.time()
-        return True
+        cur = _ACTIVE.get(dev)
+        if cur and time.time() - cur[1] < LEASE:
+            return None
+        tok = secrets.token_hex(8)
+        _ACTIVE[dev] = (tok, time.time())
+        return tok
 
 
-def _touch(dev: str):
-    _ACTIVE[dev] = time.time()
+def _touch(dev: str, tok: str):
+    with _LOCK:
+        if (_ACTIVE.get(dev) or ("",))[0] == tok:
+            _ACTIVE[dev] = (tok, time.time())
 
 
-def _free(dev: str):
-    _ACTIVE.pop(dev, None)
+def _free(dev: str, tok: str):
+    with _LOCK:  # un flusso scaduto non libera il turno di quello nuovo
+        if (_ACTIVE.get(dev) or ("",))[0] == tok:
+            del _ACTIVE[dev]
 
 
 def parse_range(h: str | None, size: int) -> tuple[int, int] | None:
@@ -212,17 +225,21 @@ def parse_range(h: str | None, size: int) -> tuple[int, int] | None:
     return start, end
 
 
-def file_chunks(path: Path, start: int, end: int, dev: str):
-    left = end - start + 1
+def file_chunks(path: Path, start: int, end: int, dev: str, tok: str, alive=lambda: True):
+    left, nxt = end - start + 1, time.time() + CHECK_EVERY
     try:
         with open(path, "rb") as f:
             f.seek(start)
             while left > 0 and (b := f.read(min(CHUNK, left))):
                 left -= len(b)
-                _touch(dev)
+                _touch(dev, tok)
+                if time.time() >= nxt:
+                    if not alive():  # ospite revocato o scaduto durante il download
+                        return
+                    nxt = time.time() + CHECK_EVERY
                 yield b
     finally:
-        _free(dev)
+        _free(dev, tok)
 
 
 class _Sink:
@@ -248,9 +265,9 @@ class _Sink:
         return d
 
 
-def zip_chunks(items: list[tuple[Path, str]], dev: str):
+def zip_chunks(items: list[tuple[Path, str]], dev: str, tok: str, alive=lambda: True):
     """Zip senza compressione (ZIP_STORED) prodotto mentre si scarica: niente file temporaneo, ma nemmeno ripresa."""
-    sink = _Sink()
+    sink, nxt = _Sink(), time.time() + CHECK_EVERY
     try:
         with zipfile.ZipFile(sink, "w", zipfile.ZIP_STORED, allowZip64=True) as z:
             for p, arc in items:
@@ -265,9 +282,13 @@ def zip_chunks(items: list[tuple[Path, str]], dev: str):
                 with f, z.open(zi, "w", force_zip64=True) as out:
                     while b := f.read(CHUNK):
                         out.write(b)
-                        _touch(dev)
+                        _touch(dev, tok)
+                        if time.time() >= nxt:
+                            if not alive():
+                                return
+                            nxt = time.time() + CHECK_EVERY
                         if sink.buf:
                             yield sink.take()
         yield sink.take()
     finally:
-        _free(dev)
+        _free(dev, tok)
