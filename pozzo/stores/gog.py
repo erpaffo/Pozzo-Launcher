@@ -11,6 +11,7 @@ import os
 import time
 from urllib.parse import parse_qs, quote, urlparse
 
+from .. import noclient as NC
 from .. import profilecfg as PC
 from ..net import request
 from .base import StoreGame, StoreProvider, reg_get, reg_subkeys
@@ -31,6 +32,10 @@ class Gog(StoreProvider):
 
     def galaxy(self) -> str | None:
         return reg_get("HKLM", r"SOFTWARE\WOW6432Node\GOG.com\GalaxyClient\paths", "client")
+
+    def official(self) -> bool:
+        """GOG Galaxy installato (altrimenti si installa con gogdl)."""
+        return bool(self.galaxy())
 
     def detected(self) -> bool:
         return bool(reg_subkeys("HKLM", REG)) or bool(self.galaxy()) or bool(PC.get(self.cfg, "gog"))
@@ -112,6 +117,7 @@ class Gog(StoreProvider):
             products += d.get("products", [])
             pages = d.get("totalPages", 1)
             page += 1
+        cli = NC.installed(self.cfg, "gog")  # installati con gogdl da Pozzo
         sem = asyncio.Semaphore(8)
 
         async def boxart(pid):
@@ -132,6 +138,9 @@ class Gog(StoreProvider):
                                             install_uri=self._install_uri(gid, p.get("slug", "")),
                                             launch={"type": "uri", "target": f"goggalaxy://openGameView/{gid}"} if self.galaxy() else {})
             g.title = p.get("title") or g.title
+            if gid in cli and not g.installed:
+                g.installed, g.install_dir = True, cli[gid]["path"]
+                g.launch = NC.launch_cmd(self.cfg, "gog", gid, cli[gid])
             # 1 = gioco, 3 = pack (DLC, artbook, contenuti extra): lo dice GOG
             g.kind = "game" if p.get("type") in (None, 1) else "dlc"
             g.page = "https://www.gog.com" + p.get("url", "") if p.get("url") else g.page

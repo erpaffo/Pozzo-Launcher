@@ -27,7 +27,7 @@ except ImportError:  # modulo non ancora presente: niente statistiche di banda
         pass
 from .debrid import SERVICES
 from .extract import drive_of, queue_forecast
-from .engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
+from .engines import cli as CLI, http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from .store import Store
 from .task import ACTIVE, COMPLETED, ERROR, PAUSED, QUEUED, RUNNING, DownloadTask, mb
 
@@ -406,8 +406,11 @@ class Manager:
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
         sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None))  # «Avvia alle», facoltativo
-        kind = "steamcmd" if opts.pop("steamcmd", False) else "torrent" if TOR.is_torrent(source) else "http"
-        if kind == "torrent":
+        kind = "steamcmd" if opts.pop("steamcmd", False) else "cli" if CLI.is_cli(source) else "torrent" if TOR.is_torrent(source) else "http"
+        if kind == "cli":
+            if not {"store", "game_id"} <= opts.keys():
+                raise ValueError("Download senza client: mancano store e game_id")
+        elif kind == "torrent":
             if not self._torrent:
                 raise ValueError("Per i torrent serve libtorrent: installalo con «pip install libtorrent»")
             TOR.check_magnet(source)
@@ -910,6 +913,8 @@ class Manager:
         try:
             if t.type == "steamcmd":
                 await STEAMCMD.run(t, self.cfg)
+            elif t.type == "cli":
+                await CLI.run(t, self.cfg)
             elif t.type == "torrent":
                 await TOR.run(t, self._torrent, self._client, lambda: self._completed(t))
             else:
