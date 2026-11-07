@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 
@@ -114,7 +115,8 @@ def build_router(ctx) -> APIRouter:
 
     @router.get("/api/running")
     def api_running():
-        return {**launcher.running(), "dual": bool(ds["state"])}  # dual: il telefono fa da schermo inferiore
+        # dual: il telefono fa da schermo inferiore; can_pause: la sospensione dei processi esiste solo su Windows
+        return {**launcher.running(), "dual": bool(ds["state"]), "can_pause": sys.platform == "win32"}
 
     @router.post("/api/running/stop")
     def api_running_stop():
