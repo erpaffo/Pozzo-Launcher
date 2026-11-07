@@ -231,3 +231,37 @@ def test_stesso_gioco_altro_dump(env):
     # chiave diversa (nome file/dimensione diversi) ma stessa console e stesso titolo: lo trova
     assert env.c.post("/api/party/preview", json={"code": _code(k="snes/altrodump", t="super game")}).json()["have"] is True
     assert env.c.post("/api/party/preview", json={"code": _code(k="nes/altrodump", t="Super Game")}).json()["have"] is False
+
+
+def test_invito_internet_con_upnp(env, monkeypatch):
+    aperte = []
+    monkeypatch.setattr(party.UP, "open_port", lambda port, proto: aperte.append((port, proto)) or
+                        {"external_ip": "5.95.223.48", "control": "c", "service": "s", "port": port, "proto": proto})
+    closed = []
+    monkeypatch.setattr(party.UP, "close_port", closed.append)
+    r = env.c.post("/api/party/invite", json={"key": G["key"], "where": "internet"})
+    assert r.status_code == 200, r.text
+    assert NP.decode(r.json()["code"])["h"] == "5.95.223.48" and r.json()["upnp"] is True
+    assert aperte == [(NP.PORT, "TCP")]  # RetroArch: TCP
+    env.c.post("/api/party/close")
+    assert closed and closed[-1]["port"] == NP.PORT
+
+
+def test_invito_internet_cgnat_e_senza_upnp(env, monkeypatch):
+    monkeypatch.setattr(party.UP, "open_port", lambda port, proto: {"external_ip": "100.72.1.9", "port": port})
+    monkeypatch.setattr(party.UP, "close_port", lambda m: None)
+    r = env.c.post("/api/party/invite", json={"key": G["key"], "where": "internet"})
+    assert r.status_code == 409 and r.json()["detail"] == {"error": "cgnat", "ip": "100.72.1.9"}
+    monkeypatch.setattr(party.UP, "open_port", lambda port, proto: None)  # niente UPnP: IP pubblico da fuori
+    monkeypatch.setattr(party.NA, "public_ip", lambda: "5.95.223.48")
+    r = env.c.post("/api/party/invite", json={"key": G["key"], "where": "internet"})
+    assert r.status_code == 200 and r.json()["upnp"] is False and NP.decode(r.json()["code"])["h"] == "5.95.223.48"
+
+
+def test_upnp_riconosce_servizio_v2():
+    from pozzo import upnp
+    xml = ('<service><serviceType>urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1</serviceType>'
+           '<controlURL>/ctl/CmnIfCfg</controlURL></service><service><serviceType>'
+           'urn:schemas-upnp-org:service:WANIPConnection:2</serviceType><controlURL>/ctl/IPConn</controlURL></service>')
+    m = upnp.SERVICE.search(xml)
+    assert m.groups() == ("urn:schemas-upnp-org:service:WANIPConnection:2", "/ctl/IPConn")

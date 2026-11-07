@@ -62,21 +62,19 @@ export function groupEpisodes(items) {
   return out;
 }
 
-/**
- * Restituisce l'episodio successivo a currentId all'interno della stessa serie (ordinata per stagione ed episodio).
- * Restituisce null se e' l'ultimo episodio, se currentId non e' trovato o se items e' vuoto.
- */
-export function nextEpisode(items, currentId) {
-  if (!items || !items.length || currentId == null) return null;
+/** Episodi della serie di currentId, ordinati per stagione ed episodio, e posizione dell'episodio ({list: [], index: -1} se non c'è). */
+export function episodeSiblings(items, currentId) {
+  const none = { list: [], index: -1 };
+  if (!items || !items.length || currentId == null) return none;
   const cur = items.find((i) => i && String(i.id) === String(currentId));
-  if (!cur) return null;
+  if (!cur) return none;
   const seriesKey = String(cur.series || "").trim().toLowerCase();
-  const sameSeries = items.filter((i) => {
+  const list = items.filter((i) => {
     if (!i) return false;
     if (i.kind && i.kind !== "episodio" && i.episode == null && i.season == null) return false;
     return String(i.series || "").trim().toLowerCase() === seriesKey;
   });
-  sameSeries.sort((a, b) => {
+  list.sort((a, b) => {
     const sa = a.season != null ? Number(a.season) : 1;
     const sb = b.season != null ? Number(b.season) : 1;
     if (sa !== sb) return sa - sb;
@@ -84,8 +82,19 @@ export function nextEpisode(items, currentId) {
     const eb = b.episode != null ? Number(b.episode) : 0;
     return ea - eb || String(a.title || "").localeCompare(String(b.title || ""));
   });
-  const idx = sameSeries.findIndex((i) => String(i.id) === String(currentId));
-  return (idx >= 0 && idx + 1 < sameSeries.length) ? sameSeries[idx + 1] : null;
+  return { list, index: list.findIndex((i) => String(i.id) === String(currentId)) };
+}
+
+/** Episodio successivo nella stessa serie; null se è l'ultimo, se currentId non si trova o se items è vuoto. */
+export function nextEpisode(items, currentId) {
+  const { list, index } = episodeSiblings(items, currentId);
+  return (index >= 0 && index + 1 < list.length) ? list[index + 1] : null;
+}
+
+/** Episodio precedente nella stessa serie; null se è il primo o currentId non si trova. */
+export function prevEpisode(items, currentId) {
+  const { list, index } = episodeSiblings(items, currentId);
+  return index > 0 ? list[index - 1] : null;
 }
 
 /**
@@ -102,7 +111,10 @@ export function compositeKey(item) {
 /**
  * Restituisce badge informativo ({ id, label, icon }) per la sorgente specificata.
  */
-export function sourceBadge(source) {
+export function sourceBadge(source, provider) {
+  const p = String(provider || "").trim().toLowerCase();
+  if (p === "kodi") return { id: "kodi", label: "Kodi Addon", icon: "🧩" };
+  if (p === "stream4me") return { id: "web", label: "Stream4me", icon: "🧩" };
   const s = String(source || "").trim().toLowerCase();
   if (s === "media-locale" || s === "locale") {
     return { id: "locale", label: "Disco Locale", icon: "📁" };
@@ -120,6 +132,17 @@ export function sourceBadge(source) {
     return { id: "web", label: "Stream4me", icon: "🧩" };
   }
   return { id: "web", label: "Web / Streaming", icon: "📡" };
+}
+
+/** Badge di tutte le sorgenti di un item (item.sources dopo il dedup), il primo e' quello dell'item. */
+export function sourceBadges(item) {
+  const first = sourceBadge(item?.source, item?.provider);
+  const out = [first];
+  for (const src of item?.sources || []) {
+    const b = sourceBadge(src, src === item?.source ? item?.provider : "");
+    if (!out.some((x) => x.id === b.id && x.label === b.label)) out.push(b);
+  }
+  return out;
 }
 
 /**
@@ -140,25 +163,24 @@ export function filterHubItems(items, { tab = "tutti", sourceFilter = "all", que
 
   return list.filter((it) => {
     if (!it) return false;
+    const ids = sourceBadges(it).map((b) => b.id); // item fusi: conta ogni sorgente in `sources`
 
     // Tab filter
     if (tabNorm === "film" && it.kind !== "film") return false;
     if (tabNorm === "serie" && !(it.kind === "episodio" || Boolean(it.series && it.kind !== "brano"))) return false;
     if (tabNorm === "musica" && it.kind !== "brano") return false;
     if (tabNorm === "web" || tabNorm === "stream4me") {
-      const bId = sourceBadge(it.source).id;
-      if (bId !== "web" && bId !== "kodi") return false;
+      if (!ids.some((b) => b === "web" || b === "kodi")) return false;
     }
 
     // Source filter
     if (srcFilterNorm === "locale") {
-      if (sourceBadge(it.source).id !== "locale") return false;
+      if (!ids.includes("locale")) return false;
     } else if (srcFilterNorm === "server") {
-      const bId = sourceBadge(it.source).id;
-      if (bId !== "jellyfin" && bId !== "plex") return false;
+      if (!ids.some((b) => b === "jellyfin" || b === "plex")) return false;
     } else if (srcFilterNorm === "web") {
-      const bId = sourceBadge(it.source).id;
-      if (bId !== "web" && bId !== "kodi") return false;
+      // «Web» = ricette web: i titoli salvati da Stream4me hanno la loro scheda
+      if (it.provider === "stream4me" || !ids.some((b) => b === "web" || b === "kodi")) return false;
     }
 
     // Text query
@@ -237,10 +259,53 @@ export function pickHeroItem(items, resumeItems) {
   return list[0] || null;
 }
 
+const SOURCE_RANK = { "media-locale": 0, locale: 0, jellyfin: 1, plex: 2 };
+const srcRank = (it) => SOURCE_RANK[String(it.source || "media-locale").toLowerCase()] ?? 3;
+
+const normTitleBasic = (t) => String(t || "").toLowerCase().replace(/\(\s*ita\s*\)/g, " ")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Chiave di dedup cross-sorgente; "" se non calcolabile. */
+function dedupKey(it) {
+  const kind = it.kind || "";
+  if (kind === "episodio" && it.series) {
+    return `${kind}|${normTitleBasic(it.series)}|${it.season ?? ""}|${it.episode ?? ""}`;
+  }
+  const t = normTitleBasic(it.title);
+  // shortcut: omonimi con stesso anno (o senza anno) dello stesso kind si fondono; se serve, aggiungere un id esterno (imdb/tmdb).
+  return t ? `${kind}|${t}|${it.year ?? ""}` : "";
+}
+
+/** Deduplica mantenendo la sorgente preferita; ogni item risultante ha `sources`. */
+function dedupItems(rawItems) {
+  const byKey = new Map();
+  const seenCk = new Set();
+  for (const it of rawItems) {
+    if (!it) continue;
+    const ck = compositeKey(it);
+    if (ck) {
+      if (seenCk.has(ck)) continue;
+      seenCk.add(ck);
+    }
+    const key = dedupKey(it) || ck || `#${byKey.size}`;
+    const src = String(it.source || "media-locale");
+    const cur = byKey.get(key);
+    if (!cur) {
+      byKey.set(key, { ...it, sources: [src] });
+      continue;
+    }
+    const sources = cur.sources.includes(src) ? cur.sources : [...cur.sources, src];
+    byKey.set(key, srcRank(it) < srcRank(cur) ? { ...it, sources } : { ...cur, sources });
+  }
+  return [...byKey.values()];
+}
+
 /**
  * Interroga in parallelo le sorgenti locali, server e web, restituendo gli item deduplicati e lo stato.
+ * onPartial(items, sourcesStatus) viene chiamata a ogni sorgente completata (items cumulativi).
+ * sourcesStatus: [{id, state: "ok"|"slow"|"absent"|"error", count, ms}].
  */
-export async function federatedList(gs, { kind = "", query = "", timeoutMs = 1500 } = {}) {
+export async function federatedList(gs, { kind = "", query = "", timeoutMs = 2000, onPartial } = {}) {
   const qp = [];
   if (kind) qp.push(`kind=${encodeURIComponent(kind)}`);
   if (query) {
@@ -251,56 +316,43 @@ export async function federatedList(gs, { kind = "", query = "", timeoutMs = 150
   const qs = qp.join("&");
 
   const sources = [
-    { key: "media-locale", url: `/plugin-api/media-locale/list?${qs}` },
-    { key: "media-server", url: `/plugin-api/media-server/list?${qs}` },
-    { key: "ricette-web", url: `/plugin-api/ricette-web/list?${qs}` },
+    { id: "media-locale", url: `/plugin-api/media-locale/list?${qs}` },
+    { id: "media-server", url: `/plugin-api/media-server/list?${qs}` },
+    { id: "ricette-web", url: `/plugin-api/ricette-web/list?${qs}` },
   ];
+  const status = sources.map((s) => ({ id: s.id, state: "slow", count: 0, ms: timeoutMs }));
+  const lists = sources.map(() => []);
+  const snapshot = () => dedupItems(lists.flat());
 
-  const fetchSource = (url) => {
+  await Promise.all(sources.map(async (s, i) => {
+    const t0 = Date.now();
+    const ac = typeof AbortController === "function" ? new AbortController() : null;
     let timer = null;
-    const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error("Timeout")), timeoutMs);
+    let expired = false;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => { expired = true; if (ac) ac.abort(); resolve(null); }, timeoutMs);
     });
-    return Promise.race([
-      gs.api(url),
-      timeoutPromise,
-    ]).finally(() => {
-      if (timer != null) clearTimeout(timer);
-    });
-  };
-
-  const results = await Promise.allSettled(sources.map((s) => fetchSource(s.url)));
-
-  const sourcesStatus = {
-    "media-locale": false,
-    "media-server": false,
-    "ricette-web": false,
-  };
-  const rawItems = [];
-
-  results.forEach((res, i) => {
-    const key = sources[i].key;
-    if (res.status === "fulfilled" && res.value && !res.value.error) {
-      sourcesStatus[key] = true;
+    const call = Promise.resolve().then(() => gs.api(s.url, ac ? { signal: ac.signal } : undefined))
+      .then((value) => ({ value }), (err) => ({ err }));
+    const res = await Promise.race([call, timeout.then(() => ({ slow: true }))]);
+    if (timer != null) clearTimeout(timer);
+    const ms = Date.now() - t0;
+    if (res.slow || (expired && res.err)) {
+      status[i] = { id: s.id, state: "slow", count: 0, ms };
+    } else if (res.err) {
+      const absent = /404|not found|non trovat|not installed|non installat/i.test(String(res.err?.message || res.err));
+      status[i] = { id: s.id, state: absent ? "absent" : "error", count: 0, ms };
+    } else if (!res.value || res.value.error) {
+      status[i] = { id: s.id, state: "error", count: 0, ms };
+    } else {
       const val = res.value;
-      const list = Array.isArray(val) ? val : (Array.isArray(val?.items) ? val.items : []);
-      rawItems.push(...list);
+      lists[i] = Array.isArray(val) ? val : (Array.isArray(val?.items) ? val.items : []);
+      status[i] = { id: s.id, state: "ok", count: lists[i].length, ms };
     }
-  });
+    if (typeof onPartial === "function") onPartial(snapshot(), status.map((x) => ({ ...x })));
+  }));
 
-  const items = [];
-  const seenKeys = new Set();
-  for (const it of rawItems) {
-    if (!it) continue;
-    const ck = compositeKey(it);
-    if (ck) {
-      if (seenKeys.has(ck)) continue;
-      seenKeys.add(ck);
-    }
-    items.push(it);
-  }
-
-  return { items, sourcesStatus };
+  return { items: snapshot(), sourcesStatus: status };
 }
 
 export const WATCHLIST_STATUSES = {
@@ -316,6 +368,69 @@ export const WATCHLIST_PRIORITIES = {
   medium: { id: "medium", label: "Media", icon: "⚡", weight: 2 },
   low: { id: "low", label: "Bassa", icon: "💤", weight: 1 },
 };
+
+export const WATCHLIST_CATEGORIES = {
+  film: { id: "film", label: "Film", icon: "🎬" },
+  serie: { id: "serie", label: "Serie TV", icon: "📺" },
+  anime: { id: "anime", label: "Anime", icon: "🇯🇵" },
+};
+
+/** Categoria della voce: esplicita se valida, altrimenti dedotta (anime / film / serie). */
+export function categoryOf(entry) {
+  const e = entry && typeof entry === "object" ? entry : {};
+  const c = String(e.category || "").trim().toLowerCase();
+  if (WATCHLIST_CATEGORIES[c]) return c;
+  if (/anime/i.test(`${e.source || ""} ${e.genre ?? e.genres ?? ""}`)) return "anime";
+  if (String(e.kind || "film") === "film" && !String(e.series || "").trim()) return "film";
+  return "serie";
+}
+
+/** Titolo normalizzato per il confronto: senza accenti, punteggiatura, articoli iniziali e suffissi (ita/stagione). */
+export function normTitle(s) {
+  let t = String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+    .replace(/\b(?:season|stagione|stag|part|parte)\s*\d+\b|\b\d+(?:st|nd|rd|th)\s+season\b/g, " ")
+    .replace(/\b(?:sub[\s-]*ita|ita|dub)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  t = t.replace(/^(?:il|lo|la|i|gli|le|l|un|uno|una|the|a|an)\s+(?=\S)/, "");
+  return t.replace(/\s+/g, " ").trim();
+}
+
+const wlSrcRank = (it) => ({ "media-locale": 0, locale: 0, jellyfin: 1, plex: 2 })[String(it?.source || "media-locale").toLowerCase()] ?? 3;
+
+/**
+ * Cerca nel catalogo il titolo corrispondente alla voce. Ritorna {item, score}|null.
+ * Per serie/anime l'item e' un episodio rappresentativo (il chiamante usa item.series).
+ * Soglia alta: titolo esatto, oppure contenimento forte con anno compatibile (±1).
+ */
+export function matchLibraryItem(entry, items) {
+  const e = normalizeWatchlistEntry(entry);
+  const names = [...new Set([e.title, e.original_title].map(normTitle).filter(Boolean))];
+  if (!names.length || !Array.isArray(items)) return null;
+  const wantFilm = e.category === "film";
+  let best = null;
+  for (const it of items) {
+    if (!it) continue;
+    const isEp = it.kind === "episodio" || Boolean(it.series);
+    if (wantFilm === isEp) continue;
+    const cand = normTitle(isEp ? (it.series || it.title) : it.title);
+    if (!cand) continue;
+    const y1 = e.year, y2 = Number.isFinite(Number(it.year)) && Number(it.year) > 0 ? Math.trunc(Number(it.year)) : null;
+    const yearKnown = y1 != null && y2 != null;
+    if (yearKnown && Math.abs(y1 - y2) > 1) continue;
+    let score = 0;
+    for (const n of names) {
+      if (n === cand) { score = Math.max(score, yearKnown ? 1 : 0.9); continue; }
+      const [sh, lo] = n.length <= cand.length ? [n, cand] : [cand, n];
+      if (yearKnown && sh.length >= 5 && sh.length / lo.length >= 0.6 && ` ${lo} `.includes(` ${sh} `)) {
+        score = Math.max(score, 0.7 + 0.2 * (sh.length / lo.length));
+      }
+    }
+    if (score < 0.7) continue;
+    if (!best || score > best.score || (score === best.score && wlSrcRank(it) < wlSrcRank(best.item))) best = { item: it, score };
+  }
+  return best;
+}
 
 /**
  * Normalizza un elemento della watchlist, riempiendo i metadati mancanti da itemFallback se fornito.
@@ -362,9 +477,18 @@ export function normalizeWatchlistEntry(entry, itemFallback = null) {
   const added_at = Number.isFinite(Number(e.added_at)) ? Number(e.added_at) : 0;
   const updated_at = Number.isFinite(Number(e.updated_at)) ? Number(e.updated_at) : added_at;
 
+  const toCount = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.trunc(Number(v)) : 0);
+  const extIds = e.ext_ids && typeof e.ext_ids === "object" && !Array.isArray(e.ext_ids) ? e.ext_ids : {};
+  const category = categoryOf({ ...fb, ...e, kind, series, genre });
+
   return {
     ...fb,
     ...e,
+    category,
+    progress: toCount(e.progress),
+    total: toCount(e.total),
+    linked_key: typeof e.linked_key === "string" ? e.linked_key.trim() : "",
+    ext_ids: extIds,
     item_key: itemKey,
     item_id: itemId,
     id: itemId || e.id || fb.id || itemKey,
@@ -390,7 +514,7 @@ export function normalizeWatchlistEntry(entry, itemFallback = null) {
 /**
  * Filtra e ordina gli elementi della watchlist.
  */
-export function sortAndFilterWatchlist(entries, { status = "all", priority = "all", query = "", sortBy = "priority" } = {}) {
+export function sortAndFilterWatchlist(entries, { status = "all", priority = "all", query = "", sortBy = "priority", category = "all" } = {}) {
   const list = Array.isArray(entries) ? entries : [];
   const stFilter = String(status || "all").trim();
   const prFilter = String(priority || "all").trim();
@@ -412,6 +536,8 @@ export function sortAndFilterWatchlist(entries, { status = "all", priority = "al
     if (prFilter && prFilter !== "all") {
       if (e.priority !== prFilter) return false;
     }
+
+    if (category && category !== "all" && e.category !== category) return false;
 
     if (q) {
       const hay = [
@@ -493,6 +619,7 @@ export function watchlistStats(entries) {
     completed: 0,
     dropped: 0,
     high_priority: 0,
+    by_category: { film: 0, serie: 0, anime: 0 },
   };
   for (const raw of entries || []) {
     if (!raw) continue;
@@ -500,9 +627,137 @@ export function watchlistStats(entries) {
     const pr = WATCHLIST_PRIORITIES[raw.priority] ? raw.priority : "medium";
     stats.total += 1;
     stats[st] += 1;
+    stats.by_category[categoryOf(raw)] += 1;
     if (pr === "high") {
       stats.high_priority += 1;
     }
   }
   return stats;
+}
+
+/** Profilo attivo del core (GET /api/profiles); "default" se non c'è. */
+export function activeProfile() {
+  try { return String(globalThis.GS?.library?.()?.profiles?.active || "") || "default"; } catch { return "default"; }
+}
+
+/** Chiave per profilo: `<chiave>:<profilo>`. */
+export function profileKey(base, profile = activeProfile()) { return `${base}:${profile}`; }
+
+/**
+ * Migrazione una tantum: se manca la chiave del profilo ma c'è la vecchia chiave globale, la copia nel profilo attivo
+ * e toglie la vecchia (così un altro profilo non la riceve). Ritorna la chiave per profilo.
+ */
+export function migrateToProfileKey(storage, base, profile = activeProfile()) {
+  const key = profileKey(base, profile);
+  try {
+    if (storage && storage.getItem(key) == null) {
+      const old = storage.getItem(base);
+      if (old != null) { storage.setItem(key, old); storage.removeItem?.(base); }
+    }
+  } catch { /* storage non disponibile */ }
+  return key;
+}
+
+export const CATALOG_SNAPSHOT_KEY = "gs.pm_catalog_snapshot";
+const SNAPSHOT_MAX = 1500;
+const SNAPSHOT_FIELDS = ["id", "kind", "title", "series", "season", "episode", "year", "duration", "poster", "backdrop",
+  "source", "sources", "provider", "seen", "resume_pos", "album", "genres", "channel_id", "source_label", "url"];
+
+/** Ultimo catalogo federato, salvato per mostrarlo subito all'apertura mentre le sorgenti si aggiornano. Mai blocca: storage assente o pieno = nessuna cache. */
+export function saveCatalogSnapshot(items, storage = (typeof localStorage !== "undefined" ? localStorage : null), profile = activeProfile()) {
+  if (!storage || !Array.isArray(items) || !items.length) return false;
+  const slim = items.slice(0, SNAPSHOT_MAX).map((it) => {
+    const o = {};
+    for (const k of SNAPSHOT_FIELDS) if (it && it[k] != null && it[k] !== "") o[k] = it[k];
+    if (it && it.overview) o.overview = String(it.overview).slice(0, 200);
+    return o;
+  });
+  try { storage.setItem(profileKey(CATALOG_SNAPSHOT_KEY, profile), JSON.stringify({ t: Date.now(), items: slim })); return true; } catch { return false; }
+}
+
+/** Catalogo salvato più di recente; [] se manca, è illeggibile o più vecchio di `maxAgeMs` (7 giorni). */
+export function loadCatalogSnapshot(storage = (typeof localStorage !== "undefined" ? localStorage : null), maxAgeMs = 7 * 864e5, profile = activeProfile()) {
+  try {
+    const raw = storage && storage.getItem(migrateToProfileKey(storage, CATALOG_SNAPSHOT_KEY, profile));
+    const snap = raw ? JSON.parse(raw) : null;
+    if (!snap || !Array.isArray(snap.items) || Date.now() - Number(snap.t || 0) > maxAgeMs) return [];
+    return snap.items.filter((it) => it && it.id != null && it.title != null);
+  } catch { return []; }
+}
+
+/**
+ * Unisce la watchlist del server con la copia del browser senza perdere nulla: stessa voce = vince la più recente
+ * (a parità, il server); `localOnly` sono le voci che il server non ha (salvataggi falliti in passato) da rimandargli.
+ */
+export function mergeWatchlists(server, local) {
+  const keyOf = (e) => String(e?.item_key || (e?.source && e?.item_id ? `${e.source}:${e.item_id}` : "") || e?.item_id || "");
+  const out = new Map();
+  for (const e of server || []) { const k = keyOf(e); if (k) out.set(k, e); }
+  const serverKeys = new Set(out.keys());
+  const localOnly = [];
+  for (const e of local || []) {
+    const k = keyOf(e);
+    if (!k) continue;
+    const cur = out.get(k);
+    if (!cur) { out.set(k, e); localOnly.push(e); }
+    else if (Number(e.updated_at || 0) > Number(cur.updated_at || 0)) out.set(k, { ...cur, ...e });
+  }
+  return { entries: [...out.values()], localOnly: localOnly.filter((e) => !serverKeys.has(keyOf(e))) };
+}
+
+/**
+ * Una «serie» con una sola puntata è un film (es. «Snatch - Lo strappo» catalogato come serie TV). Si decide per
+ * prova: il provider ha detto di avere 1 solo episodio (`episode_count`), oppure in elenco c'è una sola puntata della serie
+ * (per tutte le sorgenti insieme: se un'altra ne ha di più, resta serie). Non modifica gli originali.
+ * shortcut: una serie locale con UNA sola puntata scaricata diventa film finché non ne arrivano altre; da rivedere se serve un'eccezione.
+ */
+/**
+ * Le voci dei provider streaming (Stream4me, Kodi, ricette web) sono righe di CATALOGO: ognuna è un titolo intero (una serie
+ * con tutti i suoi episodi), non una puntata. Solo file locali e server Jellyfin/Plex hanno una riga per episodio.
+ */
+export function isCatalogRow(it) {
+  const src = String(it?.source || "").toLowerCase();
+  return it?.provider === "stream4me" || it?.provider === "kodi" || src === "ricette-web" || src === "stream4me" || src === "web";
+}
+
+/**
+ * Riepilogo «N stagioni · M episodi» di una serie dalle sue voci. Con episodi veri (file, server) si contano quelli;
+ * con righe di catalogo streaming il numero reale lo sa solo il provider (`episode_count`/`season_count`, noti dopo aver
+ * aperto il dettaglio): finché manca, `known: false` e l'interfaccia non mostra numeri inventati.
+ */
+export function seriesSummary(eps) {
+  const list = Array.isArray(eps) ? eps.filter(Boolean) : [];
+  const real = list.filter((e) => !isCatalogRow(e));
+  if (real.length) {
+    const pairs = new Set(real.map((e) => `${e.season ?? 1}:${e.episode ?? e.id}`));
+    const seasons = new Set(real.map((e) => e.season ?? 1));
+    return { count: pairs.size, seasonsCount: seasons.size, known: true };
+  }
+  const n = Math.max(0, ...list.map((e) => Number(e.episode_count) || 0));
+  const st = Math.max(0, ...list.map((e) => Number(e.season_count) || 0));
+  return n > 0 ? { count: n, seasonsCount: st || 1, known: true } : { count: 0, seasonsCount: 0, known: false };
+}
+
+export function collapseSingleEpisodeSeries(items) {
+  const list = Array.isArray(items) ? items : [];
+  const key = (it) => String(it.series || "").trim().toLowerCase();
+  const seen = new Map(); // serie -> puntate distinte (stagione:episodio) viste in elenco
+  for (const it of list) {
+    if (!it || !it.series || it.kind === "brano" || (it.kind && it.kind !== "episodio") || isCatalogRow(it)) continue;
+    const k = key(it);
+    if (!seen.has(k)) seen.set(k, new Set());
+    seen.get(k).add(`${it.season ?? 1}:${it.episode ?? it.id}`);
+  }
+  return list.map((it) => {
+    if (!it || it.kind === "brano") return it;
+    const known = Number(it.episode_count);
+    const isSeriesLike = Boolean(it.series) || it.kind === "episodio" || /serie/i.test(String(it.genre || ""));
+    const single = (Number.isFinite(known) && known === 1 && isSeriesLike)
+      || (it.series && it.kind === "episodio" && !isCatalogRow(it) && seen.get(key(it))?.size === 1);
+    if (!single) return it;
+    const out = { ...it, kind: "film", title: it.series || it.title, series: "" };
+    delete out.season; delete out.episode;
+    if (/^serie/i.test(String(out.genre || ""))) out.genre = "Film";
+    return out;
+  });
 }

@@ -29,6 +29,7 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import importlib.util
+import ipaddress
 import json
 import re
 import shutil
@@ -46,10 +47,53 @@ from pathlib import Path
 import httpx
 import soupsieve as sv
 from bs4 import BeautifulSoup
-from fastapi import Body, HTTPException
+from fastapi import Body, HTTPException, Request, Response
 
 UA = "PozzoLauncher/1.0"
 TTL = 30 * 60  # 30 minuti di cache predefinita
+_SEARCH_WORKERS = 10           # provider interrogati insieme nella ricerca generale
+_SEARCH_PROVIDER_TIMEOUT = 6.0  # attesa massima di ogni provider
+_SEARCH_DEADLINE = 12.0         # oltre questo la risposta parte con quello che c'e
+
+# --- VixCloud (StreamingCommunity, AnimeUnity): la playlist HLS risponde 403 senza Referer/User-Agent da browser,
+# e il suo URL porta token/expires/asn che scadono: va risolto a ogni riproduzione e servito con gli header giusti.
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+_VIX_MARKS = ("vixcloud.", "vixsrc.")
+_PROXY_HOSTS: set[str] = set()  # solo host visti in un flusso risolto da noi o in una playlist gia' servita
+_PROXY_PATH = "/plugin-api/ricette-web/hls.m3u8"
+
+
+def _host(url: str) -> str:
+    return (urllib.parse.urlparse(url).hostname or "").lower()
+
+
+def is_vix(url: str) -> bool:
+    return any(m in _host(url) for m in _VIX_MARKS)
+
+
+def vix_headers(url: str) -> dict:
+    return {"User-Agent": BROWSER_UA, "Referer": f"https://{_host(url)}/", "Origin": f"https://{_host(url)}"}
+
+
+def proxy_url(url: str) -> str:
+    _PROXY_HOSTS.add(_host(url))
+    return f"{_PROXY_PATH}?u={urllib.parse.quote(url, safe='')}"
+
+
+def rewrite_playlist(text: str, base: str) -> str:
+    """Playlist HLS con ogni segmento/sotto-playlist/chiave riscritto verso il proxy (gli URL relativi diventano assoluti)."""
+    def one(ref: str) -> str:
+        return proxy_url(urllib.parse.urljoin(base, ref))
+    out = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            out.append(line)
+        elif s.startswith("#"):
+            out.append(re.sub(r'URI="([^"]+)"', lambda m: f'URI="{one(m.group(1))}"', line))
+        else:
+            out.append(one(s))
+    return "\n".join(out) + "\n"
 MIN_TTL = 15 * 60
 BACKOFF_MAX = 6 * 3600
 ROBOTS_TTL = 24 * 3600
@@ -749,7 +793,27 @@ def fetch_url(url: str, recipe: dict, cache_dir: Path, ttl: int = TTL,
 
 
 # ---------------------------------------------------------------- database e contratto
-def _db_init(db_path: Path) -> None:
+def migrate_progress(conn, profile: str) -> None:
+    """Sposta nel profilo i valori delle vecchie colonne, per gli elementi che non hanno ancora alcuna riga in progress."""
+    for tbl in ("items", "episodes"):
+        conn.execute(
+            f"INSERT OR IGNORE INTO progress (profile, item_id, pos, seen, updated) SELECT ?, id, resume_pos, seen, ? FROM {tbl} "
+            "WHERE (COALESCE(resume_pos, 0) > 0 OR COALESCE(seen, 0) = 1) AND id NOT IN (SELECT item_id FROM progress)",
+            (profile, time.time()))
+        # i valori passati al profilo si azzerano nelle vecchie colonne: le letture successive non li rivedono piu'
+        conn.execute(f"UPDATE {tbl} SET resume_pos=0, seen=0 WHERE (COALESCE(resume_pos, 0) > 0 OR COALESCE(seen, 0) = 1) "
+                     "AND id IN (SELECT item_id FROM progress)")
+    conn.commit()
+
+
+def load_progress(conn, profile: str) -> dict:
+    """{item_id: (pos, seen)} del profilo."""
+    migrate_progress(conn, profile)  # scansione leggera: dopo il primo passaggio le vecchie colonne sono a zero
+    return {r[0]: (float(r[1] or 0.0), int(r[2] or 0)) for r in conn.execute(
+        "SELECT item_id, pos, seen FROM progress WHERE profile=?", (profile,))}
+
+
+def _db_init(db_path: Path, profile: str = "default") -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     try:
@@ -801,12 +865,24 @@ def _db_init(db_path: Path) -> None:
                 conn.execute(f"ALTER TABLE {tbl} ADD COLUMN genre TEXT")
             except sqlite3.OperationalError:
                 pass
+        try:
+            conn.execute("ALTER TABLE episodes ADD COLUMN overview TEXT")
+        except sqlite3.OperationalError:
+            pass
+        for col in ("ep_count", "season_count"):  # episodi e stagioni reali secondo il provider (noti dopo aver aperto il dettaglio)
+            try:
+                conn.execute(f"ALTER TABLE items ADD COLUMN {col} INTEGER")
+            except sqlite3.OperationalError:
+                pass
         conn.execute("CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_episodes_parent ON episodes(parent_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_items_recipe ON items(recipe_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_items_source ON items(source)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_items_title ON items(title)")
         conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
+        # avanzamento per profilo: le colonne resume_pos/seen di items ed episodes sono solo l'origine della migrazione
+        conn.execute("CREATE TABLE IF NOT EXISTS progress (profile TEXT, item_id TEXT, pos REAL, seen INTEGER, updated REAL, PRIMARY KEY (profile, item_id))")
+        migrate_progress(conn, profile)
         for tbl in ("items", "episodes"):
             conn.execute(
                 f"UPDATE {tbl} SET stream_url='' WHERE stream_url LIKE '%a-ads.com%' OR stream_url LIKE '%size=300x250%' OR stream_url LIKE '%exoclick%' OR stream_url LIKE '%popads%'"
@@ -828,9 +904,11 @@ def _db_init(db_path: Path) -> None:
         conn.close()
 
 
-def to_item(r: dict | sqlite3.Row) -> dict:
+def to_item(r: dict | sqlite3.Row, prog: dict | None = None) -> dict:
     """Trasforma un record del DB o un dizionario in un MediaItem conforme alle chiavi del contratto."""
     d = dict(r)
+    if prog is not None:  # avanzamento del profilo corrente al posto delle colonne globali
+        d["resume_pos"], d["seen"] = prog.get(str(d["id"]), (0.0, 0))
     it: dict = {
         "id": str(d["id"]),
         "kind": str(d.get("kind") or "episodio"),
@@ -839,6 +917,11 @@ def to_item(r: dict | sqlite3.Row) -> dict:
         "seen": bool(d.get("seen", 0)),
         "resume_pos": round(float(d.get("resume_pos") or 0.0), 1),
     }
+    rid = str(d.get("recipe_id") or "")
+    if str(d.get("source") or "") == "stream4me" or rid.startswith(("s4me:", "stream4me")):
+        it["provider"] = "stream4me"
+    else:
+        it["provider"] = "kodi" if rid.startswith("kodi:") else ""
     if d.get("series"):
         it["series"] = str(d["series"])
     for key in ("season", "episode", "year"):
@@ -846,13 +929,17 @@ def to_item(r: dict | sqlite3.Row) -> dict:
             it[key] = int(d[key])
     if d.get("duration"):
         it["duration"] = round(float(d["duration"]), 1)
+    if d.get("ep_count"):
+        it["episode_count"] = int(d["ep_count"])
+    if d.get("season_count"):
+        it["season_count"] = int(d["season_count"])
     if d.get("poster"):
         it["poster"] = str(d["poster"])
     if d.get("backdrop"):
         it["backdrop"] = str(d["backdrop"])
     overview = str(d.get("overview") or "")
     genre = str(d.get("genre") or "")
-    if genre.lower() == "anime" and "anime" not in overview.lower():
+    if genre.lower() == "anime" and "anime" not in overview.lower() and it["kind"] != "episodio":
         overview = f"Anime · {overview}" if overview else "Anime"
     if overview:
         it["overview"] = overview
@@ -887,7 +974,14 @@ def register(gs) -> None:
         cache = base / "ricette-web-cache"
         cache.mkdir(parents=True, exist_ok=True)
     db_path = cache / "ricette.db"
-    _db_init(db_path)
+    _db_init(db_path, str(gs.cfg.app.get("profile") or "default"))
+
+    def profile_id(request: Request | None = None) -> str:
+        """Profilo di chi chiama: cookie gs_profile valido, altrimenti quello attivo del launcher."""
+        active = str(gs.cfg.app.get("profile") or "default")
+        pid = request.cookies.get("gs_profile") if request is not None else None
+        valid = {"default"} | {p.get("id") for p in gs.cfg.app.get("profiles") or [] if isinstance(p, dict)}
+        return pid if pid in valid else active
     addons_root = cache / "kodi-addons"
 
     recipes = load_recipes(Path(__file__).parent)
@@ -939,7 +1033,7 @@ def register(gs) -> None:
                 log(f"ricette-web: errore scansione catalogo '{r.get('name')}': {e}")
 
     @gs.route("list")
-    def media_list(kind: str = "", query: str = "", q: str = "", recipe: str = "", limit: int = 200, offset: int = 0):
+    def media_list(kind: str = "", query: str = "", q: str = "", recipe: str = "", limit: int = 200, offset: int = 0, request: Request = None):
         kind = kind.strip() if kind in KINDS else ""
         term = (query or q or "").strip()[:200]
         _auto_refresh()  # in background: la risposta legge solo il DB locale
@@ -982,12 +1076,67 @@ def register(gs) -> None:
                 elif r["poster"] and not cur["poster"]:
                     out_rows[out_rows.index(cur)] = r
                     best[key] = r
-            return [to_item(r) for r in out_rows]
+            prog = load_progress(conn, profile_id(request))
+            return [to_item(r, prog) for r in out_rows]
         finally:
             conn.close()
 
+    # flussi VixCloud risolti da poco: riaprire lo stesso episodio (o tornare indietro) non rifà le 3 richieste di rete
+    _RECENT: dict[str, tuple[float, str]] = {}
+
+    def _recent_stream(item_id: str) -> str:
+        t, url = _RECENT.get(item_id, (0.0, ""))
+        return url if time.time() - t < 300 else ""  # il token dura più di 5 minuti, ma meglio non rischiare un link scaduto
+
+    _warming: set[str] = set()
+    _warming_lock = threading.Lock()
+
+    @gs.route("prefetch", methods=("POST",))
+    def media_prefetch(body: dict | None = Body(None), id: str = ""):
+        """Risolve in background il flusso (token a scadenza) cosi' il play_target successivo e' immediato."""
+        item_id = str((body if isinstance(body, dict) else {}).get("id") or id or "").strip()
+        if not item_id:
+            return {"ok": False, "warming": False}
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            row, _t = find_row(conn, item_id)
+        finally:
+            conn.close()
+        if row is None:
+            return {"ok": False, "warming": False}
+        with _warming_lock:
+            if _recent_stream(item_id) or item_id in _warming or not row["url"]:
+                return {"ok": True, "warming": False}
+            _warming.add(item_id)
+
+        def work():
+            c = sqlite3.connect(db_path)
+            c.row_factory = sqlite3.Row
+            try:
+                r, tbl = find_row(c, item_id)
+                resolved = resolve_stream(r, tbl, c) if r is not None else ""
+                if is_vix(resolved):  # solo in memoria: il token scade, mai nel database
+                    _RECENT[item_id] = (time.time(), resolved)
+            except Exception as e:
+                gs.log(f"ricette-web: prefetch fallito per {item_id}: {e}")
+            finally:
+                c.close()
+                with _warming_lock:
+                    _warming.discard(item_id)
+
+        threading.Thread(target=work, daemon=True).start()
+        return {"ok": True, "warming": True}
+
+    def _page_fetcher(referer: str):
+        """Scarica una pagina HTML con header da browser (per le altre stagioni di StreamingCommunity)."""
+        def fetch(url: str) -> str:
+            r = httpx.get(url, headers={"User-Agent": BROWSER_UA, "Referer": referer}, timeout=10.0, follow_redirects=True)
+            return r.text if r.status_code == 200 else ""
+        return fetch
+
     @gs.route("detail")
-    def media_detail(id: str = ""):
+    def media_detail(id: str = "", request: Request = None):
         item_id = str(id or "").strip()
         if not item_id:
             raise HTTPException(400, "id mancante")
@@ -995,6 +1144,7 @@ def register(gs) -> None:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         try:
+            prog = load_progress(conn, profile_id(request))
             row = conn.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
             if row is None:
                 row = conn.execute(
@@ -1004,7 +1154,7 @@ def register(gs) -> None:
             if row is None:
                 ep = conn.execute("SELECT * FROM episodes WHERE id=?", (item_id,)).fetchone()
                 if ep is not None:
-                    return to_item(ep)
+                    return to_item(ep, prog)
                 raise HTTPException(404, "elemento non trovato")
 
             item = dict(row)
@@ -1048,7 +1198,9 @@ def register(gs) -> None:
                         gs.log(f"ricette-web: errore recupero dettaglio per {item_id}: {e}")
             elif (rec_id.startswith("s4me:") or rec_id.startswith("stream4me") or item_id.startswith(("s4me:", "stream4me:")) or item.get("source") == "stream4me") and str(item.get("url") or "").startswith(("http://", "https://")):
                 has_eps = conn.execute("SELECT 1 FROM episodes WHERE parent_id=? LIMIT 1", (item_id,)).fetchone()
-                if not has_eps:
+                is_sc = any(k in str(item.get("url") or "").lower() for k in ("streamingcommunity", "streamingunity"))
+                # StreamingCommunity: le serie salvate prima di questa versione hanno solo la stagione 1, si rileggono una volta
+                if not has_eps or (is_sc and not _meta_get(f"seasons_done:{item_id}")):
                     bridge = kodi_bridge_module()
                     try:
                         target_u = str(item["url"])
@@ -1060,7 +1212,8 @@ def register(gs) -> None:
                             series_name = str(item.get("series") or item["title"])
                             if hasattr(bridge, "scrape_channel_episodes"):
                                 eps = bridge.scrape_channel_episodes(
-                                    resp.text, target_u, series_title=series_name, channel_id=ch_id
+                                    resp.text, target_u, series_title=series_name, channel_id=ch_id,
+                                    fetcher=_page_fetcher(target_u) if is_sc else None,
                                 )
                                 if not eps and "animeunity." in target_u.lower():
                                     m_au = re.search(r"/anime/(\d+)", target_u)
@@ -1076,19 +1229,29 @@ def register(gs) -> None:
                                                 r_api.text, target_u, series_title=series_name, channel_id=ch_id or "animeunity"
                                             )
                                 if eps:
+                                    prior = {r[0]: (r[1] or "", r[2] or "") for r in conn.execute(
+                                        "SELECT id, title, overview FROM episodes WHERE parent_id=?", (item_id,))}
                                     conn.execute("DELETE FROM episodes WHERE parent_id=?", (item_id,))
                                     for ep in eps:
+                                        # non perdere nome/trama già noti con valori generici o vuoti
+                                        p_title, p_ov = prior.get(ep["id"], ("", ""))
+                                        if not ep.get("overview"):
+                                            ep["overview"] = p_ov
+                                        if re.fullmatch(r"(?i)episodio \d+", str(ep.get("title") or "").strip()) and p_title:
+                                            ep["title"] = p_title
                                         conn.execute("""
-                                            INSERT OR REPLACE INTO episodes (id, parent_id, recipe_id, title, series, season, episode, duration, stream_url, url, poster, genre, source, updated)
-                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stream4me', ?)
+                                            INSERT OR REPLACE INTO episodes (id, parent_id, recipe_id, title, series, season, episode, duration, stream_url, url, poster, genre, source, updated, overview)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'stream4me', ?, ?)
                                         """, (
                                             ep["id"], item_id, rec_id or "stream4me", ep["title"],
                                             ep.get("series") or series_name, ep.get("season"),
                                             ep.get("episode"), ep.get("duration"), ep.get("stream_url") or "",
                                             ep.get("url") or ep.get("stream_url") or "", ep.get("poster") or item.get("poster") or "",
                                             item.get("genre") or "",
-                                            time.time(),
+                                            time.time(), ep.get("overview") or "",  # visto e ripresa stanno in progress: rileggere non li tocca
                                         ))
+                                    if is_sc:  # stessa connessione: una seconda resterebbe bloccata dalle scritture non ancora confermate
+                                        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, '1')", (f"seasons_done:{item_id}",))
                             if not item.get("stream_url"):
                                 resolved_s = (
                                     bridge.resolve_channel_stream(target_u, html_text=resp.text)
@@ -1107,18 +1270,23 @@ def register(gs) -> None:
                     except Exception as e:
                         gs.log(f"ricette-web: errore dettaglio Stream4me per {item_id}: {e}")
 
-            out = to_item(item)
+            out = to_item(item, prog)
             ep_rows = conn.execute("SELECT * FROM episodes WHERE parent_id=? ORDER BY season, episode, title", (item_id,)).fetchall()
             if ep_rows:
                 dedup_eps = []
                 seen_se = set()
                 for e in ep_rows:
-                    ed = to_item(e)
+                    ed = to_item(e, prog)
                     key = (ed.get("season") or 1, ed.get("episode") if ed.get("episode") is not None else ed.get("title"))
                     if key not in seen_se:
                         seen_se.add(key)
                         dedup_eps.append(ed)
                 out["episodes"] = dedup_eps
+                # il conteggio reale decide se e' una serie o un film con un solo episodio: l'interfaccia lo usa per classificare
+                n_seasons = len({e.get("season") or 1 for e in dedup_eps})
+                conn.execute("UPDATE items SET ep_count=?, season_count=? WHERE id=?", (len(dedup_eps), n_seasons, item_id))
+                conn.commit()
+                out["episode_count"], out["season_count"] = len(dedup_eps), n_seasons
             return out
         finally:
             conn.close()
@@ -1193,7 +1361,7 @@ def register(gs) -> None:
                 except Exception as e:
                     gs.log(f"ricette-web: errore estrazione stream per {item_url}: {e}")
 
-            if stream:
+            if stream and not is_vix(stream):  # i link VixCloud hanno un token che scade: mai in cache
                 conn.execute(f"UPDATE {table} SET stream_url=?, updated=? WHERE id=?", (stream, time.time(), row["id"]))
                 conn.commit()
             return stream
@@ -1207,13 +1375,13 @@ def register(gs) -> None:
         except Exception as e:
             gs.log(f"ricette-web: flusso non risolto per {row['id']}: {e}")
             return ""
-        if stream:
+        if stream and not is_vix(stream):
             conn.execute(f"UPDATE {table} SET stream_url=?, updated=? WHERE id=?", (stream, time.time(), row["id"]))
             conn.commit()
         return stream
 
     @gs.route("play_target")
-    def media_play_target(id: str = ""):
+    def media_play_target(id: str = "", request: Request = None):
         item_id = str(id or "").strip()
         if not item_id:
             raise HTTPException(400, "id mancante")
@@ -1230,19 +1398,27 @@ def register(gs) -> None:
 
             stream_url = (row["stream_url"] or "").strip()
             bridge = kodi_bridge_module()
+            if is_vix(stream_url) and row["url"]:
+                stream_url = ""  # token salvato da una versione precedente: scaduto, si risolve di nuovo
+            if not stream_url and is_vix(_recent_stream(item_id)):
+                stream_url = _recent_stream(item_id)
             if stream_url and bridge and hasattr(bridge, "_is_ad") and bridge._is_ad(stream_url):
                 stream_url = ""
             if (not stream_url or (stream_url == (row["url"] or "").strip() and not is_direct_stream(stream_url) and ".m3u8" not in stream_url.lower())) and row["url"]:
                 resolved = resolve_stream(row, table, conn)
                 if resolved:
                     stream_url = resolved
+                    if is_vix(resolved):
+                        _RECENT[item_id] = (time.time(), resolved)
             stream_url = stream_url or row["url"] or _STREAM_MAP.get(item_id, "") or _URL_MAP.get(item_id, "")
             if stream_url and bridge and hasattr(bridge, "_is_ad") and bridge._is_ad(stream_url):
                 stream_url = ""
             if not stream_url:
                 raise HTTPException(404, "flusso non disponibile")
 
-            pos = round(float(row["resume_pos"] or 0.0), 1)
+            pos = round(load_progress(conn, profile_id(request)).get(str(row["id"]), (0.0, 0))[0], 1)
+            if is_vix(stream_url) and ("m3u8" in stream_url.lower() or "/playlist/" in stream_url):
+                stream_url = proxy_url(stream_url)  # il webview non puo' impostare Referer: passa dal nostro proxy
             return {"url": stream_url, "resume_pos": pos, "external": not (is_direct_stream(stream_url) or urllib.parse.urlparse(stream_url).path.lower().endswith(".m3u8"))}
         finally:
             conn.close()
@@ -1258,27 +1434,65 @@ def register(gs) -> None:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         try:
-            row, _table = find_row(conn, item_id)
+            row, table = find_row(conn, item_id)
+            if row is None:
+                raise HTTPException(404, "elemento non trovato")
+            url = str(row["stream_url"] or row["url"] or "").strip()
+            if (is_vix(url) or not url) and row["url"]:
+                url = resolve_stream(row, table, conn) or url  # token VixCloud fresco, mai quello salvato
         finally:
             conn.close()
-        if row is None:
-            raise HTTPException(404, "elemento non trovato")
 
-        url = str(row["stream_url"] or row["url"] or "").strip()
         if not url.lower().startswith(("http://", "https://")):
             raise HTTPException(400, "flusso non valido")
 
         player = shutil.which("mpv") or shutil.which("vlc")
         if player:
-            subprocess.Popen([player, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            args = [player, url]
+            lang = str(data.get("lang") or "").strip().lower()
+            if re.fullmatch(r"[a-z]{2,3}", lang):  # codice lingua audio preferito, solo lettere: finisce in un argomento
+                args.append(f"--alang={lang}" if "mpv" in Path(player).name.lower() else f"--audio-language={lang}")
+            if is_vix(url):  # il lettore esterno chiama VixCloud direttamente: servono gli stessi header del browser
+                h = vix_headers(url)
+                if "mpv" in Path(player).name.lower():
+                    args += [f"--user-agent={h['User-Agent']}", f"--referrer={h['Referer']}"]
+                else:
+                    args += [f"--http-user-agent={h['User-Agent']}", f"--http-referrer={h['Referer']}"]
+            subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             webbrowser.open(url)
         return {"ok": True, "player": player or ""}
 
+    @gs.route("hls.m3u8")
+    def hls_proxy(u: str = ""):
+        """Playlist e segmenti VixCloud con Referer/User-Agent giusti; le playlist sono riscritte verso questa rotta."""
+        target = urllib.parse.unquote(u or "").strip()
+        host = _host(target)
+        if not target.startswith(("http://", "https://")) or not (host in _PROXY_HOSTS or is_vix(target)):
+            raise HTTPException(403, "host non ammesso")
+        try:  # shortcut: controlla solo gli IP scritti per esteso, non la risoluzione DNS; da rafforzare se il proxy esce dal PC
+            if ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback:
+                raise HTTPException(403, "host non ammesso")
+        except ValueError:
+            pass
+        headers = vix_headers(target)
+        try:
+            r = httpx.get(target, headers=headers, timeout=20.0, follow_redirects=True)
+        except httpx.HTTPError as e:
+            raise HTTPException(502, f"VixCloud non raggiungibile: {e}")
+        if r.status_code >= 400:
+            gs.log(f"ricette-web: VixCloud ha risposto {r.status_code} per {host}")
+            raise HTTPException(r.status_code, f"VixCloud: {r.status_code}")
+        if r.content[:7] == b"#EXTM3U":
+            text = rewrite_playlist(r.text, str(r.url))
+            return Response(text, media_type="application/vnd.apple.mpegurl", headers={"Cache-Control": "no-store"})
+        keep = {k: v for k, v in r.headers.items() if k.lower() in ("content-type", "content-range", "accept-ranges")}
+        return Response(r.content, status_code=r.status_code, headers=keep)
+
 
     @gs.route("set_progress", methods=("POST",))
     def media_set_progress(body: dict | None = Body(None), id: str = "", pos: float | None = None,
-                           seen: bool | None = None, duration: float | None = None):
+                           seen: bool | None = None, duration: float | None = None, request: Request = None):
         data = body if isinstance(body, dict) else {}
         item_id = str(data.get("id") or id or "").strip()
         if not item_id:
@@ -1299,19 +1513,22 @@ def register(gs) -> None:
             if row is None:
                 raise HTTPException(404, "elemento non trovato")
 
+            pid = profile_id(request)
+            prog = load_progress(conn, pid)
             known = length if length > 0 else float(row["duration"] or 0.0)
-            watched = bool(flag) if flag is not None else bool(row["seen"])
+            watched = bool(flag) if flag is not None else bool(prog.get(item_id, (0.0, 0))[1])
             if known > 0 and position >= known * 0.9:
                 watched = True
 
             new_pos = 0.0 if watched else max(0.0, position)
             new_seen = 1 if watched else 0
 
-            conn.execute(f"UPDATE {table} SET resume_pos=?, seen=?, duration=COALESCE(?, duration), updated=? WHERE id=?",
-                         (new_pos, new_seen, known or None, time.time(), item_id))
+            conn.execute(f"UPDATE {table} SET duration=COALESCE(?, duration), updated=? WHERE id=?", (known or None, time.time(), item_id))
+            conn.execute("INSERT OR REPLACE INTO progress (profile, item_id, pos, seen, updated) VALUES (?, ?, ?, ?, ?)",
+                         (pid, item_id, new_pos, new_seen, time.time()))
             conn.commit()
             updated_row = conn.execute(f"SELECT * FROM {table} WHERE id=?", (item_id,)).fetchone()
-            return {"ok": True, "item": to_item(updated_row)}
+            return {"ok": True, "item": to_item(updated_row, {item_id: (new_pos, new_seen)})}
         finally:
             conn.close()
 
@@ -1687,38 +1904,62 @@ def register(gs) -> None:
             return res
 
         if q:
+            # ricerca generale: TUTTI i provider attivi (prima solo i primi 6), in parallelo; chi e' lento o fallisce
+            # non fa perdere i risultati degli altri, e la risposta dice quali provider non hanno risposto
             active_providers, _ = _build_providers_state(bridge, s4me_dir)
-            providers = active_providers[:6]
-            combined: list[dict] = []
+            providers = list({pv["id"]: pv for pv in active_providers if pv.get("id")}.values())  # uno per id: la stessa voce può comparire più volte
+            found_by: dict[str, list[dict]] = {}
+            failed: list[str] = []
 
-            def _search_one(prov_id: str) -> list[dict]:
+            def _search_one(prov_id: str):
                 try:
-                    r = bridge.browse_stream4me_channel(s4me_dir, prov_id, query=q, timeout=5.0, custom_providers=custom_provs)
+                    r = bridge.browse_stream4me_channel(s4me_dir, prov_id, query=q, timeout=_SEARCH_PROVIDER_TIMEOUT, custom_providers=custom_provs)
                     found = r.get("items") or []
                     _save_s4me_items(found, f"s4me:{prov_id}")
-                    return found
-                except Exception:
-                    return []
+                    return prov_id, found
+                except Exception as e:
+                    gs.log(f"ricette-web: ricerca in {prov_id} fallita: {e}")
+                    return prov_id, None
 
+            pending: list[str] = []
             if providers:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(providers))) as ex:
-                    futures = [ex.submit(_search_one, prov["id"]) for prov in providers]
-                    for fut in concurrent.futures.as_completed(futures, timeout=6.0):
-                        try:
-                            combined.extend(fut.result())
-                        except Exception:
-                            pass
+                ex = concurrent.futures.ThreadPoolExecutor(max_workers=min(_SEARCH_WORKERS, len(providers)))
+                futs = {ex.submit(_search_one, pv["id"]): pv["id"] for pv in providers}
+                done, not_done = concurrent.futures.wait(list(futs), timeout=_SEARCH_DEADLINE)
+                for f in done:
+                    pid, found = f.result()
+                    if found is None:
+                        failed.append(pid)
+                    else:
+                        found_by[pid] = found
+                pending = [futs[f] for f in not_done]
+                ex.shutdown(wait=False, cancel_futures=True)  # i thread gia' partiti finiscono da soli; non si aspettano
+            # stesso titolo da piu' provider: ne resta uno, preferendo quello con la locandina
+            combined: list[dict] = []
+            best: dict[tuple, int] = {}
+            for pv in providers:
+                for it in found_by.get(pv["id"], []):
+                    key = (str(it.get("kind") or ""), re.sub(r"\s*\(ita\)\s*$", "", str(it.get("title") or "").lower()).strip())
+                    i = best.get(key)
+                    if i is None:
+                        best[key] = len(combined)
+                        combined.append(it)
+                    elif it.get("poster") and not combined[i].get("poster"):
+                        combined[i] = it
             return {
                 "provider": {"id": "all", "name": "Ricerca Globale Stream4me"},
                 "url": "",
                 "items": combined,
+                "searched": len(providers),
+                "failed": failed,
+                "pending": pending,
             }
 
         return {"provider": None, "url": "", "items": []}
 
-    def _to_pinned_item(r: dict | sqlite3.Row) -> dict:
+    def _to_pinned_item(r: dict | sqlite3.Row, prog: dict | None = None) -> dict:
         d = dict(r)
-        it = to_item(d)
+        it = to_item(d, prog)
         it["source"] = str(d.get("source") or "stream4me")
         it["url"] = str(d.get("url") or "")
         it["stream_url"] = str(d.get("stream_url") or "")
@@ -1733,7 +1974,8 @@ def register(gs) -> None:
             rows = conn.execute(
                 "SELECT * FROM items WHERE recipe_id='stream4me:pinned' ORDER BY updated DESC, title"
             ).fetchall()
-            return {"items": [_to_pinned_item(r) for r in rows]}
+            prog = load_progress(conn, profile_id())
+            return {"items": [_to_pinned_item(r, prog) for r in rows]}
         finally:
             conn.close()
 

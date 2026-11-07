@@ -502,3 +502,34 @@ def test_install_sorgente_non_valida(tmp):
         kb.install_kodi_addon("not-a-path", tmp / "addons")
     with pytest.raises(ValueError):
         kb.install_kodi_addon(tmp / "vuoto.zip", tmp / "addons")
+
+
+def _sc_page(season, n_eps, seasons=(1, 2, 3)):
+    import html as _h
+    props = {
+        "title": {"id": 77, "slug": "serie", "type": "tv", "seasons": [{"number": s} for s in seasons]},
+        "loadedSeason": {"number": season, "episodes": [
+            {"id": season * 100 + e, "number": e, "name": f"S{season} ep{e}", "plot": f"trama {season}.{e}"} for e in range(1, n_eps + 1)]},
+    }
+    return '<div data-page="%s"></div>' % _h.escape(json.dumps({"props": props}), quote=True)
+
+
+def test_streamingcommunity_tutte_le_stagioni():
+    pages = {"https://sc.example/it/titles/77-serie/season-2": _sc_page(2, 3),
+             "https://sc.example/it/titles/77-serie/season-3": _sc_page(3, 2)}
+    eps = kb.scrape_channel_episodes(_sc_page(1, 4), "https://sc.example/it/titles/77-serie", series_title="Serie",
+                                     channel_id="sc", fetcher=lambda u: pages.get(u, ""))
+    assert [(e["season"], e["episode"]) for e in eps] == [(1, i) for i in range(1, 5)] + [(2, i) for i in range(1, 4)] + [(3, 1), (3, 2)]
+    assert eps[4]["title"] == "S2 ep1" and eps[4]["overview"] == "trama 2.1" and "episode_id=201" in eps[4]["url"]
+    assert len({e["id"] for e in eps}) == len(eps)
+
+
+def test_streamingcommunity_stagione_che_fallisce_o_sbagliata():
+    def fetch(u):
+        if u.endswith("season-2"):
+            raise OSError("rete")
+        return _sc_page(1, 2)  # il sito rimanda la stagione 1 per un numero che non esiste
+    eps = kb.scrape_channel_episodes(_sc_page(1, 4), "https://sc.example/it/titles/77-serie", fetcher=fetch)
+    assert {e["season"] for e in eps} == {1} and len(eps) == 4  # niente perdite né duplicati
+    # senza fetcher resta il comportamento di prima: solo la stagione già nella pagina
+    assert {e["season"] for e in kb.scrape_channel_episodes(_sc_page(1, 4), "https://sc.example/it/titles/77-serie")} == {1}

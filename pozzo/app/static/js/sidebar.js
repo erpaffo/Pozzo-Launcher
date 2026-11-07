@@ -339,8 +339,11 @@ function setView(v) {
   const wasHome = S.view.type === "home", same = JSON.stringify(S.view) === JSON.stringify(v);
   S.view = v;
   setDrawer(false, false);
-  store.set("view", v);
-  try { localStorage.setItem("gs.last_session", JSON.stringify({ view: v, gameId: S.selected || null, timestamp: Date.now() })); } catch {}
+  // la finestra Media separata non deve sovrascrivere la vista da riaprire all'avvio della finestra principale
+  if (!document.body.classList.contains("media-window")) {
+    store.set("view", v);
+    try { localStorage.setItem("gs.last_session", JSON.stringify({ view: v, gameId: S.selected || null, timestamp: Date.now() })); } catch {}
+  }
   GS.emit("viewChanged", v);
   document.body.classList.toggle("experience-home-mode", v.type === "home");
   const pv = $("#plugin-view");

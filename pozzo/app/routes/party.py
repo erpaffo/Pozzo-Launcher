@@ -10,7 +10,7 @@ import time
 from fastapi import APIRouter, Body, HTTPException
 
 from ...matching import normalize
-from ... import config as C, i18n as I, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR
+from ... import config as C, i18n as I, edenroom as EDR, netaddr as NA, netplay as NP, platforms as P, protocol as PR, upnp as UP
 from ...library import launcher as L
 from ...remote.certs import lan_ips
 
@@ -75,6 +75,21 @@ def build_router(ctx) -> APIRouter:
         conf, hosts = _conf(), lan_ips()
         nick = str(body.get("nick") or _nick(conf)).strip() or "Giocatore"
         host = str(body.get("host") or conf.get("host") or (hosts[0] if hosts else "")).strip()
+        mapping = None
+        if body.get("where") == "internet":  # porta aperta da sola sul router (UPnP) e IP pubblico nel codice
+            UP.close_port(room.pop("map", None))
+            try:
+                nport = int(body.get("port") or (conf.get("eden_port") or NP.EDEN_PORT if eden else conf.get("port") or NP.PORT))
+            except (ValueError, TypeError):
+                raise HTTPException(400, I.tr("s.party.badPort"))
+            mapping = UP.open_port(nport, "UDP" if eden else "TCP")
+            ip = (mapping or {}).get("external_ip") or NA.public_ip()
+            if ip and NA.address_kind(ip)["kind"] != "public":  # IP del router privato/condiviso: CGNAT
+                UP.close_port(mapping)
+                raise HTTPException(409, {"error": "cgnat", "ip": ip})
+            if not ip:
+                raise HTTPException(409, I.tr("s.party.noPublicIp"))
+            host = ip
         pw = secrets.token_urlsafe(6) if eden else ""  # solo [A-Za-z0-9_-]: Eden separa nick:password@host:porta
         try:
             port = int(body.get("port") or (conf.get("eden_port") or NP.EDEN_PORT if eden else conf.get("port") or NP.PORT))
@@ -108,11 +123,13 @@ def build_router(ctx) -> APIRouter:
             raise
         if proc:
             room["proc"] = proc
+        if mapping:
+            room["map"] = mapping
         ctx.discord.set_party({"id": "poz-" + secrets.token_hex(3), "size": [1, 2]})
         active.clear()
         active.update(key=g["key"], title=g["title"], host=host, port=port, code=code, emulator=emu)
         return {"ok": True, "code": code, "title": g["title"], "host": host, "port": port, "emulator": emu,
-                "steps": EDR.STEPS if eden else "", "link": NP.link(code),
+                "upnp": bool(mapping) if body.get("where") == "internet" else None, "steps": EDR.STEPS if eden else "", "link": NP.link(code),
                 "message": NP.invite_message(code, g["title"], emu)}
 
     @router.post("/api/party/settings")
@@ -138,6 +155,7 @@ def build_router(ctx) -> APIRouter:
     def api_party_close():
         """Chiude la stanza di Eden avviata da Pozzo (il gioco resta aperto)."""
         EDR.stop(room.pop("proc", None))
+        UP.close_port(room.pop("map", None))
         active.clear()
         return {"ok": True}
 

@@ -22,6 +22,17 @@ window.gsNotifyAction = (a) => {
   setView({ type: "ports" });
 };
 
+/* Finestra Media separata (#media-window): stessa interfaccia, ma solo la vista Media a tutta finestra.
+ * Si decide subito, prima di main(), così la barra laterale non lampeggia nemmeno per un istante. */
+if (location.hash === "#media-window") {
+  document.body.classList.add("media-window");
+  document.title = "Media · Pozzo Launcher";
+  const st = document.createElement("style");
+  st.textContent = "body.media-window #sidebar,body.media-window #experience-bar,body.media-window #drawer-scrim,body.media-window #menubar,"
+    + "body.media-window #toolbar{display:none!important}body.media-window #app{grid-template-columns:1fr!important}";
+  document.head.appendChild(st);
+}
+
 (async function main() {
   try { await loadSettingsMarkup(); } catch (e) {
     loading(null);
@@ -38,6 +49,16 @@ window.gsNotifyAction = (a) => {
   await loadExtensions(); // prima della libreria: l'attesa si vede gia' col tema scelto
   const settingsHash = location.hash.match(/^#settings(?:\/([a-z0-9:_-]+))?$/i);
   if (settingsHash) showTab(settingsHash[1] || "generale");
+  if (document.body.classList.contains("media-window")) {
+    // seconda finestra dedicata a Media: niente libreria giochi, procedura guidata o sondaggi; si apre solo la vista Media
+    loading(null);
+    loadProfile();
+    S.smart = S.smart || [];  // il titolo della pagina li legge anche se la libreria non e' stata caricata
+    S.view = { type: "plugin", id: "media" };
+    if (GS.ui.views.has("media")) setView(S.view);
+    else $("#plugin-view").textContent = t("h.view.unavailable"), $("#plugin-view").hidden = false, $("#grid-scroll").hidden = true;
+    return;
+  }
   const resumeEnabled = !!store.get("resumeSession", true);
   let lastSession = null;
   if (resumeEnabled) {

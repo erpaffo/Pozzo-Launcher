@@ -151,8 +151,65 @@ def is_anime_item(item: dict) -> bool:
     return False
 
 
+_EP_CACHE: dict = {}  # (serie, stagione) -> {episodio: {...}}; vive quanto il processo
+
+
+def fetch_tmdb_episode_metadata(series: str, season: int, episode: int, year: int | None = None) -> dict:
+    """Titolo/trama/still di un episodio da TMDB (solo con TMDB_API_KEY). Invia solo titolo serie e numeri."""
+    api_key = os.environ.get("TMDB_API_KEY", "")
+    if not api_key or not str(series or "").strip() or not season or not episode:
+        return {}
+    key = (str(series).strip().lower(), int(season))
+    if key not in _EP_CACHE:
+        eps: dict = {}
+        try:
+            params = {"api_key": api_key, "query": str(series).strip(), "language": "it-IT"}
+            if year:
+                params["first_air_date_year"] = str(year)
+            hdr = {"User-Agent": USER_AGENT}
+            r = httpx.get("https://api.themoviedb.org/3/search/tv", params=params, headers=hdr, timeout=TIMEOUT)
+            results = r.json().get("results") if r.status_code == 200 else None
+            if results:
+                r2 = httpx.get(f"https://api.themoviedb.org/3/tv/{results[0]['id']}/season/{int(season)}",
+                               params={"api_key": api_key, "language": "it-IT"}, headers=hdr, timeout=TIMEOUT)
+                if r2.status_code == 200:
+                    for e in r2.json().get("episodes") or []:
+                        st = e.get("still_path")
+                        eps[e.get("episode_number")] = {
+                            "title": e.get("name") or "", "overview": e.get("overview") or "",
+                            "still": f"https://image.tmdb.org/t/p/w500{st}" if st else "",
+                        }
+        except Exception:
+            return {}  # errore di rete: non in cache, riprova la prossima volta
+        _EP_CACHE[key] = eps
+    return _EP_CACHE[key].get(int(episode)) or {}
+
+
+def _title_from_filename(item: dict) -> bool:
+    t = str(item.get("title") or "").strip()
+    stem = re.split(r"[\\/]", str(item.get("path") or ""))[-1]
+    stems = {stem.lower(), stem.rsplit(".", 1)[0].lower()} - {""}
+    return not t or t.lower() in stems or bool(re.fullmatch(r"(?i)(?:episodio|episode|ep\.?)\s*\d+", t))
+
+
+def _enrich_episode(item: dict) -> dict:
+    if item.get("kind") != "episodio" or not (item.get("series") and item.get("season") and item.get("episode")):
+        return item
+    need_title, need_ov = _title_from_filename(item), not item.get("overview")
+    if not (need_title or need_ov):
+        return item
+    m = fetch_tmdb_episode_metadata(item["series"], item["season"], item["episode"], item.get("year"))
+    res = dict(item)
+    if need_title and m.get("title"):
+        res["title"] = m["title"]
+    if need_ov and m.get("overview"):
+        res["overview"] = m["overview"]
+    return res
+
+
 def enrich_item(item: dict) -> dict:
     """Se mancano locandina o trama, arricchisce l'item interrogando AniList o TMDB."""
+    item = _enrich_episode(item)
     has_poster = bool(item.get("poster"))
     has_overview = bool(item.get("overview"))
     if has_poster and has_overview:

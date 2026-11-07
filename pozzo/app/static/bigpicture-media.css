@@ -1,0 +1,34 @@
+/* Big Picture · Media (bigpicture-media.js). Fuoco grande e sempre visibile, pensato per la distanza. */
+.bpm { height: 100%; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding: 1rem 0 4rem; }
+.bpm::-webkit-scrollbar { display: none; }
+.bpm-row { margin: 0 0 1.4rem; }
+.bpm-row h2 { margin: 0 3rem .6rem; font-size: 1.5rem; }
+.bpm-strip { display: flex; gap: 1.4rem; overflow-x: auto; scrollbar-width: none; padding: 1.2rem 3rem 1.6rem; scroll-padding: 0 3rem; }
+.bpm-strip::-webkit-scrollbar { display: none; }
+.bpm-card { flex: none; width: 12.5rem; transition: transform .16s ease; }
+.bpm-cv { position: relative; aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; background: hsl(var(--h) 35% 22%); box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+.bpm-cv img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bpm-ph { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: .8rem; font-weight: 700; }
+.bpm-lbl { margin-top: .55rem; font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bpm-sub { font-size: .9rem; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bpm-card.seen .bpm-cv img { filter: grayscale(.7) brightness(.7); }
+.bpm-card.focus { transform: scale(1.14); z-index: 2; }
+.bpm-card.focus .bpm-cv { box-shadow: 0 0 0 5px var(--accent), 0 16px 44px rgba(0,0,0,.65), 0 0 40px color-mix(in srgb, var(--accent) 60%, transparent); }
+.bpm-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(0,0,0,.6); }
+.bpm-bar i { display: block; height: 100%; background: var(--accent); }
+.bpm-msg, .bpm-empty { padding: 4rem 3rem; font-size: 1.3rem; max-width: 50rem; }
+.bpm-empty h2 { font-size: 2rem; margin: 0 0 1rem; }
+/* serie: locandina a sinistra, stagioni e episodi a destra */
+.bpm-series { display: flex; gap: 3rem; padding: 1.5rem 3rem; }
+.bpm-side { flex: none; width: 16rem; }
+.bpm-side img { width: 100%; border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.6); }
+.bpm-main { flex: 1; min-width: 0; }
+.bpm-seasons { display: flex; gap: .8rem; margin-bottom: 1rem; overflow-x: auto; scrollbar-width: none; }
+.bpm-season { padding: .5rem 1.2rem; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 1.1rem; white-space: nowrap; }
+.bpm-season.on { background: var(--accent); color: #fff; font-weight: 700; }
+.bpm-ep { position: relative; display: flex; align-items: center; gap: 1.2rem; padding: 1rem 1.4rem; margin: .35rem 0; border-radius: 10px; background: rgba(255,255,255,.06); font-size: 1.2rem; overflow: hidden; }
+.bpm-ep b { width: 2.4rem; text-align: right; opacity: .7; }
+.bpm-ep .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bpm-ep .st { opacity: .75; font-size: 1rem; }
+.bpm-ep.seen { opacity: .55; }
+.bpm-ep.focus { opacity: 1; background: var(--accent); color: #fff; transform: scale(1.02); box-shadow: 0 0 0 3px #fff, 0 8px 28px rgba(0,0,0,.5); }

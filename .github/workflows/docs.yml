@@ -44,7 +44,9 @@ jobs:
 
       # il PDF va in docs/ prima del sito: cosi' MkDocs lo pubblica e il link nell'introduzione funziona
       - name: PDF
-        run: python tools/docs_pdf.py docs/PozzoLauncher-manuale.pdf
+        run: |
+          python tools/docs_pdf.py docs/PozzoLauncher-manuale.pdf
+          python tools/docs_pdf.py docs/PozzoLauncher-manual-en.pdf
 
       - name: Sito
         run: mkdocs build --strict

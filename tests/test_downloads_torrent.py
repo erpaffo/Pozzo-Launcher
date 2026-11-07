@@ -315,7 +315,8 @@ def test_tracker_paralleli_e_filtro_avvisi(tmp):
     e.handles[tid] = h
     logs = []
     e.logs[tid] = lambda msg, level="info": logs.append((msg, level))
-    for _ in range(15):
+    assert _wait(lambda: e._pump() or logs, 15)  # l'errore DNS arriva quando arriva: su CI lenta non sono 1,5 s
+    for _ in range(10):  # poi si controlla che l'avviso non si ripeta
         e._pump()
         time.sleep(0.1)
     assert len(logs) == 1
@@ -344,9 +345,7 @@ def test_pre_verifica_e_blacklist_tracker_unreachable(tmp):
     e.logs[t.id] = lambda m, l="info": None
     h.add_tracker({"url": "udp://runtime-dead.invalid:1337/ann", "tier": 0})
     h.force_reannounce()
-    for _ in range(25):
-        e._pump()
-        time.sleep(0.1)
+    assert _wait(lambda: e._pump() or "udp://runtime-dead.invalid:1337/ann" in e.dead_trackers[t.id], 15)
     assert "udp://runtime-dead.invalid:1337/ann" in e.dead_trackers[t.id]
     assert any(tr["url"] == "udp://runtime-dead.invalid:1337/ann" and tr["fail_limit"] == 1 for tr in h.trackers())
 

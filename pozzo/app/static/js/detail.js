@@ -742,6 +742,7 @@ const partyMsg = (e) => {
   const d = e.detail;
   if (d && typeof d === "object" && d.error === "core-mismatch" && "local" in d && "remote" in d)
     return t("f.party.core_mismatch", {local: d.local || t("f.party.none"), remote: d.remote});
+  if (d && typeof d === "object" && d.error === "cgnat") return t("f.party.err_cgnat", {ip: d.ip});
   return PARTY_ERR[d && d.error] ? t(PARTY_ERR[d && d.error]) : e.message;
 };
 
@@ -756,7 +757,7 @@ async function openParty(d) {
     <label class="lbl-field">${t("f.party.nick")}<input id="pt-nick" class="field" value="${esc(cfg.nick || "")}"></label>
     <fieldset class="lbl-field"><legend>${t("f.party.where")}</legend>
       <label><input type="radio" name="pt-where" value="lan"> ${t("f.party.where_lan")}</label>
-      <label><input type="radio" name="pt-where" value="internet"> ${t("f.party.where_internet")}</label>
+      <label><input type="radio" name="pt-where" value="internet" checked> ${t("f.party.where_internet")}</label>
       <label><input type="radio" name="pt-where" value="vpn"> ${t("f.party.where_vpn")}</label>
     </fieldset>
     <details><summary>${t("f.party.advanced")}</summary>
@@ -782,10 +783,10 @@ async function openParty(d) {
   $("#pt-go").onclick = async () => {
     const out = $("#pt-out"), port = +$("#pt-port").value;
     try {
-      const r = await partyApi("/api/party/invite", { key: d.key, nick: $("#pt-nick").value.trim(), host: $("#pt-host").value.trim(), port });
+      const r = await partyApi("/api/party/invite", { key: d.key, nick: $("#pt-nick").value.trim(), host: $("#pt-host").value.trim(), port, where: (body.querySelector('input[name="pt-where"]:checked') || {}).value });
       out.innerHTML = `<label class="lbl-field">${t("f.party.code_label")}
         <span class="row tight"><input id="pt-code" class="field grow" readonly value="${esc(r.code)}"><button class="btn" id="pt-copy" type="button">${t("f.btn.copy")}</button><button class="btn" id="pt-copymsg" type="button">${t("f.party.copy_invite")}</button></span></label>
-        <span class="muted small">${r.emulator === "eden" ? t("f.party.note_eden") : t("f.party.note_retro")} ${esc(r.port || port)} ${t("f.party.router_tail")}</span>
+        <span class="muted small">${r.upnp ? t("f.party.upnp_ok", {port: esc(r.port || port)}) : (r.upnp === false ? t("f.party.upnp_fail") + " " : "") + (r.emulator === "eden" ? t("f.party.note_eden") : t("f.party.note_retro")) + " " + esc(r.port || port) + " " + t("f.party.router_tail")}</span>
         ${r.steps ? `<p class="muted small" id="pt-steps">${esc(r.steps)}</p><button class="btn" id="pt-close" type="button">${t("f.party.close_room")}</button>` : ""}`;
       if (r.steps) $("#pt-close").onclick = async () => { try { await partyApi("/api/party/close", {}); $("#pt-close").remove(); toast(t("f.party.room_closed")); } catch (e) { toast(e.message, true); } };
       $("#pt-copy").onclick = () => navigator.clipboard.writeText(r.code).then(() => toast(t("f.party.code_copied")), () => { $("#pt-code").select(); toast(t("f.party.copy_manual"), true); });

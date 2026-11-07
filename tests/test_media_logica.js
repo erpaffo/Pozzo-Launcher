@@ -223,12 +223,15 @@ Promise.all([import(pathToFileURL(tmp).href), import(pathToFileURL(tmpPlayer).hr
   };
 
   const fedRes = await L.federatedList(fakeGs, { kind: "film", query: "test", timeoutMs: 30 });
-  assert.strictEqual(fedRes.sourcesStatus["media-locale"], true);
-  assert.strictEqual(fedRes.sourcesStatus["media-server"], true);
-  assert.strictEqual(fedRes.sourcesStatus["ricette-web"], false); // timed out
+  const st = (r, id) => r.sourcesStatus.find((x) => x.id === id);
+  assert.strictEqual(st(fedRes, "media-locale").state, "ok");
+  assert.strictEqual(st(fedRes, "media-server").state, "ok");
+  assert.strictEqual(st(fedRes, "media-server").count, 1);
+  assert.strictEqual(st(fedRes, "ricette-web").state, "slow"); // timed out
   assert.strictEqual(fedRes.items.length, 2);
   assert.strictEqual(fedRes.items[0].id, "loc1");
   assert.strictEqual(fedRes.items[1].id, "srv1");
+  assert.deepStrictEqual(fedRes.items[0].sources, ["media-locale"]);
   assert(requestedUrls[0].includes("kind=film"));
   assert(requestedUrls[0].includes("query=test"));
   assert(requestedUrls[0].includes("q=test"));
@@ -249,6 +252,46 @@ Promise.all([import(pathToFileURL(tmp).href), import(pathToFileURL(tmpPlayer).hr
   const dupFedRes = await L.federatedList(fakeGsDuplicates, { timeoutMs: 50 });
   assert.strictEqual(dupFedRes.items.length, 1);
   assert.strictEqual(dupFedRes.items[0].title, "Item 1");
+
+  // Default timeout 2000ms + abort signal on slow source
+  let sawSignal = null;
+  const t0 = Date.now();
+  const slowGs = { api: (url, opts) => new Promise((res) => { sawSignal = opts && opts.signal; }) };
+  const slowRes = await L.federatedList(slowGs, {});
+  assert(Date.now() - t0 >= 1900 && Date.now() - t0 < 3000);
+  assert(sawSignal && sawSignal.aborted);
+  assert(slowRes.sourcesStatus.every((x) => x.state === "slow"));
+
+  // Cross-source dedup, preferred source wins, sources[], kind never merged, onPartial, absent/error
+  const dedupGs = {
+    api: async (url) => {
+      if (url.includes("/media-locale/")) return [{ id: "a", kind: "film", title: "Il Film (ITA)", year: 2020, source: "media-locale" }];
+      if (url.includes("/media-server/")) return [
+        { id: "b", kind: "film", title: "il film", year: 2020, source: "jellyfin" },
+        { id: "c", kind: "serie", title: "Il Film", year: 2020, source: "plex" },
+      ];
+      throw new Error("HTTP 404 not found");
+    }
+  };
+  const partials = [];
+  const dd = await L.federatedList(dedupGs, { timeoutMs: 100, onPartial: (it, s) => partials.push([it.length, s.length]) });
+  assert.strictEqual(partials.length, 3);
+  assert.strictEqual(dd.items.length, 2);
+  const film = dd.items.find((x) => x.kind === "film");
+  assert.strictEqual(film.source, "media-locale");
+  assert.deepStrictEqual(film.sources, ["media-locale", "jellyfin"]);
+  assert.deepStrictEqual(dd.items.find((x) => x.kind === "serie").sources, ["plex"]);
+  assert.strictEqual(st(dd, "ricette-web").state, "absent");
+  const errRes = await L.federatedList({ api: async () => { throw new Error("boom"); } }, { timeoutMs: 50 });
+  assert(errRes.sourcesStatus.every((x) => x.state === "error"));
+  const ep = await L.federatedList({ api: async (u) => (u.includes("media-locale") ? [{ id: "e1", kind: "episodio", title: "x", series: "Serie", season: 1, episode: 2, source: "ricette-web" }, { id: "e2", kind: "episodio", title: "y", series: "Serie", season: 1, episode: 3, source: "ricette-web" }] : []) }, { timeoutMs: 50 });
+  assert.strictEqual(ep.items.length, 2);
+
+  // provider badge
+  assert.strictEqual(L.sourceBadge("ricette-web", "kodi").label, "Kodi Addon");
+  assert.strictEqual(L.sourceBadge("ricette-web", "stream4me").label, "Stream4me");
+  assert.strictEqual(L.sourceBadge("jellyfin", "").id, "jellyfin");
+  assert.deepStrictEqual(L.sourceBadges(film).map((b) => b.id), ["locale", "jellyfin"]);
 
   // 12. player.js: loadContinueCache & saveContinueCache
   let mockStore = {};
@@ -417,6 +460,7 @@ Promise.all([import(pathToFileURL(tmp).href), import(pathToFileURL(tmpPlayer).hr
     completed: 1,
     dropped: 1,
     high_priority: 3,
+    by_category: { film: 4, serie: 1, anime: 1 },
   });
 
   // Filter by status
@@ -490,6 +534,223 @@ Promise.all([import(pathToFileURL(tmp).href), import(pathToFileURL(tmpPlayer).hr
     "Gamma Anime",
     "Zeta Movie",
   ]);
+
+  // audio: tracce HLS e preferenza di lingua
+  const tr = [{ lang: "it", name: "ita" }, { lang: "en-US", name: "eng" }];
+  assert.strictEqual(P.pickAudioIndex(tr, "en"), 1);
+  assert.strictEqual(P.pickAudioIndex(tr, "ja"), -1);
+  assert.strictEqual(P.pickAudioIndex(tr, ""), -1);
+  assert.strictEqual(P.audioTrackLabel(tr[0]), "Italiano");
+  assert.strictEqual(P.audioTrackLabel({ name: "Commento" }), "Commento");
+  const mem = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; } };
+  P.saveAudioPref("en", mem);
+  assert.strictEqual(P.loadAudioPref(mem), "en");
+  assert.strictEqual(P.loadAudioPref({ getItem() { throw new Error("bloccato"); } }), "");
+
+  // episodi: precedente/successivo e pannello del lettore
+  const eps = [
+    { id: "b2", series: "Show", season: 1, episode: 2, title: "Due", overview: "Trama <b>2</b>" },
+    { id: "a1", series: "Show", season: 1, episode: 1, title: "Uno", seen: true },
+    { id: "c1", series: "Show", season: 2, episode: 1, title: "Tre" },
+    { id: "x9", series: "Altra", season: 1, episode: 1, title: "Altra" },
+  ];
+  assert.deepStrictEqual(L.episodeSiblings(eps, "b2").list.map((e) => e.id), ["a1", "b2", "c1"]);
+  assert.strictEqual(L.episodeSiblings(eps, "b2").index, 1);
+  assert.strictEqual(L.prevEpisode(eps, "b2").id, "a1");
+  assert.strictEqual(L.prevEpisode(eps, "a1"), null);
+  assert.strictEqual(L.nextEpisode(eps, "b2").id, "c1");
+  assert.strictEqual(L.nextEpisode(eps, "c1"), null);
+  assert.strictEqual(L.episodeSiblings(eps, "zz").index, -1);
+  const sib = L.episodeSiblings(eps, "b2");
+  const esc = (v) => String(v).replace(/</g, "&lt;");
+  const panel = P.renderEpisodesPanel(sib.list, sib.index, 1, esc);
+  assert.ok(panel.includes('data-season="2"') && panel.includes("Stagione 1"));
+  assert.ok(panel.includes('class="pm-eps-item pm-cur"') && panel.includes("Trama &lt;b>2&lt;/b>"));
+  assert.ok(panel.includes("pm-seen") && !panel.includes("Tre"), "solo la stagione scelta");
+  assert.strictEqual(P.episodeLabel({ season: 2, episode: 5 }), "S2E5");
+  assert.strictEqual(P.episodeLabel({ episode: 3 }), "S1E3");
+
+  // una «serie» con una sola puntata e' un film
+  const col = L.collapseSingleEpisodeSeries([
+    { id: "a", kind: "episodio", series: "Snatch - Lo strappo", season: 1, episode: 1, title: "Episodio 1", source: "media-locale" },
+    { id: "b1", kind: "episodio", series: "Show", season: 1, episode: 1, title: "Uno" },
+    { id: "b2", kind: "episodio", series: "Show", season: 1, episode: 2, title: "Due" },
+    { id: "c", kind: "film", series: "Serie Web", genre: "Serie TV", episode_count: 1, title: "Serie Web" },
+    { id: "d", kind: "film", genre: "Serie TV", episode_count: 8, title: "Vera Serie" },
+    { id: "e", kind: "brano", series: "Album", title: "Canzone" },
+  ]);
+  const byId = Object.fromEntries(col.map((x) => [x.id, x]));
+  assert.strictEqual(byId.a.kind, "film"); assert.strictEqual(byId.a.title, "Snatch - Lo strappo"); assert.strictEqual(byId.a.series, "");
+  assert.ok(!("episode" in byId.a) && !("season" in byId.a), "niente più stagione/episodio");
+  assert.strictEqual(byId.b1.kind, "episodio"); assert.strictEqual(byId.b2.kind, "episodio");
+  assert.strictEqual(byId.c.kind, "film"); assert.strictEqual(byId.c.genre, "Film"); assert.strictEqual(byId.c.series, "");
+  assert.strictEqual(byId.d.genre, "Serie TV", "con 8 episodi resta una serie");
+  assert.strictEqual(byId.e.kind, "brano");
+  // se un'altra sorgente ha altre puntate, la serie resta tale; gli originali non si toccano
+  const orig = [{ id: "x", kind: "episodio", series: "S", season: 1, episode: 1 }, { id: "y", kind: "episodio", series: "S", season: 1, episode: 2, source: "jellyfin" }];
+  assert.ok(L.collapseSingleEpisodeSeries(orig).every((x) => x.kind === "episodio"));
+  // le righe del catalogo streaming sono titoli interi, non puntate: «Modern Family» con una riga resta una serie
+  const web = L.collapseSingleEpisodeSeries([
+    { id: "w1", kind: "episodio", series: "Modern Family", provider: "stream4me", source: "ricette-web", title: "Modern Family" },
+    { id: "w2", kind: "episodio", series: "Snatch - Lo strappo", provider: "stream4me", source: "ricette-web", episode_count: 1 },
+  ]);
+  assert.strictEqual(web[0].kind, "episodio", "una sola riga di catalogo non prova che sia un film");
+  assert.strictEqual(web[1].kind, "film", "ma se il provider dice 1 episodio, lo è");
+  // riepilogo: nessun numero inventato dalle righe del catalogo
+  assert.deepStrictEqual(L.seriesSummary([{ provider: "stream4me" }, { provider: "stream4me" }]), { count: 0, seasonsCount: 0, known: false });
+  assert.deepStrictEqual(L.seriesSummary([{ provider: "stream4me", episode_count: 62, season_count: 5 }, { provider: "stream4me" }]), { count: 62, seasonsCount: 5, known: true });
+  assert.deepStrictEqual(L.seriesSummary([{ season: 1, episode: 1 }, { season: 1, episode: 2 }, { season: 2, episode: 1 }]), { count: 3, seasonsCount: 2, known: true });
+  assert.strictEqual(orig[0].kind, "episodio");
+  assert.deepStrictEqual(L.collapseSingleEpisodeSeries(null), []);
+
+  // watchlist: l'unione non perde mai nulla (un server vuoto non cancella la copia locale)
+  const wlLocal = [{ item_key: "a:1", title: "Uno", updated_at: 5 }, { item_key: "a:2", title: "Due", updated_at: 9 }];
+  const m1 = L.mergeWatchlists([], wlLocal);
+  assert.strictEqual(m1.entries.length, 2, "server vuoto: restano le due voci locali");
+  assert.strictEqual(m1.localOnly.length, 2, "da rimandare al server");
+  const m2 = L.mergeWatchlists([{ item_key: "a:2", title: "Due (server)", updated_at: 20 }], wlLocal);
+  assert.strictEqual(m2.entries.find((e) => e.item_key === "a:2").title, "Due (server)", "vince la più recente");
+  assert.deepStrictEqual(m2.localOnly.map((e) => e.item_key), ["a:1"]);
+  const m3 = L.mergeWatchlists([{ item_key: "a:2", title: "Vecchia", updated_at: 1 }], wlLocal);
+  assert.strictEqual(m3.entries.find((e) => e.item_key === "a:2").title, "Due", "la locale più recente prevale");
+  assert.deepStrictEqual(L.mergeWatchlists(null, null), { entries: [], localOnly: [] });
+
+  // catalogo salvato per l'apertura istantanea
+  const store = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; } };
+  assert.strictEqual(L.saveCatalogSnapshot([{ id: "1", title: "A", overview: "x".repeat(500), segreto: "no" }], store), true);
+  const back = L.loadCatalogSnapshot(store);
+  assert.strictEqual(back.length, 1);
+  assert.strictEqual(back[0].overview.length, 200);
+  assert.ok(!("segreto" in back[0]), "solo i campi noti");
+  assert.deepStrictEqual(L.loadCatalogSnapshot(store, -1), [], "troppo vecchio");
+  assert.deepStrictEqual(L.loadCatalogSnapshot({ getItem() { throw new Error("x"); } }), []);
+  assert.strictEqual(L.saveCatalogSnapshot([{ id: "1", title: "A" }], { setItem() { throw new Error("quota"); } }), false);
+  assert.strictEqual(L.saveCatalogSnapshot([], store), false);
+
+  // per profilo: chiavi, migrazione una tantum, snapshot separati
+  assert.strictEqual(L.activeProfile(), "default");
+  globalThis.GS = { library: () => ({ profiles: { active: "anna" } }) };
+  assert.strictEqual(L.activeProfile(), "anna");
+  assert.strictEqual(L.profileKey("gs.x"), "gs.x:anna");
+  delete globalThis.GS;
+  const ms = { d: { "gs.old": "[1]" }, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; }, removeItem(k) { delete this.d[k]; } };
+  assert.strictEqual(L.migrateToProfileKey(ms, "gs.old", "anna"), "gs.old:anna");
+  assert.strictEqual(ms.d["gs.old:anna"], "[1]");
+  L.migrateToProfileKey(ms, "gs.old", "bob");
+  assert.strictEqual(ms.d["gs.old:bob"], undefined, "la vecchia chiave va solo al primo profilo");
+  const ps = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; }, removeItem(k) { delete this.d[k]; } };
+  L.saveCatalogSnapshot([{ id: "1", title: "A" }], ps, "anna");
+  assert.strictEqual(L.loadCatalogSnapshot(ps, undefined, "anna").length, 1);
+  assert.deepStrictEqual(L.loadCatalogSnapshot(ps, undefined, "bob"), [], "un altro profilo non vede lo snapshot");
+  ps.d[L.CATALOG_SNAPSHOT_KEY] = JSON.stringify({ t: Date.now(), items: [{ id: "9", title: "Vecchio" }] });
+  assert.strictEqual(L.loadCatalogSnapshot(ps, undefined, "bob")[0].id, "9", "migrazione della vecchia cache");
+  assert.deepStrictEqual(L.loadCatalogSnapshot(ps, undefined, "carl"), []);
+
+  // passaggio alla finestra separata: ciò che serve per riprendere, una volta sola
+  const hs = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; }, removeItem(k) { delete this.d[k]; } };
+  assert.strictEqual(P.saveHandoff({ id: "e1", source: "ricette-web", title: "T", series: "S", season: 1, episode: 2, secret: "no", overview: "x".repeat(500) },
+    [{ id: "e1", season: 1, episode: 2 }, { id: "e2", season: 1, episode: 3 }], 754.5, hs), true);
+  const taken = P.takeHandoff(hs);
+  assert.strictEqual(taken.item.id, "e1"); assert.strictEqual(taken.pos, 754.5); assert.strictEqual(taken.episodes.length, 2);
+  assert.ok(!("secret" in taken.item) && taken.item.overview.length === 200, "solo i campi utili");
+  assert.strictEqual(P.takeHandoff(hs), null, "si consuma una volta sola");
+  P.saveHandoff({ id: "e1" }, [], 1, hs);
+  hs.d[P.HANDOFF_KEY] = JSON.stringify({ t: Date.now() - 60000, pos: 5, item: { id: "e1" } });
+  assert.strictEqual(P.takeHandoff(hs), null, "vecchio di un minuto: ignorato");
+  assert.strictEqual(P.takeHandoff({ getItem() { throw new Error("x"); } }), null);
+  assert.strictEqual(P.saveHandoff(null, [], 0, hs), false);
+
+  // comandi del lettore: salti, orologio, preferenza sottotitoli
+  assert.strictEqual(P.seekTarget(5, -10, 100), 0);
+  assert.strictEqual(P.seekTarget(95, 10, 100), 100);
+  assert.strictEqual(P.seekTarget(50, 10, NaN), 60);
+  assert.strictEqual(P.clockText(65, 2530), "1:05 / 42:10");
+  assert.strictEqual(P.clockText(3, NaN), "0:03 / 0:00");
+  P.saveSubPref("off", mem);
+  assert.strictEqual(P.loadSubPref(mem), "off");
+  assert.strictEqual(P.loadSubPref({ getItem() { throw new Error("bloccato"); } }), "");
+
+  // 17. Watchlist: categoria, normTitle, matchLibraryItem, filtro e conteggi per categoria
+  assert.strictEqual(L.categoryOf({ kind: "film" }), "film");
+  assert.strictEqual(L.categoryOf({ kind: "episodio", series: "X" }), "serie");
+  assert.strictEqual(L.categoryOf({ kind: "episodio", genre: "Anime, Azione" }), "anime");
+  assert.strictEqual(L.categoryOf({ kind: "film", source: "animeunity" }), "anime");
+  assert.strictEqual(L.categoryOf({ category: "serie", kind: "film" }), "serie");
+  assert.strictEqual(L.categoryOf({ category: "boh", kind: "film" }), "film");
+  const nc = L.normalizeWatchlistEntry({ id: "z", kind: "episodio", progress: "12", total: -3, linked_key: " jellyfin:9 ", ext_ids: [1] });
+  assert.strictEqual(nc.category, "serie");
+  assert.strictEqual(nc.progress, 12);
+  assert.strictEqual(nc.total, 0);
+  assert.strictEqual(nc.linked_key, "jellyfin:9");
+  assert.deepStrictEqual(nc.ext_ids, {});
+  assert.deepStrictEqual(L.normalizeWatchlistEntry({ id: "q", ext_ids: { mal: 5 } }).ext_ids, { mal: 5 });
+
+  assert.strictEqual(L.normTitle("Il Signore degli Anelli (ITA)"), "signore degli anelli");
+  assert.strictEqual(L.normTitle("L'Attacco dei Giganti: Stagione 2"), "attacco dei giganti");
+  assert.strictEqual(L.normTitle("Attack on Titan Season 3"), "attack on titan");
+  assert.strictEqual(L.normTitle("The Amélie!"), "amelie");
+  assert.strictEqual(L.normTitle("Naruto 2nd Season [Sub Ita]"), "naruto");
+
+  const lib = [
+    { id: "f1", source: "plex", kind: "film", title: "Dune", year: 2021 },
+    { id: "f2", source: "media-locale", kind: "film", title: "Dune", year: 2021 },
+    { id: "f3", source: "jellyfin", kind: "film", title: "Dune", year: 1984 },
+    { id: "e1", source: "jellyfin", kind: "episodio", series: "Attack on Titan", title: "Ep 1", season: 1, episode: 1 },
+    { id: "e2", source: "plex", kind: "episodio", series: "Attack on Titan", title: "Ep 1", season: 1, episode: 1 },
+    { id: "f4", source: "plex", kind: "film", title: "Inception", year: 2010 },
+    { id: "f5", source: "plex", kind: "film", title: "The Matrix Reloaded", year: 2003 },
+  ];
+  let m = L.matchLibraryItem({ title: "Dune", year: 2020, kind: "film" }, lib);
+  assert.strictEqual(m.item.id, "f2", "anno +-1 e preferenza sorgente locale");
+  m = L.matchLibraryItem({ title: "Dune", year: 1984, kind: "film" }, lib);
+  assert.strictEqual(m.item.id, "f3");
+  assert.strictEqual(L.matchLibraryItem({ title: "Dune", year: 1999, kind: "film" }, lib), null, "anno troppo diverso");
+  m = L.matchLibraryItem({ title: "Shingeki no Kyojin", original_title: "Attack on Titan: Season 2", category: "anime" }, lib);
+  assert.strictEqual(m.item.id, "e1", "serie: episodio rappresentativo, jellyfin prima di plex a parita");
+  assert.strictEqual(L.matchLibraryItem({ title: "Attack on Titan", kind: "film" }, lib), null, "un film non si associa a un episodio");
+  assert.strictEqual(L.matchLibraryItem({ title: "Inception", category: "serie" }, lib), null, "una serie non si associa a un film");
+  assert.strictEqual(L.matchLibraryItem({ title: "The Matrix", year: 1999, kind: "film" }, lib), null, "falso positivo evitato");
+  assert.strictEqual(L.matchLibraryItem({ title: "Matrix", year: 2003, kind: "film" }, lib), null, "contenimento troppo debole");
+  assert.ok(L.matchLibraryItem({ title: "Matrix Reloaded", year: 2003, kind: "film" }, lib), "contenimento forte + stesso anno");
+  assert.strictEqual(L.matchLibraryItem({ title: "" }, lib), null);
+
+  const catSample = [
+    { item_key: "a:1", title: "F1", kind: "film" },
+    { item_key: "a:2", title: "S1", category: "serie" },
+    { item_key: "a:3", title: "A1", category: "anime", status: "watching" },
+  ];
+  assert.deepStrictEqual(L.sortAndFilterWatchlist(catSample, { category: "anime" }).map((x) => x.title), ["A1"]);
+  assert.strictEqual(L.sortAndFilterWatchlist(catSample, { category: "all" }).length, 3);
+  assert.deepStrictEqual(L.watchlistStats(catSample).by_category, { film: 1, serie: 1, anime: 1 });
+
+  // Riproduci: il cerchio di attesa deve comparire subito, mentre il server sta ancora risolvendo il flusso
+  {
+    const mkEl = () => ({ children: [], style: {}, className: "", innerHTML: "", listeners: {},
+      appendChild(c) { this.children.push(c); }, remove() { this.removed = true; },
+      addEventListener(t, f) { this.listeners[t] = f; }, querySelector() { return { addEventListener(t, f) { this.cb = f; }, animate() {} }; },
+      querySelectorAll() { return []; } });
+    const body = mkEl(), kd = {};
+    global.document = { body, createElement: mkEl, querySelector: () => null,
+      addEventListener(t, f) { kd[t] = f; }, removeEventListener(t) { delete kd[t]; } };
+    let resolveTarget;
+    const slow = { api: () => new Promise((r) => { resolveTarget = r; }), toast() {} };
+    const pending = P.play(slow, { id: "e1", title: "Pilot", series: "Show", source: "media-locale" });
+    assert.strictEqual(body.children.length, 1, "la schermata di attesa è già visibile prima della risposta del server");
+    assert.ok(body.children[0].className.includes("pm-loading") && body.children[0].innerHTML.includes("Apertura in corso"));
+    // Esc durante l'attesa: annulla, e la risposta tardiva non apre nulla
+    kd.keydown({ key: "Escape", preventDefault() {} });
+    assert.strictEqual(body.children[0].removed, true);
+    resolveTarget({ url: "http://x/video.mp4" });
+    assert.strictEqual(await pending, null, "annullato: il lettore non si apre");
+    // errore del server: la schermata sparisce e l'errore è detto
+    body.children.length = 0;
+    const msgs = [];
+    const bad = { api: () => Promise.reject(new Error("flusso non disponibile")), toast: (m) => msgs.push(m) };
+    assert.strictEqual(await P.play(bad, { id: "e2", title: "X", source: "media-locale" }), null);
+    assert.strictEqual(body.children[body.children.length - 1].removed, true);
+    assert.deepStrictEqual(msgs, ["flusso non disponibile"]);
+    delete global.document;
+  }
 
   console.log("ok");
 }).catch((e) => { console.error(e); process.exit(1); });

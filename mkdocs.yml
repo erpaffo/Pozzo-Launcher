@@ -82,3 +82,31 @@ nav:
       - Per sviluppatori:
           - Sviluppo e prestazioni: sviluppo.md
   - Assistenza e FAQ: assistenza.md
+  - English Manual:
+      - Home: en/index.md
+      - Download: en/download.md
+      - Documentation:
+          - Getting Started: en/guida.md
+          - First Steps:
+              - Installation & Updates: en/installazione.md
+              - The Library: en/libreria.md
+          - Games:
+              - ROMs & Scraping: en/rom-e-scraping.md
+              - Playing: en/giocare.md
+              - PC Store Games: en/store-pc.md
+          - Stores:
+              - Online Stores & PC Stores: en/store-online.md
+              - Free Games, Wishlist, PC Ports: en/extra.md
+          - Alternative Play:
+              - Phone & Streaming: en/telefono-streaming.md
+              - Big Picture: en/bigpicture.md
+              - Music & Calls: en/musica-chiamate.md
+              - Keyboard & Controller Shortcuts: en/scorciatoie.md
+          - Customization:
+              - Themes & Extensions: en/ESTENSIONI.md
+          - Maintenance:
+              - Data, Backups & Health: en/manutenzione.md
+              - Reference (Configuration & Commands): en/riferimento.md
+          - Developers:
+              - Development & Performance: en/sviluppo.md
+      - Support & FAQ: en/assistenza.md

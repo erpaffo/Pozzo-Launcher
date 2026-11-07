@@ -15,6 +15,10 @@ Contratto «fonte di media» (identico in media-server):
     MediaItem = {id, kind, title, series?, season?, episode?, year?, duration?, poster?, backdrop?, overview?,
                  source, resume_pos?, seen?}
 
+Profili: watchlist e avanzamento (resume_pos, seen) sono per profilo (cookie gs_profile o profilo attivo, vedi profile_id).
+    GET  watchlist/export         -> {version: 1, app: "pozzo-media", exported_at, profile, entries: [riga completa]}
+    POST watchlist/import         <- {"provider": "pozzo", "content": <JSON dell'export>}  (anteprima; il ripristino e' watchlist/bulk)
+
 Rotte (/plugin-api/media-locale/...):
     GET  list?kind=&query=&limit= -> [MediaItem]        (kind: film|episodio|brano, vuoto = tutti)
     GET  detail?id=               -> MediaItem
@@ -35,6 +39,7 @@ I metadati base vengono dai nomi di file e cartelle e dal poster locale; arricch
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -44,14 +49,16 @@ import sys
 import time
 from pathlib import Path
 
-from fastapi import Body, HTTPException
+from fastapi import Body, HTTPException, Request
 from fastapi.responses import FileResponse
 
 try:
     from .metadata import enrich_item
+    from . import watchlist_import as wli
 except Exception:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from metadata import enrich_item
+    import watchlist_import as wli
 
 VIDEO = {".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".wmv", ".ts", ".m2ts", ".mpg", ".mpeg", ".ogv", ".flv"}
 AUDIO = {".mp3", ".flac", ".m4a", ".ogg", ".opus", ".wav", ".aac", ".wma"}
@@ -393,8 +400,12 @@ CREATE TABLE IF NOT EXISTS items(
   pos REAL DEFAULT 0, seen INTEGER DEFAULT 0, updated REAL);
 CREATE INDEX IF NOT EXISTS items_kind ON items(kind);
 CREATE INDEX IF NOT EXISTS items_root ON items(root);
+CREATE TABLE IF NOT EXISTS progress(
+  profile TEXT NOT NULL, item_id TEXT NOT NULL, pos REAL DEFAULT 0, seen INTEGER DEFAULT 0, updated REAL,
+  PRIMARY KEY(profile, item_id));
 CREATE TABLE IF NOT EXISTS watchlist (
-    item_key TEXT PRIMARY KEY,
+    profile TEXT NOT NULL DEFAULT 'default',
+    item_key TEXT NOT NULL,
     item_id TEXT,
     source TEXT DEFAULT 'media-locale',
     title TEXT NOT NULL,
@@ -411,7 +422,14 @@ CREATE TABLE IF NOT EXISTS watchlist (
     rating INTEGER DEFAULT 0,
     notes TEXT DEFAULT '',
     added_at REAL,
-    updated_at REAL
+    updated_at REAL,
+    category TEXT DEFAULT '',
+    progress INTEGER DEFAULT 0,
+    total INTEGER DEFAULT 0,
+    linked_key TEXT DEFAULT '',
+    ext_ids TEXT DEFAULT '',
+    import_source TEXT DEFAULT '',
+    PRIMARY KEY(profile, item_key)
 );
 """
 
@@ -423,7 +441,42 @@ MIGRAZIONI = (
     ("overview", "TEXT DEFAULT ''"),
     ("genres", "TEXT DEFAULT ''"),
 )
+WATCHLIST_MIGRAZIONI = (
+    ("category", "TEXT DEFAULT ''"),
+    ("progress", "INTEGER DEFAULT 0"),
+    ("total", "INTEGER DEFAULT 0"),
+    ("linked_key", "TEXT DEFAULT ''"),
+    ("ext_ids", "TEXT DEFAULT ''"),
+    ("import_source", "TEXT DEFAULT ''"),
+)
+WATCHLIST_CATEGORIES = ("film", "serie", "anime")
+WATCHLIST_COLS = ("item_key", "item_id", "source", "title", "kind", "series", "poster", "backdrop", "year", "genre",
+                  "overview", "url", "status", "priority", "rating", "notes", "added_at", "updated_at", "category",
+                  "progress", "total", "linked_key", "ext_ids", "import_source")
 _MIGRATI: set[str] = set()
+
+
+def _wl_out(row) -> dict:
+    d = dict(row)
+    d["ext_ids"] = wli._loads(d.get("ext_ids"))
+    return d
+
+
+def profile_id(request=None, cfg=None) -> str:
+    """Profilo della richiesta, come nel core: cookie gs_profile valido, altrimenti quello attivo sul server."""
+    pid = ""
+    try:
+        pid = str(request.cookies.get("gs_profile") or "") if request is not None else ""
+    except Exception:  # noqa: BLE001
+        pid = ""
+    if pid:
+        try:
+            from pozzo import sync as SY
+            if any(p["id"] == pid for p in SY.profiles(cfg)):
+                return pid
+        except Exception:  # noqa: BLE001 - senza core (test) il cookie non e' verificabile: si ignora
+            pass
+    return str((getattr(cfg, "app", None) or {}).get("profile") or "default")
 
 
 def db_path(cfg) -> Path:
@@ -431,8 +484,10 @@ def db_path(cfg) -> Path:
     return user_dir(cfg, "media-locale-cache") / "media.db"
 
 
-def connect(path: Path) -> sqlite3.Connection:
-    """Connessione nuova a ogni uso: le rotte girano su thread diversi del server."""
+def connect(path: Path, active: str = "default") -> sqlite3.Connection:
+    """Connessione nuova a ogni uso: le rotte girano su thread diversi del server.
+
+    `active`: profilo a cui vanno i dati preesistenti (watchlist e avanzamento) alla migrazione, che gira una volta."""
     c = sqlite3.connect(str(path), timeout=10)
     c.row_factory = sqlite3.Row
     c.executescript(SCHEMA)
@@ -441,6 +496,38 @@ def connect(path: Path) -> sqlite3.Connection:
         for nome, tipo in MIGRAZIONI:
             if nome not in colonne:
                 c.execute(f"ALTER TABLE items ADD COLUMN {nome} {tipo}")
+        colonne = {r["name"] for r in c.execute("PRAGMA table_info(watchlist)")}
+        for nome, tipo in WATCHLIST_MIGRAZIONI:
+            if nome not in colonne:
+                c.execute(f"ALTER TABLE watchlist ADD COLUMN {nome} {tipo}")
+        if "category" not in colonne:  # righe preesistenti: categoria dedotta da tipo e genere
+            c.execute("UPDATE watchlist SET category = CASE WHEN lower(coalesce(genre,'')) LIKE '%anim%' THEN 'anime'"
+                      " WHEN kind='film' THEN 'film' ELSE 'serie' END")
+        # righe fantasma create da una vecchia versione dell'interfaccia: «rimuovi» arrivava come un salvataggio e
+        # inseriva una voce con la chiave al posto del titolo. Un titolo uguale al proprio id, senza altro, non e' di nessuno.
+        c.execute("DELETE FROM watchlist WHERE (title = item_id OR title = item_key) AND coalesce(poster,'') = ''"
+                  " AND coalesce(overview,'') = '' AND coalesce(notes,'') = ''")
+        cols = ",".join(WATCHLIST_COLS)
+        if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='watchlist_old'").fetchone():
+            # una migrazione precedente si e' interrotta tra il cambio di nome e la copia: si completa, senza perdere la watchlist
+            c.execute(f"INSERT OR IGNORE INTO watchlist(profile,{cols}) SELECT ?,{cols} FROM watchlist_old", (active,))
+            c.execute("DROP TABLE watchlist_old")
+        if "profile" not in colonne:  # chiave (profile, item_key): le voci esistenti erano del profilo attivo
+            try:  # copia di sicurezza una volta sola, prima di toccare la struttura della watchlist
+                c.commit()
+                bak = Path(str(path) + ".bak-profili")
+                if not bak.exists():
+                    shutil.copy2(str(path), str(bak))
+            except OSError:
+                pass  # niente copia (disco pieno, permessi): la migrazione resta protetta dal recupero qui sopra
+            c.execute("ALTER TABLE watchlist RENAME TO watchlist_old")
+            c.executescript(SCHEMA)
+            c.execute(f"INSERT INTO watchlist(profile,{cols}) SELECT ?,{cols} FROM watchlist_old", (active,))
+            c.execute("DROP TABLE watchlist_old")
+        # avanzamento che viveva in items: passa al profilo attivo, poi la colonna non si usa piu'
+        c.execute("INSERT OR IGNORE INTO progress(profile,item_id,pos,seen,updated) SELECT ?,id,coalesce(pos,0),"
+                  "coalesce(seen,0),updated FROM items WHERE coalesce(pos,0)>0 OR coalesce(seen,0)>0", (active,))
+        c.execute("UPDATE items SET pos=0, seen=0 WHERE coalesce(pos,0)>0 OR coalesce(seen,0)>0")
         c.commit()
         _MIGRATI.add(str(path))
     return c
@@ -507,9 +594,16 @@ def scan(path: Path, roots: list[str], log=print) -> int:
     return seen
 
 
-def to_item(r) -> dict:
-    """Riga del database -> MediaItem del contratto."""
-    it = {"id": r["id"], "kind": r["kind"], "title": r["title"], "source": "media-locale", "seen": bool(r["seen"])}
+def progress_map(conn, profile: str) -> dict:
+    """item_id -> (pos, seen) del profilo."""
+    return {r["item_id"]: (r["pos"], r["seen"]) for r in
+            conn.execute("SELECT item_id, pos, seen FROM progress WHERE profile=?", (profile,))}
+
+
+def to_item(r, prog: dict | None = None) -> dict:
+    """Riga del database -> MediaItem del contratto. `prog` (progress_map) da' pos/seen del profilo."""
+    pos, seen = prog.get(r["id"], (0, 0)) if prog is not None else (r["pos"], r["seen"])
+    it = {"id": r["id"], "kind": r["kind"], "title": r["title"], "source": "media-locale", "seen": bool(seen)}
     if r["series"]:
         it["series"] = r["series"]
     if r["album"]:
@@ -528,8 +622,8 @@ def to_item(r) -> dict:
                 it[key] = r[key]
         except (IndexError, KeyError):
             pass
-    if r["pos"]:
-        it["resume_pos"] = round(float(r["pos"]), 1)
+    if pos:
+        it["resume_pos"] = round(float(pos), 1)
     return it
 
 
@@ -616,7 +710,10 @@ def open_external(path: Path) -> None:
 
 def register(gs):
     path = db_path(gs.cfg)
-    connect(path).close()
+    connect(path, profile_id(None, gs.cfg)).close()
+
+    def pid(request) -> str:
+        return profile_id(request, gs.cfg)
 
     gs.add_library_kind({"id": "film", "label": "Film", "icon": "🎬"})
     gs.add_library_kind({"id": "serie", "label": "Serie", "icon": "📺"})
@@ -633,7 +730,7 @@ def register(gs):
             conn.close()
 
     @gs.route("list")
-    def media_list(kind: str = "", query: str = "", q: str = "", limit: int = 1000):
+    def media_list(kind: str = "", query: str = "", q: str = "", limit: int = 1000, request: Request = None):
         kind = kind if kind in KINDS else ""
         term = (query or q or "").strip()[:200]
         sql, args, where = "SELECT * FROM items", [], []
@@ -650,26 +747,28 @@ def register(gs):
         args.append(max(1, min(limit, 5000)))
         conn = connect(path)
         try:
-            return [to_item(r) for r in conn.execute(sql, args)]
+            prog = progress_map(conn, pid(request))
+            return [to_item(r, prog) for r in conn.execute(sql, args)]
         finally:
             conn.close()
 
     @gs.route("detail")
-    def media_detail(id: str = ""):
+    def media_detail(id: str = "", request: Request = None):
         conn = connect(path)
         try:
-            return to_item(_row(conn, id))
+            return to_item(_row(conn, id), progress_map(conn, pid(request)))
         finally:
             conn.close()
 
     @gs.route("play_target")
-    def media_play_target(id: str = ""):
+    def media_play_target(id: str = "", request: Request = None):
         conn = connect(path)
         try:
             row = _row(conn, id)
+            pos, seen = progress_map(conn, pid(request)).get(row["id"], (0, 0))
             file = _media_file(conn, row["id"], "path")
             ext = file.suffix.lower()
-            out = {"resume_pos": 0.0 if row["seen"] else round(float(row["pos"] or 0), 1),
+            out = {"resume_pos": 0.0 if seen else round(float(pos or 0), 1),
                    "external": ext not in BROWSER, "mime": MIME.get(ext, "application/octet-stream"),
                    "path": str(file)}  # il percorso serve al lettore esterno, «url» al player integrato
             if ext in BROWSER:
@@ -680,7 +779,7 @@ def register(gs):
 
     @gs.route("set_progress", methods=("POST",))
     def media_set_progress(body: dict | None = Body(None), id: str = "", pos: float | None = None,
-                           seen: bool | None = None, duration: float | None = None):
+                           seen: bool | None = None, duration: float | None = None, request: Request = None):
         data = body if isinstance(body, dict) else {}
         item_id = str(data.get("id") or id or "").strip()
         position = _num(data.get("pos", pos), 0.0)
@@ -690,14 +789,18 @@ def register(gs):
         try:
             row = _row(conn, item_id)
             known = length if length > 0 else float(row["duration"] or 0)
-            watched = bool(flag) if flag is not None else bool(row["seen"])
+            profile = pid(request)
+            watched = bool(flag) if flag is not None else bool(progress_map(conn, profile).get(item_id, (0, 0))[1])
             if known > 0 and position >= known * 0.9:  # «visto» oltre il 90%, come fa Jellyfin
                 watched = True
-            conn.execute("UPDATE items SET pos=?, seen=?, duration=?, updated=? WHERE id=?",
-                         (0.0 if watched else max(0.0, position), 1 if watched else 0, known or None,
-                          time.time(), item_id))
+            now = time.time()
+            conn.execute("UPDATE items SET duration=?, updated=? WHERE id=?", (known or None, now, item_id))
+            conn.execute("INSERT INTO progress(profile,item_id,pos,seen,updated) VALUES(?,?,?,?,?)"
+                         " ON CONFLICT(profile,item_id) DO UPDATE SET pos=excluded.pos, seen=excluded.seen,"
+                         " updated=excluded.updated",
+                         (profile, item_id, 0.0 if watched else max(0.0, position), 1 if watched else 0, now))
             conn.commit()
-            return {"ok": True, "item": to_item(_row(conn, item_id))}
+            return {"ok": True, "item": to_item(_row(conn, item_id), progress_map(conn, profile))}
         finally:
             conn.close()
 
@@ -786,8 +889,9 @@ def register(gs):
                 overview_val = updated.get("overview") or (r["overview"] if "overview" in r.keys() else "") or ""
                 genres_val = updated.get("genres") or (r["genres"] if "genres" in r.keys() else "") or ""
                 conn.execute(
-                    "UPDATE items SET poster=?, backdrop=?, overview=?, genres=?, updated=? WHERE id=?",
-                    (updated.get("poster") or r["poster"] or "",
+                    "UPDATE items SET title=?, poster=?, backdrop=?, overview=?, genres=?, updated=? WHERE id=?",
+                    (updated.get("title") or r["title"] or "",
+                     updated.get("poster") or r["poster"] or "",
                      backdrop_val,
                      overview_val,
                      genres_val,
@@ -800,10 +904,13 @@ def register(gs):
             conn.close()
 
     @gs.route("watchlist")
-    def media_watchlist_list(status: str = "", priority: str = ""):
-        sql, args, where = "SELECT * FROM watchlist", [], []
+    def media_watchlist_list(status: str = "", priority: str = "", category: str = "", request: Request = None):
+        sql, args, where = "SELECT * FROM watchlist", [pid(request)], ["profile = ?"]
         status = (status or "").strip()
         priority = (priority or "").strip()
+        if (category or "").strip() in WATCHLIST_CATEGORIES:
+            where.append("category = ?")
+            args.append(category.strip())
         if status and status in WATCHLIST_STATUSES:
             where.append("status = ?")
             args.append(status)
@@ -816,13 +923,18 @@ def register(gs):
         conn = connect(path)
         try:
             rows = conn.execute(sql, args).fetchall()
-            return {"items": [dict(row) for row in rows]}
+            return {"items": [_wl_out(row) for row in rows]}
         finally:
             conn.close()
 
     @gs.route("watchlist", methods=("POST",))
-    def media_watchlist_save(body: dict | None = Body(None)):
+    def media_watchlist_save(body: dict | None = Body(None), request: Request = None):
         data = body if isinstance(body, dict) else {}
+        if isinstance(data.get("entry"), dict) or data.get("action") == "remove":
+            # forma {action, entry, entries} usata dall'interfaccia: prima veniva letta come voce vuota (400) o, per «remove», come un salvataggio
+            if data.get("action") == "remove":
+                return media_watchlist_remove({"item_key": data.get("item_key") or data.get("id")}, request)
+            data = data["entry"]
         source = str(data.get("source") or "").strip() or "media-locale"
         item_id = str(data.get("item_id") or data.get("id") or "").strip()
         item_key = str(data.get("item_key") or "").strip()
@@ -834,7 +946,8 @@ def register(gs):
         now = time.time()
         conn = connect(path)
         try:
-            existing = conn.execute("SELECT * FROM watchlist WHERE item_key = ?", (item_key,)).fetchone()
+            profile = pid(request)
+            existing = conn.execute("SELECT * FROM watchlist WHERE profile = ? AND item_key = ?", (profile, item_key)).fetchone()
             ex = dict(existing) if existing else {}
 
             def _pick_str(field, fallback="", allow_empty=False):
@@ -880,38 +993,89 @@ def register(gs):
             final_notes = str(data["notes"]) if "notes" in data and data["notes"] is not None else (ex.get("notes") or "")
             added_at = ex.get("added_at") if existing and ex.get("added_at") is not None else now
 
+            cat = str(data.get("category") or "").strip() if "category" in data else None
+            final_category = cat if cat in WATCHLIST_CATEGORIES else (ex.get("category") or "")
+            nums = {}
+            for f in ("progress", "total"):
+                try:
+                    nums[f] = max(0, int(float(data[f]))) if data.get(f) is not None else int(ex.get(f) or 0)
+                except (TypeError, ValueError):
+                    nums[f] = int(ex.get(f) or 0)
+            final_linked = str(data["linked_key"]) if data.get("linked_key") is not None else (ex.get("linked_key") or "")
+            final_import = str(data["import_source"]) if data.get("import_source") is not None else (ex.get("import_source") or "")
+            ext = wli._loads(ex.get("ext_ids"))
+            if isinstance(data.get("ext_ids"), dict):
+                ext.update({str(k): v for k, v in data["ext_ids"].items() if v not in (None, "")})
+
             conn.execute(
                 """INSERT INTO watchlist (
-                    item_key, item_id, source, title, kind, series, poster, backdrop,
-                    year, genre, overview, url, status, priority, rating, notes, added_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(item_key) DO UPDATE SET
+                    profile, item_key, item_id, source, title, kind, series, poster, backdrop,
+                    year, genre, overview, url, status, priority, rating, notes, added_at, updated_at,
+                    category, progress, total, linked_key, ext_ids, import_source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(profile, item_key) DO UPDATE SET
                     item_id=excluded.item_id, source=excluded.source, title=excluded.title, kind=excluded.kind,
                     series=excluded.series, poster=excluded.poster, backdrop=excluded.backdrop, year=excluded.year,
                     genre=excluded.genre, overview=excluded.overview, url=excluded.url, status=excluded.status,
                     priority=excluded.priority, rating=excluded.rating, notes=excluded.notes,
-                    added_at=excluded.added_at, updated_at=excluded.updated_at""",
+                    added_at=excluded.added_at, updated_at=excluded.updated_at,
+                    category=excluded.category, progress=excluded.progress, total=excluded.total,
+                    linked_key=excluded.linked_key, ext_ids=excluded.ext_ids, import_source=excluded.import_source""",
                 (
-                    item_key, final_item_id, final_source, final_title, final_kind, final_series,
+                    profile, item_key, final_item_id, final_source, final_title, final_kind, final_series,
                     final_poster, final_backdrop, final_year, final_genre, final_overview, final_url,
-                    final_status, final_priority, final_rating, final_notes, added_at, now
+                    final_status, final_priority, final_rating, final_notes, added_at, now,
+                    final_category, nums["progress"], nums["total"], final_linked, json.dumps(ext), final_import
                 ),
             )
             conn.commit()
-            updated_row = conn.execute("SELECT * FROM watchlist WHERE item_key = ?", (item_key,)).fetchone()
-            return {"ok": True, "item": dict(updated_row)}
+            updated_row = conn.execute("SELECT * FROM watchlist WHERE profile = ? AND item_key = ?", (profile, item_key)).fetchone()
+            return {"ok": True, "item": _wl_out(updated_row)}
+        finally:
+            conn.close()
+
+    @gs.route("watchlist/import", methods=("POST",))
+    def media_watchlist_import(body: dict | None = Body(None)):
+        """Anteprima di un'importazione: legge/scarica, NON salva."""
+        data = body if isinstance(body, dict) else {}
+        try:
+            return wli.run_import(str(data.get("provider") or ""), str(data.get("content") or ""),
+                                  str(data.get("username") or ""))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+    @gs.route("watchlist/export")
+    def media_watchlist_export(request: Request = None):
+        """Backup JSON della watchlist del profilo corrente (si ripristina con watchlist/import provider «pozzo»)."""
+        profile = pid(request)
+        conn = connect(path)
+        try:
+            rows = conn.execute("SELECT * FROM watchlist WHERE profile = ? ORDER BY added_at, item_key", (profile,))
+            entries = [{k: v for k, v in _wl_out(r).items() if k != "profile"} for r in rows]
+        finally:
+            conn.close()
+        return {"version": 1, "app": "pozzo-media", "exported_at": time.time(), "profile": profile, "entries": entries}
+
+    @gs.route("watchlist/bulk", methods=("POST",))
+    def media_watchlist_bulk(body: dict | None = Body(None), request: Request = None):
+        entries = (body or {}).get("entries") if isinstance(body, dict) else None
+        if not isinstance(entries, list):
+            raise HTTPException(400, "entries mancante")
+        conn = connect(path)
+        try:
+            return wli.bulk_save(conn, entries[: wli.MAX_ENTRIES], profile=pid(request))
         finally:
             conn.close()
 
     @gs.route("watchlist/remove", methods=("POST",))
-    def media_watchlist_remove(body: dict | None = Body(None)):
+    def media_watchlist_remove(body: dict | None = Body(None), request: Request = None):
         data = body if isinstance(body, dict) else {}
         key = str(data.get("item_key") or data.get("id") or data.get("item_id") or "").strip()
         if not key:
             raise HTTPException(400, "item_key o id mancante")
         conn = connect(path)
         try:
-            conn.execute("DELETE FROM watchlist WHERE item_key = ? OR item_id = ?", (key, key))
+            conn.execute("DELETE FROM watchlist WHERE profile = ? AND (item_key = ? OR item_id = ?)", (pid(request), key, key))
             conn.commit()
             return {"ok": True, "removed": key}
         finally:

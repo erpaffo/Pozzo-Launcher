@@ -43,6 +43,7 @@ ALLOWED = [
     ("GET", r"/img/\d+/[a-z0-9_]+"), ("GET", r"/icons/(platform|store)/[^/]+"), ("GET", r"/coll-img/[^/]+/(icon|cover)"),
     ("GET", r"/shots/\d+"), ("GET", r"/m/api/me"), ("POST", r"/m/api/logout"), ("WS", r"/m/ws"), ("WS", r"/m/mic"),
     ("WS", r"/m/screen"), ("GET", r"/m/api/pad"), ("POST", r"/m/api/pad"),
+    ("POST", r"/api/media/remote/command"), ("GET", r"/api/media/remote/state"),  # telecomando del lettore Media
     ("POST", r"/m/api/downloads"),  # link condivisi al telefono: vanno in coda sul PC
 ]
 PLAYER_COLORS = ["#4aa3ff", "#ff5f5f", "#3ddc84", "#f5c518"]  # giocatore 1..4 (come i LED dei controller)

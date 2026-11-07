@@ -755,6 +755,7 @@
  "d.status.completed": "완료",
  "d.status.error": "오류",
  "d.status.seeding": "공유 중",
+ "d.status.stalled": "정체됨",
  "d.prio.skip": "건너뛰기",
  "d.prio.normal": "보통",
  "d.prio.high": "높음",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "참가",
  "f.party.err_core": "RetroArch 코어가 친구의 코어와 다릅니다",
  "f.party.err_emulator": "친구가 Eden을 사용합니다: 이 게임에서는 나도 에뮬레이터로 Eden을 사용해야 합니다",
+ "f.party.err_cgnat": "인터넷 제공업체가 다른 고객과 IP를 공유하고 있습니다(CGNAT, IP {ip}). 포트 포워딩이 작동하지 않습니다. Tailscale이나 ZeroTier 같은 VPN을 사용하고 «VPN»을 선택하세요.",
+ "f.party.upnp_ok": "공유기의 포트 {port}를 자동으로 열었습니다.",
+ "f.party.upnp_fail": "공유기가 포트를 자동으로 열지 못했습니다. 공유기 설정에서 UPnP를 켜거나 포트 포워딩을 직접 설정하세요.",
  "f.party.invite_copied": "초대가 복사되었습니다: 채팅에 붙여넣으세요",
  "f.party.invite_title": "친구와 함께 플레이: 친구를 위한 초대 만들기",
  "f.party.ip": "내 주소 (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Eden 방이 바로 닫혔습니다: 이 버전에 eden-room이 있는지 확인하세요",
  "s.party.edenStart": "Eden 방을 시작할 수 없습니다: {e}",
  "s.party.noPublicIp": "공인 IP를 확인할 수 없습니다: 연결을 확인하세요",
+ "s.party.badPort": "잘못된 포트",
  "s.party.notFound": "라이브러리에서 게임을 찾을 수 없음",
  "s.party.notInLibrary": "라이브러리에 없는 게임입니다",
  "s.party.regProtoBool": "register_protocol은 true 또는 false여야 합니다",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "폴더를 찾을 수 없음",
  "s.profilesettings.notAllowed": "허용되지 않은 설정: {keys}",
  "s.profilesettings.themeNotFound": "테마를 찾을 수 없음",
- "s.reco.unknownGame": "알 수 없는 게임"
+ "s.reco.unknownGame": "알 수 없는 게임",
+ "s.notify.queueDone": "다운로드 완료",
+ "s.notify.queueDoneBody": "{n}개 완료",
+ "s.notify.queueDoneFailed": "{n}개 실패"
 }

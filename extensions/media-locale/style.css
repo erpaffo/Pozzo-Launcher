@@ -363,6 +363,7 @@
 }
 .pm-player-video { width: 100%; height: 100%; object-fit: contain; display: block; }
 .pm-player-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.pm-player-actions-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pm-player-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px;
   font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; border: 1px solid var(--line);
@@ -930,21 +931,225 @@
   max-height: 100vh !important;
   object-fit: contain !important;
 }
-.pm-player-overlay.pm-fullscreen-mode .pm-player-actions {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10 !important;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%) !important;
-  padding: 14px 20px !important;
-  margin-top: 0 !important;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-.pm-player-overlay.pm-fullscreen-mode .pm-player-modal:hover .pm-player-actions,
-.pm-player-overlay.pm-fullscreen-mode .pm-player-modal:focus-within .pm-player-actions {
-  opacity: 1;
-}
+/* a schermo intero i comandi stanno solo nella barra del lettore */
+.pm-player-overlay.pm-fullscreen-mode .pm-player-actions { display: none !important; }
 
 
+
+.pm-src-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+.pm-src-chips:empty { display: none; }
+.pm-src-chip { font-size: .72rem; padding: 2px 8px; border-radius: 10px; background: var(--bg-3); color: var(--text); border: 1px solid var(--line); }
+.pm-src-ok { border-color: var(--accent); }
+.pm-src-slow { border-color: #d9a400; }
+.pm-src-error { border-color: #d64545; color: #d64545; }
+.pm-src-absent, .pm-src-unknown { color: var(--muted); opacity: .7; }
+
+/* 17. Barra comandi del lettore video */
+.pm-ctl {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 28px 12px 8px;
+  background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0)); color: #fff;
+  transition: opacity .2s ease;
+}
+.pm-player.pm-idle .pm-ctl { opacity: 0; pointer-events: none; }
+.pm-player.pm-idle { cursor: none; }
+.pm-ctl-row { display: flex; align-items: center; gap: 4px; }
+.pm-ctl-spacer { flex: 1; }
+.pm-ctl-time { font-size: .8rem; font-variant-numeric: tabular-nums; margin: 0 8px; white-space: nowrap; }
+.pm-ctl-btn {
+  background: transparent; border: 0; color: inherit; font: inherit; font-size: 1rem; line-height: 1;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+}
+.pm-ctl-btn.pm-ctl-text { font-size: .8rem; font-weight: 600; }
+.pm-ctl-btn:hover, .pm-ctl-btn:focus-visible { background: rgba(255,255,255,.18); outline: none; }
+.pm-ctl input[type=range] { accent-color: var(--accent); cursor: pointer; }
+.pm-ctl-seek { display: block; width: 100%; margin: 0 0 4px; height: 14px; }
+.pm-ctl-vol { width: 72px; }
+.pm-ctl-menuwrap { position: relative; }
+.pm-ctl-menu {
+  position: absolute; right: 0; bottom: calc(100% + 6px); min-width: 140px; padding: 4px;
+  background: rgba(20,20,22,.96); border: 1px solid var(--line); border-radius: 8px;
+  display: flex; flex-direction: column; max-height: 260px; overflow: auto;
+}
+.pm-ctl-menu[hidden] { display: none; }
+.pm-ctl-menu button {
+  background: transparent; border: 0; color: #fff; font: inherit; font-size: .84rem; text-align: left;
+  padding: 7px 10px; border-radius: 5px; cursor: pointer;
+}
+.pm-ctl-menu button:hover, .pm-ctl-menu button:focus-visible { background: rgba(255,255,255,.14); outline: none; }
+.pm-ctl-menu button.pm-on::before { content: "✓ "; color: var(--accent); }
+@media (max-width: 560px) { .pm-ctl-vol, .pm-ctl-time { display: none; } }
+
+/* 18. Elenco episodi nel lettore (stile Netflix) */
+.pm-ctl-btn:disabled { opacity: .35; cursor: default; background: transparent; }
+.pm-eps {
+  position: absolute; top: 0; right: 0; bottom: 70px; z-index: 6; width: min(360px, 100%);
+  background: rgba(14,14,16,.94); border-left: 1px solid var(--line); color: #fff;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pm-eps[hidden] { display: none; }
+.pm-eps-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.pm-eps-tabs { display: flex; gap: 4px; padding: 8px 10px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.pm-eps-tabs button {
+  background: transparent; border: 1px solid var(--line); color: inherit; font: inherit; font-size: .78rem;
+  padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.pm-eps-tabs button.pm-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.pm-eps-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1; }
+.pm-eps-item {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left; padding: 10px;
+  background: transparent; border: 0; border-radius: 8px; color: inherit; font: inherit; cursor: pointer;
+}
+.pm-eps-item:hover, .pm-eps-item:focus-visible { background: rgba(255,255,255,.1); outline: none; }
+.pm-eps-item.pm-cur { background: rgba(255,255,255,.16); }
+.pm-eps-item.pm-seen:not(.pm-cur) { opacity: .6; }
+.pm-eps-num { min-width: 1.6em; font-size: 1.15rem; font-weight: 700; color: var(--muted); text-align: center; }
+.pm-eps-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pm-eps-body b { font-size: .88rem; font-weight: 600; }
+.pm-eps-body small { font-size: .74rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pm-eps-mark { color: var(--accent); font-size: .8rem; min-width: 1em; }
+@media (max-width: 560px) { .pm-eps { width: 100%; } }
+
+/* 17. Watchlist: categorie, avanzamento, associazione al catalogo, importazione */
+.pm-wl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pm-wl-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pm-wl-count {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--muted);
+  font-size: .72rem;
+}
+.pm-season-tab.pm-active .pm-wl-count {
+  background: var(--accent);
+  color: var(--bg);
+}
+.pm-wl-cat-badge, .pm-wl-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  color: var(--text);
+}
+.pm-wl-linked {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pm-wl-unlinked {
+  color: var(--muted);
+  font-weight: 500;
+}
+.pm-wl-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+}
+.pm-wl-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.pm-wl-progress-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.pm-wl-progress-txt {
+  font-size: .76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.pm-wli-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: .85rem;
+}
+.pm-wli-text {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-size: .85rem;
+  resize: vertical;
+}
+.pm-wli-text:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.pm-wli-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.pm-wli-warnings {
+  margin: 8px 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: .8rem;
+}
+.pm-wli-error {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: .85rem;
+}
+.pm-wli-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* 19. Attesa all'apertura del lettore */
+.pm-loading-box { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #fff; text-align: center; max-width: 420px; }
+.pm-loading-spin {
+  width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--accent);
+}
+.pm-loading-title { font-size: 1.05rem; font-weight: 600; }
+.pm-loading-sub { font-size: .85rem; color: var(--muted); }
+.pm-loading-spin.pm-inline { display: inline-block; width: 16px; height: 16px; border-width: 2px; vertical-align: -3px; margin-right: 8px; }
+
+/* 20. Ricerca generale su Stream4me */
+.pm-search-status { margin: 0 0 14px; padding: 12px 16px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line); font-size: .88rem; }
+.pm-search-s4me { margin-bottom: 18px; }
+.pm-search-title { margin: 0 0 10px; font-size: 1rem; font-weight: 600; }
+
+/* 21. Lettore: scheda «Prossimo episodio» */
+.pm-nextup { position: absolute; right: 16px; bottom: 84px; z-index: 6; max-width: min(320px, calc(100% - 32px)); padding: 12px 14px; border-radius: 10px; background: rgba(0,0,0,.82); border: 1px solid var(--line); color: #fff; display: flex; flex-direction: column; gap: 6px; }
+.pm-nextup-title { font-size: .9rem; }
+.pm-nextup-ep { font-size: .82rem; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-nextup-btns { display: flex; gap: 8px; margin-top: 4px; }
+
+/* 22. Impostazioni del lettore */
+.pm-pref-row { display: flex; align-items: center; gap: 8px; font-size: .86rem; margin-top: 6px; }
+.pm-pref-secs { width: 80px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; }
+.pm-pref-secs:disabled { opacity: .5; }

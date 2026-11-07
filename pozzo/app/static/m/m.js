@@ -1110,6 +1110,40 @@ function openShare(text) {
 }
 
 
+/* ------------------------------------------------------------------ telecomando del lettore Media */
+let mrT = 0, mrBusy = 0;  // mrBusy: istante fino al quale non si sovrascrivono i cursori (l'utente li sta toccando)
+const mrTime = (s) => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = String(s % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${x}` : `${m}:${x}`; };
+function renderMedia(s) {
+  const on = !!(s && s.active);
+  $("#mr-none").hidden = on; $("#mr-box").hidden = !on;
+  if (!on) return;
+  $("#mr-title").textContent = s.title || "";
+  $("#mr-sub").textContent = s.series ? `${s.series}${s.season != null && s.episode != null ? ` · S${s.season}E${s.episode}` : ""}` : "";
+  $("#mr-toggle").textContent = s.paused ? "▶" : "⏸";
+  $("#mr-prev").disabled = !s.hasPrev; $("#mr-next").disabled = !s.hasNext;
+  $("#mr-skip").hidden = !s.skipIntro;
+  $("#mr-mute").textContent = s.muted ? "🔇" : "🔊";
+  $("#mr-dur").textContent = mrTime(s.duration);
+  if (Date.now() > mrBusy) {
+    $("#mr-seek").max = Math.max(1, Math.floor(s.duration || 1)); $("#mr-seek").value = Math.floor(s.pos || 0);
+    $("#mr-vol").value = Math.round((s.volume ?? 1) * 100); $("#mr-pos").textContent = mrTime(s.pos);
+  }
+}
+async function loadMedia() {
+  clearTimeout(mrT);
+  try { renderMedia(await api("/api/media/remote/state")); } catch { renderMedia(null); }
+  mrT = setTimeout(() => { if (!$("#v-media").hidden) loadMedia(); }, 1500);  // solo mentre il pannello e' visibile
+}
+async function mrSend(cmd, arg) {
+  try { await api("/api/media/remote/command", { body: { cmd, arg } }); } catch (e) { return toast(e.message, true); }
+  setTimeout(loadMedia, 350);
+}
+$("#v-media").onclick = (e) => { const b = e.target.closest("[data-mr]"); if (b) mrSend(b.dataset.mr, b.dataset.arg === undefined ? undefined : +b.dataset.arg); };
+$("#mr-seek").oninput = (e) => { mrBusy = Date.now() + 2500; $("#mr-pos").textContent = mrTime(e.target.value); };
+$("#mr-seek").onchange = (e) => mrSend("seek", +e.target.value);
+$("#mr-vol").oninput = () => { mrBusy = Date.now() + 2500; };
+$("#mr-vol").onchange = (e) => mrSend("volume", +e.target.value / 100);
+
 /* ------------------------------------------------------------------ navigazione */
 function tab(name) {
   if (name === "pad") return openPad();
@@ -1117,6 +1151,8 @@ function tab(name) {
   $("#v-home").hidden = name !== "home";
   $("#v-lib").hidden = name !== "lib";
   $("#v-act").hidden = name !== "act";
+  $("#v-media").hidden = name !== "media";
+  if (name === "media") loadMedia();
   if (name === "lib" && !$("#grid").children.length) filterLib();
   if (name === "act") loadActivity();
 }

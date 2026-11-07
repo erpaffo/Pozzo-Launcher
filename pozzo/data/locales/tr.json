@@ -755,6 +755,7 @@
  "d.status.completed": "Tamamlandı",
  "d.status.error": "Hata",
  "d.status.seeding": "Paylaşılıyor",
+ "d.status.stalled": "Takıldı",
  "d.prio.skip": "Atla",
  "d.prio.normal": "Normal",
  "d.prio.high": "Yüksek",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "Katıl",
  "f.party.err_core": "RetroArch çekirdeği arkadaşınınkinden farklı",
  "f.party.err_emulator": "Arkadaşın Eden kullanıyor: bu oyun için sen de emülatör olarak Eden'e sahip olmalısın",
+ "f.party.err_cgnat": "İnternet sağlayıcınız IP adresinizi başka müşterilerle paylaşıyor (CGNAT, IP {ip}): port yönlendirme çalışamaz. Tailscale veya ZeroTier gibi bir VPN kullanın ve «VPN» seçeneğini seçin.",
+ "f.party.upnp_ok": "{port} portu yönlendiricide otomatik olarak açıldı.",
+ "f.party.upnp_fail": "Yönlendirici portu kendiliğinden açmadı: ayarlarından UPnP'yi etkinleştirin veya port yönlendirmeyi elle yapın.",
  "f.party.invite_copied": "Davetiye kopyalandı: bir sohbete yapıştır",
  "f.party.invite_title": "Bir arkadaşla oyun: bir arkadaş için davetiye oluştur",
  "f.party.ip": "Adresin (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Eden odası hemen kapandı: bu sürümde eden-room olduğunu kontrol edin",
  "s.party.edenStart": "Eden odası başlatılamıyor: {e}",
  "s.party.noPublicIp": "Genel IP adresiniz algılanamıyor: bağlantınızı kontrol edin",
+ "s.party.badPort": "Geçersiz port",
  "s.party.notFound": "Oyun kütüphanede bulunamadı",
  "s.party.notInLibrary": "Oyun kütüphanenizde yok",
  "s.party.regProtoBool": "register_protocol true veya false olmalı",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "Klasör bulunamadı",
  "s.profilesettings.notAllowed": "İzin verilmeyen ayarlar: {keys}",
  "s.profilesettings.themeNotFound": "Tema bulunamadı",
- "s.reco.unknownGame": "Bilinmeyen oyun"
+ "s.reco.unknownGame": "Bilinmeyen oyun",
+ "s.notify.queueDone": "İndirmeler bitti",
+ "s.notify.queueDoneBody": "{n} tamamlandı",
+ "s.notify.queueDoneFailed": "{n} başarısız"
 }

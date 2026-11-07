@@ -385,3 +385,125 @@ def test_catalog_refresh_diff_e_cancellazione(tmp, monkeypatch):
     st = gs.post("catalog/refresh")
     assert st["last_error"] is None and st["updated_at"]
     assert ids() == {"s4me:a:new", "s4me:a:pin"}
+
+
+VIX_M3U8 = "https://vixcloud.co/hls/77.m3u8"
+VIX_HTML = '<h1>Film</h1><script>player.setup({ file: "%s" });</script>' % VIX_M3U8
+
+
+def test_vixcloud_play_target_passa_dal_proxy_e_non_salva_il_token(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    monkeypatch.setattr(rw, "fetch_url", lambda *a, **k: (VIX_HTML.encode(), {}))
+    # un token salvato da una versione precedente e' scaduto: va ignorato e risolto di nuovo
+    seed_item(tmp, "v2", url="https://sc.example/titles/78-film", stream_url="https://vixcloud.co/hls/old.m3u8?token=scaduto")
+    out = gs.get("play_target", id="v2")
+    assert out["url"].startswith("/plugin-api/ricette-web/hls.m3u8?u=") and "scaduto" not in out["url"]
+    assert out["external"] is False
+    conn = sqlite3.connect(db(tmp))
+    saved = conn.execute("SELECT stream_url FROM items WHERE id='v2'").fetchone()[0]
+    conn.close()
+    assert "scaduto" in saved  # la riga non e' stata riscritta con il nuovo token (mai in cache)
+
+
+def test_vixcloud_playlist_riscritta_e_headers():
+    base = "https://vixcloud.co/playlist/77?token=abc"
+    txt = "\n".join(['#EXTM3U', '#EXT-X-KEY:METHOD=AES-128,URI="/key/1"', '#EXTINF:4,', 'seg1.ts', ''])
+    out = rw.rewrite_playlist(txt, base)
+    assert out.count("/plugin-api/ricette-web/hls.m3u8?u=") == 2 and "\nseg1.ts" not in out
+    h = rw.vix_headers(base)
+    assert h["Referer"] == "https://vixcloud.co/" and "Mozilla" in h["User-Agent"]
+
+
+def test_vixcloud_proxy_rifiuta_host_non_ammessi(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    for bad in ("http://127.0.0.1:8000/api", "https://evil.example/x.ts", "file:///etc/passwd"):
+        with pytest.raises(HTTPException) as err:
+            gs.get("hls.m3u8", u=bad)
+        assert err.value.status_code == 403
+
+
+def test_vixcloud_external_mpv_con_referrer(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    monkeypatch.setattr(rw, "fetch_url", lambda *a, **k: (VIX_HTML.encode(), {}))
+    seed_item(tmp, "v1", url="https://sc.example/titles/77-film", stream_url="https://vixcloud.co/hls/old.m3u8?token=scaduto")
+    launched = []
+    monkeypatch.setattr(rw.shutil, "which", lambda name: "/usr/bin/mpv" if name == "mpv" else None)
+    monkeypatch.setattr(rw.subprocess, "Popen", lambda args, **kw: launched.append(args))
+    gs.post("external", {"id": "v1"})
+    assert launched[0][1] == VIX_M3U8 and "--referrer=https://vixcloud.co/" in launched[0]
+
+
+def test_external_passa_la_lingua_audio_solo_se_valida(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    seed_item(tmp, "i1", stream_url="https://cdn.stream.example/hls/master.m3u8")
+    launched = []
+    monkeypatch.setattr(rw.shutil, "which", lambda name: "/usr/bin/mpv" if name == "mpv" else None)
+    monkeypatch.setattr(rw.subprocess, "Popen", lambda args, **kw: launched.append(args))
+    gs.post("external", {"id": "i1", "lang": "en"})
+    gs.post("external", {"id": "i1", "lang": "en --evil"})  # niente argomenti in più dal corpo JSON
+    assert launched[0][-1] == "--alang=en" and launched[1] == ["/usr/bin/mpv", "https://cdn.stream.example/hls/master.m3u8"]
+
+
+def test_episodes_overview_migrazione_e_detail(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    conn = sqlite3.connect(db(tmp))
+    # DB vecchio: ricrea episodes senza la colonna overview, poi la migrazione deve aggiungerla (idempotente)
+    conn.execute("DROP TABLE episodes")
+    conn.execute("CREATE TABLE episodes (id TEXT PRIMARY KEY, parent_id TEXT, recipe_id TEXT, title TEXT, series TEXT,"
+                 " season INT, episode INT, duration REAL, stream_url TEXT, url TEXT, poster TEXT, genre TEXT,"
+                 " source TEXT DEFAULT 'ricette-web', resume_pos REAL DEFAULT 0.0, seen INT DEFAULT 0, updated REAL)")
+    conn.commit()
+    conn.close()
+    for _ in range(2):
+        make_gs(tmp, monkeypatch)
+    conn = sqlite3.connect(db(tmp))
+    assert "overview" in [r[1] for r in conn.execute("PRAGMA table_info(episodes)")]
+    conn.execute("INSERT INTO items (id, recipe_id, kind, title, url, source, updated) VALUES ('s1','stream-test','serie','Serie','','ricette-web',0)")
+    conn.execute("INSERT INTO episodes (id, parent_id, title, season, episode, overview, source) VALUES ('e1','s1','Pilota',1,1,'Trama pilota','ricette-web')")
+    conn.commit()
+    conn.close()
+    out = gs.get("detail", id="s1")
+    assert out["episodes"][0]["title"] == "Pilota" and out["episodes"][0]["overview"] == "Trama pilota"
+
+
+def test_detail_streamingcommunity_rilegge_le_stagioni_e_conserva_il_visto(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    uid = "s4me:sc:ep:old"
+    conn = sqlite3.connect(db(tmp))
+    conn.execute("INSERT INTO items (id, recipe_id, kind, title, url, source, updated) VALUES ('s4me:sc:7', 's4me:sc', 'film', 'Serie', 'https://streamingcommunity.example/it/titles/77-serie', 'stream4me', 0)")
+    conn.execute("INSERT INTO episodes (id, parent_id, recipe_id, title, series, season, episode, source, resume_pos, seen, updated) VALUES (?, 's4me:sc:7', 's4me:sc', 'Episodio 1', 'Serie', 1, 1, 'stream4me', 42.0, 1, 0)", (uid,))
+    conn.commit(); conn.close()
+    seen_calls = []
+
+    class Bridge:
+        def scrape_channel_episodes(self, html, url, series_title="", channel_id="", fetcher=None, **k):
+            seen_calls.append(fetcher is not None)
+            ids = {1: uid, 2: "s4me:sc:ep:new2"}
+            return [{"id": ids[s], "kind": "episodio", "title": f"Ep S{s}", "series": "Serie", "season": s, "episode": 1,
+                     "url": f"{url}?episode_id={s}", "stream_url": "", "overview": ""} for s in (1, 2)]
+
+    bridge = Bridge()
+    monkeypatch.setattr(rw, "kodi_bridge_module", lambda: bridge)
+    monkeypatch.setattr(rw.httpx, "get", lambda *a, **k: SimpleNamespace(status_code=200, text="<html></html>", url=a[0]))
+    out = gs.get("detail", id="s4me:sc:7")
+    assert sorted((e["season"], e["episode"]) for e in out["episodes"]) == [(1, 1), (2, 1)]
+    first = next(e for e in out["episodes"] if e["season"] == 1)
+    assert first["seen"] is True or first.get("seen") == 1  # visto e ripresa non si perdono
+    # fatto una volta: la seconda apertura non rilegge le pagine
+    gs.get("detail", id="s4me:sc:7")
+    assert seen_calls == [True]
+
+
+def test_vixcloud_flusso_risolto_da_poco_non_si_risolve_due_volte(tmp, monkeypatch):
+    gs = make_gs(tmp, monkeypatch)
+    seed_item(tmp, "v3", url="https://sc.example/titles/79-film", stream_url="")
+    calls = []
+
+    def fake_fetch(*a, **k):
+        calls.append(1)
+        return VIX_HTML.encode(), {}
+
+    monkeypatch.setattr(rw, "fetch_url", fake_fetch)
+    a = gs.get("play_target", id="v3")
+    b = gs.get("play_target", id="v3")  # secondo avvio dello stesso episodio: dalla memoria
+    assert a["url"] == b["url"] and len(calls) == 1

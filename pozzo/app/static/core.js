@@ -351,6 +351,7 @@ document.addEventListener("click", (e) => {
 async function api(path, opts = {}) {
   const init = { method: opts.method || "GET", headers: { "Content-Type": "application/json" } };
   if (opts.body !== undefined) { init.body = JSON.stringify(opts.body); init.method = opts.method || "POST"; }
+  if (opts.signal) init.signal = opts.signal;
   let r;
   try { r = await fetch(path, init); }
   catch { throw new Error(t("b.core.api.noResponse")); }  // fetch dice solo «Failed to fetch»

@@ -755,6 +755,7 @@
  "d.status.completed": "已完成",
  "d.status.error": "错误",
  "d.status.seeding": "做种中",
+ "d.status.stalled": "已停滞",
  "d.prio.skip": "跳过",
  "d.prio.normal": "普通",
  "d.prio.high": "高",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "加入",
  "f.party.err_core": "你的 RetroArch 核心与朋友的不同",
  "f.party.err_emulator": "朋友使用 Eden：此游戏你也必须将 Eden 设为模拟器",
+ "f.party.err_cgnat": "你的网络服务商与其他用户共用 IP（CGNAT，IP {ip}）：端口转发无法生效。请使用 Tailscale 或 ZeroTier 等 VPN，并选择“VPN”。",
+ "f.party.upnp_ok": "已在路由器上自动开放端口 {port}。",
+ "f.party.upnp_fail": "路由器没有自动开放端口：请在其设置中启用 UPnP，或手动设置端口转发。",
  "f.party.invite_copied": "邀请已复制：粘贴到聊天中即可",
  "f.party.invite_title": "与朋友联机：为朋友创建邀请",
  "f.party.ip": "你的地址（IP）",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Eden 房间立即关闭：请检查此版本是否包含 eden-room",
  "s.party.edenStart": "无法启动 Eden 房间：{e}",
  "s.party.noPublicIp": "无法检测你的公网 IP：请检查网络连接",
+ "s.party.badPort": "端口无效",
  "s.party.notFound": "库中未找到该游戏",
  "s.party.notInLibrary": "游戏不在你的库中",
  "s.party.regProtoBool": "register_protocol 必须为 true 或 false",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "未找到文件夹",
  "s.profilesettings.notAllowed": "不允许的设置：{keys}",
  "s.profilesettings.themeNotFound": "未找到主题",
- "s.reco.unknownGame": "未知游戏"
+ "s.reco.unknownGame": "未知游戏",
+ "s.notify.queueDone": "下载已完成",
+ "s.notify.queueDoneBody": "{n} 个已完成",
+ "s.notify.queueDoneFailed": "{n} 个失败"
 }

@@ -49,7 +49,8 @@ TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")
 GAME_MODES = ("off", "limit", "pause")  # mentre giochi: niente, solo un limite di banda, torrent in pausa
 RESOLVERS_MAX = 3  # task HTTP che risolvono il link insieme (non occupano posti: senza tetto partirebbero tutti)
 SPACE_PHASE = "Spazio insufficiente"  # fase di un task in coda che non ha ancora spazio sul disco
-SAVE_EVERY = 10  # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
+NET_TRIES = 20  # riprese automatiche per task dopo un errore di rete
+SAVE_EVERY = 10 # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
 
 
 def default_dir() -> Path:
@@ -197,6 +198,10 @@ class Manager:
         self._saved: dict[str, tuple] = {}  # task id -> (tempo, (status, phase, error, name)) dell'ultimo salvataggio nel tick
         self.ctx = None  # lo mette finish.run: serve a mark_ready per cercare il gioco in libreria
         self._pend_at = 0.0  # ultimo controllo dei task in attesa della scansione
+        self.on_idle = None  # fn(completati, falliti), in un thread: la coda si e' svuotata dopo aver lavorato
+        self._batch = [0, 0]  # completati / falliti dall'ultima volta che la coda era vuota
+        self._was_busy = False
+        self._net_at = 0.0  # ultimo controllo della rete per i task caduti per errore di connessione
         self._dirty: set[str] = set()  # task con la vista cambiata dopo l'ultimo salvataggio nel tick
 
     # ------------------------------------------------------------ impostazioni
@@ -681,6 +686,7 @@ class Manager:
                     self.mark_ready(tid)
                 except Exception:  # noqa: BLE001 - un controllo fallito si ripete al giro dopo
                     pass
+        self._net_resume()
         s = self._raw()
         self._game_tick(s)
         down, up = self._limits(s)
@@ -770,12 +776,47 @@ class Manager:
                     self._saved[tid] = (now, sig)
                     save.append(t)
             self.store.save(save)
+            busy_now = any(t.status == RUNNING or (t.status == QUEUED and _due(t.options, self.now()))
+                           for t in self.tasks.values() if not t.options.get("seeding"))
+            done, idle = (0, 0), self._was_busy and not busy_now
+            self._was_busy = busy_now
+            if idle:
+                done, self._batch = tuple(self._batch), [0, 0]
+        if idle and self.on_idle and any(done):
+            threading.Thread(target=self.on_idle, args=done, daemon=True, name="dl-idle").start()
         alt = alt_active(s)
         if self.events and (views or alt != self._alt_sent):
             ev = {"tasks": views}
             if alt != self._alt_sent:
                 self._alt_sent, ev["settings"] = alt, self.settings()
             self.events.emit("downloads", ev)
+
+    def _net_resume(self):
+        """Task caduti per rete assente: ogni 30 s, se internet c'e' di nuovo, tornano in coda (al massimo NET_TRIES volte)."""
+        if time.monotonic() - self._net_at < 30:
+            return
+        if not any(t.status == ERROR and t.options.get("net_err") for t in self.tasks.values()):
+            return
+        self._net_at = time.monotonic()
+
+        def probe():
+            try:
+                socket.create_connection(("1.1.1.1", 443), 3).close()
+            except OSError:
+                return  # ancora offline
+            with self.lock:
+                for t in self.tasks.values():
+                    if t.status == ERROR and t.options.get("net_err"):
+                        t.options["net_err"] = t.options["net_err"] + 1
+                        if t.options["net_err"] > NET_TRIES:
+                            self._batch[1] += 1
+                            t.options["net_err"] = False  # troppi tentativi: resta in errore, lo riprende l'utente
+                            continue
+                        t.status, t.error = QUEUED, ""
+                        t.log("Connessione tornata: riprendo")
+                        self.store.save([t])
+            self._poke()
+        threading.Thread(target=probe, daemon=True, name="dl-net").start()
 
     def _share(self, down: int):
         """Limite globale (KB/s) diviso tra i task in corso dello stesso motore con peso 2**priority, ricalcolato a ogni
@@ -865,6 +906,7 @@ class Manager:
             self._gates.pop(t.id, None)
 
     async def _job(self, t: DownloadTask, segments: int):
+        net = False
         try:
             if t.type == "torrent":
                 await TOR.run(t, self._torrent, self._client, lambda: self._completed(t))
@@ -875,7 +917,8 @@ class Manager:
         except asyncio.CancelledError:
             end = None  # pausa/annulla/chiusura: lo stato lo ha gia' messo chi ha chiesto
         except (httpx.HTTPError, OSError, ValueError, RuntimeError) as e:  # RuntimeError: libtorrent
-            end = (ERROR, f"{type(e).__name__}: {e}" if not str(e) else str(e))
+            net = isinstance(e, (httpx.TransportError, ConnectionError, socket.timeout)) and t.type == "http"
+            end = (ERROR,f"{type(e).__name__}: {e}" if not str(e) else str(e))
             notes = self._res.get(t.id, (0, []))[1]
             if t.phase and notes:  # fallito prima del download: porta con se' perche' i risolutori non hanno risolto
                 end = (ERROR, f"{end[1]} ({'; '.join(notes)})")
@@ -889,6 +932,10 @@ class Manager:
                 end = None  # gia' completato: un errore durante la condivisione non lo rovina
                 t.log("Condivisione terminata")
             if end and t.id in self.tasks:
+                if not (net and (t.options.get("net_err") or 0) < NET_TRIES):  # un errore di rete che si ritenta non e' un fallimento
+                    self._batch[end[0] == ERROR] += 1
+                # net_err = n. di riprese automatiche gia' fatte; False = non si riprende da sola
+                t.options["net_err"] = (t.options.get("net_err") or 1) if net else False
                 t.status, t.error = end
                 t.speed = 0.0
                 t.finished = time.time() if end[0] == COMPLETED else 0.0

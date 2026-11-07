@@ -755,6 +755,7 @@
  "d.status.completed": "Concluído",
  "d.status.error": "Erro",
  "d.status.seeding": "Compartilhando",
+ "d.status.stalled": "Parado",
  "d.prio.skip": "Pular",
  "d.prio.normal": "Normal",
  "d.prio.high": "Alta",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "Entrar",
  "f.party.err_core": "O core do RetroArch é diferente do core do amigo",
  "f.party.err_emulator": "Seu amigo usa o Eden: para este jogo, você também precisa ter o Eden como emulador",
+ "f.party.err_cgnat": "Seu provedor compartilha seu IP com outros clientes (CGNAT, IP {ip}): o redirecionamento de portas não pode funcionar. Use uma VPN como Tailscale ou ZeroTier e escolha «VPN».",
+ "f.party.upnp_ok": "Porta {port} aberta automaticamente no roteador.",
+ "f.party.upnp_fail": "O roteador não abriu a porta sozinho: ative o UPnP nas configurações dele ou configure o redirecionamento de portas manualmente.",
  "f.party.invite_copied": "Convite copiado: cole em um chat",
  "f.party.invite_title": "Partida com um amigo: crie um convite para um amigo",
  "f.party.ip": "Seu endereço (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "A sala do Eden fechou logo: verifique se esta versão tem o eden-room",
  "s.party.edenStart": "Não consigo iniciar a sala do Eden: {e}",
  "s.party.noPublicIp": "Não consigo detectar seu IP público: verifique a conexão",
+ "s.party.badPort": "Porta inválida",
  "s.party.notFound": "Jogo não encontrado na biblioteca",
  "s.party.notInLibrary": "Jogo não presente na sua biblioteca",
  "s.party.regProtoBool": "register_protocol deve ser true ou false",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "Pasta não encontrada",
  "s.profilesettings.notAllowed": "Configurações não permitidas: {keys}",
  "s.profilesettings.themeNotFound": "Tema não encontrado",
- "s.reco.unknownGame": "Jogo desconhecido"
+ "s.reco.unknownGame": "Jogo desconhecido",
+ "s.notify.queueDone": "Downloads concluídos",
+ "s.notify.queueDoneBody": "{n} concluídos",
+ "s.notify.queueDoneFailed": "{n} com falha"
 }

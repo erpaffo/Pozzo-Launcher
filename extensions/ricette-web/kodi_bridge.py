@@ -6,6 +6,7 @@ esclusivamente in `run_kodi_addon_directory`, su richiesta esplicita del chiaman
 from __future__ import annotations
 
 import ast
+import concurrent.futures
 import hashlib
 import html as _html_mod
 import io
@@ -1707,14 +1708,20 @@ def scrape_channel_items(
     return items
 
 
+_SC_MAX_SEASONS = 40  # tetto di sicurezza alle richieste per serie
+
+
 def scrape_channel_episodes(
     html_text: str,
     base_url: str,
     series_title: str = "",
     channel_id: str = "",
     py_source: str = "",
+    fetcher=None,
 ) -> list[dict]:
-    """Estrae la lista di episodi o link riproducibili dalla pagina di dettaglio di una serie/anime."""
+    """Estrae la lista di episodi o link riproducibili dalla pagina di dettaglio di una serie/anime.
+
+    `fetcher(url) -> html` serve per le altre stagioni di StreamingCommunity (una pagina ciascuna); senza, si legge solo la stagione già nella pagina."""
     html = html_text or ""
     if not html.strip():
         return []
@@ -1757,10 +1764,14 @@ def scrape_channel_episodes(
                 seen_se.add(se_key)
                 u = f"{au_host.rstrip('/')}/embed-url/{eid}"
                 uid_hash = hashlib.sha1(f"{u}:1:{ep_num}".encode("utf-8")).hexdigest()[:12]
+                au_name = _clean_title(str(ep_obj.get("name") or ""))
+                if re.fullmatch(r"(?i)(?:episodio|episode|ep\.?)?\s*[\d.]*", au_name):
+                    au_name = ""  # AnimeUnity spesso mette solo il numero
                 episodes.append({
                     "id": f"s4me:{cid}:ep:{uid_hash}",
                     "kind": "episodio",
-                    "title": f"Episodio {ep_num}",
+                    "title": au_name or f"Episodio {ep_num}",
+                    "overview": _clean_title(str(ep_obj.get("plot") or ep_obj.get("description") or "")),
                     "series": series_title,
                     "season": 1,
                     "episode": ep_num,
@@ -1775,28 +1786,50 @@ def scrape_channel_episodes(
     sc_title = sc_props.get("title") or {}
     sc_eps = (sc_props.get("loadedSeason") or {}).get("episodes") or []
     if sc_title.get("id") and sc_eps:
-        # shortcut: solo la stagione già caricata nella pagina; le altre servono richieste Inertia, da aggiungere se servono
-        season = int((sc_props["loadedSeason"].get("number")) or 1)
         pu = urllib.parse.urlparse(base_url)
         host = f"{pu.scheme or 'https'}://{pu.netloc}"
-        for ep_obj in sc_eps:
-            if not isinstance(ep_obj, dict) or not ep_obj.get("id"):
-                continue
-            n = int(ep_obj.get("number") or len(episodes) + 1)
-            u = f"{host}/it/titles/{sc_title['id']}-{sc_title.get('slug') or ''}?episode_id={ep_obj['id']}"
-            uid_hash = hashlib.sha1(f"{u}:{season}:{n}".encode("utf-8")).hexdigest()[:12]
-            episodes.append({
-                "id": f"s4me:{cid}:ep:{uid_hash}",
-                "kind": "episodio",
-                "title": _clean_title(str(ep_obj.get("name") or "")) or f"Episodio {n}",
-                "series": series_title,
-                "season": season,
-                "episode": n,
-                "url": u,
-                "stream_url": "",
-                "source": "stream4me",
-            })
-        episodes.sort(key=lambda x: x["episode"])
+        slug = sc_title.get("slug") or ""
+        loaded = int((sc_props["loadedSeason"].get("number")) or 1)
+
+        def add_season(season: int, eps_list: list) -> None:
+            for ep_obj in eps_list:
+                if not isinstance(ep_obj, dict) or not ep_obj.get("id"):
+                    continue
+                n = int(ep_obj.get("number") or len(episodes) + 1)
+                u = f"{host}/it/titles/{sc_title['id']}-{slug}?episode_id={ep_obj['id']}"
+                uid_hash = hashlib.sha1(f"{u}:{season}:{n}".encode("utf-8")).hexdigest()[:12]
+                episodes.append({
+                    "id": f"s4me:{cid}:ep:{uid_hash}",
+                    "kind": "episodio",
+                    "title": _clean_title(str(ep_obj.get("name") or "")) or f"Episodio {n}",
+                    "overview": _clean_title(str(ep_obj.get("plot") or ep_obj.get("description") or "")),
+                    "series": series_title,
+                    "season": season,
+                    "episode": n,
+                    "url": u,
+                    "stream_url": "",
+                    "source": "stream4me",
+                })
+
+        add_season(loaded, sc_eps)
+        # le altre stagioni: una pagina per stagione (/titles/<id>-<slug>/season-N), con lo stesso data-page della prima
+        if fetcher is not None:
+            numbers = sorted({int(s.get("number")) for s in (sc_title.get("seasons") or [])
+                              if isinstance(s, dict) and str(s.get("number") or "").isdigit()})
+            def load_season(num: int):
+                try:
+                    props = _sc_page_props(fetcher(f"{host}/it/titles/{sc_title['id']}-{slug}/season-{num}") or "")
+                except Exception:
+                    return num, None  # una stagione che non risponde non deve far perdere le altre
+                return num, props.get("loadedSeason") or {}
+
+            todo = [n for n in numbers if n != loaded][:_SC_MAX_SEASONS]
+            if todo:  # in parallelo: in fila, 10 stagioni sarebbero 10 attese di rete una dopo l'altra
+                with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(todo))) as pool:
+                    for num, ls in pool.map(load_season, todo):
+                        if ls and int(ls.get("number") or 0) == num:  # il sito può rimandare la stagione 1 se il numero non esiste
+                            add_season(num, ls.get("episodes") or [])
+        episodes.sort(key=lambda x: (x["season"], x["episode"]))
         return episodes
 
     soup = BeautifulSoup(html, "html.parser")

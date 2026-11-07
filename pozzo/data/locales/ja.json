@@ -755,6 +755,7 @@
  "d.status.completed": "完了",
  "d.status.error": "エラー",
  "d.status.seeding": "共有中",
+ "d.status.stalled": "停滞中",
  "d.prio.skip": "スキップ",
  "d.prio.normal": "通常",
  "d.prio.high": "高",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "参加",
  "f.party.err_core": "RetroArchのコアが友達のものと異なります",
  "f.party.err_emulator": "友達はEdenを使用しています: このゲームでは、あなたのエミュレーターもEdenである必要があります",
+ "f.party.err_cgnat": "プロバイダーが他のユーザーとIPを共有しています（CGNAT、IP {ip}）。ポート転送は機能しません。TailscaleやZeroTierなどのVPNを使い、「VPN」を選んでください。",
+ "f.party.upnp_ok": "ルーターのポート{port}を自動で開きました。",
+ "f.party.upnp_fail": "ルーターがポートを自動で開けませんでした。ルーターの設定でUPnPを有効にするか、ポート転送を手動で設定してください。",
  "f.party.invite_copied": "招待をコピーしました: チャットに貼り付けてください",
  "f.party.invite_title": "友達と対戦: 友達向けの招待を作成",
  "f.party.ip": "あなたのアドレス（IP）",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Eden のルームがすぐに閉じました: このバージョンに eden-room が含まれているか確認してください",
  "s.party.edenStart": "Eden のルームを開始できません: {e}",
  "s.party.noPublicIp": "公開 IP を検出できません: 接続を確認してください",
+ "s.party.badPort": "無効なポートです",
  "s.party.notFound": "ライブラリにゲームが見つかりません",
  "s.party.notInLibrary": "ライブラリにゲームがありません",
  "s.party.regProtoBool": "register_protocol は true または false である必要があります",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "フォルダーが見つかりません",
  "s.profilesettings.notAllowed": "許可されていない設定: {keys}",
  "s.profilesettings.themeNotFound": "テーマが見つかりません",
- "s.reco.unknownGame": "不明なゲーム"
+ "s.reco.unknownGame": "不明なゲーム",
+ "s.notify.queueDone": "ダウンロードが完了しました",
+ "s.notify.queueDoneBody": "{n} 件完了",
+ "s.notify.queueDoneFailed": "{n} 件失敗"
 }

@@ -755,6 +755,7 @@
  "d.status.completed": "पूरा हुआ",
  "d.status.error": "त्रुटि",
  "d.status.seeding": "साझा हो रहा है",
+ "d.status.stalled": "रुका हुआ",
  "d.prio.skip": "छोड़ें",
  "d.prio.normal": "सामान्य",
  "d.prio.high": "ऊँची",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "जुड़ें",
  "f.party.err_core": "RetroArch का कोर दोस्त के कोर से अलग है",
  "f.party.err_emulator": "दोस्त Eden उपयोग करता है: इस गेम के लिए आपके पास भी Eden एमुलेटर होना चाहिए",
+ "f.party.err_cgnat": "आपका प्रदाता आपका IP अन्य ग्राहकों के साथ साझा करता है (CGNAT, IP {ip}): पोर्ट फ़ॉरवर्डिंग काम नहीं कर सकती। Tailscale या ZeroTier जैसा VPN इस्तेमाल करें और «VPN» चुनें।",
+ "f.party.upnp_ok": "पोर्ट {port} राउटर पर अपने-आप खुल गया।",
+ "f.party.upnp_fail": "राउटर ने पोर्ट अपने-आप नहीं खोला: उसकी सेटिंग में UPnP चालू करें या पोर्ट फ़ॉरवर्डिंग हाथ से सेट करें।",
  "f.party.invite_copied": "आमंत्रण कॉपी हो गया: इसे किसी चैट में पेस्ट करें",
  "f.party.invite_title": "दोस्त के साथ मैच: दोस्त के लिए आमंत्रण बनाएँ",
  "f.party.ip": "आपका पता (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Eden का रूम तुरंत बंद हो गया: जाँचें कि इस संस्करण में eden-room है",
  "s.party.edenStart": "Eden का रूम शुरू नहीं कर पा रहा: {e}",
  "s.party.noPublicIp": "आपका सार्वजनिक IP पता नहीं मिल रहा: कनेक्शन जाँचें",
+ "s.party.badPort": "अमान्य पोर्ट",
  "s.party.notFound": "लाइब्रेरी में गेम नहीं मिला",
  "s.party.notInLibrary": "गेम आपकी लाइब्रेरी में नहीं है",
  "s.party.regProtoBool": "register_protocol का मान true या false होना चाहिए",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "फ़ोल्डर नहीं मिला",
  "s.profilesettings.notAllowed": "ये सेटिंग्स अनुमत नहीं हैं: {keys}",
  "s.profilesettings.themeNotFound": "थीम नहीं मिली",
- "s.reco.unknownGame": "अज्ञात गेम"
+ "s.reco.unknownGame": "अज्ञात गेम",
+ "s.notify.queueDone": "डाउनलोड पूरे हुए",
+ "s.notify.queueDoneBody": "{n} पूरे हुए",
+ "s.notify.queueDoneFailed": "{n} विफल"
 }

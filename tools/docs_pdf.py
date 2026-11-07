@@ -30,16 +30,21 @@ HEADER = r"""
 SKIP_PDF = {"index.md", "download.md"}
 
 
-def pages(nav) -> list[str]:
-    """File del nav di mkdocs, in ordine (le sezioni si appiattiscono)."""
+def pages(nav, lang: str = "it", is_root: bool = True) -> list[str]:
+    """File del nav di mkdocs, in ordine (le sezioni si appiattiscono), filtrati per lingua."""
     out = []
     for item in nav:
-        for value in item.values():
+        for key, value in item.items():
+            if is_root:
+                if lang == "it" and key == "English Manual":
+                    continue
+                if lang == "en" and key != "English Manual":
+                    continue
             if isinstance(value, str):
-                if value not in SKIP_PDF:
+                if Path(value).name not in SKIP_PDF:
                     out.append(value)
             else:
-                out += pages(value)
+                out += pages(value, lang=lang, is_root=False)
     return out
 
 
@@ -48,9 +53,9 @@ def chapter(name: str) -> str:
     text = (DOCS / name).read_text(encoding="utf-8")
     stem = Path(name).stem.lower()
     text = re.sub(r"\A# (.+)", lambda m: f"# {m[1]} {{#{stem}}}", text, count=1)
-    text = re.sub(r"\]\(([\w-]+)\.md#([\w-]+)\)", r"](#\2)", text)  # pagina.md#sezione -> #sezione
-    text = re.sub(r"\]\(([\w-]+)\.md\)", lambda m: f"](#{m[1].lower()})", text)  # pagina.md -> #pagina
-    text = re.sub(r"^> Il manuale è disponibile anche in PDF.*?(?:\n>.*)*\n", "", text, flags=re.M)  # ovvio nel PDF
+    text = re.sub(r"\]\((?:en/)?([\w-]+)\.md#([\w-]+)\)", r"](#\2)", text)  # pagina.md#sezione -> #sezione
+    text = re.sub(r"\]\((?:en/)?([\w-]+)\.md\)", lambda m: f"](#{m[1].lower()})", text)  # pagina.md -> #pagina
+    text = re.sub(r"^> (?:Il manuale è disponibile|The manual is also available).*?(?:\n>.*)*\n", "", text, flags=re.M)
     return EMOJI.sub("", text).strip() + "\n"
 
 
@@ -59,9 +64,12 @@ def version() -> str:
     return m[1] if m else ""
 
 
-def build(out: Path, font: str, sans: str, mono: str) -> Path:
+def build(out: Path, font: str, sans: str, mono: str, lang: str | None = None) -> Path:
+    if lang is None:
+        lang = "en" if ("-en" in out.name or "manual.pdf" in out.name.lower()) else "it"
     nav = yaml.safe_load((ROOT / "mkdocs.yml").read_text(encoding="utf-8"))["nav"]
-    md = "\n\n".join(chapter(p) for p in pages(nav))
+    md = "\n\n".join(chapter(p) for p in pages(nav, lang=lang))
+    subtitle = f"Manual · version {version()}" if lang == "en" else f"Manuale · versione {version()}"
     with tempfile.TemporaryDirectory() as t:
         src, head = Path(t) / "manuale.md", Path(t) / "header.tex"
         shutil.copytree(DOCS / "images", Path(t) / "images")  # le immagini del manuale, accanto al markdown
@@ -72,7 +80,7 @@ def build(out: Path, font: str, sans: str, mono: str) -> Path:
         subprocess.run([
             "pandoc", str(src), "-f", "markdown", "-o", str(out.resolve()), "--pdf-engine=xelatex",
             "--toc", "--toc-depth=2", "--number-sections", "--top-level-division=chapter", "-H", str(head),
-            "-M", "title=Pozzo Launcher", "-M", f"subtitle=Manuale · versione {version()}", "-M", "lang=it",
+            "-M", "title=Pozzo Launcher", "-M", f"subtitle={subtitle}", "-M", f"lang={lang}",
             "-V", "documentclass=report", "-V", "papersize=a4", "-V", "geometry:margin=2.2cm",
             "-V", f"mainfont={font}", "-V", f"sansfont={sans}", "-V", f"monofont={mono}",
             "-V", "colorlinks=true", "-V", "linkcolor=blue", "-V", "urlcolor=blue", "-V", "toccolor=black",
@@ -83,8 +91,9 @@ def build(out: Path, font: str, sans: str, mono: str) -> Path:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("out", nargs="?", default="PozzoLauncher-manuale.pdf")
+    ap.add_argument("--lang", default=None, choices=["it", "en"])
     ap.add_argument("--font", default="DejaVu Serif")
     ap.add_argument("--sans", default="DejaVu Sans")
     ap.add_argument("--mono", default="DejaVu Sans Mono")
     a = ap.parse_args()
-    print(build(Path(a.out), a.font, a.sans, a.mono))
+    print(build(Path(a.out), a.font, a.sans, a.mono, lang=a.lang))

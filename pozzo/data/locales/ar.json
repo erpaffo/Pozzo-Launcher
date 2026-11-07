@@ -755,6 +755,7 @@
  "d.status.completed": "مكتمل",
  "d.status.error": "خطأ",
  "d.status.seeding": "قيد المشاركة",
+ "d.status.stalled": "متوقف",
  "d.prio.skip": "تخطٍّ",
  "d.prio.normal": "عادية",
  "d.prio.high": "عالية",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "دخول",
  "f.party.err_core": "نواة RetroArch تختلف عن نواة صديقك",
  "f.party.err_emulator": "صديقك يستخدم Eden: لهذه اللعبة يجب أن يكون Eden هو المحاكي لديك أيضًا",
+ "f.party.err_cgnat": "يشارك مزوّد الخدمة عنوان IP الخاص بك مع عملاء آخرين (CGNAT، العنوان {ip}): لا يمكن أن يعمل تحويل المنافذ. استخدم VPN مثل Tailscale أو ZeroTier واختر «VPN».",
+ "f.party.upnp_ok": "تم فتح المنفذ {port} تلقائيًا على الراوتر.",
+ "f.party.upnp_fail": "لم يفتح الراوتر المنفذ تلقائيًا: فعّل UPnP في إعداداته أو اضبط تحويل المنافذ يدويًا.",
  "f.party.invite_copied": "تم نسخ الدعوة: الصقها في محادثة",
  "f.party.invite_title": "جلسة مع صديق: أنشئ دعوة لصديق",
  "f.party.ip": "عنوانك (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "أُغلقت غرفة Eden فورًا: تحقق من أن هذا الإصدار يحتوي على eden-room",
  "s.party.edenStart": "تعذّر بدء غرفة Eden: {e}",
  "s.party.noPublicIp": "تعذّر اكتشاف عنوان IP العام: تحقق من الاتصال",
+ "s.party.badPort": "منفذ غير صالح",
  "s.party.notFound": "اللعبة غير موجودة في المكتبة",
  "s.party.notInLibrary": "اللعبة غير موجودة في مكتبتك",
  "s.party.regProtoBool": "يجب أن تكون register_protocol إما true أو false",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "المجلد غير موجود",
  "s.profilesettings.notAllowed": "إعدادات غير مسموحة: {keys}",
  "s.profilesettings.themeNotFound": "السمة غير موجودة",
- "s.reco.unknownGame": "لعبة غير معروفة"
+ "s.reco.unknownGame": "لعبة غير معروفة",
+ "s.notify.queueDone": "انتهت التنزيلات",
+ "s.notify.queueDoneBody": "اكتمل {n}",
+ "s.notify.queueDoneFailed": "فشل {n}"
 }

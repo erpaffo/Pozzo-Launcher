@@ -965,3 +965,47 @@ def test_list_nasconde_provider_rimossi_schede_canale_e_duplicati(tmp_path, monk
 
     res = gs.post("stream4me/cleanup", {})
     assert res["ok"] and res["removed"] == 2
+
+
+def test_ricerca_generale_interroga_tutti_i_provider_anche_se_uno_fallisce_o_e_lento(tmp_path, monkeypatch):
+    kb._clear_stream4me_caches()
+    gs = make_gs(tmp_path, monkeypatch)
+    create_sample_addon(tmp_path / "ricette-web-cache" / "kodi-addons")
+    provs = [p["id"] for p in gs.get("stream4me/providers")["providers"]]
+    assert len(provs) >= 4
+    import time as _t
+    chiamati = []
+
+    def finto(addon_dir, ch, path="", query="", fetcher=None, timeout=8.0, custom_providers=None):
+        if query != "snatch":  # il refresh del catalogo in background usa la stessa funzione: non e' la ricerca
+            return {"items": []}
+        chiamati.append(ch)
+        if ch == provs[0]:
+            raise RuntimeError("provider spento")
+        if ch == provs[1]:
+            _t.sleep(1.5)  # oltre la scadenza del test: non deve bloccare gli altri
+        return {"items": [{"id": f"s4me:{ch}:1", "title": "Snatch - Lo strappo (ITA)" if ch == provs[2] else "Altro " + ch,
+                           "kind": "film", "poster": "http://p/x.jpg" if ch == provs[2] else "", "url": f"https://{ch}.example/x"}]}
+
+    monkeypatch.setattr(kb, "browse_stream4me_channel", finto)
+    monkeypatch.setattr(rw, "_SEARCH_DEADLINE", 0.4)
+    res = gs.get("stream4me/browse", channel="all", query="snatch")
+    # tutti i provider attivi interrogati (nessun tetto a 6), senza dipendere dall'ordine o dalla cache di altri test
+    assert set(provs) <= set(chiamati) and len(chiamati) == len(set(chiamati))
+    assert res["searched"] == len(chiamati)
+    assert provs[0] in res["failed"] and provs[1] in res["pending"]
+    assert not (set(res["failed"]) & set(res["pending"]))
+    titoli = [i["title"] for i in res["items"]]
+    assert "Snatch - Lo strappo (ITA)" in titoli and not any(provs[1] in i["id"] for i in res["items"])
+
+
+def test_conteggio_episodi_registrato_dal_dettaglio(tmp_path, monkeypatch):
+    kb._clear_stream4me_caches()
+    gs = make_gs(tmp_path, monkeypatch)
+    conn = sqlite3.connect(tmp_path / "ricette-web-cache" / "ricette.db")
+    conn.execute("INSERT INTO items (id, recipe_id, kind, title, source, updated) VALUES ('s4me:x:snatch', 's4me:x', 'film', 'Snatch', 'stream4me', 0)")
+    conn.execute("INSERT INTO episodes (id, parent_id, recipe_id, title, series, season, episode, source, updated) VALUES ('e1', 's4me:x:snatch', 's4me:x', 'Snatch', 'Snatch', 1, 1, 'stream4me', 0)")
+    conn.commit(); conn.close()
+    out = gs.get("detail", id="s4me:x:snatch")
+    assert out["episode_count"] == 1
+    assert gs.get("list")[0].get("episode_count") == 1

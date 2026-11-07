@@ -71,7 +71,12 @@ def desideri(get, key: str, titoli: list[str], oggi: date) -> list[dict]:
     """Per ogni titolo della lista dei desideri cerca l'uscita: vale solo se il nome coincide e la data e' futura."""
     out = []
     for t in titoli[:MAX_DESIDERI]:
-        res = get(API, {"key": key, "search": t, "search_precise": "true", "page_size": 5}).get("results", [])
+        try:
+            res = get(API, {"key": key, "search": t, "search_precise": "true", "page_size": 5}).get("results", [])
+        except HTTPException as e:
+            if e.status_code == 503:
+                break  # RAWG non risponde: mostra le uscite gia' trovate invece di fallire tutto
+            raise
         hit = next((it for it in res if fold(it.get("name", "")) == fold(t)), None)
         v = hit and voce(hit, oggi)
         if v and v["giorni"] >= 0:
@@ -84,7 +89,18 @@ def register(gs):
     memo: dict = {}
 
     def get(url, params):
-        r = httpx.get(url, params=params, timeout=20, headers={"User-Agent": "PozzoLauncher"})
+        # 5xx (es. 522 di Cloudflare = RAWG non risponde) e timeout sono passeggeri: qualche nuovo tentativo
+        r = None
+        for tentativo in range(3):
+            try:
+                r = httpx.get(url, params=params, timeout=20, headers={"User-Agent": "PozzoLauncher"})
+            except httpx.TransportError:
+                r = None
+            if r is not None and r.status_code < 500:
+                break
+            time.sleep(1.5 * (tentativo + 1))
+        if r is None or r.status_code >= 500:
+            raise HTTPException(503, "RAWG non risponde al momento (errore del sito): riprova tra poco")
         if r.status_code in (401, 403):
             raise HTTPException(400, "Chiave RAWG non valida o quota esaurita (Impostazioni › Fonti)")
         if r.status_code != 200:

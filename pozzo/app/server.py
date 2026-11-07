@@ -766,6 +766,21 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                                                           js_api=api)
                 return True
 
+            def open_media(self):
+                """Seconda finestra del launcher aperta sulla vista Media: il launcher principale resta libero
+                (altre schermate, giochi) mentre qui si guarda una serie. Se e' gia' aperta torna in primo piano."""
+                w = media_win.get("w")
+                if w is not None and w in webview.windows:
+                    w.restore()
+                    w.show()
+                    return True
+                mapi = MediaApi()
+                w = webview.create_window("Media · Pozzo Launcher", f"{url}#media-window", width=1280, height=820,
+                                          min_size=(720, 480), background_color="#0f1115", js_api=mapi)
+                mapi.win = w
+                media_win["w"] = w
+                return True
+
             def resolve_link(self, link):
                 """Link vero dietro un accorciatore (ouo) o dietro la pagina di un host di file: finestra
                 nascosta, clic da soli, URL del download letto da WebView2. None se non si arriva al file."""
@@ -777,8 +792,34 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                 r = win.create_file_dialog(kind)
                 return r[0] if r else None
 
+        class MediaApi(Api):
+            """js_api della finestra Media: schermo intero, dialoghi e colore del titolo riguardano QUESTA finestra e non la principale."""
+            win = None
+            fs = False
+
+            def set_fullscreen(self, on):
+                if self.win is not None and bool(on) != self.fs:
+                    self.win.toggle_fullscreen()
+                    self.fs = bool(on)
+                return self.fs
+
+            def pick_folder(self):
+                win = self.win or webview.windows[0]
+                kind = getattr(getattr(webview, "FileDialog", None), "FOLDER", None) or webview.FOLDER_DIALOG
+                r = win.create_file_dialog(kind)
+                return r[0] if r else None
+
+            def window_ready(self, color):
+                try:
+                    if sys.platform == "win32" and color and self.win is not None:
+                        window_titlebar(self.win.native.Handle.ToInt64(), color)
+                except Exception:
+                    pass
+                return True
+
         state_fs = {"on": bigpicture}
         activity_win: dict = {}
+        media_win: dict = {}
         api = Api()
         # la finestra principale nasce nascosta e si mostra quando il frontend ha applicato tema e interfaccia
         shown = threading.Event()
@@ -799,9 +840,28 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
         bg = _theme_bg(cfg, bigpicture)
         # hidden=True (solo Windows: altrove pywebview non ha un modo affidabile di mostrarla dopo): la
         # finestra appare gia' con tema, colori e disposizione giusti, non con quelli predefiniti
-        main_win = webview.create_window("Pozzo Launcher", start_url, width=1500, height=940, min_size=(960, 600),
+        geo_file = Path(cfg.cache).parent / "window.json"
+        try:
+            g = json.loads(geo_file.read_text("utf-8"))
+            pos = {k: int(g[k]) for k in ("x", "y", "width", "height")}
+            if pos["x"] < -10000 or pos["y"] < -10000:  # finestra chiusa da minimizzata (-32000)
+                raise ValueError
+        except Exception:
+            pos = {"width": 1500, "height": 940}
+        main_win = webview.create_window("Pozzo Launcher", start_url, **pos, min_size=(960, 600),
                                          background_color=bg, js_api=api, fullscreen=bigpicture,
                                          hidden=sys.platform == "win32")
+
+        def save_geometry():
+            if bigpicture:
+                return
+            try:  # shortcut: non ricorda lo stato "massimizzata", solo posizione e misura
+                geo = {"x": main_win.x, "y": main_win.y, "width": main_win.width, "height": main_win.height}
+                if geo["x"] > -10000 and geo["y"] > -10000:
+                    geo_file.write_text(json.dumps(geo), "utf-8")
+            except Exception:
+                pass
+        main_win.events.closing += save_geometry
         if sys.platform == "win32":  # errore JS: la finestra si mostra lo stesso, senza aspettare all'infinito
             def show_anyway():
                 if not shown.wait(15):

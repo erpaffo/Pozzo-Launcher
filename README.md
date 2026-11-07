@@ -86,7 +86,7 @@ When a new version is out a notice appears. Install it with one click from **Set
 2. Start the search: the library fills up, and covers and data arrive in the background.
 3. For PC games, connect your stores from **Settings › Stores**.
 
-Configuration, cache and library live in the user folder (`%LOCALAPPDATA%\PozzoLauncher` on Windows, `~/Library/Application Support/PozzoLauncher` on macOS, `~/.local/share/PozzoLauncher` on Linux). Everything else (source credentials, terminal commands, online stores, phone, extensions) is in the [manual](https://erpaffo.github.io/Pozzo-Launcher/). The manual is currently in Italian only.
+Configuration, cache and library live in the user folder (`%LOCALAPPDATA%\PozzoLauncher` on Windows, `~/Library/Application Support/PozzoLauncher` on macOS, `~/.local/share/PozzoLauncher` on Linux). Everything else (source credentials, terminal commands, online stores, phone, extensions) is in the **[official manual](https://erpaffo.github.io/Pozzo-Launcher/)** (available in English and Italian).
 
 ## From source
 

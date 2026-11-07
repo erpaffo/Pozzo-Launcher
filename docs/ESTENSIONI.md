@@ -358,7 +358,7 @@ Il plugin **Statistiche** (`extensions/statistiche/`) usa tutte le parti:
 
 L'app include un solo plugin: lo **Store estensioni** (`pozzo/app/plugins/estensioni/`). È sempre il primo
 della barra laterale e di **Impostazioni › Aspetto**, e non si può disattivare. Tutte le altre estensioni si
-installano da lì, nella cartella `plugins/` accanto a `config.toml`. Dopo un'installazione o una rimozione, riavvia l'app.
+installano da lì, nella cartella `plugins/` accanto a `config.toml`. Installazione e rimozione valgono subito, senza riavviare l'app. Restano però fino al riavvio gli handler `gs.on`, `add_store` e simili registrati dall'estensione: se qualcosa non compare o non sparisce, riavvia.
 
 Le estensioni arrivano dalle **fonti**, elencate in *Fonti delle estensioni* in cima alla pagina:
 
@@ -460,6 +460,8 @@ La logica di lettura della pagina sta in `pozzo/linklist.py` (`scan_page`, `add_
 plugin, così è testabile senza avviare il server.
 
 **Media locale** e **Ricette web** sono estensioni per **Pozzo Media** (`api = 2`): operano su una propria cache separata dalla libreria dei giochi. **Media locale** richiede il permesso `media:lettura` per scansionare solo le cartelle multimediali scelte dall'utente. **Ricette web** supporta ricette dichiarative per pagine HTML, podcast RSS e API JSON, proteggendo il sistema con il divieto assoluto di codice eseguibile e limitando l'accesso di rete agli host autorizzati.
+
+Nella vista Media il pannello **Sorgenti** raccoglie in un posto solo cartelle locali, server Jellyfin/Plex (utente e password oppure token), Kodi/Stream4me, Ricette web (con «Aggiorna catalogo») e metadati. La ricerca interroga le sorgenti insieme con un timeout di 2 secondi ciascuna: i risultati arrivano man mano, un titolo presente in più sorgenti compare una volta con più badge, e un chip per sorgente mostra se ha risposto. Il catalogo di Ricette web/Stream4me è servito dalla cache locale a pagine e si aggiorna in background o col pulsante «Aggiorna catalogo». Funzione provata solo con test automatici, da verificare a mano nel launcher.
 
 ### Sicurezza
 

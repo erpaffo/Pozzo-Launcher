@@ -59,6 +59,11 @@ def build_router(ctx) -> APIRouter:
                        lambda u: I.tr("s.downloads.find_file_on", host=hosts.host(u)) if hosts.is_host_page(u) else "")
     browserdl.SHOW["fn"] = lambda: bool(mgr.settings().get("show_browser"))  # finestra del browser visibile per seguirla
     mgr.on_completed = lambda t: finish.run(t, mgr, ctx)  # estrae e mette il gioco in libreria
+    def _queue_done(ok: int, failed: int):
+        from ... import notify
+        body = I.tr("s.notify.queueDoneBody", n=ok) + (" · " + I.tr("s.notify.queueDoneFailed", n=failed) if failed else "")
+        notify.send(cfg, I.tr("s.notify.queueDone"), body)
+    mgr.on_idle = _queue_done  # una sola notifica quando la coda si svuota, non una per file
     mgr.ctx = ctx  # subito: dopo un riavvio i task in attesa della scansione si ricontrollano (Manager.mark_ready)
     mgr.start()
     # alla chiusura: file .part chiusi e stato salvato prima dell'uscita immediata (os._exit non svuota i buffer)

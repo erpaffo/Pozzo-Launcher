@@ -579,6 +579,7 @@ function input(action) {
   if (performance.now() - attractClosedAt < 350) return; // il tasto che chiude il salvaschermo non arriva alla schermata
   if (window.GSProfilePicker?.isOpen()) { window.GSProfilePicker.pad(action); return; } // «Chi gioca?» cattura tutto
   if (window.PozzoMedia?.handlePad?.(action)) return;
+  if (window.BPMedia?.handlePad(action)) return; // lettore Media aperto: il pad comanda il video, non la schermata
   const s = cur();
   if (helpOpen()) { // il pannello comandi cattura tutto: X cambia la legenda, il resto lo chiude
     if (action === "up" || action === "down") $("#bp-help .bp-help-in")?.scrollBy({ top: (action === "up" ? -1 : 1) * 120, behavior: "smooth" });
@@ -601,13 +602,15 @@ function input(action) {
     case "lt": if (s.lt) s.lt(); else s.jump?.(-1); break;
     case "rt": if (s.rt) s.rt(); else s.jump?.(1); break;
     case "start": s.start?.(); break;
-    case "lb": stepTab(-1); break;
-    case "rb": stepTab(1); break;
+    case "lb": if (s.lb) s.lb(); else stepTab(-1); break;
+    case "rb": if (s.rb) s.rb(); else stepTab(1); break;
     default: break;
   }
 }
 
 document.addEventListener("keydown", (e) => {
+  // lettore Media aperto: la tastiera la gestisce il lettore (spazio, frecce, F, Esc); tradurla anche in azioni del pad le raddoppierebbe
+  if (window.BPMedia?.active()) return;
   if (PozzoShortcuts.dispatch(e, "bp")) return;
   const s = cur();
   if (!helpOpen() && s.typed && (e.key.length === 1 && /[\p{L}\p{N} ]/u.test(e.key) || e.key === "Backspace")) { e.preventDefault(); s.typed(e.key); return; }
@@ -710,7 +713,7 @@ async function attractNext() {
 const idle = GSUi.createIdle({
   minutes: () => GSUi.prefs(GSUi.saved()).idle,
   canRun: () => !!BP.lib && !BP.running && !document.hidden && !helpOpen() && !window.GSProfilePicker?.isOpen?.()
-    && $("#bp-media-widget")?.hidden !== false && GSUi.pickSlides(visibleGames()).length > 0,
+    && $("#bp-media-widget")?.hidden !== false && !window.BPMedia?.active() && GSUi.pickSlides(visibleGames()).length > 0,
   start() {
     attractSlides = GSUi.pickSlides(visibleGames());
     attractIdx = 0;
@@ -813,6 +816,10 @@ function clock() { $("#bp-clock").textContent = new Date().toLocaleTimeString(GS
   GS.library = () => BP.lib;
   GS.openGame = (id) => push(gameScreen(id));
   await loadExtensions();
+  if (await BPMedia.available(api)) { // voce «Media» (video): solo con l'estensione Media locale attiva
+    TABS.splice(MEDIA_TAB + 1, 0, { id: "videos", label: "Media", open: () => push(BPMedia.screen({ api, toast, esc, push, cur, main: () => main, renderNav, openTab, beep,
+      tabIndex: () => TABS.findIndex((x) => x.id === "videos"), tabsCount: () => TABS.length })) });
+  }
   $("#bp-loading").hidden = true;
   BP.stack = [homeScreen()];
   show();

@@ -12,8 +12,20 @@ import {
   mergeContinueWatching,
   pickHeroItem,
   federatedList,
+  categoryOf,
+  matchLibraryItem,
+  WATCHLIST_CATEGORIES,
+  saveCatalogSnapshot,
+  loadCatalogSnapshot,
+  mergeWatchlists,
+  collapseSingleEpisodeSeries,
+  seriesSummary,
+  activeProfile,
+  profileKey,
+  migrateToProfileKey,
 } from "./logica.js";
-import { attachPlay, play, loadContinueCache, removeFromContinueCache } from "./player.js";
+import * as playerModule from "./player.js";
+import { attachPlay, play, loadContinueCache, removeFromContinueCache, animateSpinners, takeHandoff, HANDOFF_KEY } from "./player.js";
 
 export const WATCHLIST_STATUSES = logicaModule.WATCHLIST_STATUSES || {
   plan_to_watch: { id: "plan_to_watch", label: "Da guardare", icon: "📌", order: 1 },
@@ -152,9 +164,37 @@ const defaultEsc = (s) =>
 
 const FAVS_KEY = "pm_favorites";
 
+/** Chiave (senza «gs.») per profilo di un dato salvato in localStorage, con migrazione della vecchia chiave globale. */
+function pkey(base) {
+  try { return migrateToProfileKey(localStorage, "gs." + base).slice(3); } catch { return profileKey(base); }
+}
+
+// Preferenze del lettore: le chiavi sono quelle di player.js; se non esporta le funzioni vale questo ripiego.
+const PREF_DEFAULTS = { autonext: true, skipIntro: false, skipSecs: 85 };
+export function loadPlayerPrefsCompat(storage) {
+  if (typeof playerModule.loadPlayerPrefs === "function") return playerModule.loadPlayerPrefs(storage);
+  const st = storage || (typeof localStorage !== "undefined" ? localStorage : null);
+  const rd = (k) => { try { return st?.getItem(k); } catch { return null; } };
+  const secs = Number(rd("gs.pm_skip_secs"));
+  return {
+    autonext: rd("gs.pm_autonext") == null ? PREF_DEFAULTS.autonext : rd("gs.pm_autonext") !== "0",
+    skipIntro: rd("gs.pm_skip_intro") === "1",
+    skipSecs: secs >= 5 && secs <= 600 ? Math.round(secs) : PREF_DEFAULTS.skipSecs,
+  };
+}
+export function savePlayerPrefsCompat(patch, storage) {
+  if (typeof playerModule.savePlayerPrefs === "function") return playerModule.savePlayerPrefs(patch, storage);
+  const st = storage || (typeof localStorage !== "undefined" ? localStorage : null);
+  const wr = (k, v) => { try { st?.setItem(k, v); } catch { /* storage pieno */ } };
+  if ("autonext" in patch) wr("gs.pm_autonext", patch.autonext ? "1" : "0");
+  if ("skipIntro" in patch) wr("gs.pm_skip_intro", patch.skipIntro ? "1" : "0");
+  if ("skipSecs" in patch) wr("gs.pm_skip_secs", String(Math.min(600, Math.max(5, Math.round(Number(patch.skipSecs) || PREF_DEFAULTS.skipSecs)))));
+}
+
 function loadFavs(gs) {
   try {
-    const list = gs?.store?.get ? gs.store.get(FAVS_KEY, []) : JSON.parse(localStorage.getItem("gs." + FAVS_KEY) || "[]");
+    const k = pkey(FAVS_KEY);
+    const list = gs?.store?.get ? gs.store.get(k, []) : JSON.parse(localStorage.getItem("gs." + k) || "[]");
     return new Set(Array.isArray(list) ? list : []);
   } catch {
     return new Set();
@@ -163,8 +203,9 @@ function loadFavs(gs) {
 
 function saveFavs(gs, favs) {
   const arr = [...favs];
-  try { if (gs?.store?.set) gs.store.set(FAVS_KEY, arr); } catch {}
-  try { localStorage.setItem("gs." + FAVS_KEY, JSON.stringify(arr)); } catch {}
+  const k = pkey(FAVS_KEY);
+  try { if (gs?.store?.set) gs.store.set(k, arr); } catch {}
+  try { localStorage.setItem("gs." + k, JSON.stringify(arr)); } catch {}
 }
 
 export function isAnimeItem(item) {
@@ -309,9 +350,11 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
   const priorityFilter = filterState?.priority || "all";
   const sortBy = filterState?.sortBy || "priority";
   const query = filterState?.query || "";
+  const categoryFilter = filterState?.category || "all";
 
   const stats = watchlistStats(list);
   const filtered = sortAndFilterWatchlist(list, {
+    category: categoryFilter,
     status: statusFilter,
     priority: priorityFilter,
     query,
@@ -336,8 +379,30 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
     { id: "dropped", label: "✕ Abbandonato" },
   ];
 
+  const catTabs = [
+    { id: "all", label: "Tutti", count: stats.total },
+    ...Object.values(WATCHLIST_CATEGORIES).map((c) => ({ id: c.id, label: `${c.icon} ${c.label}`, count: stats.by_category[c.id] })),
+  ];
+  const unlinked = list.filter((x) => x && !normalizeWatchlistEntry(x).linked_key).length;
+
   return `
     <div class="pm-netflix-home">
+      <div class="pm-wl-head">
+        <div class="pm-season-tabs pm-wl-cats" role="tablist" aria-label="Categoria">
+          ${catTabs.map((t) => `
+            <button type="button" role="tab" class="pm-season-tab ${categoryFilter === t.id ? "pm-active" : ""}" data-wl-category="${esc(t.id)}">
+              ${esc(t.label)} <span class="pm-wl-count">${esc(t.count)}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="pm-wl-head-actions">
+          <button type="button" class="pm-player-btn" data-wl-match ${unlinked ? "" : "disabled"} title="Cerca nel catalogo le voci non ancora associate">🔗 Associa ai titoli trovati${unlinked ? ` (${esc(unlinked)})` : ""}</button>
+          <button type="button" class="pm-player-btn" data-wl-export title="Scarica un file di backup della watchlist di questo profilo">⬇ Esporta backup</button>
+          <button type="button" class="pm-player-btn" data-wl-import-open data-wl-restore title="Ripristina la watchlist da un backup di Pozzo">⬆ Ripristina backup</button>
+          <button type="button" class="pm-player-btn pm-primary" data-wl-import-open>⬇ Importa watchlist</button>
+        </div>
+      </div>
+
       <div class="pm-wl-stats">
         ${statPills.map((p) => `
           <button type="button" class="pm-wl-stat-pill ${p.active ? "pm-active" : ""}" data-wl-filter-status="${esc(p.status)}" ${p.priority ? `data-wl-stat-priority="${esc(p.priority)}"` : ""}>
@@ -379,11 +444,16 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
             const k = e.item_key || compositeKey(e) || String(e.id || "");
             const poster = safeMediaUrl(e.poster || e.backdrop);
             const defaultIcon = e.kind === "brano" ? "🎵" : (e.kind === "episodio" ? "📺" : "🎬");
-            const badge = sourceBadge ? sourceBadge(e.source) : null;
+            const badge = badgeOf(e);
             const badgeLabel = badge?.label || e.source || "Locale";
             const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
             const prioMeta = WATCHLIST_PRIORITIES[e.priority] || WATCHLIST_PRIORITIES.medium;
             const stMeta = WATCHLIST_STATUSES[e.status] || WATCHLIST_STATUSES.plan_to_watch;
+            const catMeta = WATCHLIST_CATEGORIES[e.category] || WATCHLIST_CATEGORIES.film;
+            const pct = e.total > 0 ? Math.min(100, Math.round((e.progress / e.total) * 100)) : 0;
+            const progressHtml = e.total > 0
+              ? `<div class="pm-wl-progress" title="${esc(e.progress)}/${esc(e.total)}"><span class="pm-wl-progress-bar"><i style="width:${pct}%"></i></span><span class="pm-wl-progress-txt">${esc(e.progress)}/${esc(e.total)}</span></div>`
+              : (e.progress > 0 ? `<span class="pm-badge">${esc(e.progress)} ep. visti</span>` : "");
 
             const ratingOpts = [`<option value="0" ${!e.rating ? "selected" : ""}>Senza voto</option>`];
             for (let r = 1; r <= 10; r++) {
@@ -400,11 +470,16 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
                     <h4 class="pm-list-title" title="${esc(e.title)}" data-detail-key="${esc(k)}" data-detail-id="${esc(e.id)}" style="font-size: 1rem; cursor: pointer;">${esc(e.title)}</h4>
                     <span class="pm-wl-priority-badge pm-wl-priority-${esc(e.priority)}">${esc(prioMeta.icon)} ${esc(prioMeta.label)}</span>
                     <span class="pm-wl-status-badge">${esc(stMeta.icon)} ${esc(stMeta.label)}</span>
+                    <span class="pm-wl-cat-badge">${esc(catMeta.icon)} ${esc(catMeta.label)}</span>
+                    ${e.linked_key
+                      ? `<span class="pm-wl-link pm-wl-linked" title="${esc(e.linked_key)}">✓ In catalogo</span>`
+                      : `<span class="pm-wl-link pm-wl-unlinked">Non trovato</span>`}
                     <span class="pm-source-badge">${esc(badgeIcon)}${esc(badgeLabel)}</span>
                     ${e.series && e.series !== e.title ? `<span class="pm-badge">${esc(e.series)}</span>` : ""}
                     ${e.year ? `<span class="pm-badge">${esc(e.year)}</span>` : ""}
                     ${e.genre ? `<span class="pm-badge">${esc(e.genre)}</span>` : ""}
                   </div>
+                  ${progressHtml}
                   <div class="pm-wl-controls">
                     <select class="pm-source-select" data-wl-status="${esc(k)}" aria-label="Stato">
                       <option value="plan_to_watch" ${e.status === "plan_to_watch" ? "selected" : ""}>📌 Da guardare</option>
@@ -426,7 +501,9 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
                   </div>
                 </div>
                 <div class="pm-list-actions">
-                  <button type="button" class="pm-player-btn pm-primary" data-detail-key="${esc(k)}" data-detail-id="${esc(e.id)}" data-play-key="${esc(k)}" data-play-id="${esc(e.id)}">▶ Apri / Riproduci</button>
+                  ${e.linked_key
+                    ? `<button type="button" class="pm-player-btn pm-primary" data-wl-play="${esc(e.linked_key)}">▶ Riproduci</button>`
+                    : `<button type="button" class="pm-player-btn pm-primary" data-wl-search="${esc(e.title)}" data-wl-search-cat="${esc(e.category)}">🔎 Cerca</button>`}
                   <button type="button" class="pm-player-btn" data-wl-remove="${esc(k)}" title="Rimuovi dalla Watchlist">✕</button>
                 </div>
               </article>
@@ -442,10 +519,81 @@ export function renderWatchlistViewHtml(entries = [], filterState = {}, esc = de
   `.trim();
 }
 
+const WL_IMPORT_PROVIDERS = {
+  anilist: { label: "AniList", hint: "Inserisci il tuo nome utente AniList (la lista deve essere pubblica).", input: "user" },
+  mal: { label: "MyAnimeList", hint: "Scegli il file XML esportato da MyAnimeList.", input: "file", accept: ".xml,text/xml" },
+  csv: { label: "Trakt / Letterboxd (CSV)", hint: "Scegli il file CSV esportato (watchlist o diario).", input: "file", accept: ".csv,text/csv" },
+  json: { label: "Trakt (JSON)", hint: "Scegli il file JSON esportato.", input: "file", accept: ".json,application/json" },
+  pozzo: { label: "Backup Pozzo (JSON)", hint: "Scegli il file di backup creato da «Esporta backup».", input: "file", accept: ".json,application/json" },
+  text: { label: "Lista di testo", hint: "Un titolo per riga (ad esempio copiata da AnimeUnity).", input: "text" },
+};
+
+/** Dialogo «Importa watchlist». state: {provider, username, content, filename, prepared, skipped, warnings, defaultCat, busy, error}. */
+export function renderWatchlistImportDialogHtml(state = {}, esc = defaultEsc) {
+  const st = state || {};
+  const provider = WL_IMPORT_PROVIDERS[st.provider] ? st.provider : "anilist";
+  const meta = WL_IMPORT_PROVIDERS[provider];
+  const prepared = Array.isArray(st.prepared) ? st.prepared : null;
+  const defCat = WATCHLIST_CATEGORIES[st.defaultCat] ? st.defaultCat : "serie";
+  const countBy = (fn) => { const m = {}; for (const e of prepared || []) { const k = fn(e); m[k] = (m[k] || 0) + 1; } return m; };
+
+  let preview = "";
+  if (prepared) {
+    const byCat = countBy((e) => e.category);
+    const bySt = countBy((e) => e.status);
+    const linked = prepared.filter((e) => e.linked_key).length;
+    const warnings = Array.isArray(st.warnings) ? st.warnings : [];
+    preview = `
+      <div class="pm-settings-section pm-wli-preview">
+        <strong>Anteprima: ${esc(prepared.length)} voci</strong>
+        <div class="pm-wli-line">${Object.values(WATCHLIST_CATEGORIES).map((c) => `<span class="pm-wl-cat-badge">${esc(c.icon)} ${esc(c.label)}: ${esc(byCat[c.id] || 0)}</span>`).join(" ")}</div>
+        <div class="pm-wli-line">${Object.values(WATCHLIST_STATUSES).filter((x) => bySt[x.id]).map((x) => `<span class="pm-wl-status-badge">${esc(x.icon)} ${esc(x.label)}: ${esc(bySt[x.id])}</span>`).join(" ")}</div>
+        <div class="pm-wli-line"><span class="pm-wl-link pm-wl-linked">✓ Già nel catalogo: ${esc(linked)}</span> <span class="pm-wl-link pm-wl-unlinked">Non trovate: ${esc(prepared.length - linked)}</span>${st.skipped ? ` <span class="muted">Ignorate dal servizio: ${esc(Array.isArray(st.skipped) ? st.skipped.length : st.skipped)}</span>` : ""}</div>
+        ${warnings.length ? `<ul class="pm-wli-warnings">${warnings.slice(0, 8).map((w) => `<li>${esc(typeof w === "string" ? w : (w?.message || JSON.stringify(w)))}</li>`).join("")}${warnings.length > 8 ? `<li>…e altri ${esc(warnings.length - 8)} avvisi</li>` : ""}</ul>` : ""}
+        <label class="pm-wli-field">Tipo per le voci senza categoria
+          <select class="pm-source-select" data-wli-defcat>
+            ${Object.values(WATCHLIST_CATEGORIES).map((c) => `<option value="${esc(c.id)}" ${defCat === c.id ? "selected" : ""}>${esc(c.icon)} ${esc(c.label)}</option>`).join("")}
+          </select>
+        </label>
+      </div>`;
+  }
+
+  return `
+    <div class="pm-settings-overlay" data-close-settings-backdrop>
+      <div class="pm-settings-modal" role="dialog" aria-modal="true" aria-label="Importa watchlist">
+        <div class="pm-settings-header">
+          <h3 class="pm-settings-title">⬇ Importa watchlist</h3>
+          <button type="button" class="pm-modal-close" data-close-settings style="position: static;" title="Chiudi">✕</button>
+        </div>
+        <div class="pm-settings-content">
+          <div class="pm-settings-section">
+            <label class="pm-wli-field">Servizio
+              <select class="pm-source-select" data-wli-provider>
+                ${Object.entries(WL_IMPORT_PROVIDERS).map(([id, p]) => `<option value="${esc(id)}" ${provider === id ? "selected" : ""}>${esc(p.label)}</option>`).join("")}
+              </select>
+            </label>
+            <p class="muted" style="margin: 8px 0;">${esc(meta.hint)}</p>
+            ${meta.input === "user" ? `<input type="text" class="pm-wl-note-input" style="max-width:none;" data-wli-username value="${esc(st.username || "")}" placeholder="Nome utente" autocomplete="off">` : ""}
+            ${meta.input === "file" ? `<input type="file" data-wli-file accept="${esc(meta.accept)}">${st.filename ? ` <span class="muted">${esc(st.filename)}</span>` : ""}` : ""}
+            ${meta.input === "text" ? `<textarea class="pm-wli-text" data-wli-text rows="8" placeholder="Un titolo per riga">${esc(st.content || "")}</textarea>` : ""}
+            <p class="muted" style="margin: 8px 0 0;">I dati restano sul tuo computer: i file vengono letti qui e inviati solo al backend locale.</p>
+          </div>
+          ${st.error ? `<div class="pm-wli-error" role="alert">⚠ ${esc(st.error)}</div>` : ""}
+          ${preview}
+          <div class="pm-wli-actions">
+            <button type="button" class="pm-player-btn" data-wli-analyze ${st.busy ? "disabled" : ""}>${st.busy === "analyze" ? "Analisi in corso…" : "Analizza"}</button>
+            ${prepared && prepared.length ? `<button type="button" class="pm-player-btn pm-primary" data-wli-commit ${st.busy ? "disabled" : ""}>${st.busy === "commit" ? "Importazione…" : `Importa ${esc(prepared.length)} voci`}</button>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `.trim();
+}
+
 export function renderHeroHtml(item, esc = defaultEsc) {
   if (!item) return "";
   const key = compositeKey ? compositeKey(item) : `${item.source || "locale"}:${item.id ?? ""}`;
-  const badge = sourceBadge ? sourceBadge(item.source) : null;
+  const badge = badgeOf(item);
   const badgeLabel = badge?.label || item.source_label || item.source || "Locale";
   const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
   const bg = safeMediaUrl(item.backdrop || item.poster);
@@ -483,7 +631,7 @@ export function renderHeroHtml(item, esc = defaultEsc) {
 export function renderCardHtml(item, isFav = false, esc = defaultEsc, options = {}) {
   if (!item) return "";
   const key = compositeKey ? compositeKey(item) : `${item.source || "locale"}:${item.id ?? ""}`;
-  const badge = sourceBadge ? sourceBadge(item.source) : null;
+  const badge = badgeOf(item);
   const badgeLabel = badge?.label || item.source_label || item.source || "Locale";
   const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
   const poster = safeMediaUrl(item.poster);
@@ -518,8 +666,8 @@ export function renderCardHtml(item, isFav = false, esc = defaultEsc, options = 
         <button type="button" class="pm-fav-btn" data-fav-key="${esc(key)}" data-fav-id="${esc(item.id)}" style="position: absolute; top: 6px; left: 6px; z-index: 3; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; color: ${isFav ? 'var(--accent)' : 'var(--muted)'};" title="${isFav ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}">${isFav ? '★' : '☆'}</button>
         <button type="button" class="pm-fav-btn" data-wl-toggle="${esc(key)}" data-wl-id="${esc(item.id ?? '')}" style="position: absolute; top: 6px; left: 34px; z-index: 3; background: var(--panel); border: 1px solid ${wlEntry ? 'var(--accent)' : 'var(--line)'}; border-radius: 999px; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; cursor: pointer; color: ${wlEntry ? 'var(--accent)' : 'var(--muted)'};" title="Aggiungi/Modifica nella Watchlist">${wlIcon}</button>
         ${isS4me && item.id != null ? `
-          <button type="button" class="pm-pin-btn ${isPinned ? 'pm-pinned' : ''}" data-pin-item="${esc(item.id)}" title="${isPinned ? 'Rimuovi dalla Libreria' : 'Aggiungi alla Libreria'}">
-            ${isPinned ? '✓ In Libreria' : '＋ Libreria'}
+          <button type="button" class="pm-pin-btn ${wlEntry ? 'pm-pinned' : ''}" data-wl-toggle="${esc(key)}" data-wl-id="${esc(item.id)}" title="${wlEntry ? 'Rimuovi dalla Watchlist' : 'Aggiungi alla Watchlist'}">
+            ${wlEntry ? '✓ In Watchlist' : '＋ Watchlist'}
           </button>
         ` : ""}
       </div>
@@ -544,7 +692,7 @@ export function renderCarouselHtml(title, items, options = {}, esc = defaultEsc)
       const pct = resumeOf(it);
       const poster = safeMediaUrl(it.backdrop || it.poster);
       const key = compositeKey ? compositeKey(it) : `${it.source || "locale"}:${it.id ?? ""}`;
-      const badge = sourceBadge ? sourceBadge(it.source) : null;
+      const badge = badgeOf(it);
       const badgeLabel = badge?.label || it.source || "Locale";
       const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
       let sub = "";
@@ -582,8 +730,11 @@ export function renderCarouselHtml(title, items, options = {}, esc = defaultEsc)
       const sKey = `series:${s.name}`;
       const wlEntry = watchlistMap instanceof Map ? (watchlistMap.get(sKey) || (rep.id != null ? watchlistMap.get(compositeKey(rep)) : null)) : null;
       const wlIcon = wlEntry ? (wlEntry.priority === "high" ? "🔥" : "📌") : "📋";
-      const meta = `${s.seasonsCount || 1} stagion${(s.seasonsCount || 1) === 1 ? 'e' : 'i'} · ${s.count || 1} episod${(s.count || 1) === 1 ? 'o' : 'i'}`;
-      const badge = sourceBadge ? sourceBadge(rep.source) : null;
+      // numeri solo se reali: le righe del catalogo streaming non sono episodi (prima «1 stagione · 2 episodi» per Breaking Bad)
+      const meta = s.known === false
+        ? (s.label || "Serie TV")
+        : `${s.seasonsCount || 1} stagion${(s.seasonsCount || 1) === 1 ? 'e' : 'i'} · ${s.count || 1} episod${(s.count || 1) === 1 ? 'o' : 'i'}`;
+      const badge = badgeOf(rep);
       const badgeLabel = badge?.label || rep.source || "Locale";
       const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
       return `
@@ -642,7 +793,7 @@ export function renderListHtml(items = [], options = {}, esc = defaultEsc) {
         const isFav = favs.has(key) || favs.has(String(it.id));
         const wlEntry = watchlistMap instanceof Map ? (watchlistMap.get(key) || (it.id != null ? watchlistMap.get(String(it.id)) : null)) : null;
         const wlIcon = wlEntry ? (wlEntry.priority === "high" ? "🔥" : "📌") : "📋";
-        const badge = sourceBadge ? sourceBadge(it.source) : null;
+        const badge = badgeOf(it);
         const badgeLabel = badge?.label || it.source || "Locale";
         const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
         const poster = safeMediaUrl(it.poster || it.backdrop);
@@ -694,13 +845,9 @@ export function renderMediaContextMenuHtml(item, options = {}, esc = defaultEsc)
     itemsHtml.push(`<button type="button" class="pm-ctx-item pm-ctx-danger" data-ctx-remove-continue="${esc(k)}" data-ctx-item-id="${esc(id)}">✕ Rimuovi da «Continua a guardare»</button>`);
   }
 
-  if (isS4me && id) {
-    if (isPinnedS4me) {
-      itemsHtml.push(`<button type="button" class="pm-ctx-item pm-ctx-danger" data-ctx-unpin-s4me="${esc(id)}">🗑 Rimuovi dalla Libreria Stream4me</button>`);
-    } else {
-      itemsHtml.push(`<button type="button" class="pm-ctx-item" data-ctx-pin-s4me="${esc(id)}">＋ Aggiungi alla Libreria</button>`);
-    }
-  }
+  itemsHtml.push(options.isInWatchlist
+    ? `<button type="button" class="pm-ctx-item pm-ctx-danger" data-wl-toggle="${esc(k)}" data-wl-id="${esc(id)}">🗑 Rimuovi dalla Watchlist</button>`
+    : `<button type="button" class="pm-ctx-item" data-wl-toggle="${esc(k)}" data-wl-id="${esc(id)}">📋 Aggiungi alla Watchlist</button>`);
 
   return itemsHtml.join("");
 }
@@ -729,7 +876,7 @@ export function renderDetailModal(target, groups = {}, options = {}, esc = defau
     const lastWatched = allEps.filter(isSeen).pop();
     const nextToWatch = (lastWatched ? nextEpisode(allEps, lastWatched.id) : null) || allEps.find((e) => !isSeen(e)) || allEps[0];
     const isSeriesFav = favs.has("series:" + seriesName);
-    const badge = sourceBadge ? sourceBadge(repEp.source) : null;
+    const badge = badgeOf(repEp);
     const badgeLabel = badge?.label || repEp.source || "Locale";
     const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
     const pinTargetId = (typeof target === "object" && target?.id) ? target.id : repEp.id;
@@ -763,11 +910,9 @@ export function renderDetailModal(target, groups = {}, options = {}, esc = defau
                 <button type="button" class="pm-player-btn" data-fav-id="series:${esc(seriesName)}">
                   ${isSeriesFav ? '★ Preferita' : '☆ Aggiungi ai preferiti'}
                 </button>
-                ${isS4meSeries && pinTargetId != null ? `
-                  <button type="button" class="pm-player-btn ${isPinnedSeries ? 'pm-primary' : ''}" data-pin-item="${esc(pinTargetId)}">
-                    ${isPinnedSeries ? '✓ In Libreria' : '＋ Libreria'}
-                  </button>
-                ` : ""}
+                <button type="button" class="pm-player-btn ${wlEntry ? 'pm-primary' : ''}" data-wl-toggle="${esc(wlKey)}"${pinTargetId != null ? ` data-wl-id="${esc(pinTargetId)}"` : ""}>
+                  ${wlEntry ? '✓ In Watchlist' : '＋ Watchlist'}
+                </button>
               </div>
               ${renderWatchlistControlsHtml(wlKey, wlEntry, esc)}
             </div>
@@ -816,7 +961,7 @@ export function renderDetailModal(target, groups = {}, options = {}, esc = defau
   // Standalone item (Film, Brano, Stream4me item, etc.)
   const item = target;
   const key = compositeKey ? compositeKey(item) : `${item.source || "locale"}:${item.id ?? ""}`;
-  const badge = sourceBadge ? sourceBadge(item.source) : null;
+  const badge = badgeOf(item);
   const badgeLabel = badge?.label || item.source_label || item.source || "Locale";
   const badgeIcon = badge?.icon ? `${badge.icon} ` : "";
   const bg = safeMediaUrl(item.backdrop || item.poster);
@@ -851,18 +996,16 @@ export function renderDetailModal(target, groups = {}, options = {}, esc = defau
               <button type="button" class="pm-player-btn" data-fav-key="${esc(key)}" data-fav-id="${esc(item.id ?? '')}">
                 ${isFav ? '★ Preferito' : '☆ Aggiungi ai preferiti'}
               </button>
-              ${isS4me && item.id != null ? `
-                <button type="button" class="pm-player-btn ${isPinned ? 'pm-primary' : ''}" data-pin-item="${esc(item.id)}">
-                  ${isPinned ? '✓ In Libreria' : '＋ Libreria'}
-                </button>
-              ` : ""}
+              <button type="button" class="pm-player-btn ${wlEntry ? 'pm-primary' : ''}" data-wl-toggle="${esc(key)}" data-wl-id="${esc(item.id ?? '')}">
+                ${wlEntry ? '✓ In Watchlist' : '＋ Watchlist'}
+              </button>
             </div>
             ${renderWatchlistControlsHtml(key, wlEntry, esc)}
           </div>
         </div>
         ${detailLoading || detailEpisodes.length ? `
           <div class="pm-modal-body">
-            ${detailLoading ? `<p class="muted" style="margin: 0; font-size: 0.88rem;">Caricamento episodi e flussi da Stream4me…</p>` : ""}
+            ${detailLoading ? `<p class="muted" style="margin: 0; font-size: 0.88rem;" role="status"><span class="pm-loading-spin pm-inline" aria-hidden="true"></span>Caricamento episodi e flussi da Stream4me…</p>` : ""}
             ${detailEpisodes.length ? `
               <h4 style="margin: 0; font-size: 0.95rem; color: var(--text);">Episodi / Flussi disponibili (${detailEpisodes.length})</h4>
               <div class="pm-episode-list">
@@ -1052,15 +1195,71 @@ export function renderStream4meBrowserHtml(state = {}, esc = defaultEsc) {
   `.trim();
 }
 
+const SRC_STATE_LABEL = { ok: "Connessa", error: "Errore", absent: "Non installata", slow: "Lenta", unknown: "Verifica…" };
+
+/** Payload per media-server/config: source, base_url + (api_key | username/password | token). */
+export function buildServerPayload({ type = "jellyfin", url = "", user = "", password = "", key = "" } = {}) {
+  const source = type === "plex" ? "plex" : "jellyfin";
+  const body = { source, base_url: String(url).trim() };
+  const k = String(key).trim();
+  if (source === "plex") body.token = k;
+  else if (String(user).trim() && password) Object.assign(body, { username: String(user).trim(), password });
+  else body.api_key = k;
+  return body;
+}
+
+/** Riga di stato del catalogo ricette-web: { text, chip }. */
+export function catalogSummary(st) {
+  if (!st) return { text: "Stato del catalogo non disponibile.", chip: "" };
+  const total = st.total ?? st.count ?? st.items;
+  const n = total != null ? ` · ${total} titoli` : "";
+  if (st.refreshing) return { text: "Aggiornamento in corso…" + (typeof st.progress === "number" && st.progress <= 1 ? ` (${Math.round(st.progress * 100)}%)` : ""), chip: "Aggiornamento" };
+  const when = st.updated_at ? `Aggiornato il ${new Date(Number(st.updated_at) * 1000).toLocaleString()}` : "Catalogo non ancora aggiornato";
+  return { text: when + n + (st.last_error ? ` · Errore: ${st.last_error}` : ""), chip: st.last_error ? "Errore" : (total != null ? `${total} titoli` : "") };
+}
+
+/** Stato sorgente da un errore di fetch: 404 / non trovata = estensione assente. */
+export function stateFromError(err) {
+  const m = `${err?.status ?? ""} ${err?.message ?? ""}`;
+  return /404|not found|non trovat|non installat/i.test(m) ? "absent" : "error";
+}
+
+// Piu' badge se logica.js espone sourceBadges (elemento presente in piu' sorgenti), altrimenti uno solo.
+const badgeOf = (item) => {
+  const list = (typeof logicaModule.sourceBadges === "function" ? logicaModule.sourceBadges(item) : null) || [];
+  const bs = list.length ? list : [sourceBadge(item?.source)];
+  return { icon: bs[0]?.icon, label: bs.map((b) => b.label).join(" · ") };
+};
+
+const SRC_NAMES = { "media-locale": "Locale", "media-server": "Server", "ricette-web": "Web" };
+const CHIP_TEXT = { ok: "ok", slow: "lenta", error: "non raggiungibile", absent: "non installata" };
+/** Chip di stato per sorgente dei risultati federati; 'absent' resta grigio. */
+export function renderSourceChips(statuses, esc = defaultEsc) {
+  return (Array.isArray(statuses) ? statuses : []).map((s) => {
+    const st = CHIP_TEXT[s.state] ? s.state : "error";
+    const n = st === "ok" || st === "slow" ? ` · ${Number(s.count) || 0}` : "";
+    return `<span class="pm-src-chip pm-src-${st}">${esc(SRC_NAMES[s.id] || s.id)}: ${CHIP_TEXT[st]}${n}</span>`;
+  }).join("");
+}
+
 export function renderSettingsModal(data = {}, esc = defaultEsc) {
-  const activeTab = data.activeTab || "cartelle";
   const roots = data.roots || [];
+  const srcStates = data.srcStates || {};
+  const catalog = data.catalog || null;
+  const serverConfigured = Array.isArray(data.serverConfigured) ? data.serverConfigured : [];
+  const catalogLine = catalogSummary(catalog);
+  const srcChip = (key, text) => {
+    const st = srcStates[key]?.state || "unknown";
+    return `<span class="pm-src-chip pm-src-${st}">${esc(text || srcStates[key]?.text || SRC_STATE_LABEL[st])}</span>`;
+  };
+  const absentMsg = (ext) => `<p class="muted" style="margin: 0; font-size: 0.82rem;">L'estensione «${ext}» non è installata: installala dallo Store per usare questa sorgente.</p>`;
   const scanning = Boolean(data.scanning);
   const canPick = Boolean(typeof window !== "undefined" && window.pywebview?.api?.pick_folder);
   const installedAddons = data.installedAddons || [];
   const activeRecipes = data.activeRecipes || [];
   const providers = Array.isArray(data.providers) ? data.providers : [];
   const availableInactiveProviders = Array.isArray(data.availableInactiveProviders) ? data.availableInactiveProviders : [];
+  const prefs = { ...PREF_DEFAULTS, ...(data.playerPrefs || {}) };
   const stream4meInstalled = installedAddons.some((a) => (a.name || a.id || "").toLowerCase().includes("stream4me")) || Boolean(data.stream4meStatus) || providers.length > 0;
 
   return `
@@ -1070,17 +1269,10 @@ export function renderSettingsModal(data = {}, esc = defaultEsc) {
           <h3 class="pm-settings-title">⚙ Impostazioni Media Center</h3>
           <button type="button" class="pm-modal-close" data-close-settings style="position: static;" title="Chiudi">✕</button>
         </div>
-        <div class="pm-settings-tabs" role="tablist">
-          <button type="button" role="tab" class="pm-settings-tab ${activeTab === 'cartelle' ? 'pm-active' : ''}" data-settings-tab="cartelle">📁 Cartelle locali</button>
-          <button type="button" role="tab" class="pm-settings-tab ${activeTab === 'stream4me' ? 'pm-active' : ''}" data-settings-tab="stream4me">🧩 Kodi & Stream4me</button>
-          <button type="button" role="tab" class="pm-settings-tab ${activeTab === 'server' ? 'pm-active' : ''}" data-settings-tab="server">🌐 Server Jellyfin / Plex</button>
-          <button type="button" role="tab" class="pm-settings-tab ${activeTab === 'metadati' ? 'pm-active' : ''}" data-settings-tab="metadati">🔍 Metadati</button>
-        </div>
         <div class="pm-settings-content">
-          ${activeTab === "cartelle" ? `
             <div class="pm-settings-section">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 0.95rem;">Cartelle Multimediali Locali</strong>
+                <strong style="font-size: 0.95rem;">Cartelle locali</strong> ${srcChip("locale", roots.length ? roots.length + " cartelle" : "Nessuna cartella")}
                 <button type="button" class="pm-player-btn" data-scan-now ${scanning ? "disabled" : ""}>
                   ${scanning ? "⟳ Scansione…" : "↻ Scansiona ora"}
                 </button>
@@ -1100,15 +1292,35 @@ export function renderSettingsModal(data = {}, esc = defaultEsc) {
                 `).join("") : `<p class="muted" style="margin: 8px 0; font-size: 0.82rem;">Nessuna cartella configurata.</p>`}
               </div>
             </div>
-          ` : ""}
-
-          ${activeTab === "stream4me" ? `
+            <div class="pm-settings-section">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.95rem;">Server Jellyfin / Plex</strong> ${srcChip("server")}
+              </div>
+              ${srcStates.server?.state === "absent" ? absentMsg("media-server") : `
+              <p class="muted" style="margin: 0; font-size: 0.82rem;">Collega il tuo server per vedere le librerie remote${serverConfigured.length ? ` (configurati: ${esc(serverConfigured.join(", "))})` : ""}. Le credenziali restano su questo PC.</p>
+              <div style="display: flex; gap: 8px;">
+                <select id="pm-server-type" class="pm-source-select" style="min-width: 120px;">
+                  <option value="jellyfin">Jellyfin</option>
+                  <option value="plex">Plex</option>
+                </select>
+                <input type="text" id="pm-server-url" placeholder="http://192.168.1.100:8096" style="flex: 1; min-width: 0; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="text" id="pm-server-user" placeholder="Utente (Jellyfin)" autocomplete="off" style="flex: 1; min-width: 120px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
+                <input type="password" id="pm-server-pass" placeholder="Password (Jellyfin)" autocomplete="new-password" style="flex: 1; min-width: 120px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
+              </div>
+              <input type="password" id="pm-server-token" placeholder="Chiave API Jellyfin (alternativa) / Token Plex" autocomplete="off" style="padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="pm-player-btn pm-primary" data-save-server>Salva configurazione</button>
+                <button type="button" class="pm-player-btn" data-test-server>Test connessione</button>
+                <span class="pm-server-status muted" style="font-size: 0.82rem;"></span>
+              </div>`}
+            </div>
+${srcStates.kodi?.state === "absent" ? `<div class="pm-settings-section"><div style="display: flex; justify-content: space-between; align-items: center;"><strong style="font-size: 0.95rem;">Kodi & Stream4me</strong> ${srcChip("kodi")}</div>${absentMsg("ricette-web")}</div>` : `
             <div class="pm-settings-section">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <strong style="font-size: 0.95rem;">Integrazione Kodi & Stream4me</strong>
-                <span class="pm-badge" style="background: ${stream4meInstalled ? 'var(--accent)' : 'var(--bg-3)'}; color: ${stream4meInstalled ? 'var(--bg)' : 'var(--text)'};">
-                  ${stream4meInstalled ? '✓ Stream4me Installato' : 'Non installato'}
-                </span>
+                ${srcChip("kodi", stream4meInstalled ? "Stream4me installato" : "Stream4me non installato")}
               </div>
               <p class="muted" style="margin: 0; font-size: 0.82rem;">Guarda serie TV, film e canali in streaming direttamente su Pozzo Launcher tramite Stream4me e gli addon di Kodi.</p>
               <div>
@@ -1185,31 +1397,23 @@ export function renderSettingsModal(data = {}, esc = defaultEsc) {
                 ${!installedAddons.length && !activeRecipes.length ? `<span class="muted" style="font-size: 0.8rem;">Nessun addon aggiuntivo trovato.</span>` : ""}
               </div>
             </div>
-          ` : ""}
-
-          ${activeTab === "server" ? `
+`}
             <div class="pm-settings-section">
-              <strong style="font-size: 0.95rem;">Server Multimediale Remoto (Jellyfin / Plex)</strong>
-              <p class="muted" style="margin: 0; font-size: 0.82rem;">Connetti la tua istanza Jellyfin o Plex per accedere alle tue librerie remote e sincronizzare la visione.</p>
-              <div style="display: flex; gap: 8px;">
-                <select id="pm-server-type" class="pm-source-select" style="min-width: 120px;">
-                  <option value="jellyfin">Jellyfin</option>
-                  <option value="plex">Plex</option>
-                </select>
-                <input type="text" id="pm-server-url" placeholder="http://192.168.1.100:8096" style="flex: 1; min-width: 0; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.95rem;">Ricette web</strong> ${srcChip("ricette", catalogLine.chip)}
               </div>
-              <input type="password" id="pm-server-token" placeholder="API Key / User Token…" style="padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-2); color: var(--text); font: inherit; font-size: 0.84rem;">
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="pm-player-btn pm-primary" data-save-server>Salva configurazione</button>
-                <button type="button" class="pm-player-btn" data-test-server>Test connessione</button>
-                <span class="pm-server-status muted" style="font-size: 0.82rem;"></span>
-              </div>
+              ${srcStates.ricette?.state === "absent" ? absentMsg("ricette-web") : `
+              <p class="muted pm-catalog-line" style="margin: 0; font-size: 0.82rem;">${esc(catalogLine.text)}</p>
+              <div><button type="button" class="pm-player-btn" data-refresh-catalog ${catalog?.refreshing ? "disabled" : ""}>⟳ Aggiorna catalogo</button></div>`}
             </div>
-          ` : ""}
-
-          ${activeTab === "metadati" ? `
+            <div class="pm-settings-section pm-player-prefs">
+              <strong style="font-size: 0.95rem;">Lettore</strong>
+              <label class="pm-pref-row"><input type="checkbox" data-pref-autonext ${prefs.autonext ? "checked" : ""}> Riproduci automaticamente il prossimo episodio</label>
+              <label class="pm-pref-row"><input type="checkbox" data-pref-skipintro ${prefs.skipIntro ? "checked" : ""}> Mostra il pulsante Salta intro</label>
+              <label class="pm-pref-row">Secondi da saltare <input type="number" class="pm-pref-secs" data-pref-skipsecs min="5" max="600" step="1" value="${esc(prefs.skipSecs)}" ${prefs.skipIntro ? "" : "disabled"}></label>
+            </div>
             <div class="pm-settings-section">
-              <strong style="font-size: 0.95rem;">Arricchimento Metadati e Locandine</strong>
+              <strong style="font-size: 0.95rem;">Metadati e locandine</strong>
               <p class="muted" style="margin: 0; font-size: 0.82rem;">Scarica automaticamente locandine ad alta risoluzione, trame, date di rilascio, generi e sfondi cinematografici da TMDb, TVDb e SteamGridDB per tutti i tuoi film e serie TV.</p>
               <div style="margin-top: 6px;">
                 <button type="button" class="pm-player-btn pm-primary" data-enrich-metadata>
@@ -1218,7 +1422,6 @@ export function renderSettingsModal(data = {}, esc = defaultEsc) {
               </div>
               <div class="pm-enrich-status muted" style="margin-top: 8px; font-size: 0.82rem;"></div>
             </div>
-          ` : ""}
         </div>
       </div>
     </div>
@@ -1273,7 +1476,7 @@ export function renderMediaWidgetHtml(item, esc = defaultEsc) {
   }
 
   const key = compositeKey ? compositeKey(item) : `${item.source || "locale"}:${item.id ?? ""}`;
-  const badge = sourceBadge ? sourceBadge(item.source) : null;
+  const badge = badgeOf(item);
   const badgeLabel = badge?.label || item.source_label || item.source || "Locale";
 
   return `
@@ -1344,14 +1547,9 @@ export function createMediaWidgetDef(gsInstance, ctxInstance) {
         try {
           let apiItems = null;
           try {
-            const res = await api(`/plugin-api/${pluginId}/list?limit=50`);
-            apiItems = Array.isArray(res) ? res : (Array.isArray(res?.items) ? res.items : null);
-          } catch {
-            try {
-              const res = await api("/api/ext/media-locale/library");
-              apiItems = Array.isArray(res) ? res : (Array.isArray(res?.items) ? res.items : null);
-            } catch {}
-          }
+            const res = await federatedList({ api }, { kind: "", query: "" });
+            apiItems = res?.items || null;
+          } catch {}
 
           if (Array.isArray(apiItems) && apiItems.length > 0) {
             if (typeof mergeContinueWatching === "function") {
@@ -1501,11 +1699,12 @@ const WATCHLIST_STORAGE_KEY = "pm_watchlist";
 
 function loadWatchlistLocal(gs) {
   try {
+    const k = pkey(WATCHLIST_STORAGE_KEY);
     const raw = gs?.store?.get
-      ? gs.store.get(WATCHLIST_STORAGE_KEY, null)
-      : JSON.parse(localStorage.getItem("gs." + WATCHLIST_STORAGE_KEY) || "[]");
+      ? gs.store.get(k, null)
+      : JSON.parse(localStorage.getItem("gs." + k) || "[]");
     if (Array.isArray(raw) && raw.length) return raw.map((x) => normalizeWatchlistEntry(x));
-    const ls = JSON.parse(localStorage.getItem("gs." + WATCHLIST_STORAGE_KEY) || "[]");
+    const ls = JSON.parse(localStorage.getItem("gs." + k) || "[]");
     return Array.isArray(ls) ? ls.map((x) => normalizeWatchlistEntry(x)) : [];
   } catch {
     return [];
@@ -1514,8 +1713,9 @@ function loadWatchlistLocal(gs) {
 
 function saveWatchlistLocal(gs, entries) {
   const arr = Array.isArray(entries) ? entries.map((x) => normalizeWatchlistEntry(x)) : [];
-  try { if (gs?.store?.set) gs.store.set(WATCHLIST_STORAGE_KEY, arr); } catch {}
-  try { localStorage.setItem("gs." + WATCHLIST_STORAGE_KEY, JSON.stringify(arr)); } catch {}
+  const k = pkey(WATCHLIST_STORAGE_KEY);
+  try { if (gs?.store?.set) gs.store.set(k, arr); } catch {}
+  try { localStorage.setItem("gs." + k, JSON.stringify(arr)); } catch {}
 }
 
 export default function (gs, ctx) {
@@ -1524,6 +1724,7 @@ export default function (gs, ctx) {
   const esc = (s) => (gs?.esc ? gs.esc(s) : defaultEsc(s));
   const favs = loadFavs(gs);
   attachPlay(gs);
+  try { import("./remote.js").then((m) => m.startRemote?.(gs)).catch(() => {}); } catch { /* telefono non disponibile */ }
 
   const sidebarId = ctx?.id || "media";
   gs.addSidebarItem({ id: sidebarId, label: "Media", icon: "🎬", view: sidebarId });
@@ -1630,13 +1831,15 @@ export default function (gs, ctx) {
     });
   }
 
-  function executePlay(item, onClose) {
+  /** `siblings`: episodi della stessa serie, per i pulsanti precedente/successivo e l'elenco nel lettore. */
+  function executePlay(item, onClose, siblings, extra = {}) {
     const playItem = normalizePlayItem(item);
+    const opts = { ...(Array.isArray(siblings) && siblings.length > 1 ? { episodes: siblings.map(normalizePlayItem) } : {}), ...extra };
     if (typeof window !== "undefined" && typeof window.__pmPlay === "function") {
-      window.__pmPlay(playItem, onClose);
+      window.__pmPlay(playItem, onClose, opts);
     } else if (typeof play === "function") {
       try {
-        play(gs, playItem, onClose);
+        play(gs, playItem, onClose, opts);
       } catch {
         play(playItem, gs, onClose);
       }
@@ -1646,6 +1849,7 @@ export default function (gs, ctx) {
   }
 
   let pmActiveKeyDown = null;
+  let pmStorageHandler = null;
 
   const viewDef = {
     title: "Media",
@@ -1656,7 +1860,11 @@ export default function (gs, ctx) {
       let currentQuery = "";
       let filterOnlyFavs = false;
       let showSettings = false;
-      let settingsTab = "cartelle";
+      let srcStates = {};
+      let catalogStatus = null;
+      let serverConfigured = [];
+      let sourceChips = [];
+      let catalogPoll = null;
       let selectedDetailTarget = null;
       let selectedDetailSeason = null;
       let viewMode = (typeof localStorage !== "undefined" && localStorage.getItem("gs.pm_view_mode")) || "netflix";
@@ -1671,12 +1879,17 @@ export default function (gs, ctx) {
       let wlFilterStatus = "all";
       let wlFilterPriority = "all";
       let wlSortBy = "priority";
+      let wlFilterCategory = "all";
+      let wlImp = null;
       let s4mInstalled = false;
       let s4mProviders = [];
       let s4mInactiveProviders = [];
       let activeS4mProvider = null;
       let activeS4mPath = "";
       let s4mBrowsedItems = [];
+      let s4mSearchSeq = 0;      // numero dell'ultima ricerca: una risposta vecchia non deve sovrascrivere quella nuova
+      let s4mSearchQuery = "";   // testo a cui si riferiscono i risultati di s4mBrowsedItems
+      let s4mSearchMeta = null;  // {searched, failed, pending} dell'ultima ricerca generale
       let s4mLoading = false;
       let s4mError = "";
       let detailEpisodes = [];
@@ -1732,6 +1945,7 @@ export default function (gs, ctx) {
           <button type="button" class="pm-season-tab pm-primary" data-open-add-dialog title="Aggiungi cartella locale, Stream4me o flussi">＋ Aggiungi</button>
           <button type="button" class="pm-season-tab pm-favs-toggle" data-toggle-favs>☆ Solo preferiti</button>
           <button type="button" class="pm-season-tab" data-quick-enrich title="Scarica metadati e locandine online (TMDb / AniList)">🔍 Scarica locandine</button>
+          ${typeof document !== "undefined" && document.body?.classList.contains("media-window") ? "" : `<button type="button" class="pm-season-tab" data-open-media-window title="Apre Media in una finestra separata: il launcher resta libero (anche per giocare) mentre guardi">⧉ Finestra</button>`}
           <button type="button" class="pm-season-tab pm-settings-btn" data-open-settings>⚙ Impostazioni Media</button>
         </div>
       `;
@@ -1745,7 +1959,10 @@ export default function (gs, ctx) {
       const ctxMenuHost = document.createElement("div");
       ctxMenuHost.className = "pm-ctx-menu-host";
 
-      root.append(toolbar, content, modalHost, ctxMenuHost);
+      const chipsHost = document.createElement("div");
+      chipsHost.className = "pm-src-chips";
+
+      root.append(toolbar, chipsHost, content, modalHost, ctxMenuHost);
 
       const searchInput = toolbar.querySelector(".pm-search");
       const favsToggle = toolbar.querySelector(".pm-favs-toggle");
@@ -1813,8 +2030,13 @@ export default function (gs, ctx) {
           const res = await gs.api(`/plugin-api/media-locale/watchlist`);
           const arr = Array.isArray(res?.entries) ? res.entries : (Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : null));
           if (Array.isArray(arr)) {
-            watchlistEntries = arr.map((x) => normalizeWatchlistEntry(x));
+            // unione, mai sostituzione: un server vuoto (salvataggi falliti, database nuovo) non deve cancellare la copia locale
+            const { entries, localOnly } = mergeWatchlists(arr.map((x) => normalizeWatchlistEntry(x)), loadWatchlistLocal(gs));
+            watchlistEntries = entries;
             saveWatchlistLocal(gs, watchlistEntries);
+            for (const e of localOnly) {  // le voci che il server non ha si rimandano: restano anche dopo un aggiornamento dell'app
+              try { await gs.api("/plugin-api/media-locale/watchlist", { method: "POST", body: e }); } catch { break; }
+            }
           }
         } catch {
           watchlistEntries = loadWatchlistLocal(gs);
@@ -1844,11 +2066,11 @@ export default function (gs, ctx) {
         saveWatchlistLocal(gs, watchlistEntries);
 
         try {
-          await gs.api("/plugin-api/media-locale/watchlist", {
-            method: "POST",
-            body: { action: "upsert", entry: merged, entries: watchlistEntries },
-          });
-        } catch {}
+          await gs.api("/plugin-api/media-locale/watchlist", { method: "POST", body: merged });
+        } catch (err) {
+          // la copia locale c'è, ma sul disco non è arrivata: lo si dice invece di tacere, e verrà rimandata al prossimo avvio
+          gs?.toast?.(`Watchlist: salvataggio non riuscito (${err?.message || "errore"})`, true);
+        }
 
         // If Stream4me item not in library yet, pin it so the user never loses it
         if (fb && isStream4meItem(fb) && fb.id != null && !pinnedIds.has(String(fb.id))) {
@@ -1858,15 +2080,60 @@ export default function (gs, ctx) {
       }
 
       async function removeWatchlistEntry(itemKey) {
+        const gone = watchlistEntries.find((e) => e.item_key === itemKey || String(e.item_id) === itemKey);
         watchlistEntries = watchlistEntries.filter((e) => e.item_key !== itemKey && String(e.item_id) !== itemKey && `series:${e.series}` !== itemKey);
         syncWatchlistMap();
         saveWatchlistLocal(gs, watchlistEntries);
         try {
-          await gs.api("/plugin-api/media-locale/watchlist", {
-            method: "POST",
-            body: { action: "remove", item_key: itemKey, entries: watchlistEntries },
-          });
-        } catch {}
+          await gs.api("/plugin-api/media-locale/watchlist/remove", { method: "POST", body: { item_key: itemKey } });
+        } catch (err) {
+          gs?.toast?.(`Watchlist: rimozione non riuscita (${err?.message || "errore"})`, true);
+        }
+        // senza il pulsante «Libreria», i titoli Stream4me salvati seguono la watchlist: tolti da una, escono dall'altra
+        const pid = gone?.item_id != null ? String(gone.item_id) : "";
+        if (pid && pinnedIds.has(pid)) {
+          try { await gs.api("/plugin-api/ricette-web/stream4me/unpin", { method: "POST", body: { id: pid } }); } catch {}
+          pinnedIds.delete(pid);
+          pinnedItems = pinnedItems.filter((x) => String(x.id) !== pid);
+        }
+      }
+
+      /** Salva via bulk le voci (con linked_key) e le fonde nell'elenco locale. Ritorna il riepilogo del backend. */
+      async function bulkSaveWatchlist(entries) {
+        return gs.api("/plugin-api/media-locale/watchlist/bulk", { method: "POST", body: { entries } });
+      }
+
+      /** Associa al catalogo le voci senza linked_key; salva solo le nuove associazioni. Ritorna il numero associato. */
+      async function autoLinkWatchlist() {
+        const changed = [];
+        watchlistEntries = watchlistEntries.map((raw) => {
+          const e = normalizeWatchlistEntry(raw);
+          if (e.linked_key) return e;
+          const m = matchLibraryItem(e, items);
+          if (!m) return e;
+          const ne = { ...e, linked_key: compositeKey(m.item), updated_at: Math.floor(Date.now() / 1000) };
+          changed.push(ne);
+          return ne;
+        });
+        if (!changed.length) return 0;
+        syncWatchlistMap();
+        saveWatchlistLocal(gs, watchlistEntries);
+        await bulkSaveWatchlist(changed);
+        return changed.length;
+      }
+
+      /** Applica categoria predefinita e matching col catalogo alle voci grezze dell'anteprima. */
+      function prepareImport() {
+        const def = WATCHLIST_CATEGORIES[wlImp.defaultCat] ? wlImp.defaultCat : "serie";
+        wlImp.prepared = (wlImp.raw || []).map((r) => {
+          const e = normalizeWatchlistEntry({ ...r, category: r.category || def });
+          const m = matchLibraryItem(e, items);
+          return { ...r, category: e.category, status: e.status, linked_key: m ? compositeKey(m.item) : "" };
+        });
+      }
+
+      function renderWlImport() {
+        modalHost.innerHTML = renderWatchlistImportDialogHtml(wlImp, esc);
       }
 
       async function loadRoots() {
@@ -1971,44 +2238,88 @@ export default function (gs, ctx) {
 
       async function searchStream4meOnline(q) {
         if (!q || q.length < 2) return;
+        const seq = ++s4mSearchSeq;
+        s4mSearchQuery = q;
+        s4mSearchMeta = null;
         s4mLoading = true;
         s4mError = "";
         renderContent();
         try {
+          // dentro la pagina di un provider si cerca solo lì; ovunque altrove, in TUTTI i provider
           const chId = activeS4mProvider?.id || activeS4mProvider?.channel || "all";
           const res = await gs.api(`/plugin-api/ricette-web/stream4me/browse?channel=${encodeURIComponent(chId)}&query=${encodeURIComponent(q)}`);
+          if (seq !== s4mSearchSeq) return; // nel frattempo la ricerca è cambiata
           const arr = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
           s4mBrowsedItems = arr.map((x) => ({
             ...x,
             source: x.source || "stream4me",
             source_label: x.source_label || activeS4mProvider?.name || "Stream4me",
           }));
+          s4mSearchMeta = res && res.searched != null ? { searched: res.searched, failed: res.failed || [], pending: res.pending || [] } : null;
         } catch (err) {
+          if (seq !== s4mSearchSeq) return;
           s4mError = err?.message || "Errore ricerca online Stream4me";
         } finally {
-          s4mLoading = false;
-          syncItemsIndex();
-          renderContent();
+          if (seq === s4mSearchSeq) {
+            s4mLoading = false;
+            syncItemsIndex();
+            renderContent();
+          }
         }
+      }
+
+      /** Risultati della ricerca generale su Stream4me, mostrati in ogni pagina (tranne quella di un provider): stato, esiti, schede. */
+      function renderStreamSearchSection() {
+        const q = currentQuery;
+        if (activeS4mProvider || q.length < 2 || currentTab === "musica" || currentTab === "watchlist" || currentTab === "stream4me") return "";
+        if (s4mSearchQuery !== q) return `<div class="pm-search-status" role="status"><span class="pm-loading-spin pm-inline" aria-hidden="true"></span>Cerco «${esc(q)}» in tutti i provider Stream4me…</div>`;
+        if (s4mLoading) return `<div class="pm-search-status" role="status"><span class="pm-loading-spin pm-inline" aria-hidden="true"></span>Cerco «${esc(q)}» in tutti i provider Stream4me…</div>`;
+        if (s4mError) return `<p class="pm-search-status muted">Ricerca su Stream4me non riuscita: ${esc(s4mError)}</p>`;
+        const lost = s4mSearchMeta ? (s4mSearchMeta.failed.length + s4mSearchMeta.pending.length) : 0;
+        const note = s4mSearchMeta
+          ? `<span class="muted"> · ${esc(s4mSearchMeta.searched)} provider${lost ? `, ${esc(lost)} non ${lost === 1 ? "ha" : "hanno"} risposto in tempo` : ""}</span>`
+          : "";
+        if (!s4mBrowsedItems.length) return `<p class="pm-search-status muted">Nessun risultato per «${esc(q)}» nei provider Stream4me${note ? ` (${esc(s4mSearchMeta.searched)} interrogati${lost ? `, ${esc(lost)} senza risposta` : ""})` : ""}.</p>`;
+        return `<section class="pm-search-s4me"><h3 class="pm-search-title">🔎 Su Stream4me (${esc(s4mBrowsedItems.length)})${note}</h3>
+          <div class="pm-grid">${s4mBrowsedItems.map((it) => {
+            const key = compositeKey ? compositeKey(it) : String(it.id);
+            return renderCardHtml(it, favs.has(key) || favs.has(String(it.id)), esc, { pinnedIds, watchlistMap, showPin: true });
+          }).join("")}</div></section>`;
       }
 
       async function loadData() {
         if (!catalogItems.length) {
-          content.innerHTML = `<p class="muted" style="padding: 32px 0; text-align: center;">Caricamento catalogo multimediale…</p>`;
-        }
-        try {
-          if (typeof federatedList === "function") {
-            const res = await federatedList(gs, { kind: "", query: "" });
-            catalogItems = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
+          // apertura istantanea: l'ultimo catalogo noto, poi le sorgenti lo aggiornano (anche se poi cambia qualcosa)
+          const snap = loadCatalogSnapshot();
+          if (snap.length) {
+            catalogItems = collapseSingleEpisodeSeries(snap);
+            syncItemsIndex();
+            renderContent();
           } else {
-            const res = await gs.api(`${apiBase}/list?limit=500`);
-            catalogItems = Array.isArray(res) ? res : (Array.isArray(res?.items) ? res.items : []);
+            content.innerHTML = `<p class="muted" style="padding: 32px 0; text-align: center;" role="status"><span class="pm-loading-spin pm-inline" aria-hidden="true"></span>Caricamento catalogo multimediale…</p>`;
+            animateSpinners(content);
           }
-        } catch {
-          catalogItems = [];
         }
-
-        await Promise.all([loadStream4meMeta(), loadWatchlist()]);
+        const wl = loadWatchlist(); // locale e leggera
+        let side = null;
+        // I risultati arrivano a ondate: ogni sorgente completata ridisegna subito (senza bloccare le altre).
+        const apply = (its, st) => {
+          catalogItems = collapseSingleEpisodeSeries(Array.isArray(its) ? its : []);
+          sourceChips = Array.isArray(st) ? st : sourceChips;
+          syncItemsIndex();
+          renderContent();
+        };
+        try {
+          const res = await federatedList(gs, { kind: "", query: "", onPartial: apply });
+          apply(res?.items, res?.sourcesStatus);
+          if (res?.items?.length) saveCatalogSnapshot(res.items);
+        } catch {
+          // sorgenti non raggiungibili: resta l'ultimo catalogo noto invece di svuotare la pagina
+          if (!catalogItems.length) apply([], []);
+        }
+        // Stream4me (provider e preferiti) dopo il catalogo: non compete con la prima visualizzazione
+        side = Promise.all([loadStream4meMeta(), wl]);
+        await side;
         syncItemsIndex();
         renderContent();
       }
@@ -2031,7 +2342,7 @@ export default function (gs, ctx) {
                 const s = String(it.source || "").toLowerCase();
                 if (currentSource === "locale" && s !== "locale" && s !== "media-locale") return false;
                 if (currentSource === "server" && s !== "jellyfin" && s !== "plex" && s !== "server") return false;
-                if (currentSource === "web" && s !== "web" && s !== "ricette-web" && s !== "kodi" && s !== "stream4me") return false;
+                if (currentSource === "web" && (it.provider === "stream4me" || (s !== "web" && s !== "ricette-web" && s !== "kodi"))) return false;
               }
               return true;
             });
@@ -2054,9 +2365,42 @@ export default function (gs, ctx) {
         return base;
       }
 
+      async function loadSourcesState() {
+        const probe = async (url) => {
+          try { return { ok: true, v: await gs.api(url) }; } catch (err) { return { ok: false, state: stateFromError(err) }; }
+        };
+        const [cfg, cat, adds] = await Promise.all([
+          probe("/plugin-api/media-server/config"),
+          probe("/plugin-api/ricette-web/catalog/status"),
+          probe("/plugin-api/ricette-web/kodi_addons"),
+        ]);
+        serverConfigured = cfg.ok ? Object.entries(cfg.v?.servers || {}).filter(([, v]) => v?.base_url).map(([k]) => k) : [];
+        catalogStatus = cat.ok ? cat.v : null;
+        srcStates = {
+          locale: { state: "ok" },
+          server: cfg.ok ? { state: serverConfigured.length ? "ok" : "unknown", text: serverConfigured.length ? "Connessa" : "Non configurato" } : { state: cfg.state },
+          ricette: cat.ok ? { state: cat.v?.last_error ? "error" : "ok" } : { state: cat.state },
+          kodi: adds.ok ? { state: "ok" } : { state: adds.state },
+        };
+      }
+
+      function pollCatalog() {
+        clearTimeout(catalogPoll);
+        if (!root.isConnected || !showSettings) return;
+        catalogPoll = setTimeout(async () => {
+          const was = catalogStatus?.refreshing;
+          try { catalogStatus = await gs.api("/plugin-api/ricette-web/catalog/status"); } catch { return; }
+          if (showSettings) renderSettings();
+          if (catalogStatus?.refreshing) pollCatalog();
+          else if (was) loadData();
+        }, 2000);
+      }
+
       function renderSettings() {
         modalHost.innerHTML = renderSettingsModal({
-          activeTab: settingsTab,
+          srcStates,
+          catalog: catalogStatus,
+          serverConfigured,
           roots,
           scanning,
           installedAddons,
@@ -2064,6 +2408,7 @@ export default function (gs, ctx) {
           providers: s4mProviders,
           availableInactiveProviders: s4mInactiveProviders,
           stream4meStatus: s4mInstalled || s4mProviders.length > 0,
+          playerPrefs: loadPlayerPrefsCompat(),
         }, esc);
       }
 
@@ -2081,6 +2426,14 @@ export default function (gs, ctx) {
           return sEps.find((e) => isStream4meItem(e) || String(e.id || "").startsWith("s4me:") || String(e.id || "").startsWith("stream4me:") || String(e.id || "").startsWith("s4m:")) || null;
         }
         return null;
+      }
+
+      /** Episodi della serie di `item`: quelli del dettaglio (provider) se lo contengono, altrimenti quelli già in elenco. */
+      function episodesOf(item) {
+        if (!item || !(item.series || item.kind === "episodio")) return [];
+        if (detailEpisodes.some((e) => String(e.id) === String(item.id))) return detailEpisodes;
+        const s = String(item.series || "").trim().toLowerCase();
+        return [...itemsById.values()].filter((e) => e && String(e.series || "").trim().toLowerCase() === s && (e.kind === "episodio" || e.episode != null));
       }
 
       async function openItemDetail(target, selectedSeason = null) {
@@ -2103,6 +2456,23 @@ export default function (gs, ctx) {
               const eps = Array.isArray(res.episodes) ? res.episodes : (Array.isArray(res.items) ? res.items : []);
               const seriesTitle = typeof target === "string" ? target : (s4mTarget.series || s4mTarget.title || "");
               detailEpisodes = deduplicateStream4meEpisodes(eps, s4mTarget, seriesTitle);
+              if (detailEpisodes.length === 1) {
+                // un solo episodio = un film («Snatch - Lo strappo» catalogato come serie): scheda e riquadro cambiano subito
+                detailEpisodes = [];
+                const film = { kind: "film", series: "", episode_count: 1, season_count: 1 };
+                Object.assign(s4mTarget, film);
+                const row = s4mTarget.id != null ? itemsById.get(String(s4mTarget.id)) : null;
+                if (row && row !== s4mTarget) Object.assign(row, film);
+                const cat = catalogItems.find((x) => x && String(x.id) === String(s4mTarget.id));
+                if (cat) Object.assign(cat, film);
+              } else if (detailEpisodes.length > 1) {
+                // numeri reali: il riepilogo «N stagioni · M episodi» non conta più le righe del catalogo
+                const seasonsN = new Set(detailEpisodes.map((e) => e.season ?? 1)).size;
+                const info = { episode_count: detailEpisodes.length, season_count: seasonsN };
+                Object.assign(s4mTarget, info);
+                for (const x of catalogItems) if (x && String(x.id) === String(s4mTarget.id)) Object.assign(x, info);
+              }
+              renderContent();
             }
           } catch {}
           detailLoading = false;
@@ -2142,9 +2512,20 @@ export default function (gs, ctx) {
           episodes: detailEpisodes,
           loadingDetail: detailLoading,
         }, esc);
+        animateSpinners(modalHost);
       }
 
+      let curProfile = activeProfile();
       function renderContent() {
+        if (activeProfile() !== curProfile) {  // profilo cambiato a vista aperta: niente mescolanze
+          curProfile = activeProfile();
+          catalogItems = []; items = [];
+          watchlistEntries = loadWatchlistLocal(gs);
+          syncWatchlistMap();
+          favs.clear(); loadFavs(gs).forEach((x) => favs.add(x));
+          Promise.resolve().then(() => loadData()).catch(() => {});
+        }
+        chipsHost.innerHTML = renderSourceChips(sourceChips);
         tabBtns.forEach((b) => b.classList.toggle("pm-active", b.dataset.tab === currentTab));
         favsToggle.classList.toggle("pm-active", filterOnlyFavs);
         favsToggle.textContent = filterOnlyFavs ? "★ Solo preferiti" : "☆ Solo preferiti";
@@ -2156,13 +2537,14 @@ export default function (gs, ctx) {
             priority: wlFilterPriority,
             sortBy: wlSortBy,
             query: currentQuery,
+            category: wlFilterCategory,
           }, esc);
           return;
         }
 
         if (currentTab === "stream4me" || currentTab === "web") {
           const pinnedCarousel = !activeS4mProvider && !currentQuery && pinnedItems.length
-            ? renderCarouselHtml("📌 I tuoi titoli salvati in Libreria da Stream4me", pinnedItems, { favs, pinnedIds, watchlistMap }, esc)
+            ? renderCarouselHtml("📌 I tuoi titoli Stream4me salvati", pinnedItems, { favs, pinnedIds, watchlistMap }, esc)
             : "";
           const browserHtml = renderStream4meBrowserHtml({
             installed: s4mInstalled || installedAddons.some((a) => (a.name || a.id || "").toLowerCase().includes("stream4me")),
@@ -2190,17 +2572,12 @@ export default function (gs, ctx) {
         const vis = getVisibleItems();
 
         if (filterOnlyFavs || currentQuery) {
-          const onlineSearchBanner = currentQuery.length >= 2 ? `
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 16px; margin-bottom: 14px; border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line);">
-              <span style="font-size: 0.88rem; color: var(--text);">Vuoi cercare <strong>"${esc(currentQuery)}"</strong> anche nei canali streaming di Stream4me?</span>
-              <button type="button" class="pm-player-btn pm-primary" data-search-s4me-online="${esc(currentQuery)}">🔍 Cerca "${esc(currentQuery)}" anche in streaming su Stream4me</button>
-            </div>
-          ` : "";
+          const onlineSearchBanner = renderStreamSearchSection(); // ricerca generale: parte da sola su tutti i provider
 
           if (!vis.length) {
             content.innerHTML = `
               ${onlineSearchBanner}
-              <p class="muted" style="padding: 40px 0; text-align: center;">Nessun contenuto locale trovato per i filtri selezionati.</p>
+              <p class="muted" style="padding: 28px 0; text-align: center;">Nessun titolo del catalogo corrisponde ai filtri selezionati.</p>
             `;
             return;
           }
@@ -2292,8 +2669,8 @@ export default function (gs, ctx) {
           const eps = sKeys.flatMap((k) => seasons[k]);
           return {
             name,
-            count: eps.length,
-            seasonsCount: sKeys.length,
+            ...seriesSummary(eps),
+            label: "Serie TV",
             repItem: eps.find((e) => e.poster) || eps[0],
             allSeen: eps.length > 0 && eps.every(isSeen),
             isFav: favs.has("series:" + name),
@@ -2314,8 +2691,8 @@ export default function (gs, ctx) {
           const eps = sKeys.flatMap((k) => seasons[k]);
           return {
             name,
-            count: eps.length,
-            seasonsCount: sKeys.length,
+            ...seriesSummary(eps),
+            label: "Anime",
             repItem: eps.find((e) => e.poster) || eps[0],
             allSeen: eps.length > 0 && eps.every(isSeen),
             isFav: favs.has("series:" + name),
@@ -2425,12 +2802,44 @@ export default function (gs, ctx) {
 
         ctxMenuHost.innerHTML = `
           <div class="pm-ctx-menu" style="position: fixed; left: ${x}px; top: ${y}px; z-index: 10000;">
-            ${renderMediaContextMenuHtml(item, { key: k, id, isContinueItem, isS4me, isPinnedS4me, isFav }, esc)}
+            ${renderMediaContextMenuHtml(item, { key: k, id, isContinueItem, isS4me, isPinnedS4me, isFav, isInWatchlist: watchlistMap.has(k) }, esc)}
           </div>
         `;
       };
 
       root.onchange = async (e) => {
+        if (e.target.closest?.("[data-pref-autonext]")) { savePlayerPrefsCompat({ autonext: e.target.checked }); return; }
+        if (e.target.closest?.("[data-pref-skipintro]")) { savePlayerPrefsCompat({ skipIntro: e.target.checked }); renderSettings(); return; }
+        if (e.target.closest?.("[data-pref-skipsecs]")) { savePlayerPrefsCompat({ skipSecs: e.target.value }); renderSettings(); return; }
+        if (wlImp && e.target.closest("[data-wli-provider]")) {
+          wlImp = { ...wlImp, provider: e.target.value, content: "", filename: "", raw: null, prepared: null, error: "" };
+          renderWlImport();
+          return;
+        }
+        if (wlImp && e.target.closest("[data-wli-defcat]")) {
+          wlImp.defaultCat = e.target.value;
+          prepareImport();
+          renderWlImport();
+          return;
+        }
+        if (wlImp && e.target.closest("[data-wli-file]")) {
+          const f = e.target.files && e.target.files[0];
+          if (!f) return;
+          try {
+            wlImp.content = await new Promise((resolve, reject) => {
+              const fr = new FileReader();
+              fr.onload = () => resolve(String(fr.result || ""));
+              fr.onerror = () => reject(new Error("Impossibile leggere il file."));
+              fr.readAsText(f);
+            });
+            wlImp.filename = f.name;
+            wlImp.error = "";
+          } catch (err) {
+            wlImp.error = err?.message || "Impossibile leggere il file.";
+          }
+          renderWlImport();
+          return;
+        }
         const wlStatusSel = e.target.closest("[data-wl-status]");
         if (wlStatusSel) {
           const itemKey = wlStatusSel.dataset.wlStatus;
@@ -2530,7 +2939,7 @@ export default function (gs, ctx) {
           const item = (k ? itemsByKey.get(k) : null) || (id ? itemsById.get(id) : null);
           if (item) {
             modalHost.innerHTML = "";
-            executePlay(item, () => renderContent());
+            executePlay(item, () => renderContent(), episodesOf(item));
           }
           return;
         }
@@ -2655,6 +3064,141 @@ export default function (gs, ctx) {
           gs?.toast?.("Rimosso dalla Watchlist");
           if (modalHost.innerHTML && selectedDetailTarget) renderDetail(selectedDetailTarget, selectedDetailSeason);
           renderContent();
+          return;
+        }
+
+        // Watchlist: scheda categoria
+        const wlCatBtn = e.target.closest("[data-wl-category]");
+        if (wlCatBtn) {
+          e.stopPropagation();
+          wlFilterCategory = wlCatBtn.dataset.wlCategory || "all";
+          renderContent();
+          return;
+        }
+
+        // Watchlist: riproduci / apri il titolo associato in catalogo
+        const wlPlayBtn = e.target.closest("[data-wl-play]");
+        if (wlPlayBtn) {
+          e.stopPropagation();
+          const lk = wlPlayBtn.dataset.wlPlay;
+          const linkedItem = itemsByKey.get(lk) || null;
+          if (!linkedItem) {
+            gs?.toast?.("Titolo non disponibile: ricarica i cataloghi o riassocia la voce.");
+          } else if (linkedItem.series && !isStream4meItem(linkedItem)) {
+            await openItemDetail(linkedItem.series, null);
+          } else if (linkedItem.series || linkedItem.kind === "episodio") {
+            await openItemDetail(linkedItem, linkedItem.season != null ? String(linkedItem.season) : null);
+          } else {
+            executePlay(linkedItem, () => renderContent(), episodesOf(linkedItem));
+          }
+          return;
+        }
+
+        // Watchlist: cerca nel catalogo il titolo non associato
+        const wlSearchBtn = e.target.closest("[data-wl-search]");
+        if (wlSearchBtn) {
+          e.stopPropagation();
+          currentQuery = wlSearchBtn.dataset.wlSearch || "";
+          if (searchInput) searchInput.value = currentQuery;
+          currentTab = { film: "film", serie: "serie", anime: "anime" }[wlSearchBtn.dataset.wlSearchCat] || "tutti";
+          renderContent();
+          searchStream4meOnline(currentQuery);
+          return;
+        }
+
+        // Watchlist: associa ai titoli trovati
+        const wlMatchBtn = e.target.closest("[data-wl-match]");
+        if (wlMatchBtn) {
+          e.stopPropagation();
+          try {
+            const n = await autoLinkWatchlist();
+            gs?.toast?.(n ? `🔗 Associate ${n} voci al catalogo` : "Nessuna nuova corrispondenza trovata");
+          } catch (err) {
+            gs?.toast?.(`Associazione non salvata: ${err?.message || err}`);
+          }
+          renderContent();
+          return;
+        }
+
+        // Watchlist: esporta backup (file creato qui nel browser, nessun invio a terzi)
+        if (e.target.closest("[data-wl-export]")) {
+          e.stopPropagation();
+          try {
+            const data = await gs.api("/plugin-api/media-locale/watchlist/export");
+            if (data?.error) throw new Error(data.error);
+            const prof = String(data?.profile || activeProfile()).replace(/[^\w.-]+/g, "_");
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+            a.download = `pozzo-watchlist-${prof}-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            gs?.toast?.("Backup della watchlist scaricato");
+          } catch (err) {
+            gs?.toast?.(`Esportazione non riuscita: ${err?.message || err}`, true);
+          }
+          return;
+        }
+
+        // Watchlist: dialogo Importa
+        if (e.target.closest("[data-wl-import-open]")) {
+          e.stopPropagation();
+          const restore = Boolean(e.target.closest("[data-wl-restore]"));
+          wlImp = { provider: restore ? "pozzo" : "anilist", username: "", content: "", filename: "", raw: null, prepared: null, skipped: 0, warnings: [], defaultCat: "serie", busy: "", error: "" };
+          renderWlImport();
+          return;
+        }
+        if (wlImp && e.target.closest("[data-wli-analyze]")) {
+          e.stopPropagation();
+          const u = modalHost.querySelector("[data-wli-username]");
+          const t = modalHost.querySelector("[data-wli-text]");
+          if (u) wlImp.username = u.value.trim();
+          if (t) wlImp.content = t.value;
+          const body = { provider: wlImp.provider };
+          if (wlImp.provider === "anilist") body.username = wlImp.username;
+          else body.content = wlImp.content;
+          if (!(body.username || body.content)) {
+            wlImp.error = wlImp.provider === "anilist" ? "Inserisci il nome utente." : "Scegli un file o incolla la lista.";
+            renderWlImport();
+            return;
+          }
+          wlImp.busy = "analyze"; wlImp.error = "";
+          renderWlImport();
+          try {
+            const res = await gs.api("/plugin-api/media-locale/watchlist/import", { method: "POST", body });
+            if (res?.error) throw new Error(res.error);
+            wlImp.raw = Array.isArray(res?.entries) ? res.entries : [];
+            wlImp.skipped = res?.skipped || 0;
+            wlImp.warnings = Array.isArray(res?.warnings) ? res.warnings : [];
+            prepareImport();
+            if (!wlImp.raw.length) wlImp.error = "Nessuna voce trovata nell'origine indicata.";
+          } catch (err) {
+            wlImp.error = err?.message || String(err);
+            wlImp.prepared = null;
+          }
+          wlImp.busy = "";
+          renderWlImport();
+          return;
+        }
+        if (wlImp && e.target.closest("[data-wli-commit]")) {
+          e.stopPropagation();
+          if (wlImp.provider === "pozzo" && typeof window !== "undefined" && typeof window.confirm === "function"
+            && !window.confirm(`Ripristinare ${wlImp.prepared?.length || 0} voci dal backup? Le voci già presenti vengono aggiornate.`)) return;
+          wlImp.busy = "commit"; wlImp.error = "";
+          renderWlImport();
+          try {
+            const res = await bulkSaveWatchlist(wlImp.prepared);
+            if (res?.error) throw new Error(res.error);
+            wlImp = null;
+            modalHost.innerHTML = "";
+            await loadWatchlist();
+            syncItemsIndex();
+            renderContent();
+            gs?.toast?.(`Importazione: ${res?.added ?? 0} aggiunte, ${res?.updated ?? 0} aggiornate, ${res?.skipped ?? 0} saltate`);
+          } catch (err) {
+            wlImp.busy = "";
+            wlImp.error = err?.message || String(err);
+            renderWlImport();
+          }
           return;
         }
 
@@ -2856,9 +3400,8 @@ export default function (gs, ctx) {
         if (addDialogBtn) {
           e.stopPropagation();
           showSettings = true;
-          settingsTab = "cartelle";
           await loadRoots();
-          await loadAddonsAndRecipes();
+          await Promise.all([loadAddonsAndRecipes(), loadSourcesState()]);
           renderSettings();
           return;
         }
@@ -2886,6 +3429,18 @@ export default function (gs, ctx) {
         }
 
         // Tasto Apri Impostazioni Media
+        if (e.target.closest("[data-open-media-window]")) {
+          e.stopPropagation();
+          // finestra nativa se c'è pywebview (open_media), altrimenti una finestra del browser
+          try {
+            if (window.pywebview?.api?.open_media) await window.pywebview.api.open_media();
+            else window.open("/#media-window", "pozzo-media", "popup,width=1280,height=820");
+          } catch (err) {
+            gs?.toast?.(`Finestra Media non aperta (${err?.message || "errore"})`, true);
+          }
+          return;
+        }
+
         const openSettingsBtn = e.target.closest("[data-open-settings]");
         if (openSettingsBtn) {
           e.stopPropagation();
@@ -2930,11 +3485,17 @@ export default function (gs, ctx) {
         }
 
         // Switch Tab Impostazioni
-        const setTabBtn = e.target.closest("[data-settings-tab]");
-        if (setTabBtn) {
+        const refreshCatBtn = e.target.closest("[data-refresh-catalog]");
+        if (refreshCatBtn) {
           e.stopPropagation();
-          settingsTab = setTabBtn.dataset.settingsTab;
+          try {
+            catalogStatus = await gs.api("/plugin-api/ricette-web/catalog/refresh", { body: {} });
+          } catch (err) {
+            gs?.toast?.(`Aggiornamento non riuscito: ${err?.message || err}`, true);
+            return;
+          }
           renderSettings();
+          pollCatalog();
           return;
         }
 
@@ -3041,9 +3602,11 @@ export default function (gs, ctx) {
           const typeSel = modalHost.querySelector("#pm-server-type");
           const stEl = modalHost.querySelector(".pm-server-status");
           try {
-            await gs.api("/plugin-api/media-server/config", {
-              body: { url: urlInp?.value?.trim() || "", token: tokenInp?.value?.trim() || "", type: typeSel?.value || "jellyfin" },
+            const payload = buildServerPayload({
+              type: typeSel?.value, url: urlInp?.value, key: tokenInp?.value,
+              user: modalHost.querySelector("#pm-server-user")?.value, password: modalHost.querySelector("#pm-server-pass")?.value,
             });
+            await gs.api("/plugin-api/media-server/config", { body: payload });
             if (stEl) stEl.textContent = "Salvato ✓";
             gs?.toast?.("Configurazione server salvata");
             await loadData();
@@ -3061,8 +3624,8 @@ export default function (gs, ctx) {
           const stEl = modalHost.querySelector(".pm-server-status");
           if (stEl) stEl.textContent = "Verifica…";
           try {
-            const res = await gs.api("/plugin-api/media-server/test");
-            if (stEl) stEl.textContent = res?.ok ? "Online ✓" : "Non raggiungibile";
+            const res = await gs.api(`/plugin-api/media-server/test?source=${encodeURIComponent(modalHost.querySelector("#pm-server-type")?.value || "jellyfin")}`);
+            if (stEl) stEl.textContent = res?.ok ? "Online ✓" : (res?.error || "Non raggiungibile");
             gs?.toast?.(res?.ok ? "Server connesso con successo" : "Server non raggiungibile", !res?.ok);
           } catch (err) {
             if (stEl) stEl.textContent = "Offline ✕";
@@ -3163,7 +3726,7 @@ export default function (gs, ctx) {
           const item = (key ? itemsByKey.get(key) : null) || (id ? itemsById.get(id) : null);
           if (item) {
             modalHost.innerHTML = "";
-            executePlay(item, () => renderContent());
+            executePlay(item, () => renderContent(), episodesOf(item));
           }
           return;
         }
@@ -3223,8 +3786,12 @@ export default function (gs, ctx) {
         }, 120);
         s4mSearchTimer = setTimeout(() => {
           const q = searchInput.value.trim();
-          if (currentTab === "stream4me" && q.length >= 2) {
+          if (activeS4mProvider) return; // dentro un provider la ricerca è la sua (Invio nel suo campo)
+          if (q.length >= 2 && currentTab !== "watchlist" && currentTab !== "musica") {
             searchStream4meOnline(q);
+          } else if (!q && s4mSearchQuery) {
+            s4mSearchSeq++; s4mSearchQuery = ""; s4mSearchMeta = null; s4mBrowsedItems = []; s4mLoading = false; s4mError = "";
+            renderContent();
           }
         }, 400);
       };
@@ -3312,6 +3879,22 @@ export default function (gs, ctx) {
       if (typeof document !== "undefined") {
         document.addEventListener("keydown", onKeyDown);
       }
+
+      // finestra Media separata: riprende l'episodio che il lettore dell'altra finestra ha lasciato in consegna
+      // (subito all'apertura, oppure più tardi se la finestra c'era già: lo dice l'evento «storage»)
+      const consumeHandoff = () => {
+        if (typeof document === "undefined" || !document.body.classList.contains("media-window")) return;
+        const h = takeHandoff();
+        if (!h) return;
+        modalHost.innerHTML = "";
+        executePlay(h.item, () => renderContent(), h.episodes, { resumeAt: h.pos });
+      };
+      if (typeof window !== "undefined") {
+        if (pmStorageHandler) window.removeEventListener("storage", pmStorageHandler);
+        pmStorageHandler = (e) => { if (e.key === HANDOFF_KEY && e.newValue) consumeHandoff(); };
+        window.addEventListener("storage", pmStorageHandler);
+      }
+      consumeHandoff();
 
       await loadRoots();
       await loadData();

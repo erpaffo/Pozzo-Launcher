@@ -755,6 +755,7 @@
  "d.status.completed": "Abgeschlossen",
  "d.status.error": "Fehler",
  "d.status.seeding": "Wird geteilt",
+ "d.status.stalled": "Hängt",
  "d.prio.skip": "Überspringen",
  "d.prio.normal": "Normal",
  "d.prio.high": "Hoch",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "Beitreten",
  "f.party.err_core": "Der RetroArch-Core unterscheidet sich von dem deines Freundes",
  "f.party.err_emulator": "Dein Freund nutzt Eden: für dieses Spiel brauchst du ebenfalls Eden als Emulator",
+ "f.party.err_cgnat": "Dein Anbieter teilt deine IP mit anderen Kunden (CGNAT, IP {ip}): Portweiterleitung kann nicht funktionieren. Nutze ein VPN wie Tailscale oder ZeroTier und wähle «VPN».",
+ "f.party.upnp_ok": "Port {port} wurde automatisch am Router geöffnet.",
+ "f.party.upnp_fail": "Der Router hat den Port nicht selbst geöffnet: Aktiviere UPnP in seinen Einstellungen oder richte die Portweiterleitung manuell ein.",
  "f.party.invite_copied": "Einladung kopiert: füge sie in einen Chat ein",
  "f.party.invite_title": "Partie mit einem Freund: erstelle eine Einladung für einen Freund",
  "f.party.ip": "Deine Adresse (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Der Eden-Raum wurde sofort geschlossen: Prüfe, ob diese Version eden-room enthält",
  "s.party.edenStart": "Eden-Raum kann nicht gestartet werden: {e}",
  "s.party.noPublicIp": "Öffentliche IP kann nicht erkannt werden: prüfe die Verbindung",
+ "s.party.badPort": "Ungültiger Port",
  "s.party.notFound": "Spiel in der Bibliothek nicht gefunden",
  "s.party.notInLibrary": "Spiel nicht in deiner Bibliothek",
  "s.party.regProtoBool": "register_protocol muss true oder false sein",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "Ordner nicht gefunden",
  "s.profilesettings.notAllowed": "Nicht erlaubte Einstellungen: {keys}",
  "s.profilesettings.themeNotFound": "Thema nicht gefunden",
- "s.reco.unknownGame": "Unbekanntes Spiel"
+ "s.reco.unknownGame": "Unbekanntes Spiel",
+ "s.notify.queueDone": "Downloads beendet",
+ "s.notify.queueDoneBody": "{n} abgeschlossen",
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
 }

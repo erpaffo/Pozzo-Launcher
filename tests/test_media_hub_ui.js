@@ -17,6 +17,7 @@ async function main() {
     renderStream4meBrowserHtml,
     renderWatchlistControlsHtml,
     renderWatchlistViewHtml,
+    renderWatchlistImportDialogHtml,
     safeMediaUrl,
     isHttpUrl,
     isAnimeItem,
@@ -244,38 +245,33 @@ async function main() {
   const settingsHtml = renderSettingsModal(settingsData);
   assert(settingsHtml.includes("pm-settings-modal"), "Deve contenere classe .pm-settings-modal");
   assert(settingsHtml.includes("pm-settings-overlay"), "Deve contenere classe .pm-settings-overlay");
-  assert(settingsHtml.includes("pm-settings-tabs"), "Deve contenere le tab di navigazione");
-  assert(settingsHtml.includes("📁 Cartelle locali"), "Deve contenere tab Cartelle");
-  assert(settingsHtml.includes("🧩 Kodi & Stream4me"), "Deve contenere tab Stream4me");
-  assert(settingsHtml.includes("🌐 Server Jellyfin / Plex"), "Deve contenere tab Server");
-  assert(settingsHtml.includes("🔍 Metadati"), "Deve contenere tab Metadati");
+  assert(settingsHtml.includes("Cartelle locali"), "Sezione Cartelle");
+  assert(settingsHtml.includes("Server Jellyfin / Plex"), "Sezione Server");
+  assert(settingsHtml.includes("Kodi") && settingsHtml.includes("Ricette web") && settingsHtml.includes("Metadati"), "Sezioni Kodi, Ricette web, Metadati");
+  assert(!settingsHtml.includes("pm-settings-tabs"), "Vista unica Sorgenti: niente tab");
   assert(settingsHtml.includes("C:\\Media\\Film"), "Deve mostrare le cartelle configurate");
+  for (const id of ["pm-addon-input", "pm-prov-name", "pm-prov-host", "data-add-provider", "pm-server-url", "pm-server-user", "pm-server-pass", "pm-server-token", "data-test-server", "data-refresh-catalog", "data-enrich-metadata"]) {
+    assert(settingsHtml.includes(id), "Deve contenere " + id);
+  }
+  const s4mHtml = renderSettingsModal({ ...settingsData, providers: [{ id: "cb01", name: "CB01", host: "https://cb01.uno" }], availableInactiveProviders: [{ id: "guardaserie", name: "GuardaSerie" }] });
+  assert(s4mHtml.includes("Stream4me installato"), "Deve indicare lo stato di Stream4me");
+  assert(s4mHtml.includes("data-enable-provider") && s4mHtml.includes('data-remove-provider="cb01"'), "Gestione provider");
 
-  // Test tab Stream4me + Gestione Provider
-  const stream4meTabHtml = renderSettingsModal({
-    ...settingsData,
-    activeTab: "stream4me",
-    providers: [{ id: "cb01", name: "CB01", host: "https://cb01.uno" }],
-    availableInactiveProviders: [{ id: "guardaserie", name: "GuardaSerie" }],
-  });
-  assert(stream4meTabHtml.includes("Stream4me Installato"), "Deve indicare lo stato di Stream4me");
-  assert(stream4meTabHtml.includes("pm-addon-input"), "Deve includere campo per addon custom");
-  assert(stream4meTabHtml.includes("Aggiungi o Gestisci Provider Stream4me"), "Deve avere sezione gestione provider");
-  assert(stream4meTabHtml.includes("pm-prov-name"), "Deve avere input nome provider");
-  assert(stream4meTabHtml.includes("pm-prov-host"), "Deve avere input host provider");
-  assert(stream4meTabHtml.includes("data-add-provider"), "Deve avere pulsante aggiungi provider");
-  assert(stream4meTabHtml.includes("data-enable-provider"), "Deve avere pulsante attiva canale inattivo");
-  assert(stream4meTabHtml.includes('data-remove-provider="cb01"'), "Deve avere pulsante rimuovi provider attivo");
+  // Estensioni non installate: sezioni degradate, niente form
+  const absentHtml = renderSettingsModal({ ...settingsData, srcStates: { server: { state: "absent" }, ricette: { state: "absent" }, kodi: { state: "absent" } } });
+  assert(absentHtml.includes("non è installata") && !absentHtml.includes("pm-server-url") && !absentHtml.includes("data-refresh-catalog") && !absentHtml.includes("pm-addon-input"), "Sezioni assenti degradano");
+  const catHtml = renderSettingsModal({ ...settingsData, catalog: { updated_at: 1700000000, total: 42, last_error: "boom" } });
+  assert(catHtml.includes("Aggiornato il") && catHtml.includes("42 titoli") && catHtml.includes("boom"), "Stato catalogo");
 
-  // Test tab Server
-  const serverTabHtml = renderSettingsModal({ ...settingsData, activeTab: "server" });
-  assert(serverTabHtml.includes("pm-server-url"), "Deve includere campo URL server");
-  assert(serverTabHtml.includes("pm-server-token"), "Deve includere campo token");
-  assert(serverTabHtml.includes("data-test-server"), "Deve includere tasto Test connessione");
-
-  // Test tab Metadati
-  const metaTabHtml = renderSettingsModal({ ...settingsData, activeTab: "metadati" });
-  assert(metaTabHtml.includes("data-enrich-metadata"), "Deve includere pulsante arricchimento metadati");
+  // Payload media-server/config
+  const { buildServerPayload, stateFromError, renderSourceChips } = await import(pathToFileURL(frontendPath).href);
+  assert.deepStrictEqual(buildServerPayload({ type: "jellyfin", url: " http://h:8096 ", user: "u", password: "p", key: "k" }), { source: "jellyfin", base_url: "http://h:8096", username: "u", password: "p" });
+  assert.deepStrictEqual(buildServerPayload({ type: "jellyfin", url: "http://h", key: " K " }), { source: "jellyfin", base_url: "http://h", api_key: "K" });
+  assert.deepStrictEqual(buildServerPayload({ type: "plex", url: "http://p:32400", key: "T" }), { source: "plex", base_url: "http://p:32400", token: "T" });
+  assert.strictEqual(stateFromError({ message: "HTTP 404" }), "absent");
+  assert.strictEqual(stateFromError(new Error("boom")), "error");
+  const chips = renderSourceChips([{ id: "media-locale", state: "ok", count: 3 }, { id: "ricette-web", state: "absent", count: 0 }]);
+  assert(chips.includes("Locale: ok · 3") && chips.includes("pm-src-absent"), "Chip sorgenti");
 
   // ==========================================
   // f) Test anime, stream4me detector helpers & renderStream4meBrowserHtml (Kodi Navigator & Libreria)
@@ -319,14 +315,16 @@ async function main() {
       { id: "s4m:animesaturn:jjk", title: "Jujutsu Kaisen", source: "stream4me", poster: "/img/jjk.jpg" },
     ],
     pinnedIds: new Set(["s4m:animesaturn:jjk"]),
+    watchlistMap: new Map([["stream4me:s4m:animesaturn:jjk", { item_key: "stream4me:s4m:animesaturn:jjk", status: "plan_to_watch", priority: "medium" }]]),
   });
   assert(s4mInsideHtml.includes("pm-provider-nav"), "Deve mostrare barra di navigazione .pm-provider-nav");
   assert(s4mInsideHtml.includes("data-close-provider"), "Deve avere pulsante ← Tutti i provider");
   assert(s4mInsideHtml.includes('data-provider-path="incorso"'), "Deve mostrare pill categorie del provider");
   assert(s4mInsideHtml.includes("One Piece Sub ITA"), "Deve mostrare gli elementi esplorati nel provider");
-  assert(s4mInsideHtml.includes('data-pin-item="s4m:animesaturn:op"'), "Card Stream4me deve avere pulsante data-pin-item");
-  assert(s4mInsideHtml.includes("＋ Libreria"), "Item non pinnato deve mostrare ＋ Libreria");
-  assert(s4mInsideHtml.includes("✓ In Libreria"), "Item già pinnato deve mostrare ✓ In Libreria");
+  // il pulsante «Libreria» non c'è più: il suo posto è della Watchlist
+  assert(!s4mInsideHtml.includes("Libreria") && !s4mInsideHtml.includes("data-pin-item"), "Nessun pulsante Libreria sulle card");
+  assert(s4mInsideHtml.includes("＋ Watchlist"), "Item non in watchlist deve mostrare ＋ Watchlist");
+  assert(s4mInsideHtml.includes("✓ In Watchlist"), "Item già in watchlist deve mostrare ✓ In Watchlist");
   assert(s4mInsideHtml.includes('data-wl-toggle="stream4me:s4m:animesaturn:op"'), "Card deve avere pulsante Watchlist rapido data-wl-toggle");
 
   // 4. Detail Modal per elemento Stream4me con pulsante Libreria, Watchlist e lista episodi
@@ -338,7 +336,7 @@ async function main() {
       episodes: [{ id: "s4m:animesaturn:op:1", title: "Episodio 1", episode: 1, source: "stream4me" }],
     }
   );
-  assert(s4mModalHtml.includes("＋ Libreria"), "Modal dettaglio Stream4me deve avere pulsante ＋ Libreria");
+  assert(s4mModalHtml.includes("＋ Watchlist") && !s4mModalHtml.includes("Libreria"), "Modal dettaglio Stream4me: pulsante Watchlist al posto di Libreria");
   assert(s4mModalHtml.includes("Episodio 1"), "Modal dettaglio Stream4me deve elencare gli episodi caricati");
   assert(s4mModalHtml.includes("data-wl-add"), "Modal dettaglio deve includere controlli Watchlist");
 
@@ -448,6 +446,40 @@ async function main() {
   ]);
   assert(!xssWlHtml.includes("<script>alert("), "Watchlist view non deve contenere <script> in chiaro");
   assert(!xssWlHtml.includes("<img src=x"), "Watchlist view non deve contenere <img onerror> in chiaro");
+
+  // 6. Schede categoria, avanzamento, associazione al catalogo
+  const catList = [
+    { item_key: "locale:m1", id: "m1", title: "Dune", kind: "film", status: "plan_to_watch", linked_key: "plex:f1" },
+    { item_key: "x:s1", id: "s1", title: "Breaking Bad", category: "serie", status: "watching" },
+    { item_key: "x:a1", id: "a1", title: "Frieren", category: "anime", status: "watching", progress: 12, total: 24, linked_key: "jellyfin:e1" },
+  ];
+  const wlTabsHtml = renderWatchlistViewHtml(catList, {});
+  for (const lbl of ["Tutti", "Film", "Serie TV", "Anime"]) assert(wlTabsHtml.includes(lbl), `Scheda ${lbl}`);
+  assert(wlTabsHtml.includes('data-wl-category="anime"') && wlTabsHtml.includes('data-wl-category="all"'), "Schede data-wl-category");
+  assert(wlTabsHtml.includes("12/24") && wlTabsHtml.includes("pm-wl-progress-bar") && wlTabsHtml.includes("width:50%"), "Avanzamento con barra");
+  assert(wlTabsHtml.includes("✓ In catalogo") && wlTabsHtml.includes('data-wl-play="plex:f1"'), "Voce associata: badge e Riproduci");
+  assert(wlTabsHtml.includes("Non trovato") && wlTabsHtml.includes('data-wl-search="Breaking Bad"'), "Voce non associata: Cerca");
+  assert(wlTabsHtml.includes("data-wl-match") && wlTabsHtml.includes("data-wl-import-open"), "Pulsanti Associa e Importa");
+  const animeOnly = renderWatchlistViewHtml(catList, { category: "anime" });
+  assert(animeOnly.includes("Frieren") && !animeOnly.includes("Breaking Bad") && !animeOnly.includes(">Dune<"), "Filtro categoria");
+
+  // 7. Dialogo Importa watchlist
+  const impHtml = renderWatchlistImportDialogHtml({
+    provider: "text",
+    prepared: [
+      { title: "A", category: "anime", status: "completed", linked_key: "plex:1" },
+      { title: "B", category: "film", status: "plan_to_watch", linked_key: "" },
+    ],
+    warnings: ["riga 3 ignorata"],
+    error: "<b>Errore</b>",
+    defaultCat: "film",
+  });
+  assert(impHtml.includes("data-wli-provider") && impHtml.includes("data-wli-text") && impHtml.includes("data-wli-defcat"), "Controlli dialogo");
+  assert(impHtml.includes("Importa 2 voci") && impHtml.includes("Già nel catalogo: 1") && impHtml.includes("Non trovate: 1"), "Riepilogo anteprima");
+  assert(impHtml.includes("riga 3 ignorata") && impHtml.includes("&lt;b&gt;Errore"), "Avvisi e errori escapati");
+  assert(renderWatchlistImportDialogHtml({ provider: "anilist" }).includes("data-wli-username"), "AniList chiede utente");
+  assert(renderWatchlistImportDialogHtml({ provider: "mal" }).includes("data-wli-file"), "MAL chiede file");
+  assert(!renderWatchlistImportDialogHtml({ provider: "mal" }).includes("data-wli-commit"), "Senza anteprima niente Importa");
 
   // ==========================================
   // g) Test Dashboard Widget Media Locale (media:continue)
@@ -559,7 +591,7 @@ async function main() {
     assert(!/#([0-9a-fA-F]{3,8})\b/.test(html), `${w.id} nessun colore hardcoded`);
   }
   const evil = '<script>alert(1)</script>';
-  const wlDef = createExtraMediaWidgetDefs({ store: { get: (k, fb) => (k === "pm_watchlist" ? [{ id: "x1", title: evil }] : fb) } })
+  const wlDef = createExtraMediaWidgetDefs({ store: { get: (k, fb) => (String(k).startsWith("pm_watchlist") ? [{ id: "x1", title: evil }] : fb) } })
     .find((w) => w.id === "media:watchlist");
   const wlHtml = wlDef.render(null, {});
   assert(!wlHtml.includes(evil) && wlHtml.includes("&lt;script&gt;"), "Watchlist widget deve escapare il titolo");
@@ -585,11 +617,12 @@ async function main() {
   assert(ctxContinue.includes('data-ctx-remove-continue="locale:c1"'), "Include remove-continue per elementi in visione");
 
   const s4meItem = { id: "s4me:ch1:100", title: "Online Ep", source: "stream4me" };
-  const ctxS4mePinned = renderMediaContextMenuHtml(s4meItem, { key: "stream4me:s4me:ch1:100", isS4me: true, isPinnedS4me: true });
-  assert(ctxS4mePinned.includes('data-ctx-unpin-s4me="s4me:ch1:100"'), "Mostra opzione rimuovi da libreria se pinnato");
-
-  const ctxS4meUnpinned = renderMediaContextMenuHtml(s4meItem, { key: "stream4me:s4me:ch1:100", isS4me: true, isPinnedS4me: false });
-  assert(ctxS4meUnpinned.includes('data-ctx-pin-s4me="s4me:ch1:100"'), "Mostra opzione aggiungi alla libreria se non pinnato");
+  // il menu contestuale propone la Watchlist (non più la Libreria), per qualunque sorgente
+  const ctxIn = renderMediaContextMenuHtml(s4meItem, { key: "stream4me:s4me:ch1:100", isS4me: true, isInWatchlist: true });
+  assert(ctxIn.includes('data-wl-toggle="stream4me:s4me:ch1:100"') && ctxIn.includes("Rimuovi dalla Watchlist"), "Mostra rimuovi dalla Watchlist se presente");
+  const ctxOut = renderMediaContextMenuHtml(s4meItem, { key: "stream4me:s4me:ch1:100", isS4me: true, isInWatchlist: false });
+  assert(ctxOut.includes("Aggiungi alla Watchlist") && !ctxOut.includes("Libreria"), "Mostra aggiungi alla Watchlist, mai Libreria");
+  assert(renderMediaContextMenuHtml(normalMedia, { key: "locale:m42" }).includes("Aggiungi alla Watchlist"), "Anche i file locali hanno la Watchlist");
 
   // Test removeFromContinueCache
   assert.strictEqual(typeof removeFromContinueCache, "function", "removeFromContinueCache deve essere esportata");
@@ -602,12 +635,15 @@ async function main() {
     },
     getItem(k) { return this.data[k] || null; },
     setItem(k, v) { this.data[k] = String(v); },
+    removeItem(k) { delete this.data[k]; },
   };
 
   const afterRemoval = removeFromContinueCache("locale:10", memStore);
   assert.strictEqual(afterRemoval.length, 1, "Deve rimanere 1 elemento");
   assert.strictEqual(afterRemoval[0].id, "20", "L'elemento rimosso deve essere locale:10");
-  assert.strictEqual(JSON.parse(memStore.getItem("gs.pm_continue_watching")).length, 1, "Storage deve essere aggiornato");
+  // la cache è per profilo: la chiave globale passa a «:default» alla prima lettura e quella vecchia sparisce
+  assert.strictEqual(JSON.parse(memStore.getItem("gs.pm_continue_watching:default")).length, 1, "Storage deve essere aggiornato");
+  assert.strictEqual(memStore.getItem("gs.pm_continue_watching"), null, "la chiave globale non resta per altri profili");
 
   // ==========================================
   // h) Test style.css (Regole Tassative Prefisso .pm- e Variabili Tema)
@@ -719,6 +755,16 @@ async function main() {
       sel.startsWith(".pm-"),
       `Tutti i selettori devono iniziare con .pm-, trovato invece: "${sel}"`
     );
+  }
+
+  {
+    const wl = renderWatchlistViewHtml([], {});
+    assert(wl.includes("data-wl-export") && wl.includes("data-wl-restore"), "Esporta e Ripristina backup");
+    const dlg = renderWatchlistImportDialogHtml({ provider: "pozzo" });
+    assert(dlg.includes("Backup Pozzo (JSON)") && dlg.includes("data-wli-file"), "Fornitore backup con selettore file");
+    const set = renderSettingsModal({ playerPrefs: { autonext: true, skipIntro: false, skipSecs: 85 } });
+    assert(set.includes("data-pref-autonext") && set.includes("data-pref-skipintro") && /data-pref-skipsecs[^>]*disabled/.test(set), "Sezione Lettore, secondi disattivi");
+    assert(!/data-pref-skipsecs[^>]*disabled/.test(renderSettingsModal({ playerPrefs: { skipIntro: true } })), "secondi attivi con interruttore acceso");
   }
 
   console.log("ok");

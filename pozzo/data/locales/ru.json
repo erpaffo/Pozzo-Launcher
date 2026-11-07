@@ -755,6 +755,7 @@
  "d.status.completed": "Завершено",
  "d.status.error": "Ошибка",
  "d.status.seeding": "Раздаётся",
+ "d.status.stalled": "Завис",
  "d.prio.skip": "Пропустить",
  "d.prio.normal": "Обычный",
  "d.prio.high": "Высокий",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "Войти",
  "f.party.err_core": "Ядро RetroArch отличается от ядра друга",
  "f.party.err_emulator": "У друга Eden: для этой игры у вас тоже должен быть Eden как эмулятор",
+ "f.party.err_cgnat": "Ваш провайдер использует один IP для нескольких клиентов (CGNAT, IP {ip}): проброс портов работать не будет. Используйте VPN, например Tailscale или ZeroTier, и выберите «VPN».",
+ "f.party.upnp_ok": "Порт {port} автоматически открыт на роутере.",
+ "f.party.upnp_fail": "Роутер не открыл порт сам: включите UPnP в его настройках или настройте проброс портов вручную.",
  "f.party.invite_copied": "Приглашение скопировано: вставьте его в чат",
  "f.party.invite_title": "Игра с другом: создайте приглашение для друга",
  "f.party.ip": "Ваш адрес (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "Комната Eden закрылась сразу: проверьте, что в этой версии есть eden-room",
  "s.party.edenStart": "Не удаётся запустить комнату Eden: {e}",
  "s.party.noPublicIp": "Не удаётся определить ваш публичный IP: проверьте подключение",
+ "s.party.badPort": "Недопустимый порт",
  "s.party.notFound": "Игра не найдена в библиотеке",
  "s.party.notInLibrary": "Игры нет в вашей библиотеке",
  "s.party.regProtoBool": "register_protocol должен быть true или false",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "Папка не найдена",
  "s.profilesettings.notAllowed": "Настройки не разрешены: {keys}",
  "s.profilesettings.themeNotFound": "Тема не найдена",
- "s.reco.unknownGame": "Неизвестная игра"
+ "s.reco.unknownGame": "Неизвестная игра",
+ "s.notify.queueDone": "Загрузки завершены",
+ "s.notify.queueDoneBody": "Завершено: {n}",
+ "s.notify.queueDoneFailed": "Ошибок: {n}"
 }

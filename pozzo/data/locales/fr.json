@@ -755,6 +755,7 @@
  "d.status.completed": "Terminé",
  "d.status.error": "Erreur",
  "d.status.seeding": "En partage",
+ "d.status.stalled": "Bloqué",
  "d.prio.skip": "Ignorer",
  "d.prio.normal": "Normale",
  "d.prio.high": "Haute",
@@ -1356,6 +1357,9 @@
  "f.party.enter": "Rejoindre",
  "f.party.err_core": "Le core de RetroArch est différent de celui de l'ami",
  "f.party.err_emulator": "Ton ami utilise Eden : pour ce jeu, tu dois aussi avoir Eden comme émulateur",
+ "f.party.err_cgnat": "Votre fournisseur partage votre IP avec d'autres clients (CGNAT, IP {ip}) : la redirection de ports ne peut pas fonctionner. Utilisez un VPN comme Tailscale ou ZeroTier et choisissez «VPN».",
+ "f.party.upnp_ok": "Port {port} ouvert automatiquement sur le routeur.",
+ "f.party.upnp_fail": "Le routeur n'a pas ouvert le port tout seul : activez UPnP dans ses réglages ou configurez la redirection de ports à la main.",
  "f.party.invite_copied": "Invitation copiée : colle-la dans un chat",
  "f.party.invite_title": "Partie avec un ami : crée une invitation pour un ami",
  "f.party.ip": "Ton adresse (IP)",
@@ -3128,6 +3132,7 @@
  "s.party.edenClosed": "La salle Eden s'est fermée immédiatement : vérifiez que cette version contient eden-room",
  "s.party.edenStart": "Impossible de démarrer la salle Eden : {e}",
  "s.party.noPublicIp": "Impossible de détecter votre IP publique : vérifiez la connexion",
+ "s.party.badPort": "Port invalide",
  "s.party.notFound": "Jeu introuvable dans la bibliothèque",
  "s.party.notInLibrary": "Jeu absent de votre bibliothèque",
  "s.party.regProtoBool": "register_protocol doit être true ou false",
@@ -3369,5 +3374,8 @@
  "s.profilesettings.folderNotFound": "Dossier introuvable",
  "s.profilesettings.notAllowed": "Paramètres non autorisés : {keys}",
  "s.profilesettings.themeNotFound": "Thème introuvable",
- "s.reco.unknownGame": "Jeu inconnu"
+ "s.reco.unknownGame": "Jeu inconnu",
+ "s.notify.queueDone": "Téléchargements terminés",
+ "s.notify.queueDoneBody": "{n} terminés",
+ "s.notify.queueDoneFailed": "{n} échoués"
 }
