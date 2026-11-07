@@ -201,6 +201,7 @@ async function openDetail(id) {
   window.dispatchEvent(new CustomEvent("pozzo:detail-open", { detail: d }));
   renderDetailSections(d);
   if (typeof loadDetailMods === "function") loadDetailMods(d);
+  if (typeof loadDetailNoclient === "function") loadDetailNoclient(d);
   if (d.shots) loadDetailShots(d.id);
   loadSaves(d);
   if (online || storePages.length) loadGameLinks(d);

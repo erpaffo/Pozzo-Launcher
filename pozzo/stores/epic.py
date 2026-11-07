@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
+from .. import noclient as NC
 from .. import profilecfg as PC
 from ..net import request
 from .base import StoreGame, StoreProvider
@@ -41,6 +42,10 @@ class Epic(StoreProvider):
 
     def detected(self) -> bool:
         return MANIFESTS.exists() or bool(PC.get(self.cfg, "epic"))
+
+    def official(self) -> bool:
+        """Il launcher di Epic e' installato (altrimenti si installa con legendary)."""
+        return MANIFESTS.exists()
 
     def account(self) -> dict:
         a = PC.get(self.cfg, "epic", {})
@@ -140,6 +145,7 @@ class Epic(StoreProvider):
             self.log(f"Epic: {len(games)} giochi installati (collega l'account per vedere anche quelli non installati)")
             return list(games.values())
         h = {"Authorization": f"Bearer {token}"}
+        cli = NC.installed(self.cfg, "epic")  # installati con legendary da Pozzo, per appName
         records, cursor = [], None
         for _ in range(50):  # paginazione
             params = {"includeMetadata": "true", "platform": "Windows"}
@@ -170,7 +176,7 @@ class Epic(StoreProvider):
             for rec in recs:
                 cid, app = rec["catalogItemId"], rec.get("appName", "")
                 it = items.get(cid, {})
-                if not it and cid not in inst:
+                if not it and cid not in inst and app not in cli:
                     continue  # senza scheda nel catalogo: DLC/contenuti aggiuntivi (il "titolo" sarebbe un codice)
                 cats = {c.get("path") for c in it.get("categories", [])}
                 dlc = bool(it) and ("addons" in cats or it.get("mainGameItem") or it.get("mainGameItemList"))
@@ -181,6 +187,9 @@ class Epic(StoreProvider):
                     store=self.id, id=cid, title=it.get("title") or app,
                     launch={"type": "uri", "target": uri(ns, cid, app, "launch")},
                     install_uri=uri(ns, cid, app, "install"), page="https://store.epicgames.com/")
+                if app in cli and not g.installed:
+                    g.installed, g.install_dir, g.size = True, cli[app]["path"], int(cli[app]["size"])
+                    g.launch = NC.launch_cmd(self.cfg, "epic", app, cli[app])
                 g.kind = "dlc" if dlc else "app" if "applications" in cats else "game"
                 g.title = it.get("title") or g.title
                 g.description = it.get("description", "") or g.description

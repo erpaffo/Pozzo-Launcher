@@ -225,7 +225,7 @@ def build_router(ctx) -> APIRouter:
                 "ratings": json.loads(g.get("ratings") or "[]"),
                 "store": g.get("store"), "store_name": STORE_NAMES.get(g.get("store"), ""),
                 "installed": bool(g.get("installed")) if g.get("store") else True,
-                "can_install": bool(g.get("install_uri")), "page": g.get("page"),
+                "can_install": bool(g.get("install_uri")) or g.get("store") in ("epic", "gog", "amazon"),  # senza client: legendary/gogdl/nile (noclient.py) "page": g.get("page"),
                 "store_playtime": g.get("store_playtime") or 0,
                 "ports": [] if g.get("store") else _port_links()["by_grp"].get(g["grp"], []),
                 "emulator": (STORE_NAMES.get(g.get("store"), "PC") if g.get("store")

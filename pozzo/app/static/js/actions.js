@@ -398,7 +398,11 @@ async function pollRunning() {
 
 /* ------------------------------------------------------------------ giochi PC: installa, aggiungi, store */
 async function installGame(id) {
-  try { await api(`/api/game/${id}/install`, { body: {} }); }
+  try {
+    const nc = await api(`/api/game/${id}/noclient`).catch(() => null); // Epic/GOG/Amazon senza il client: legendary, gogdl, nile
+    if (nc && nc.supported && !nc.official) return noclientRun(id, "install", nc);
+    await api(`/api/game/${id}/install`, { body: {} });
+  }
   catch (e) { return toast(e.message, true); }
   toast(t("h.act.installHint"));
 }

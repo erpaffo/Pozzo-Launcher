@@ -434,6 +434,9 @@ async function loadAccounts() {
                ? `<li>${t("h.acc.epic1")}</li>
                   <li>${t("h.acc.epic2")}</li>
                   <li>${t("h.acc.epic3")}</li>`
+               : x.id === "amazon"
+               ? `<li>${t("h.acc.amazon1")}</li>
+                  <li>${t("h.acc.amazon2")}</li>`
                : `<li>${t("h.acc.gog1")}</li>
                   <li>${t("h.acc.gog2")}
                       </li>`}</ol>
@@ -464,7 +467,10 @@ async function accountAction(t) {
       const x = SET.accounts.stores.find((s) => s.id === id);
       // Prima la finestra integrata: cattura da sola il codice (nessun copia-incolla).
       const pw = window.pywebview && window.pywebview.api;
-      if (pw && pw.login && !t.dataset.browser) {
+      if (id === "amazon") { // nile genera l'indirizzo di accesso (con la sua verifica PKCE): niente finestra integrata
+        toast(window.t("f.nc.toolDownloading", { tool: "nile" }));
+        x.login_url = (await api("/api/noclient/amazon/login", { body: {} })).url;
+      } else if (pw && pw.login && !t.dataset.browser) {
         const r = await pw.login(id);
         if (r && r.ok) { toast(window.t("h.acc.linked")); pollStores(true); return loadAccounts(); }
       }
@@ -478,7 +484,7 @@ async function accountAction(t) {
     } else if (t.dataset.accCode) {
       const v = document.querySelector(`.acc-manual[data-for="${id}"] input`).value.trim();
       if (!v) return toast(window.t("h.acc.pasteFirst"), true);
-      await api(`/api/accounts/${id}/code`, { body: { code: v } });
+      await api(id === "amazon" ? "/api/noclient/amazon/code" : `/api/accounts/${id}/code`, { body: { code: v } });
       toast(window.t("h.acc.linked"));
       pollStores(true);
     } else if (t.dataset.accLogout) {

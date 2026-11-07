@@ -8,7 +8,7 @@ import time
 from fastapi import APIRouter, Body, HTTPException
 
 from .. import jobs as J
-from ... import config as C, platforms as P, profilecfg as PC, storerefresh as SR, stores as STORES
+from ... import config as C, noclient as NC, platforms as P, profilecfg as PC, storerefresh as SR, stores as STORES
 from ... import i18n as I
 from ...library.build import build
 
@@ -98,6 +98,8 @@ def build_router(ctx) -> APIRouter:
     def api_account_logout(sid: str):
         if sid in PC.KV_KEYS:  # Epic e GOG: il token e' del profilo attivo
             PC.set(cfg, sid, None)
+        elif sid == "amazon":  # accesso di nile (non c'e' disconnessione presso Amazon: si toglie solo da qui)
+            (NC.root(cfg) / "nile" / "nile" / "current_user.json").unlink(missing_ok=True)
         return api_accounts()
 
     def _start_store_job(only=None):
