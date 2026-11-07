@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "चीट खोजें",
  "f.raextra.core": "कोर ({core}) के लिए डिफ़ॉल्ट के रूप में सहेजें",
  "f.raextra.saved": "सहेजा गया",
- "f.raextra.restartNote": "गेम के अगली बार शुरू होने पर लागू होगा।"
+ "f.raextra.restartNote": "गेम के अगली बार शुरू होने पर लागू होगा।",
+ "h.acc.netFolders": "नेटवर्क फ़ोल्डर, प्रति पंक्ति एक (जैसे \\NAS\\Games)",
+ "h.acc.netDest": "यहाँ इंस्टॉल करें (खाली = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "साइलेंट इंस्टॉल (केवल GOG/Inno इंस्टॉलर)",
+ "h.acc.netSaved": "नेटवर्क फ़ोल्डर सहेजे गए",
+ "s.netstore.busy": "इंस्टॉलेशन पहले से चल रहा है",
+ "s.netstore.copy": "नेटवर्क से कॉपी हो रहा है…",
+ "s.netstore.extract": "आर्काइव निकाला जा रहा है…",
+ "s.netstore.run": "सेटअप चल रहा है (उसकी विंडो देखें)…",
+ "s.netstore.done": "लाइब्रेरी में: {title}",
+ "s.netstore.noExe": "इंस्टॉल किए गए गेम में कोई एक्ज़ीक्यूटेबल नहीं मिली",
+ "s.netstore.notRecognized": "इंस्टॉलेशन पूरा हुआ, लेकिन गेम पहचाना नहीं गया",
+ "s.netstore.gone": "गेम अब नेटवर्क फ़ोल्डर में नहीं है"
 }

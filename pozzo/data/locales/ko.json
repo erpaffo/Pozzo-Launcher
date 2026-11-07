@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "치트 찾기",
  "f.raextra.core": "코어({core})의 기본값으로 저장",
  "f.raextra.saved": "저장됨",
- "f.raextra.restartNote": "다음에 게임을 시작할 때 적용됩니다."
+ "f.raextra.restartNote": "다음에 게임을 시작할 때 적용됩니다.",
+ "h.acc.netFolders": "네트워크 폴더, 한 줄에 하나 (예: \\NAS\\Games)",
+ "h.acc.netDest": "설치 위치 (비워 두면 Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "자동 설치 (GOG/Inno 설치 프로그램만)",
+ "h.acc.netSaved": "네트워크 폴더를 저장했습니다",
+ "s.netstore.busy": "이미 설치가 진행 중입니다",
+ "s.netstore.copy": "네트워크에서 복사 중…",
+ "s.netstore.extract": "압축 해제 중…",
+ "s.netstore.run": "설치 프로그램 실행 중 (해당 창을 확인하세요)…",
+ "s.netstore.done": "라이브러리에 추가됨: {title}",
+ "s.netstore.noExe": "설치된 게임에서 실행 파일을 찾지 못했습니다",
+ "s.netstore.notRecognized": "설치는 끝났지만 게임을 인식하지 못했습니다",
+ "s.netstore.gone": "게임이 더 이상 네트워크 폴더에 없습니다"
 }

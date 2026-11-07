@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "Cerca cheat",
  "f.raextra.core": "Salva come predefinito del core ({core})",
  "f.raextra.saved": "Salvato",
- "f.raextra.restartNote": "Si applica al prossimo avvio del gioco."
+ "f.raextra.restartNote": "Si applica al prossimo avvio del gioco.",
+ "h.acc.netFolders": "Cartelle di rete, una per riga (es. \\NAS\\Giochi)",
+ "h.acc.netDest": "Installa in (vuoto = Documenti\\Games\\Pozzo)",
+ "h.acc.netSilent": "Installazione silenziosa (solo installer GOG/Inno)",
+ "h.acc.netSaved": "Cartelle di rete salvate",
+ "s.netstore.busy": "Installazione già in corso",
+ "s.netstore.copy": "Copio dalla rete…",
+ "s.netstore.extract": "Estraggo l'archivio…",
+ "s.netstore.run": "Setup in corso (segui la finestra)…",
+ "s.netstore.done": "In libreria: {title}",
+ "s.netstore.noExe": "Nessun eseguibile trovato nel gioco installato",
+ "s.netstore.notRecognized": "Installazione finita, ma non ho riconosciuto il gioco",
+ "s.netstore.gone": "Il gioco non è più nella cartella di rete"
 }

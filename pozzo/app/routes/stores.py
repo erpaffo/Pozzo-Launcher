@@ -79,6 +79,43 @@ def build_router(ctx) -> APIRouter:
         C.save_settings(cfg, stores={sid: cur})
         return api_accounts()
 
+    @router.post("/api/accounts/netstore")
+    def api_account_netstore(body: dict = Body(...)):
+        """Cartelle di rete (una per riga), cartella di destinazione e installazione silenziosa."""
+        cur = dict(cfg.stores.get("netstore", {}))
+        cur["folders"] = [f.strip() for f in str(body.get("folders") or "").splitlines() if f.strip()]
+        cur["dest"] = str(body.get("dest") or "").strip()
+        cur["silent"] = bool(body.get("silent"))
+        C.save_settings(cfg, stores={"netstore": cur})
+        _start_store_job(["netstore"])
+        return api_accounts()
+
+    def _netstore_install(gid: str):
+        import asyncio
+        from ...cache import Cache
+        from ...stores import netstore as NS
+        entry = next((e for e in NS.list_entries(NS.folders(cfg.stores.get("netstore", {}))) if e["id"] == gid), None)
+        if not entry:
+            raise HTTPException(404, I.tr("s.netstore.gone"))
+
+        def after(ok):
+            if not ok:
+                return
+            c = Cache(cfg.cache)
+            try:
+                asyncio.run(STORES.refresh(cfg, c, only=["netstore"], images=False))
+            finally:
+                c.close()
+            build(cfg)
+            lib.load()
+            events.emit("library_built", {})
+        try:
+            NS.start(cfg, lambda: Cache(cfg.cache), entry, after, I.tr)
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        return {"ok": True}
+    vars(ctx).update(_netstore_install=_netstore_install)
+
     @router.post("/api/accounts/{sid}/code")
     def api_account_code(sid: str, body: dict = Body(...)):
         """Completa il login (Epic/GOG) con il codice/pagina/URL ottenuti dalla pagina ufficiale."""

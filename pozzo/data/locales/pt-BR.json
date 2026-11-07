@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "Buscar cheats",
  "f.raextra.core": "Salvar como padrão do core ({core})",
  "f.raextra.saved": "Salvo",
- "f.raextra.restartNote": "Vale na próxima vez que o jogo iniciar."
+ "f.raextra.restartNote": "Vale na próxima vez que o jogo iniciar.",
+ "h.acc.netFolders": "Pastas de rede, uma por linha (ex.: \\NAS\\Jogos)",
+ "h.acc.netDest": "Instalar em (vazio = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Instalação silenciosa (somente instaladores GOG/Inno)",
+ "h.acc.netSaved": "Pastas de rede salvas",
+ "s.netstore.busy": "A instalação já está em andamento",
+ "s.netstore.copy": "Copiando da rede…",
+ "s.netstore.extract": "Extraindo o arquivo…",
+ "s.netstore.run": "Instalador em andamento (acompanhe a janela)…",
+ "s.netstore.done": "Na biblioteca: {title}",
+ "s.netstore.noExe": "Nenhum executável encontrado no jogo instalado",
+ "s.netstore.notRecognized": "Instalação concluída, mas o jogo não foi reconhecido",
+ "s.netstore.gone": "O jogo não está mais na pasta de rede"
 }

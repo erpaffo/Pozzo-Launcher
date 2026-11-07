@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "查找金手指",
  "f.raextra.core": "保存为核心（{core}）的默认值",
  "f.raextra.saved": "已保存",
- "f.raextra.restartNote": "下次启动游戏时生效。"
+ "f.raextra.restartNote": "下次启动游戏时生效。",
+ "h.acc.netFolders": "网络文件夹,每行一个(例如 \\NAS\\Games)",
+ "h.acc.netDest": "安装到(留空 = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "静默安装(仅限 GOG/Inno 安装程序)",
+ "h.acc.netSaved": "网络文件夹已保存",
+ "s.netstore.busy": "安装已在进行中",
+ "s.netstore.copy": "正在从网络复制…",
+ "s.netstore.extract": "正在解压压缩包…",
+ "s.netstore.run": "安装程序运行中(请查看其窗口)…",
+ "s.netstore.done": "已加入游戏库:{title}",
+ "s.netstore.noExe": "在已安装的游戏中未找到可执行文件",
+ "s.netstore.notRecognized": "安装已完成,但未能识别该游戏",
+ "s.netstore.gone": "该游戏已不在网络文件夹中"
 }

@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "Hile ara",
  "f.raextra.core": "Çekirdek için varsayılan olarak kaydet ({core})",
  "f.raextra.saved": "Kaydedildi",
- "f.raextra.restartNote": "Oyun bir sonraki açılışta uygulanır."
+ "f.raextra.restartNote": "Oyun bir sonraki açılışta uygulanır.",
+ "h.acc.netFolders": "Ağ klasörleri, satır başına bir tane (ör. \\NAS\\Oyunlar)",
+ "h.acc.netDest": "Şuraya kur (boş = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "Sessiz kurulum (yalnızca GOG/Inno kurucuları)",
+ "h.acc.netSaved": "Ağ klasörleri kaydedildi",
+ "s.netstore.busy": "Kurulum zaten sürüyor",
+ "s.netstore.copy": "Ağdan kopyalanıyor…",
+ "s.netstore.extract": "Arşiv çıkarılıyor…",
+ "s.netstore.run": "Kurulum çalışıyor (penceresini izleyin)…",
+ "s.netstore.done": "Kütüphanede: {title}",
+ "s.netstore.noExe": "Kurulan oyunda çalıştırılabilir dosya bulunamadı",
+ "s.netstore.notRecognized": "Kurulum bitti ama oyun tanınmadı",
+ "s.netstore.gone": "Oyun artık ağ klasöründe değil"
 }

@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "ابحث عن غشّ",
  "f.raextra.core": "احفظ كافتراضي للنواة ({core})",
  "f.raextra.saved": "تم الحفظ",
- "f.raextra.restartNote": "يُطبَّق عند تشغيل اللعبة في المرة القادمة."
+ "f.raextra.restartNote": "يُطبَّق عند تشغيل اللعبة في المرة القادمة.",
+ "h.acc.netFolders": "مجلدات الشبكة، واحد في كل سطر (مثل \\NAS\\Games)",
+ "h.acc.netDest": "التثبيت في (فارغ = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "تثبيت صامت (مثبّتات GOG/Inno فقط)",
+ "h.acc.netSaved": "تم حفظ مجلدات الشبكة",
+ "s.netstore.busy": "التثبيت قيد التنفيذ بالفعل",
+ "s.netstore.copy": "جارٍ النسخ من الشبكة…",
+ "s.netstore.extract": "جارٍ استخراج الأرشيف…",
+ "s.netstore.run": "المثبّت قيد التشغيل (تابع نافذته)…",
+ "s.netstore.done": "في المكتبة: {title}",
+ "s.netstore.noExe": "لم يُعثر على ملف تنفيذي في اللعبة المثبّتة",
+ "s.netstore.notRecognized": "انتهى التثبيت لكن لم يتم التعرف على اللعبة",
+ "s.netstore.gone": "اللعبة لم تعد في مجلد الشبكة"
 }

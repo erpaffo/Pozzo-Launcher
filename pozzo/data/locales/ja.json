@@ -3500,5 +3500,17 @@
  "f.raextra.loadCheats": "チートを探す",
  "f.raextra.core": "コア（{core}）のデフォルトとして保存",
  "f.raextra.saved": "保存しました",
- "f.raextra.restartNote": "次回ゲーム起動時に反映されます。"
+ "f.raextra.restartNote": "次回ゲーム起動時に反映されます。",
+ "h.acc.netFolders": "ネットワークフォルダー(1行に1つ、例: \\NAS\\Games)",
+ "h.acc.netDest": "インストール先(空欄 = Documents\\Games\\Pozzo)",
+ "h.acc.netSilent": "サイレントインストール(GOG/Innoインストーラーのみ)",
+ "h.acc.netSaved": "ネットワークフォルダーを保存しました",
+ "s.netstore.busy": "インストールはすでに進行中です",
+ "s.netstore.copy": "ネットワークからコピー中…",
+ "s.netstore.extract": "アーカイブを展開中…",
+ "s.netstore.run": "セットアップ実行中(ウィンドウを確認してください)…",
+ "s.netstore.done": "ライブラリに追加: {title}",
+ "s.netstore.noExe": "インストールしたゲームに実行ファイルが見つかりません",
+ "s.netstore.notRecognized": "インストールは完了しましたが、ゲームを認識できませんでした",
+ "s.netstore.gone": "ゲームはネットワークフォルダーにありません"
 }

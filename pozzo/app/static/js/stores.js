@@ -419,6 +419,13 @@ async function loadAccounts() {
     let ctrl = "";
     if (x.id === "ports") {
       ctrl = `<span class="muted small">${t("h.acc.portsInst")}</span> <button class="btn" data-ports-open>${t("h.acc.manage")}</button>`;
+    } else if (x.id === "netstore") {
+      ctrl = `<div class="acc-steam">
+        <textarea class="field grow" id="ns-folders" rows="3" placeholder="${t("h.acc.netFolders")}">${esc((a.folders || []).join("
+"))}</textarea>
+        <input class="field grow" id="ns-dest" value="${esc(a.dest || "")}" placeholder="${t("h.acc.netDest")}">
+        <label class="chk"><input type="checkbox" id="ns-silent" ${a.silent ? "checked" : ""}> ${t("h.acc.netSilent")}</label>
+        <button class="btn" data-acc-save="netstore">${t("h.common.save")}</button></div>`;
     } else if (x.id === "steam") {
       const accs = (a.accounts || []).map((u) => `<option value="${esc(u.steamid)}" ${u.steamid === a.steamid ? "selected" : ""}>${esc(u.persona || u.steamid)}</option>`).join("");
       ctrl = `<div class="acc-steam">
@@ -454,7 +461,11 @@ async function loadAccounts() {
 async function accountAction(t) {
   const id = t.dataset.accLogin || t.dataset.accLogout || t.dataset.accCode || t.dataset.accSave;
   try {
-    if (t.dataset.accSave === "steam") {
+    if (t.dataset.accSave === "netstore") {
+      await api("/api/accounts/netstore", { body: { folders: $("#ns-folders").value, dest: $("#ns-dest").value, silent: $("#ns-silent").checked } });
+      toast(window.t("h.acc.netSaved"));
+      pollStores(true);
+    } else if (t.dataset.accSave === "steam") {
       const body = { steamid: $("#steam-id").value };
       if ($("#steam-key").value.trim()) body.api_key = $("#steam-key").value.trim();
       await api("/api/accounts/steam", { body });

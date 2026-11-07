@@ -90,8 +90,9 @@ def build_router(ctx) -> APIRouter:
     def _install_rows() -> list[dict]:
         """Installazioni di repack: l'avanzamento del setup non si legge da fuori, si mostra il tempo trascorso."""
         from ...downloads import install
+        from ...stores import netstore
         out = []
-        for r in install.rows():
+        for r in install.rows() + netstore.rows():
             jid = "inst:" + r["id"]
             if jid in activity_hidden:
                 continue
