@@ -271,7 +271,7 @@ function showTab(tab) {
     ? (GS.ui.settingsTabs.find((x) => `ext:${x.id}` === id)?.label || t("e.settings.extension"))
     : t("e.cat." + id);
   $("#settings-body").scrollTop = 0;
-  if (id === "generale") { loadPower(); loadNotify(); loadWebhooks(); loadProfilesSettings(); loadHints(); loadTour(); }
+  if (id === "generale") { loadPower(); loadNotify(); loadWebhooks(); loadGlobalScripts(); loadProfilesSettings(); loadHints(); loadTour(); }
   else if (id === "download") loadDownloadSettings();
   else if (id === "sistema") { loadHealth(); loadAbout(); loadSystemErrors(); }
   else if (id === "libreria") { loadScan(); loadSources(); renderCustomConsoles(); watchStatusStart(); api("/api/status").then(showStatus); }
@@ -644,6 +644,25 @@ async function loadWebhooks() {
     const d = await api("/api/webhooks");
     list.innerHTML = "";
     d.webhooks.forEach((h) => list.appendChild(whRow(h)));
+  } catch (e) { toast(e.message, true); }
+}
+
+/* ---- script globali: un comando per evento */
+const GS_EVENTS = ["game_started", "game_stopped", "download_finished"];
+async function loadGlobalScripts() {
+  if (!$("#gs-save")) return;
+  if (!$("#gs-save").dataset.bound) {
+    $("#gs-save").dataset.bound = "1";
+    $("#gs-save").addEventListener("click", async () => {
+      try {
+        await api("/api/app/scripts", { body: Object.fromEntries(GS_EVENTS.map((e) => [e, $(`#gs-${e}`).value])) });
+        toast(t("e.gs.saved"));
+      } catch (e) { toast(e.message, true); }
+    });
+  }
+  try {
+    const d = await api("/api/app/scripts");
+    GS_EVENTS.forEach((e) => { $(`#gs-${e}`).value = d[e] || ""; });
   } catch (e) { toast(e.message, true); }
 }
 

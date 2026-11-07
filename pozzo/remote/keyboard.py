@@ -16,7 +16,7 @@ KEYS: dict[str, tuple[int, ...]] = {
     "play": (0xB3,), "next": (0xB0,), "prev": (0xB1,), "stop_media": (0xB2,),
     "esc": (0x1B,), "enter": (0x0D,), "space": (0x20,), "backspace": (0x08,), "tab": (0x09,),
     "shift_tab": (0x10, 0x09), "alt_tab": (0x12, 0x09), "alt_f4": (0x12, 0x73),
-    "win": (0x5B,), "f11": (0x7A,),
+    "win": (0x5B,), "f11": (0x7A,), "hdr": (0x5B, 0x12, 0x42),  # hdr = Win+Alt+B (automazioni di Pozzo)
     "left": (0x25,), "right": (0x27,), "up": (0x26,), "down": (0x28,),
 }
 # tasti "estesi" (E0): multimedia, frecce, Windows. Senza il flag alcuni programmi li ignorano

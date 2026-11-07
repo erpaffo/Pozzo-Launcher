@@ -228,7 +228,7 @@ async function pollRun(soon = false) {
   const m = $("#run-mini");
   m.hidden = !active;
   if (active) {
-    m.innerHTML = `<span class="dot"></span><b>${esc(RUN.title)}</b><button data-run="pad">🎮</button><button data-run="shot">📷</button><button data-run="stop">✕</button>`;
+    m.innerHTML = `<span class="dot"></span><b>${esc(RUN.title)}</b><button data-run="pad">🎮</button><button data-run="shot">📷</button><button data-run="pause">${RUN.paused ? "▶" : "⏸"}</button><button data-run="stop">✕</button>`;
     showPlayer();
   }
   if (!$("#pad").hidden) applyLayout(); // gioco cambiato: aspetto automatico (PlayStation, Switch)
@@ -238,6 +238,7 @@ $("#run-mini").onclick = async (e) => {
   const a = e.target.dataset.run;
   if (a === "pad") openPad();
   else if (a === "shot") { await api("/api/running/screenshot", { body: {} }); toast(t("k.m.shot_saved")); }
+  else if (a === "pause") { await api(RUN.paused ? "/api/running/resume" : "/api/running/pause", { body: {} }); pollRun(); }
   else if (a === "stop" && confirm(t("k.m.confirm_close", {title: RUN.title}))) { await api("/api/running/stop", { body: {} }); pollRun(); }
 };
 

@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES
 from ...downloads.engines import torrent as TOR
 from ...downloads.engines.http import safe_name as _safe_name
-from ...library import launcher as L
+from ...library import automation as A, launcher as L
 from ..icons import CREDIT
 from ..server import STORE_NAMES, _hltb_main, _json, _players, _players_label
 
@@ -458,6 +458,7 @@ def build_router(ctx) -> APIRouter:
                                    STORE_NAMES.get(g["store"], g["store"]), g["store"], fast=fast)
             except L.LaunchError as e:
                 raise HTTPException(409, str(e))
+            launcher.splash(gid, g["title"])
             return {"ok": True}
         p = P.PLATFORMS.get(g["platform"])
         path = next((Path(f) for f in g["files"] if Path(f).exists()), None)
@@ -470,6 +471,7 @@ def build_router(ctx) -> APIRouter:
             launcher.launch(g["key"], g["title"], p, path, fast=fast, fallback=str(fb) if fb else None)
         except L.LaunchError as e:
             raise launch_error(e)
+        launcher.splash(gid, g["title"])
         return {"ok": True}
 
     @router.post("/api/game/{gid}/shortcut")
@@ -533,6 +535,11 @@ def build_router(ctx) -> APIRouter:
             if not Path(data["companion"]).is_file():
                 raise HTTPException(400, I.tr("s.library.companionMissing"))
         data = {k: v for k, v in data.items() if v}
+        try:  # automazioni: solo da qui (API del desktop), mai dalle rotte del telefono
+            if auto := A.clean(body.get(A.KEY)):
+                data[A.KEY] = auto
+        except ValueError:
+            raise HTTPException(400, I.tr("s.library.badAuto"))
         if data.get("preset") not in (None, "inherit", "leave", "quality", "performance", "faithful"):
             raise HTTPException(400, I.tr("s.library.badPreset"))
         if data.get("emulator") and data["emulator"] not in L.EMULATOR_NAMES:

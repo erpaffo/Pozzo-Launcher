@@ -7,7 +7,7 @@ async function loadEmu() {
   renderEmu(SET.emu);
   renderEmuInstall();
   api("/api/app/launch").then((l) => {
-    $("#ln-before").value = l.before || ""; $("#ln-after").value = l.after || ""; $("#ln-close").checked = !!l.close_launcher;
+    $("#ln-before").value = l.before || ""; $("#ln-after").value = l.after || ""; $("#ln-close").checked = !!l.close_launcher; $("#ln-splash").checked = l.splash !== false;
   }).catch(() => {});
 }
 

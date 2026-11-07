@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 
 from .. import extensions as X
 from ... import config as C, profilecfg as PC
-from ...library import fastcopy as FC, launcher as L
+from ...library import automation as A, fastcopy as FC, launcher as L
 from ... import i18n as I
 
 
@@ -149,8 +149,23 @@ def build_router(ctx) -> APIRouter:
         conf = {k: v for k, v in conf.items() if v}
         if body.get("close_launcher"):
             conf["close_launcher"] = True
+        if body.get("splash") is False:
+            conf["splash"] = False  # default acceso: si salva solo lo spento
         C.save_settings(cfg, app={"launch": conf})
         cfg.app["launch"] = conf
+        return conf
+
+    @router.get("/api/app/scripts")
+    def api_scripts():
+        return cfg.app.get(A.GLOBAL_KEY) or {}
+
+    @router.post("/api/app/scripts")
+    def api_scripts_save(body: dict = Body(...)):
+        """Script globali su gioco avviato, gioco chiuso, download finito (stesse variabili POZZO_* dei profili)."""
+        conf = {k: str(body.get(k) or "").strip() for k in A.GLOBAL_EVENTS.values()}
+        conf = {k: v for k, v in conf.items() if v}
+        C.save_settings(cfg, app={A.GLOBAL_KEY: conf})
+        cfg.app[A.GLOBAL_KEY] = conf
         return conf
 
     # ------------------------------------------------------------ copia veloce da disco

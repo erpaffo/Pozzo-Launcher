@@ -121,5 +121,13 @@ def build_router(ctx) -> APIRouter:
         stopped = launcher.stop()
         return {"stopped": stopped, "found": launcher.stop_found}  # found=False: nessun processo trovato, interrotto solo nel launcher
 
+    @router.post("/api/running/pause")
+    def api_running_pause():
+        return {"ok": launcher.pause()}
+
+    @router.post("/api/running/resume")
+    def api_running_resume():
+        return {"ok": launcher.resume()}
+
     vars(ctx).update(SUN=SUN)
     return router

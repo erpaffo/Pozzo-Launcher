@@ -144,7 +144,8 @@ html[data-theme="retro"] body::before {
 }
 
 /* ---------- Pausa a scheda nascosta ---------- */
-html.mo-paused *, html.mo-paused *::before, html.mo-paused *::after { animation-play-state: paused !important; }
+html.mo-paused *, html.mo-paused *::before, html.mo-paused *::after,
+html.pz-rest *, html.pz-rest *::before, html.pz-rest *::after { animation-play-state: paused !important; }
 
 /* ---------- Ridotta / disattivata ---------- */
 html[data-motion="reduced"] { --mo-i: .5; --mo-exp-stagger: 0ms; --mo-lift: -2px; --mo-hover-s: 1; }

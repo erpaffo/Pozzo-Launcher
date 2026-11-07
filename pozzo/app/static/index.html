@@ -204,6 +204,20 @@
         <button class="btn" id="pf-comp-pick" type="button" data-i18n="a.common.browse">Sfoglia…</button></span></label>
       <label class="wide"><span data-i18n="a.prof.compArgs">Argomenti dell'app</span> <input class="field" id="pf-comp-args" data-i18n-placeholder="a.prof.compArgsPh"></label>
       <label class="chk wide"><input type="checkbox" id="pf-comp-kill"> <span data-i18n="a.prof.compKill">Chiudi l'app quando il gioco finisce</span></label>
+      <h3 class="wide" data-i18n="a.prof.auto">Automazioni</h3>
+      <p class="wide muted small" data-i18n="a.prof.autoHint">Variabili per gli script: POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT. Le azioni di sistema sono solo per Windows e tornano come prima a fine partita.</p>
+      <label class="wide"><span data-i18n="a.prof.autoBefore">Comando prima dell'avvio</span> <input class="field" id="pf-au-bcmd"></label>
+      <label><span data-i18n="a.prof.autoCwd">Cartella di lavoro</span> <input class="field" id="pf-au-bcwd"></label>
+      <label class="chk"><input type="checkbox" id="pf-au-bwait"> <span data-i18n="a.prof.autoWait">Aspetta che finisca</span></label>
+      <label class="wide"><span data-i18n="a.prof.autoAfter">Comando dopo la chiusura</span> <input class="field" id="pf-au-acmd"></label>
+      <label><span data-i18n="a.prof.autoCwd">Cartella di lavoro</span> <input class="field" id="pf-au-acwd"></label>
+      <label class="chk"><input type="checkbox" id="pf-au-await"> <span data-i18n="a.prof.autoWait">Aspetta che finisca</span></label>
+      <label><span data-i18n="a.prof.autoRes">Risoluzione e frequenza</span> <input class="field" id="pf-au-res" placeholder="1920x1080@60"></label>
+      <label><span data-i18n="a.prof.autoPower">Piano energetico (GUID)</span> <input class="field" id="pf-au-power" placeholder="8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"></label>
+      <label class="wide"><span data-i18n="a.prof.autoKill">Chiudi questi processi prima dell'avvio</span> <input class="field" id="pf-au-kill" placeholder="OneDrive.exe, Discord.exe"></label>
+      <label class="chk wide"><input type="checkbox" id="pf-au-hdr"> <span data-i18n="a.prof.autoHdr">Attiva/disattiva l'HDR (Win+Alt+B) durante il gioco</span></label>
+      <label class="wide"><span data-i18n="a.prof.autoMagpie">Upscaling con Magpie (si scarica al primo uso; Windows 10 1903+)</span>
+        <select class="field" id="pf-au-magpie"><option value="" data-i18n="a.prof.autoMagpieOff">Nessuno</option><option value="fsr">FSR</option><option value="anime4k">Anime4K</option><option value="integer">Integer Scale 2x</option><option value="lanczos">Lanczos</option></select></label>
     </div>
     <div class="row end"><button class="btn" id="pf-reset" data-i18n="a.prof.reset">Ripristina predefinito</button><span class="grow"></span>
       <button class="btn" id="pf-cancel" data-i18n="a.common.cancel">Annulla</button><button class="btn primary" id="pf-save" data-i18n="a.common.save">Salva</button></div>
@@ -453,6 +467,7 @@
 <script src="/static/js/events.js?v={{v}}"></script>
 <script src="/static/js/downloads.js?v={{v}}"></script>
 <script src="/static/js/watch.js?v={{v}}"></script>
+<script src="/static/js/gamesplash.js?v={{v}}"></script>
 <script src="/static/app.js?v={{v}}"></script>
 <script src="/static/menubar.js?v={{v}}"></script>
 <script src="/static/shortcuts.js?v={{v}}"></script>

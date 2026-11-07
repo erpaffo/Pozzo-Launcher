@@ -249,6 +249,8 @@ def create_app(cfg) -> FastAPI:
     events.on("game_stopped", discord.game_stopped)
     from .. import webhooks as WH
     WH.register(events, cfg)
+    from ..library import automation as AUTO
+    AUTO.register_global(events, cfg)
     from ..library import screens as SC
     shots = SC.Shots(cfg.cache, Path(cfg.cache) / "userdata.db")
     launcher = L.Launcher(cfg, user, on_event=events.emit, shots=shots, profile_of=user.profile,

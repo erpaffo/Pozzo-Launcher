@@ -19,6 +19,7 @@ eseguibile diverso (es. un'altra versione di PCSX2), argomenti e argomenti aggiu
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import re
@@ -31,7 +32,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
-from . import fastcopy
+from . import automation, fastcopy, foreground, magpie
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -260,7 +261,7 @@ def plan(cfg, platform: P.Platform, profile: dict | None = None, prefer: str | N
     {emulator, exe, core, args, profile} oppure None. prefer/skip: id candidato (emulatore[:core]) da
     preferire o da saltare (alternativa dopo un crash)."""
     over = dict(cfg.launch.get(platform.id, {}))
-    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY,)}
+    prof = {k: v for k, v in (profile or {}).items() if v not in (None, "", []) and k not in SCRIPT_KEYS + COMPANION_KEYS + (PRESET_KEY, automation.KEY)}
     if prof:
         emu = prof.get("emulator") or over.get("emulator")
         if emu:
@@ -438,7 +439,7 @@ def _xinput():
     return buttons
 
 
-XINPUT_BACK, XINPUT_START, XINPUT_RB = 0x0020, 0x0010, 0x0200
+XINPUT_BACK, XINPUT_START, XINPUT_RB, XINPUT_LB = 0x0020, 0x0010, 0x0200, 0x0100
 
 # applicazione da avviare insieme al gioco (es. il deck tracker di Hearthstone): programma, argomenti, "1" = chiudila a fine partita
 COMPANION_KEYS = ("companion", "companion_args", "companion_close")
@@ -453,6 +454,110 @@ LAUNCH_RESENDS = 5        # ripetizioni massime: il client appena avviato ignora
 LAUNCH_TRIES = 3          # tentativi di avvio di un gioco passato dal launcher
 LAUNCH_CHECK = 75         # secondi di attesa del processo del gioco prima di riprovare
 LAUNCHER_GRACE = 10 # secondi dopo la partita prima di chiudere il launcher: finisce la sincronizzazione dei salvataggi
+
+
+class _Job:
+    """Job Object di Windows: tutti i processi figli del gioco ci restano dentro, anche se il primo esce."""
+
+    def __init__(self):
+        import ctypes
+        from ctypes import wintypes
+        k = self.k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.CreateJobObjectW.restype = wintypes.HANDLE
+        k.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        k.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        k.QueryInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+        k.CloseHandle.argtypes = [wintypes.HANDLE]
+        self.h = k.CreateJobObjectW(None, None)
+        if not self.h:
+            raise OSError("CreateJobObjectW")
+
+    @staticmethod
+    def new():
+        """None fuori da Windows o se il Job non si crea: si resta sul PID del processo."""
+        if sys.platform != "win32":
+            return None
+        try:
+            return _Job()
+        except Exception:
+            return None
+
+    def add(self, proc) -> bool:
+        # shortcut: assegnato dopo Popen, un figlio avviato nei primissimi ms sfugge; creare sospeso se serve
+        try:
+            return bool(self.k.AssignProcessToJobObject(self.h, int(proc._handle)))
+        except Exception:  # processo gia' in un altro Job senza annidamento, o finto nei test
+            return False
+
+    def active(self) -> int:
+        import ctypes
+        buf = (ctypes.c_ubyte * 48)()  # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION: ActiveProcesses a offset 40
+        if not self.k.QueryInformationJobObject(self.h, 1, buf, 48, None):
+            return 0
+        return ctypes.c_uint.from_buffer(buf, 40).value
+
+    def pids(self) -> list[int]:
+        import ctypes
+
+        class IDS(ctypes.Structure):  # JOBOBJECT_BASIC_PROCESS_ID_LIST
+            _fields_ = [("n", ctypes.c_uint), ("listed", ctypes.c_uint), ("ids", ctypes.c_size_t * 256)]
+        buf = IDS()  # shortcut: al massimo 256 processi nel Job, gli altri non vengono sospesi
+        if not self.k.QueryInformationJobObject(self.h, 3, ctypes.byref(buf), ctypes.sizeof(buf), None):
+            return []
+        return list(buf.ids[:buf.listed])
+
+    def kill(self):
+        self.k.TerminateJobObject(self.h, 1)
+
+    def close(self):
+        self.k.CloseHandle(self.h)
+
+
+def _suspend(pid: int, on: bool) -> bool:
+    """Sospende/riprende un processo (NtSuspendProcess/NtResumeProcess, come Nyrna). Solo Windows."""
+    if sys.platform != "win32":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.OpenProcess.restype = wintypes.HANDLE
+    k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k.CloseHandle.argtypes = [wintypes.HANDLE]
+    nt = ctypes.WinDLL("ntdll")
+    nt.NtSuspendProcess.argtypes = nt.NtResumeProcess.argtypes = [wintypes.HANDLE]
+    h = k.OpenProcess(0x0800, False, pid)  # PROCESS_SUSPEND_RESUME
+    if not h:
+        return False
+    try:
+        return (nt.NtSuspendProcess if on else nt.NtResumeProcess)(h) == 0
+    finally:
+        k.CloseHandle(h)
+
+
+def _focus_pids(pids):
+    """Porta in primo piano la finestra visibile piu' grande dei processi indicati."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes
+    u = ctypes.windll.user32
+    best = []
+    cb_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def visit(hwnd, _):
+        pid = wintypes.DWORD()
+        u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value in pids and u.IsWindowVisible(hwnd):
+            r = wintypes.RECT()
+            u.GetWindowRect(hwnd, ctypes.byref(r))
+            best.append(((r.right - r.left) * (r.bottom - r.top), hwnd))
+        return True
+    u.EnumWindows(cb_t(visit), 0)
+    if best:
+        hwnd = max(best)[1]
+        u.ShowWindow(hwnd, 9)
+        u.SetForegroundWindow(hwnd)
 
 
 def _procs_named(name: str) -> list:
@@ -657,7 +762,14 @@ class Launcher:
         self.state: dict = {}
         self.next_args: list[str] = []  # argomenti in piu' per il solo prossimo avvio (es. netplay)
         self.lock = threading.Lock()
-        self._hotkey = None
+        self._hotkey = self._pause_hotkey = None
+        self._frozen: list[int] = []  # PID sospesi dalla pausa
+        self._pause_t0: float | None = None
+        self._paused_total = 0.0  # secondi in pausa nella sessione: non contano come tempo di gioco
+        self._comp_pid = None
+        self._fg = None  # foreground.Watcher della sessione
+        self._mp = None  # magpie.Scaler della sessione
+        atexit.register(self._unfreeze)  # mai lasciare un processo sospeso se Pozzo esce
         try:  # copie «disco veloce» rimaste da un crash (tenute se l'utente le vuole riusare)
             if (cfg.app.get("fastcopy") or {}).get("delete_after", True):
                 fastcopy.purge_stale(cfg)
@@ -686,11 +798,17 @@ class Launcher:
     def _start_capture(self):
         from . import screens
         st = screens.settings(self.cfg)
+        if st.get("pause_hotkey"):
+            self._pause_hotkey = screens.Hotkey(st["pause_hotkey"], self.toggle_pause)
+            self._pause_hotkey.start()
         if self.shots and st.get("hotkey"):
             self._hotkey = screens.Hotkey(st["hotkey"], self.screenshot)
             self._hotkey.start()
 
     def _stop_capture(self, st: dict):
+        if self._pause_hotkey:
+            self._pause_hotkey.stop()
+            self._pause_hotkey = None
         if self._hotkey:
             self._hotkey.stop()
             self._hotkey = None
@@ -718,7 +836,7 @@ class Launcher:
         if not pad_shot and not exit_combo:
             return
         since = 0.0
-        shot_held = False
+        shot_held = pause_held = False
         while self.state.get("status") == "running":
             pressed = read()
             if exit_combo and pressed & XINPUT_BACK and pressed & XINPUT_START:
@@ -732,11 +850,20 @@ class Launcher:
             if pad_shot and combo and not shot_held:
                 threading.Thread(target=self.screenshot, daemon=True).start()
             shot_held = combo
+            pause_combo = bool(pressed & XINPUT_BACK and pressed & XINPUT_LB)  # Select+L1: pausa/riprendi
+            if pause_combo and not pause_held:
+                threading.Thread(target=self.toggle_pause, daemon=True).start()
+            pause_held = pause_combo
             time.sleep(0.05)
 
-    def _wait_proc(self, proc):
-        """Aspetta la fine del processo, ma si ferma subito se l'utente preme «Chiudi gioco»."""
-        while proc.poll() is None and not self._stop_evt.is_set():
+    def _wait_proc(self, proc, job=None, comp=None):
+        """Aspetta la fine del processo (o del Job: finche' resta un figlio), ma si ferma subito se l'utente preme «Chiudi gioco»."""
+        def alive():
+            if not job:
+                return proc.poll() is None
+            # shortcut: l'app abbinata conta 1 nel Job; i suoi figli tengono viva la partita, usare un Job a parte se serve
+            return job.active() > (1 if comp and comp.poll() is None else 0)
+        while alive() and not self._stop_evt.is_set():
             self._stop_evt.wait(0.5)
 
     def stop(self) -> bool:
@@ -749,11 +876,15 @@ class Launcher:
             return True
         if self.state.get("status") != "running":
             return False
+        self._unfreeze()  # un processo sospeso non gestisce la chiusura
         try:
             import psutil
         except ImportError:
             psutil = None
         procs = []
+        job = getattr(self, "_job", None)
+        if job:  # «Chiudi tutto»: il Job porta via anche i figli staccati
+            job.kill()
         proc = getattr(self, "_proc", None)
         if proc and proc.poll() is None:
             if psutil:
@@ -779,9 +910,77 @@ class Launcher:
                     p.kill()
                 except Exception:
                     pass
-        self.stop_found = bool(procs) or bool(proc)
+        self.stop_found = bool(procs) or bool(proc) or bool(job)
         self._stop_evt.set()  # l'attesa in _run_pc/_run finisce: tempo di gioco registrato e stato «finished»
         return True
+
+    def _session_pids(self) -> list[int]:
+        job = getattr(self, "_job", None)
+        pids = set(job.pids()) if job else set()
+        if not pids:
+            proc = getattr(self, "_proc", None)
+            if proc and proc.poll() is None:
+                pids.add(proc.pid)
+                try:
+                    import psutil
+                    pids.update(c.pid for c in psutil.Process(proc.pid).children(recursive=True))
+                except Exception:
+                    pass
+            track = getattr(self, "_track", None)
+            if track and Path(track).is_dir():
+                pids.update(p.pid for p in self._game_procs(track))
+        return sorted(pids - {os.getpid(), self._comp_pid})  # Pozzo e l'app abbinata restano attivi
+
+    def pause(self) -> bool:
+        """Congela il gioco (e i suoi figli): niente CPU/GPU, anche senza pausa nel gioco. Il tempo di gioco si ferma."""
+        if sys.platform != "win32" or self.state.get("status") != "running" or self._frozen:
+            return False
+        pids = self._session_pids()
+        if not pids:
+            return False
+        try:  # Pozzo davanti: chi gioca a schermo intero non resta davanti a una finestra congelata
+            from ..app.server import WINDOW_FOCUS
+            WINDOW_FOCUS["fn"] and WINDOW_FOCUS["fn"]()
+        except Exception:
+            pass
+        done = [p for p in pids if _suspend(p, True)]
+        if not done:
+            return False
+        self._frozen, self._pause_t0 = done, time.time()
+        self._set(paused=True)
+        return True
+
+    def _unfreeze(self) -> list[int]:
+        """Riprende i processi sospesi e chiude l'intervallo di pausa. Ritorna i PID ripresi."""
+        pids, self._frozen = self._frozen, []
+        for p in pids:
+            _suspend(p, False)
+        if self._pause_t0 is not None:
+            self._paused_total += time.time() - self._pause_t0
+            self._pause_t0 = None
+        if pids and self.state.get("paused"):
+            self._set(paused=False)
+        return pids
+
+    def resume(self) -> bool:
+        pids = self._unfreeze()
+        if pids:
+            _focus_pids(set(pids))
+        return bool(pids)
+
+    def toggle_pause(self) -> bool:
+        return self.resume() if self._frozen else self.pause()
+
+    def played_since(self, t0: float) -> float:
+        """Secondi di gioco da t0 a ora, senza gli intervalli in pausa."""
+        self._unfreeze()
+        return max(0.0, time.time() - t0 - self._paused_total)
+
+    def splash(self, gid: int, title: str):
+        """Splash di avvio nella UI (impostazione launch.splash, default acceso); sparisce al primo piano del gioco."""
+        if (self.cfg.app.get("launch") or {}).get("splash", True):
+            self.on_event("game_splash", {"gid": gid, "title": title, "hook": sys.platform == "win32"})
+            foreground.splash_timer(self.on_event)
 
     def running(self) -> dict:
         return dict(self.state)
@@ -804,6 +1003,7 @@ class Launcher:
                                   f"sezione [emulators], uno di: {cands}", "emulator_missing",
                                   {"platform": platform.id, "platform_name": platform.name})
             self._stop_evt.clear()
+            self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],
                           "emulator_id": pl["emulator"], "exe": pl["exe"], "profile": pl.get("profile", False),
                           "started": time.time(), "shots": 0}
@@ -821,6 +1021,7 @@ class Launcher:
             if not launch or not launch.get("target"):
                 raise LaunchError("Questo gioco non ha un comando di avvio (prova ad aprirlo dallo store)")
             self._stop_evt.clear()
+            self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": store,
                           "emulator_id": "", "exe": launch.get("target") if launch.get("type") != "uri" else None,
                           "started": time.time(), "shots": 0}
@@ -911,15 +1112,44 @@ class Launcher:
             except Exception as e:
                 self._set(message=f"Script «{when}» non riuscito ({type(e).__name__}): {cmd}")
 
-    def _companion(self, key: str):
+    def _auto_begin(self, key: str, platform: str) -> "automation.Session":
+        """Automazioni del gioco (profilo «auto»): script prima e azioni di sistema. Chiamare _auto_end in un finally."""
+        conf = (self.profile_of(key) or {}).get(automation.KEY) or {}
+        ses = automation.Session(conf, lambda ev: automation.env_for(ev, key, self.state.get("title"), platform, self.state.get("exe"),),
+                                 lambda m: self._set(message=m))
+        ses.begin()
+        self._mp = None
+        if conf.get("magpie") and sys.platform == "win32":  # upscaling: Magpie parte col gioco in primo piano (_fg_emit)
+            self._mp = magpie.Scaler(self.cfg, self.state.get("title") or "Pozzo", conf["magpie"], lambda m: self._set(message=m))
+            self._mp.prepare()
+            ses.undo.append(self._mp.stop)
+        return ses
+
+    def _fg_emit(self, name: str, data: dict):
+        self.on_event(name, data)
+        if name == "game_foreground" and self._mp:
+            self._mp.start(data.get("pid") or 0)
+
+    def _auto_end(self, ses):
+        try:
+            ses.end()
+        except Exception as e:  # il ripristino non deve nascondere l'esito della partita
+            self._set(message=f"Automazioni: {type(e).__name__}: {e}")
+
+    def _companion(self, key: str, job=None):
         """Avvia (staccata) l'applicazione abbinata al gioco, se c'e'. Un errore non blocca il gioco."""
         import shlex
         pr = self.profile_of(key) or {}
+        self._comp_pid = None
         if not pr.get("companion"):
             return None
         try:
             args = [a.strip('"') for a in shlex.split(pr.get("companion_args") or "", posix=False)]
-            return subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
+            proc = subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
+            if job:
+                job.add(proc)
+            self._comp_pid = proc.pid
+            return proc
         except Exception as e:
             self._set(message=f"Applicazione abbinata non avviata ({type(e).__name__}): {pr['companion']}")
             return None
@@ -966,7 +1196,9 @@ class Launcher:
         lname = STORE_LAUNCHERS.get(store_id)
         quiet = bool(lname and (self.cfg.app.get("launch") or {}).get("hide_launcher", True) and not _procs_named(lname))
         self._scripts(key, "before")
-        comp = self._companion(key)
+        ses = self._auto_begin(key, self.state.get("emulator") or "")
+        job = _Job.new()
+        comp = self._companion(key, job)
         self.on_event("game_launching", dict(self.state))  # sincrono: la copia dei salvataggi finisce prima del gioco
         try:
             target, args = launch["target"], launch.get("args") or []
@@ -987,13 +1219,14 @@ class Launcher:
                                  kwargs={"root_pid": proc.pid}, daemon=True).start()
             if quiet:
                 threading.Thread(target=hide_launcher_windows, args=(lname,), daemon=True).start()
+            job = job if job and proc and job.add(proc) and Path(target).name.lower() not in self.LAUNCHER_EXES else None
             self._set(status="running", message=target)
-            self._proc = proc
+            self._proc, self._job = proc, job
             self._track = launch.get("track_dir") or install_dir
             via_launcher = proc is None or Path(target).name.lower() in self.LAUNCHER_EXES
             track = launch.get("track_dir") or install_dir
             if not via_launcher:
-                self._wait_proc(proc)  # gioco avviato direttamente: si aspetta il suo processo
+                self._wait_proc(proc, job, comp)  # gioco avviato direttamente: si aspetta il suo processo (e i figli, nel Job)
             elif track and Path(track).is_dir():
                 # avviato tramite launcher: si controlla che il gioco parta davvero, altrimenti si riprova
                 # (start() riapre il launcher se nel frattempo e' stato chiuso).
@@ -1020,10 +1253,13 @@ class Launcher:
                 t0 = time.time() if self._game_procs(track) else t0
                 while self._game_procs(track) and not self._stop_evt.is_set():
                     self._stop_evt.wait(3)
-            played = time.time() - t0 if (not via_launcher or track) else 0
+            played = self.played_since(t0) if (not via_launcher or track) else 0
             self.user.record_play(key, played)
             self._end_companion(comp, key)
+            self._job = None
+            job and job.close()
             self._scripts(key, "after")
+            self._auto_end(ses)
             self._fast_done(fc)
             self._set(status="finished", played=played, code=proc.returncode if proc else 0)
             if launcher and not launcher_was_open:  # solo se l'ha aperto il gioco: un launcher gia' aperto resta
@@ -1036,6 +1272,9 @@ class Launcher:
         except Exception as e:
             self._end_companion(comp, key)
             self._set(status="error", message=f"{type(e).__name__}: {e}")
+        finally:
+            self._unfreeze()
+            self._auto_end(ses)  # anche dopo un crash o un errore: risoluzione, piano energetico e HDR tornano come prima
 
     def _set(self, **kw):
         with self.lock:
@@ -1048,9 +1287,14 @@ class Launcher:
             except Exception:  # i dati utente non devono impedire di giocare
                 pass
             self.on_event("game_started", st)
+            self._fg = foreground.Watcher(self._session_pids, self._fg_emit)
+            self._fg.start()
             self._start_capture()
             threading.Thread(target=self._watch_combo, daemon=True).start()
         elif kw.get("status") in ("finished", "error") and prev in ("running", "starting", "extracting"):
+            if self._fg:
+                self._fg.stop()
+                self._fg = None
             if prev == "running":
                 self._stop_capture(st)
                 with self.lock:
@@ -1088,6 +1332,7 @@ class Launcher:
                 self._fast_remove(fc["dir"])
 
     def _run_emu(self, key: str, platform: P.Platform, path: Path, pl: dict, src: Path, fc: dict, retry: bool = False):
+        ses = None
         try:
             target = resolve_target(platform, src)
             if _needs_extract(pl, platform, target):
@@ -1108,7 +1353,9 @@ class Launcher:
                 raise LaunchError("Avvio annullato")
             self._apply_preset(key, platform, path, pl)
             self._scripts(key, "before")
-            comp = self._companion(key)
+            ses = self._auto_begin(key, platform.id)
+            job = _Job.new()
+            comp = self._companion(key, job)
             cmd = [pl["exe"], *self.prelaunch(dict(self.state)), *self.next_args, *args]
             self.next_args = []  # valgono solo per questo avvio
             self.on_event("game_launching", dict(self.state))
@@ -1117,9 +1364,10 @@ class Launcher:
             import tempfile  # stderr su file temporaneo (non in memoria): serve per l'ultimo log in caso di crash
             with tempfile.TemporaryFile() as errf:  # chiuso anche se Popen o l'attesa falliscono
                 proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf)
-                self._proc, self._track = proc, None
-                self._wait_proc(proc)
-                played = time.time() - t0
+                job = job if job and job.add(proc) else None
+                self._proc, self._track, self._job = proc, None, job
+                self._wait_proc(proc, job, comp)
+                played = self.played_since(t0)
                 code = proc.returncode
                 stopped = self._stop_evt.is_set()  # «Chiudi gioco»: non e' un crash, qualunque sia il codice
                 log = ""
@@ -1128,7 +1376,10 @@ class Launcher:
                     log = "\n".join(errf.read().decode("utf-8", "replace").splitlines()[-50:])
             self.user.record_play(key, played)
             self._end_companion(comp, key)
+            self._job = None
+            job and job.close()
             self._scripts(key, "after")
+            self._auto_end(ses)
             run = {"time": time.time(), "code": None if stopped else code, "duration": round(played, 2), "log": log}
             # un'uscita normale di un gioco senza storico non scrive nulla
             ent = _crash_update(self.cfg, key, lambda e: e["runs"].append(run)) if _quick(run) or key in _crash_load(self.cfg) else {"runs": [run]}
@@ -1160,3 +1411,6 @@ class Launcher:
             self._set(status="error", message=str(e))
         except Exception as e:
             self._set(status="error", message=f"{type(e).__name__}: {e}")
+        finally:
+            self._unfreeze()
+            ses and self._auto_end(ses)
