@@ -1,105 +1,107 @@
 # Pozzo Launcher
 
+**English** · [Italiano](README.it.md)
+
 [![Test](https://github.com/erpaffo/Pozzo-Launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/erpaffo/Pozzo-Launcher/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/erpaffo/Pozzo-Launcher)](https://github.com/erpaffo/Pozzo-Launcher/releases/latest)
-[![Manuale](https://img.shields.io/badge/manuale-online-blue)](https://erpaffo.github.io/Pozzo-Launcher/)
+[![Manual](https://img.shields.io/badge/manual-online-blue)](https://erpaffo.github.io/Pozzo-Launcher/)
 
-Pozzo Launcher mette insieme le ROM di ogni console e i giochi PC degli store. Copertine, descrizioni, valutazioni e durate le recupera da solo. Poi giochi dal desktop, da Big Picture con il controller, dal telefono o in streaming.
+Pozzo Launcher brings together the ROMs of every console and the PC games from your stores. It fetches covers, descriptions, ratings and playtimes on its own. Then you play from the desktop, from Big Picture with a controller, from your phone, or by streaming.
 
-**[Manuale completo](https://erpaffo.github.io/Pozzo-Launcher/)** · **[Download](https://github.com/erpaffo/Pozzo-Launcher/releases)** · **[Changelog](changelog.md)**
-
-<p align="center">
-  <img src="docs/img/libreria.jpg" width="49%" alt="La libreria">
-  <img src="docs/img/dettaglio.jpg" width="49%" alt="Scheda di un gioco">
-</p>
-<p align="center">
-  <img src="docs/img/bigpicture.jpg" width="49%" alt="Big Picture, per il controller">
-  <img src="docs/img/estensioni.jpg" width="49%" alt="Store delle estensioni">
-</p>
-<p align="center"><sub>Libreria di esempio con giochi di fantasia.</sub></p>
-
-### Grafiche
-
-Una grafica non cambia solo i colori ma il modo in cui sfogli la libreria. Si sceglie da **Impostazioni › Aspetto**.
+**[Full manual](https://erpaffo.github.io/Pozzo-Launcher/)** · **[Download](https://github.com/erpaffo/Pozzo-Launcher/releases)** · **[Changelog](changelog.md)**
 
 <p align="center">
-  <img src="docs/img/esp-catalogo.jpg" width="49%" alt="Grafica Catalogo">
-  <img src="docs/img/esp-scaffali.jpg" width="49%" alt="Grafica Scaffali">
+  <img src="docs/img/libreria.jpg" width="49%" alt="The library">
+  <img src="docs/img/dettaglio.jpg" width="49%" alt="A game's detail page">
 </p>
 <p align="center">
-  <img src="docs/img/esp-console.jpg" width="49%" alt="Grafica Console, con barra laterale stretta">
-  <img src="docs/img/esp-dashboard.jpg" width="49%" alt="Grafica Dashboard">
+  <img src="docs/img/bigpicture.jpg" width="49%" alt="Big Picture, for the controller">
+  <img src="docs/img/estensioni.jpg" width="49%" alt="Extensions store">
 </p>
-<p align="center">
-  <img src="docs/img/esp-cinema.jpg" width="49%" alt="Grafica Cinema">
-  <img src="docs/img/esp-vetrina.jpg" width="49%" alt="Grafica Vetrina">
-</p>
-<p align="center"><sub>Catalogo · Scaffali · Console · Dashboard · Cinema · Vetrina (c'è anche Originale, la vista storica).</sub></p>
+<p align="center"><sub>Sample library with made-up games.</sub></p>
 
-### Temi
+### Layouts
 
-I temi sono indipendenti dalla grafica e si possono combinare.
+A layout doesn't just change the colors but the way you browse the library. Pick one in **Settings › Appearance**.
 
 <p align="center">
-  <img src="docs/img/tema-chiaro.jpg" width="49%" alt="Tema Chiaro">
-  <img src="docs/img/tema-notte-blu.jpg" width="49%" alt="Tema Notte blu">
+  <img src="docs/img/esp-catalogo.jpg" width="49%" alt="Catalog layout">
+  <img src="docs/img/esp-scaffali.jpg" width="49%" alt="Shelves layout">
 </p>
 <p align="center">
-  <img src="docs/img/tema-oled.jpg" width="49%" alt="Tema OLED">
-  <img src="docs/img/tema-retro.jpg" width="49%" alt="Tema Retrò">
+  <img src="docs/img/esp-console.jpg" width="49%" alt="Console layout, with a narrow sidebar">
+  <img src="docs/img/esp-dashboard.jpg" width="49%" alt="Dashboard layout">
 </p>
 <p align="center">
-  <img src="docs/img/aspetto.jpg" width="60%" alt="Impostazioni, sezione Aspetto">
+  <img src="docs/img/esp-cinema.jpg" width="49%" alt="Cinema layout">
+  <img src="docs/img/esp-vetrina.jpg" width="49%" alt="Showcase layout">
+</p>
+<p align="center"><sub>Catalog · Shelves · Console · Dashboard · Cinema · Showcase (there's also Original, the classic view).</sub></p>
+
+### Themes
+
+Themes are independent of the layout and can be combined with it.
+
+<p align="center">
+  <img src="docs/img/tema-chiaro.jpg" width="49%" alt="Light theme">
+  <img src="docs/img/tema-notte-blu.jpg" width="49%" alt="Midnight blue theme">
+</p>
+<p align="center">
+  <img src="docs/img/tema-oled.jpg" width="49%" alt="OLED theme">
+  <img src="docs/img/tema-retro.jpg" width="49%" alt="Retro theme">
+</p>
+<p align="center">
+  <img src="docs/img/aspetto.jpg" width="60%" alt="Settings, Appearance section">
 </p>
 
-## Cosa fa
+## What it does
 
-- **Scraping veloce**. Le ROM vengono riconosciute offline (CRC e nome sui DAT No-Intro/Redump), e le fonti online si interrogano solo per quello che manca, rispettando i loro limiti. Se si interrompe, riprende da dove era rimasto.
-- Una libreria in stile Playnite, con console e store insieme. Le versioni regionali vengono unite, ci sono preferiti (anche per console), stati, collezioni, ricerca e filtri, e regge anche decine di migliaia di giochi. In alto c'è una barra dei menu per arrivare subito alle azioni e alle impostazioni più usate.
-- **Giochi PC** da Steam, Epic, GOG, Amazon, Battle.net, Xbox e altri, accanto alle ROM. Puoi aggiungere a mano qualsiasi `.exe`, gioco o applicazione che sia: compare subito, copertina e dati arrivano dopo. Ogni gioco può anche avviare altre applicazioni insieme a sé, per esempio un deck tracker.
-- **Big Picture**: schermo intero pensato per il controller, anche dal divano.
-- Dal telefono sfogli e avvii i giochi, e il telefono fa anche da controller (giroscopio compreso). Per lo streaming ci sono Sunshine e Moonlight.
-- Gli **store online** sono elenchi di giochi presi da altri siti, che compaiono come «store» di ogni console.
-- Sette grafiche (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale) e i temi chiaro, notte blu, OLED e retrò, da combinare come vuoi.
-- **Estensioni** da installare dallo store dentro l'app: cosa gioco stasera, obiettivi, calendario uscite, diario di gioco…
-- Poi gli extra: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord (anche muto, sordo ed esci dalla chiamata), Spotify e tasti multimediali, scorciatoie da tastiera, esportazione per ES-DE e Pegasus.
+- **Fast scraping**. ROMs are recognized offline (CRC and name against the No-Intro/Redump DATs), and online sources are queried only for what is missing, respecting their limits. If it is interrupted, it resumes where it left off.
+- A Playnite-style library, with consoles and stores together. Regional versions are merged, and you get favorites (per console too), statuses, collections, search and filters; it copes with tens of thousands of games. A menu bar at the top gets you straight to the most-used actions and settings.
+- **PC games** from Steam, Epic, GOG, Amazon, Battle.net, Xbox and others, next to your ROMs. You can add any `.exe`, game or application by hand: it shows up right away, and the cover and data follow. Each game can also launch other applications along with it, for example a deck tracker.
+- **Big Picture**: a full-screen mode designed for the controller, even from the couch.
+- From your phone you can browse and launch games, and the phone doubles as a controller (gyroscope included). For streaming there are Sunshine and Moonlight.
+- **Online stores** are lists of games taken from other websites, which show up as a "store" of each console.
+- Seven layouts (Catalog, Shelves, Console, Dashboard, Cinema, Showcase, Original) and the light, midnight blue, OLED and retro themes, to mix as you like.
+- **Extensions** to install from the store inside the app: what to play tonight, achievements, release calendar, play diary…
+- Plus the extras: free games, a wishlist with prices, PC ports, save backups, Discord (including mute, deafen and leave the call), Spotify and media keys, keyboard shortcuts, export for ES-DE and Pegasus.
 
 ## Download
 
-Gli eseguibili sono nella pagina **[Releases](https://github.com/erpaffo/Pozzo-Launcher/releases)**:
+The executables are on the **[Releases](https://github.com/erpaffo/Pozzo-Launcher/releases)** page:
 
-| Sistema | Installer | Portatile |
+| System | Installer | Portable |
 |---|---|---|
-| Windows 10/11 (64 bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `…-windows-x64.zip`: estrai e apri `PozzoLauncher.exe` |
-| macOS 11+ (Apple Silicon) | `…-macos-arm64.dmg`: trascina l'app in Applicazioni | `…-macos-arm64.zip` |
-| Linux (64 bit) | `pozzo_<versione>_amd64.deb` (Debian, Ubuntu, Mint…) | `…-linux-x64.tar.gz` |
+| Windows 10/11 (64 bit) | `PozzoLauncher-<version>-windows-x64-setup.exe` | `…-windows-x64.zip`: extract and open `PozzoLauncher.exe` |
+| macOS 11+ (Apple Silicon) | `…-macos-arm64.dmg`: drag the app to Applications | `…-macos-arm64.zip` |
+| Linux (64 bit) | `pozzo_<version>_amd64.deb` (Debian, Ubuntu, Mint…) | `…-linux-x64.tar.gz` |
 
-Gli eseguibili non sono firmati: su Windows SmartScreen chiede conferma (*Ulteriori informazioni › Esegui comunque*), su macOS la prima volta apri l'app con clic destro › Apri.
+The executables are not signed: on Windows SmartScreen asks for confirmation (*More info › Run anyway*), on macOS the first time open the app with right click › Open.
 
-Quando esce una versione nuova compare un avviso. La installi con un clic da **Impostazioni › Info** (**⬇ Installa e riavvia**) e i tuoi dati restano dove sono.
+When a new version is out a notice appears. Install it with one click from **Settings › About** (**⬇ Install and restart**) and your data stays where it is.
 
-## Per iniziare
+## Getting started
 
-1. Apri Pozzo Launcher e scegli la cartella delle ROM in **Impostazioni › Nuovi giochi**.
-2. Avvia la ricerca: la libreria si riempie, e copertine e dati arrivano in sottofondo.
-3. Per i giochi PC, collega gli store da **Impostazioni › Store**.
+1. Open Pozzo Launcher and choose your ROM folder in **Settings › New games**.
+2. Start the search: the library fills up, and covers and data arrive in the background.
+3. For PC games, connect your stores from **Settings › Stores**.
 
-Configurazione, cache e libreria stanno nella cartella dell'utente (`%LOCALAPPDATA%\PozzoLauncher` su Windows, `~/Library/Application Support/PozzoLauncher` su macOS, `~/.local/share/PozzoLauncher` su Linux). Tutto il resto (credenziali delle fonti, comandi da terminale, store online, telefono, estensioni) è nel [manuale](https://erpaffo.github.io/Pozzo-Launcher/).
+Configuration, cache and library live in the user folder (`%LOCALAPPDATA%\PozzoLauncher` on Windows, `~/Library/Application Support/PozzoLauncher` on macOS, `~/.local/share/PozzoLauncher` on Linux). Everything else (source credentials, terminal commands, online stores, phone, extensions) is in the [manual](https://erpaffo.github.io/Pozzo-Launcher/). The manual is currently in Italian only.
 
-## Dai sorgenti
+## From source
 
 ```powershell
 python -m pip install -r requirements.txt
-python -m pozzo app          # apre l'app
-python -m pozzo run          # solo scansione e scraping, da terminale
+python -m pozzo app          # opens the app
+python -m pozzo run          # scan and scraping only, from the terminal
 ```
 
-Struttura del codice, come creare gli eseguibili e prestazioni: [Sviluppo](docs/sviluppo.md). Per contribuire: [CONTRIBUTING.md](CONTRIBUTING.md).
+Code structure, how to build the executables and performance: [Development](docs/sviluppo.md). To contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Avvertenze
+## Disclaimer
 
-Pozzo Launcher è un gestore di librerie: **non contiene, non ospita e non distribuisce giochi, ROM, BIOS o chiavi**. Usalo con giochi che possiedi legalmente e nel rispetto delle leggi del tuo paese e dei termini dei siti a cui ti colleghi: la responsabilità dei contenuti che aggiungi è tua.
+Pozzo Launcher is a library manager: it **does not contain, host or distribute games, ROMs, BIOS files or keys**. Use it with games you legally own and in compliance with the laws of your country and the terms of the sites you connect to: you are responsible for the content you add.
 
-I nomi e i marchi di console, giochi e store citati appartengono ai rispettivi proprietari. Pozzo Launcher non è affiliato né approvato da nessuno di loro.
+The names and trademarks of consoles, games and stores mentioned belong to their respective owners. Pozzo Launcher is not affiliated with or endorsed by any of them.
 
-[Privacy](PRIVACY.md) · [Sicurezza](SECURITY.md) · [Codice di condotta](CODE_OF_CONDUCT.md) · [Componenti di terze parti](THIRD_PARTY_NOTICES.md)
+[Privacy](PRIVACY.md) · [Security](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Third-party components](THIRD_PARTY_NOTICES.md)

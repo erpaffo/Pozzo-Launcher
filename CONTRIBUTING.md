@@ -1,57 +1,59 @@
-# Contribuire
+# Contributing
 
-Se vuoi dare una mano, segnalazioni, idee e pull request sono ben accette.
+**English** · [Italiano](CONTRIBUTING.it.md)
 
-- Per problemi e idee apri una [segnalazione](https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose) scegliendo il modello adatto.
-- **Sicurezza**: mai in pubblico, vedi [SECURITY.md](SECURITY.md).
-- Se hai una domanda su come si usa, guarda prima il [manuale](https://erpaffo.github.io/Pozzo-Launcher/).
+If you want to help, reports, ideas and pull requests are welcome.
 
-## Preparare l'ambiente
+- For problems and ideas, open an [issue](https://github.com/erpaffo/Pozzo-Launcher/issues/new/choose) and pick the right template.
+- **Security**: never in public, see [SECURITY.md](SECURITY.md).
+- If you have a question about how to use the app, check the [manual](https://erpaffo.github.io/Pozzo-Launcher/) first (in Italian).
 
-Serve Python 3.12 (lo stesso della CI e delle release).
+## Setting up
+
+You need Python 3.12 (the same as CI and releases).
 
 ```bash
 python -m pip install -r requirements.txt
-python -m pozzo app        # avvia l'app dai sorgenti
+python -m pozzo app        # runs the app from source
 ```
 
-I sorgenti usano la stessa cartella dati dell'eseguibile installato. Per non toccare la tua libreria mentre sviluppi, usa una configurazione separata: `POZZO_CONFIG=/percorso/prova/config.toml`.
+The sources use the same data folder as the installed executable. To avoid touching your library while developing, use a separate configuration: `POZZO_CONFIG=/path/to/test/config.toml`.
 
-## Test
+## Tests
 
 ```bash
-PYTHONUTF8=1 python packaging/run_tests.py          # tutta la suite, come la CI
-PYTHONUTF8=1 python tests/test_pipeline.py          # un solo file
+PYTHONUTF8=1 python packaging/run_tests.py          # the whole suite, like CI
+PYTHONUTF8=1 python tests/test_pipeline.py          # a single file
 ```
 
-I test sono semplici script con `assert`, non c'è nessun framework da imparare. La CI li esegue su Windows, macOS e Linux a ogni push e pull request. Per il JavaScript basta `node --check <file>.js`.
+Tests are plain scripts with `assert`, there is no framework to learn. CI runs them on Windows, macOS and Linux on every push and pull request. For JavaScript, `node --check <file>.js` is enough.
 
-## Stile
+## Style
 
-- Il codice segue lo stile dei file vicini: nomi, commenti (in italiano, brevi, sul *perché*) e struttura.
-- Una modifica piccola e completa è meglio di una grande: aggiorna anche test, manuale (`docs/`) e chiamanti che tocchi.
-- Niente dipendenze nuove per poche righe.
+- Code follows the style of the neighboring files: names, comments (in Italian, short, about the *why*) and structure.
+- A small, complete change beats a big one: also update tests, the manual (`docs/`) and any callers you touch.
+- No new dependencies for a few lines.
 
-## Changelog e versioni
+## Changelog and versions
 
-Le voci del changelog si aggiungono con lo script, non a mano:
+Changelog entries are added with the script, not by hand:
 
 ```bash
-python tools/version.py add aggiunto "Cosa cambia per chi usa l'app"   # aggiunto, cambiato, migliorato, corretto, rimosso
+python tools/version.py add aggiunto "What changes for people using the app"   # aggiunto, cambiato, migliorato, corretto, rimosso
 python tools/version.py status
 ```
 
-Numero di versione, commit di versione e release li gestisce il manutentore.
+The version number, the version commit and releases are handled by the maintainer.
 
-## Estensioni
+## Extensions
 
-Le estensioni stanno in `extensions/<id>/` e si installano dallo store dentro l'app. Guida: [Temi e plugin](https://erpaffo.github.io/Pozzo-Launcher/ESTENSIONI/). Dopo averne modificata una:
+Extensions live in `extensions/<id>/` and are installed from the store inside the app. Guide: [Themes and plugins](https://erpaffo.github.io/Pozzo-Launcher/ESTENSIONI/). After changing one:
 
 ```bash
-python tools/extensions.py index    # rigenera extensions/index.json (il test lo controlla)
-python tools/extensions.py install  # la copia nella tua cartella plugin per provarla (da rifare dopo ogni modifica)
+python tools/extensions.py index    # regenerates extensions/index.json (a test checks it)
+python tools/extensions.py install  # copies it into your plugins folder to try it (redo after every change)
 ```
 
-## Licenza dei contributi
+## License of contributions
 
-Inviando una pull request accetti che il tuo contributo sia distribuito con la stessa licenza del progetto (vedi `LICENSE`).
+By submitting a pull request you agree that your contribution is distributed under the same license as the project (see `LICENSE`).

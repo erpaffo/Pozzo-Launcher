@@ -1,11 +1,11 @@
-## Cosa cambia
+## What changes
 
-<!-- Cosa fa questa modifica e perché. Se risolve una segnalazione: «Risolve #123». -->
+<!-- What this change does and why. If it fixes an issue: "Fixes #123". -->
 
-## Come l'hai provata
+## How you tested it
 
-<!-- Test eseguiti e, per l'interfaccia, cosa hai controllato a mano. -->
+<!-- Tests run and, for the interface, what you checked by hand. -->
 
-- [ ] `python packaging/run_tests.py` passa
-- [ ] Per una funzione nuova o cambiata: voce in `changelog.md` e manuale in `docs/` aggiornato
-- [ ] Per un'estensione modificata: `python tools/extensions.py index` rigenerato
+- [ ] `python packaging/run_tests.py` passes
+- [ ] For a new or changed feature: entry in `changelog.md` and manual in `docs/` updated
+- [ ] For a modified extension: `python tools/extensions.py index` regenerated
