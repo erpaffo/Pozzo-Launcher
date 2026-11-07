@@ -814,15 +814,18 @@ class Launcher:
             self._hotkey = None
         from . import screens
         if self.shots and screens.settings(self.cfg).get("import_emulator") and st.get("key") and st.get("started"):
-            try:  # schermate fatte con il tasto dell'emulatore durante la sessione
-                n = screens.import_session(self.shots, st["key"], st.get("emulator_id") or st.get("emulator") or "",
-                                           st.get("exe"), st["started"], time.time())
-                if n:
-                    with self.lock:
-                        self.state["shots"] = self.state.get("shots", 0) + n
-                    self.on_event("screenshot", {"key": st["key"], "imported": n})
-            except Exception:
-                pass
+            def imp():  # in un thread: la scansione delle cartelle (anche Video/Captures) non deve ritardare game_stopped
+                try:  # schermate fatte con il tasto dell'emulatore durante la sessione
+                    n = screens.import_session(self.shots, st["key"], st.get("emulator_id") or st.get("emulator") or "",
+                                               st.get("exe"), st["started"], time.time())
+                    if n:
+                        with self.lock:
+                            self.state["shots"] = self.state.get("shots", 0) + n
+                        self.on_event("screenshot", {"key": st["key"], "imported": n})
+                except Exception:
+                    pass
+
+            threading.Thread(target=imp, daemon=True).start()
 
     def _watch_combo(self):
         """Controller (XInput) durante il gioco: Select/View + Start/Menu tenuti 2 secondi chiudono il gioco,
@@ -865,6 +868,7 @@ class Launcher:
             return job.active() > (1 if comp and comp.poll() is None else 0)
         while alive() and not self._stop_evt.is_set():
             self._stop_evt.wait(0.5)
+        proc and proc.poll()  # con il Job non si interroga il processo: senza poll() returncode resta None (crash scambiato per uscita normale)
 
     def stop(self) -> bool:
         """Chiude il gioco in esecuzione (pulsante «Chiudi gioco», Select+Start nella Big Picture).

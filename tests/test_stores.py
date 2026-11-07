@@ -57,7 +57,6 @@ def make_env(tmp: Path):
     (tmp / "roms").mkdir()
     (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n[scrape]\nsources = []\n', encoding="utf-8")
     cfg = config.load(tmp / "config.toml")
-    cfg.app["merge_stores"] = True
     c = Cache(cfg.cache)
     snap = lambda store, gid, title, inst, launch: {  # noqa: E731
         "store": store, "id": gid, "title": title, "installed": inst, "install_dir": "", "launch": launch,
