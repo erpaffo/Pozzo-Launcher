@@ -121,6 +121,7 @@ async function openDetail(id) {
         + `${minerva && dlBase.length <= 1 ? "⬇ " + t("f.btn.download") : "🧲 Torrent"} ${t("f.btn.only_this")}</button>` : "")
     : pc && !d.installed
     ? `<button class="btn primary" id="d-install" ${d.can_install ? "" : "disabled"}>⬇ ${t("f.btn.install")}</button>`
+      + (d.store === "steam" ? `<button class="btn" id="d-scmd" title="${t("h.steamcmd.tip")}">⬇ ${t("h.steamcmd.menu")}</button>` : "")
     : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ ${t("f.btn.play")}</button>`
       // stesse condizioni di d-play: copia su SSD, avvio e cancellazione della copia lato backend (flag fast)
       + `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="${t("f.btn.play_fast_title")}">⚡ ${t("f.btn.play_fast")}</button>`
