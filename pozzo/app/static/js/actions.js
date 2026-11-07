@@ -143,6 +143,7 @@ function openCtx(e, g) {
     if (!g.installed) rows.push({ l: "⬇ " + t("h.grid.install"), f: () => installGame(g.id) });
     rows.push({ l: "🛒 " + t("h.act.storePage"), f: () => api(`/api/game/${g.id}/store-page`, { body: {} }) });
   }
+  if (wofAvailable(g)) rows.push({ l: "🗜 " + t("w.wof.title"), f: () => openWof(g) });
   if (g.store !== "online") rows.push({ l: "🖥 " + t("h.act.shortcut"), f: async () => {
     await api(`/api/game/${g.id}/shortcut`, { body: {} });
     toast(t("h.act.shortcutMade", {name: g.title}));

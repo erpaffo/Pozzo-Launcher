@@ -3402,5 +3402,22 @@
  "a.prof.autoMagpie": "Upscaling con Magpie (si scarica al primo uso; Windows 10 1903+)",
  "a.prof.autoMagpieOff": "Nessuno",
  "e.gs.saved": "Script globali salvati",
- "s.library.badAuto": "Automazioni non valide: controlla risoluzione (es. 1920x1080@60) e GUID del piano energetico"
+ "s.library.badAuto": "Automazioni non valide: controlla risoluzione (es. 1920x1080@60) e GUID del piano energetico",
+ "w.wof.title": "Riduci spazio su disco",
+ "w.wof.estimate": "Stima dalla community di CompactGUI ({name}): con {best} circa {saved} in meno.",
+ "w.wof.noEstimate": "Gioco non presente nel database di CompactGUI: nessuna stima, solo la dimensione misurata.",
+ "w.wof.dstorage": "Questo gioco usa DirectStorage (dstorage.dll): su file compressi potrebbe non avviarsi o andare più lento.",
+ "w.wof.dstorageConfirm": "Ho capito, comprimi comunque",
+ "w.wof.algo": "Algoritmo",
+ "w.wof.compress": "Comprimi",
+ "w.wof.uncompress": "Decomprimi",
+ "w.wof.cancel": "Annulla",
+ "w.wof.progress": "{done} / {total} file",
+ "w.wof.st.done": "Fatto.",
+ "w.wof.st.error": "Errore.",
+ "w.wof.st.cancelled": "Interrotto.",
+ "s.wof.unavailable": "Compressione non disponibile: serve un gioco PC installato su Windows",
+ "s.wof.busy": "Compressione gia' in corso per questo gioco",
+ "s.wof.badAlgo": "Algoritmo non valido",
+ "s.wof.dstorage": "Il gioco usa DirectStorage: conferma esplicita necessaria"
 }
