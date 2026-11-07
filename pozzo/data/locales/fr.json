@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Favoris · {p}",
  "h.nav.instTotal": "installés / total",
  "h.nav.noStore": "Aucun store connecté : voir Paramètres › Compte",
+ "h.nav.otherConsoles": "Autres consoles",
  "h.nav.storeExt": "Store des extensions",
  "h.paste.added": "Dossier ajouté : {n} {w}",
  "h.paste.askPath": "Chemin du dossier ({p})",

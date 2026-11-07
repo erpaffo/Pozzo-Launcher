@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Favoriler · {p}",
  "h.nav.instTotal": "kurulu / toplam",
  "h.nav.noStore": "Bağlı mağaza yok: Ayarlar › Hesap bölümüne bak",
+ "h.nav.otherConsoles": "Diğer konsollar",
  "h.nav.storeExt": "Mağaza eklentileri",
  "h.paste.added": "Klasör eklendi: {n} {w}",
  "h.paste.askPath": "Klasörün yolu ({p})",

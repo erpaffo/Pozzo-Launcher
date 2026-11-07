@@ -93,9 +93,11 @@ def build_router(ctx) -> APIRouter:
                 m0 = (OW.members(members, pid) if lib.has_owners else members)[0]
                 if OW.visible(m0, pid) and m0.get("store") != "online":  # i giochi solo online non contano come posseduti
                     plats[m0["platform"]] += 1
+            for p in P.PLATFORMS:
+                plats[p] += 0  # ogni console e' sempre elencata (anche vuota), cosi' si puo' aggiungerle uno store
             for p, urls in cfg.catalogs.items():
                 if urls:
-                    plats[p] += 0  # console con uno store online ma senza giochi posseduti
+                    plats[p] += 0  # console personalizzata con uno store online
             # JSON scritto qui: jsonable_encoder di FastAPI su ~150.000 righe costa secondi, json.dumps in un colpo ~200 MB
             body = _json({
                 "built_at": lib.built_at, "user_rev": user.rev, "meta_rev": lib.meta_rev,

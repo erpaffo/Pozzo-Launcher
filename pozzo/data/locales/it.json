@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Preferiti · {p}",
  "h.nav.instTotal": "installati / totali",
  "h.nav.noStore": "Nessuno store collegato: vedi Impostazioni › Account",
+ "h.nav.otherConsoles": "Altre console",
  "h.nav.storeExt": "Store estensioni",
  "h.paste.added": "Cartella aggiunta: {n} {w}",
  "h.paste.askPath": "Percorso della cartella ({p})",

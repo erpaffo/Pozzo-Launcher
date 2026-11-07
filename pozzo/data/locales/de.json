@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "Favoriten · {p}",
  "h.nav.instTotal": "installiert / gesamt",
  "h.nav.noStore": "Kein Store verbunden: siehe Einstellungen › Konto",
+ "h.nav.otherConsoles": "Weitere Konsolen",
  "h.nav.storeExt": "Store-Erweiterungen",
  "h.paste.added": "Ordner hinzugefügt: {n} {w}",
  "h.paste.askPath": "Ordnerpfad ({p})",

@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "收藏 · {p}",
  "h.nav.instTotal": "已安装 / 总数",
  "h.nav.noStore": "未连接商店：请见 设置 › 账户",
+ "h.nav.otherConsoles": "其他主机",
  "h.nav.storeExt": "商店扩展",
  "h.paste.added": "已添加文件夹：{n} {w}",
  "h.paste.askPath": "文件夹路径（{p}）",

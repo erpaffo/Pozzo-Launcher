@@ -1818,6 +1818,7 @@
  "h.nav.favTitle": "पसंदीदा · {p}",
  "h.nav.instTotal": "इंस्टॉल किए गए / कुल",
  "h.nav.noStore": "कोई स्टोर जुड़ा नहीं है: सेटिंग्स › अकाउंट देखें",
+ "h.nav.otherConsoles": "अन्य कंसोल",
  "h.nav.storeExt": "स्टोर एक्सटेंशन",
  "h.paste.added": "फ़ोल्डर जोड़ा गया: {n} {w}",
  "h.paste.askPath": "फ़ोल्डर का पथ ({p})",
