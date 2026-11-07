@@ -3529,5 +3529,6 @@
  "fr.achv": "成就 {n}/{m}",
  "fr.noData": "{name} 尚未分享数据:对方上线后会更新。",
  "fr.friendsPlaying": "在玩这款游戏的好友",
- "fr.compare": "对比"
+ "fr.compare": "对比",
+ "a.prof.autoArchive": "压缩包 .zip/.7z/.rar:每次启动时解压到临时文件夹,游戏结束后删除(存档会保留)"
 }

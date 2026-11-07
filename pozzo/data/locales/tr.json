@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} başarım",
  "fr.noData": "{name} henüz veri paylaşmadı: çevrimiçi olunca güncellenir.",
  "fr.friendsPlaying": "Oynayan arkadaşlar",
- "fr.compare": "Karşılaştır"
+ "fr.compare": "Karşılaştır",
+ "a.prof.autoArchive": "Arşiv .zip/.7z/.rar: her başlatmada geçici klasöre çıkar, oyun bitince sil (kayıtlar korunur)"
 }

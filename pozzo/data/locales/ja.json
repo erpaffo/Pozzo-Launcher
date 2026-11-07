@@ -3529,5 +3529,6 @@
  "fr.achv": "実績 {n}/{m}",
  "fr.noData": "{name} はまだデータを共有していません。オンラインになると更新されます。",
  "fr.friendsPlaying": "このゲームを遊んでいるフレンド",
- "fr.compare": "比較"
+ "fr.compare": "比較",
+ "a.prof.autoArchive": "アーカイブ .zip/.7z/.rar: 起動のたびに一時フォルダーへ展開し、ゲーム終了時に削除します(セーブは保持されます)"
 }

@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} achievements",
  "fr.noData": "{name} has not shared any data yet: it updates when they are online.",
  "fr.friendsPlaying": "Friends who play it",
- "fr.compare": "Compare"
+ "fr.compare": "Compare",
+ "a.prof.autoArchive": "Archive .zip/.7z/.rar: extract to a temporary folder at each launch and delete it when the game ends (saves are kept)"
 }

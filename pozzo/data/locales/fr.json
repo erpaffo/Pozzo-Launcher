@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} succès",
  "fr.noData": "{name} n'a encore partagé aucune donnée : elles se mettent à jour quand il est en ligne.",
  "fr.friendsPlaying": "Amis qui y jouent",
- "fr.compare": "Comparer"
+ "fr.compare": "Comparer",
+ "a.prof.autoArchive": "Archive .zip/.7z/.rar : extraire dans un dossier temporaire à chaque lancement et le supprimer à la fin de la partie (les sauvegardes sont conservées)"
 }

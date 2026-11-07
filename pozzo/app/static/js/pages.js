@@ -433,7 +433,7 @@ async function openProfile(d) {
     $(`#pf-au-${w}wait`).checked = au[`${n}_wait`] ?? (w === "b");
   }
   $("#pf-au-res").value = au.res || ""; $("#pf-au-power").value = au.power || "";
-  $("#pf-au-kill").value = (au.kill || []).join(", "); $("#pf-au-hdr").checked = !!au.hdr; $("#pf-au-magpie").value = au.magpie || "";
+  $("#pf-au-kill").value = (au.kill || []).join(", "); $("#pf-au-hdr").checked = !!au.hdr; $("#pf-au-archive").checked = !!au.archive; $("#pf-au-magpie").value = au.magpie || "";
   $("#pf-emu-box").hidden = !!PF.pc; // giochi PC: solo gli script
   if (PF.pc) {  // niente emulatore: si azzerano i campi rimasti dal gioco aperto prima
     $("#pf-emu").innerHTML = ""; $("#pf-core").innerHTML = "";
@@ -472,7 +472,7 @@ async function saveProfile(reset = false) {
     companion_close: $("#pf-comp-kill").checked ? "1" : "",
     auto: { before_cmd: $("#pf-au-bcmd").value, before_cwd: $("#pf-au-bcwd").value, before_wait: $("#pf-au-bwait").checked,
       after_cmd: $("#pf-au-acmd").value, after_cwd: $("#pf-au-acwd").value, after_wait: $("#pf-au-await").checked,
-      res: $("#pf-au-res").value, power: $("#pf-au-power").value, kill: $("#pf-au-kill").value, hdr: $("#pf-au-hdr").checked, magpie: $("#pf-au-magpie").value } };
+      res: $("#pf-au-res").value, power: $("#pf-au-power").value, kill: $("#pf-au-kill").value, hdr: $("#pf-au-hdr").checked, archive: $("#pf-au-archive").checked, magpie: $("#pf-au-magpie").value } };
   try {
     PF = Object.assign(PF, reset ? await api(`/api/game/${PF.id}/profile`, { method: "DELETE" })
       : await api(`/api/game/${PF.id}/profile`, { body: PF.pc ? { before: $("#pf-before").value, after: $("#pf-after").value, ...comp }

@@ -3529,5 +3529,6 @@
  "fr.achv": "업적 {n}/{m}",
  "fr.noData": "{name}님이 아직 데이터를 공유하지 않았습니다. 접속하면 업데이트됩니다.",
  "fr.friendsPlaying": "이 게임을 하는 친구",
- "fr.compare": "비교"
+ "fr.compare": "비교",
+ "a.prof.autoArchive": "압축 파일 .zip/.7z/.rar: 실행할 때마다 임시 폴더에 풀고 게임이 끝나면 삭제합니다(저장 데이터는 유지됩니다)"
 }

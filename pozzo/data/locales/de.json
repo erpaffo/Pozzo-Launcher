@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} Erfolge",
  "fr.noData": "{name} hat noch keine Daten geteilt: Sie werden aktualisiert, wenn die Person online ist.",
  "fr.friendsPlaying": "Freunde, die es spielen",
- "fr.compare": "Vergleichen"
+ "fr.compare": "Vergleichen",
+ "a.prof.autoArchive": "Archiv .zip/.7z/.rar: bei jedem Start in einen temporären Ordner entpacken und nach dem Spiel löschen (Spielstände bleiben erhalten)"
 }

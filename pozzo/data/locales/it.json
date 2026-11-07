@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} obiettivi",
  "fr.noData": "{name} non ha ancora condiviso dati: si aggiornano quando è in linea.",
  "fr.friendsPlaying": "Amici che ci giocano",
- "fr.compare": "Confronta"
+ "fr.compare": "Confronta",
+ "a.prof.autoArchive": "Archivio .zip/.7z/.rar: estrai in una cartella temporanea a ogni avvio e cancella a fine partita (i salvataggi si conservano)"
 }

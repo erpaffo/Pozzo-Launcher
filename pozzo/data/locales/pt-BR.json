@@ -3529,5 +3529,6 @@
  "fr.achv": "{n}/{m} conquistas",
  "fr.noData": "{name} ainda não compartilhou dados: eles são atualizados quando estiver online.",
  "fr.friendsPlaying": "Amigos que jogam",
- "fr.compare": "Comparar"
+ "fr.compare": "Comparar",
+ "a.prof.autoArchive": "Arquivo .zip/.7z/.rar: extrair para uma pasta temporária a cada início e apagar ao fim da partida (os saves são mantidos)"
 }
