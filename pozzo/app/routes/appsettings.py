@@ -315,6 +315,19 @@ def build_router(ctx) -> APIRouter:
         C.save_settings(cfg, app={"hide_dlc": cur})
         return {"hide_dlc": cfg.app.get("hide_dlc") or []}
 
+    @router.get("/api/app/video-snap")
+    def api_video_snap_get():
+        return {"enabled": bool(cfg.app.get("video_snap")), "max_mb": int(cfg.app.get("video_max_mb") or 30)}
+
+    @router.post("/api/app/video-snap")
+    def api_video_snap_set(body: dict = Body(...)):
+        """«Scarica video snap»: spento di default (disco e banda). max_mb e' il tetto per file (5-500)."""
+        upd = {"video_snap": bool(body.get("enabled"))}
+        if "max_mb" in body:
+            upd["video_max_mb"] = max(5, min(500, int(body["max_mb"] or 30)))
+        C.save_settings(cfg, app=upd)
+        return api_video_snap_get()
+
     @router.post("/api/app/quit")
     def api_quit():
         """Chiude l'app dal menu File (solo dal PC: il telefono non ha accesso a questa rotta)."""

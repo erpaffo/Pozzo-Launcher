@@ -150,9 +150,14 @@ class Config:
     app: dict = field(default_factory=dict)  # tema, plugin disattivati, modalita' di avvio
     config_path: Path | None = None
 
+    def wants_media(self, kind: str) -> bool:
+        """Tipo di media da scaricare. Il video snap pesa (disco e banda): solo con "Scarica video snap" acceso
+        (cfg.app["video_snap"], default spento) o se «video» e' elencato a mano in scrape.media."""
+        return kind in self.media or (kind == "video" and bool(self.app.get("video_snap")))
+
     @property
     def wanted(self) -> set[str]:
-        return set(self.fields) | {f"media:{m}" for m in self.media}
+        return set(self.fields) | {f"media:{m}" for m in ALL_MEDIA if self.wants_media(m)}
 
 
 SETTINGS_FILE = "settings.json"

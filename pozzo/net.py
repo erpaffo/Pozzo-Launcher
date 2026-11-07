@@ -288,7 +288,7 @@ def sniff(data: bytes) -> str | None:
 
 
 async def download_media(client, url: str, dest_noext: Path, *, limiter: RateLimiter | None = None,
-                         headers: dict | None = None) -> Path | None:
+                         headers: dict | None = None, max_bytes: int = 0) -> Path | None:
     """Scarica un file media, verifica che sia davvero un'immagine/video e lo salva con l'estensione giusta."""
     if url.startswith("file:"):  # immagine gia' sul disco (es. icona estratta da un NSP)
         try:
@@ -303,8 +303,8 @@ async def download_media(client, url: str, dest_noext: Path, *, limiter: RateLim
         if r is None or r.status_code != 200:
             return None
         content = r.content
-    if len(content) < MIN_SIZE:
-        return None
+    if len(content) < MIN_SIZE or (max_bytes and len(content) > max_bytes):
+        return None  # shortcut: il limite si controlla a scaricamento finito (niente streaming), basta per non riempire il disco
     ext = sniff(content[:16])
     if not ext:
         return None

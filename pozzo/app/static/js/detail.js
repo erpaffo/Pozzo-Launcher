@@ -90,6 +90,7 @@ async function openDetail(id) {
   syncGameAccent(id, my);
   const hero = d.media.hero || d.media.screenshot || d.media.title || d.media.header || d.media.cover;
   $("#detail .hero-bg").style.backgroundImage = hero ? `url("${hero}?w=1280")` : "none";
+  if (d.media.video) GSVideo.attach($("#detail .hero-bg"), id); else GSVideo.stop($("#detail .hero-bg"));
   const u = d.user;
   const dl = [
     [t("f.dl.developer"), d.developer], [t("f.dl.publisher"), d.publisher], [t("f.dl.release"), d.release_date || d.year],
@@ -624,6 +625,7 @@ async function renderDetailSections(d) {
 
 function closeDetail() {
   S.openSeq++; // una risposta in arrivo non deve riaprire il pannello
+  GSVideo.stop($("#detail .hero-bg"));
   S.selected = null;
   try {
     const s = JSON.parse(localStorage.getItem("gs.last_session") || "{}");

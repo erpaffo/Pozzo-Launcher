@@ -104,7 +104,8 @@ class Stage:
         src = self.src
         ident = g.key.split("/", 1)[1].replace(":", "_")
         dest = self.cache.media_dir / g.platform.id / mtype / f"{ident}_{src.name}"
-        path = await download_media(src.client, url, dest, limiter=src.media_limiter, headers=headers)
+        cap = int(self.cfg.app.get("video_max_mb") or 30) * 2**20 if mtype == "video" else 0
+        path = await download_media(src.client, url, dest, limiter=src.media_limiter, headers=headers, max_bytes=cap)
         self.progress.advance(self.mtask)
         if path:
             rel = path.relative_to(self.cache.folder).as_posix()
@@ -147,7 +148,7 @@ class Stage:
         self.stats["trovati" if res.fields else "non trovati"] += 1
         downloads = []
         for mtype, url in res.media.items():
-            if mtype in self.cfg.media and url and not g.data.get(f"media:{mtype}"):
+            if self.cfg.wants_media(mtype) and url and not g.data.get(f"media:{mtype}"):
                 t = self.progress.tasks[self.mtask]
                 self.progress.update(self.mtask, total=(t.total or 0) + 1, visible=True)
                 downloads.append(asyncio.create_task(self._fetch(g, mtype, url, res.media_headers)))
