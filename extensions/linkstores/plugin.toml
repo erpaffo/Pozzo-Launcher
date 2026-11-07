@@ -1,6 +1,6 @@
 [plugin]
 name = "Link → Store"
-version = "1.0"
+version = "1.1"
 author = "Pozzo Launcher"
 icon = "🔗"
 screenshot = "screenshot.png"

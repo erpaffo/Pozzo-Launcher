@@ -39,7 +39,7 @@
       "min_app": "0.7.1",
       "base": "calendario-uscite/",
       "files": {
-        "backend.py": "17ab35703763ca2190ced3fd31af0174acadb167a78fb3e6a80e8db250717fd0",
+        "backend.py": "c9d9105fb8e864b0e1bb517f431b05f8599758f8faf8e694d30bdf88131c2e61",
         "frontend.js": "763cded618d1ea2585ae32eabbb6dab83f8399a87a42e8cc4b51531e3b38ecfd",
         "plugin.toml": "96f401ced831dc79c4623e032ead2218a9c96cde3e9da5d1b685ca2bb191dba7",
         "screenshot.png": "b17803efdfd138d206a95400dc1400ce0245ab449e45bd5866f27c283683098e",
@@ -126,15 +126,15 @@
     {
       "id": "linkstores",
       "name": "Link → Store",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Pozzo Launcher",
       "description": "Converte elenchi di link web (repack, archivi e siti di download) in store consultabili all'interno del launcher, ordinati per console o per PC.",
       "min_app": "0.7.1",
       "base": "linkstores/",
       "files": {
         "backend.py": "b21286df81e91faccb3866d1b3848a6d42b9d82c60313ba2decee2b654e072ba",
-        "frontend.js": "b421a17688c16e1953405313ef373056f135ca4f66bc82646f5cd20ce24d3179",
-        "plugin.toml": "353ecd3688374f97fcb87e083b1f3c670f9b5c83649573d3b923ffe38feb6ab0",
+        "frontend.js": "5c36ad737522455c0360850b5eb37224289d0222007d5e149b61546b6826cb0e",
+        "plugin.toml": "145909968e1ca6680d8639030f1944a910ea2360a48a8900c40ad02079217b1e",
         "screenshot.png": "c0fcd704acb1d91a60c4ad8b4f9a1841ab2f92d3619dc0c9391aea41e1d7edb3",
         "style.css": "3f947fa5c51631cdf3b26718698a0f74975817c907435dee3d2758f1e7e930b9"
       },
@@ -164,14 +164,16 @@
       "min_app": "0.15.0",
       "base": "media-locale/",
       "files": {
-        "backend.py": "da87825d6f07975f3adcc8d51640b79132a7c969614206117d1b886ee4113a12",
-        "frontend.js": "41c61cf9d530e374f0b76970a524c9b64c0f6fd7824585b295ce4402d52e6bee",
+        "backend.py": "8e5715ed3a16f51342bf7a847360d27c307f0b08d64a95cd25121ce4ab87a8ba",
+        "frontend.js": "2e0dc546d6c127fd44d97a11b2fd5dcf4b8eea0b0dd36bf2016c9530552d1505",
         "hls.min.js": "484054e8cd03d3f6d1781fb7f402bdc318d8a4c527f933a95c624e27cc9a9470",
-        "logica.js": "1af9cd2a7a1ab7f1f595e9dd288597b6bbc218c9f5dff7320b35523412545237",
-        "metadata.py": "e87ac5119cab84b2acbb9d4b7081a7aa59c13087320ddab65fac1e68ed8c43de",
-        "player.js": "6948ac5797eee071af53a3628068734e3c77d998eabbd955c0b9d285dbf2e4dc",
+        "logica.js": "e63410a1daca224b02c272cb4741eadb511691fecbd13cea05c7d77bc95bbde8",
+        "metadata.py": "66177fcf48fb9665db3ca8e5072beebb1e7b872cb320182d077e5c60221de44d",
+        "player.js": "b0f43d40701ff473db935a963ac120ab6a69a95fafca993c4f66d3d2c622c8f6",
         "plugin.toml": "47a28bf29854df13096737889d81a4f2caad173b83254e3e39938b3c18f76b88",
-        "style.css": "15e70f850e9c252466374bff50e2edb9c78056c486767807cf39a26696c7c617"
+        "remote.js": "462504badb0d0846fb59114402a56d96f3a494fef705ba9d05a0064fbdef6a57",
+        "style.css": "0124805ccc2466151c45e9c4971ef4499c9e3e7e86ef9a0b740d2d9847037d81",
+        "watchlist_import.py": "fdf538d8d122d85d568a570cc0b77fadc985f7c7fc13ad28dcba9132025e252b"
       },
       "icon": "🎬",
       "long_description": "Trasforma una o più cartelle del tuo PC in una libreria di film, serie e musica dentro Pozzo Launcher. La scansione riconosce i nomi più comuni («Film (2020).mkv», «Serie/Season 01/S01E02 - Titolo.mkv», «Artista/Album/01 - Titolo.flac») e i poster locali (poster.jpg, folder.jpg). I contenuti che la finestra sa leggere partono nel lettore integrato, gli altri si aprono nel lettore predefinito del sistema. La posizione di riproduzione e lo stato «visto» restano sul tuo PC, in un archivio separato dalla libreria dei giochi: nessun dato viene inviato in rete.",
@@ -223,15 +225,15 @@
     {
       "id": "minerva",
       "name": "Store Minerva + Switch",
-      "version": "1.4",
+      "version": "1.5",
       "author": "Pozzo Launcher",
       "description": "Importa con un clic gli archivi Minerva per ogni console e configura store Switch preimpostati (NXBrew, Ziperto) e PlayStation (superpsx).",
       "min_app": "0.7.1",
       "base": "minerva/",
       "files": {
         "backend.py": "9d45cd88fefb55490cecad34468aa05eeb68867226a7510dfef4ae1cb49bf609",
-        "frontend.js": "acf9f4107e3f5534bd730dc9053dece9f0a0f142cc2ae52f3d7b9f1f41ac7bbe",
-        "plugin.toml": "c5d0637c94bf3469f091b1355dfb09e9bbc5dfc51c4a9e88e3393c754e249f9f",
+        "frontend.js": "12d95359b55df563ca435eda47c522d28f0c6fb651b338685f429b32fa8563ba",
+        "plugin.toml": "7619b4b4eeacef3f3cf820f0a4c4e620199a889c82ee8bcb328b75f29783fc4d",
         "screenshot.png": "e1c74da2bc76a8235b9f3d748d58fb2dd3e6bd53ed58446b0bda00818d7a713f"
       },
       "icon": "🏛️",
@@ -444,14 +446,14 @@
       "min_app": "0.15.0",
       "base": "ricette-web/",
       "files": {
-        "backend.py": "f7dbe88a4af318f476ea761a37a3c6731a267f4945d1a6ed0545d510c7058a49",
-        "frontend.js": "e3baad69e6730b1b47a53cdc5931e7d7eb8c81f07e4fcbbdecdd0ac34de53107",
-        "kodi_bridge.py": "7998d638fcd4beca79c6369e55cafe3086d78bcf76933924c0c638f208a8ff11",
+        "backend.py": "cc4dec31f179ed968d9ad1bb598ec6bd2337616bf9c42a02bcd9a7ab813b71ce",
+        "frontend.js": "75938f7274435a01cddfaa1b380cc670e86f402685d449acaa212f516509fd85",
+        "kodi_bridge.py": "3a9ffcf92a9952582e81c2971133e1a8aa298ea666e54b29fd7aeca1789e7653",
         "plugin.toml": "99acb48e81fda020b024151d8a30584e36c98bd89845976e99afb081d10755e5",
         "RECIPE.md": "37677b659b25fed6f6f2fbde4428f1d918217da7512b38445a7676aa82d40d9f",
         "recipe.toml": "fbc9e5bcff5a6c6e59f461b22a7d9f90b56380cf20d14dfe68b3198346205b5d",
         "recipes-podcast.toml": "8da44a25708fc6c63c15302b96dff3ac6ea1998e03c9e4c14216144413ee62f7",
-        "style.css": "2ce88e376204daeb4252e4c2830cec15d5ccef607bee96ca800829cba8431756"
+        "style.css": "18cc696fe5bd911dca1e1158de9d1d1b927da1c627618a2f289ead3aabf0661b"
       },
       "icon": "🌐",
       "long_description": "Aggiunge a Pozzo Media la possibilità di consultare cataloghi online tramite «ricette» dichiarative in formato TOML. Include ricette per i film classici di pubblico dominio di Internet Archive e i podcast della NASA, con supporto per pagine HTML, feed RSS/XML e dati JSON. Le richieste rispettano il file robots.txt e usano cache su disco con ETag e rate limiting. I contenuti si integrano nella pagina dedicata con griglia, dettagli, episodi e ripresa della riproduzione. Per motivi di sicurezza, nessun codice eseguibile è consentito nelle ricette e le chiamate di rete sono limitate ai soli domini autorizzati.",
