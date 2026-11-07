@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Bilinmeyen oyun",
  "s.notify.queueDone": "İndirmeler bitti",
  "s.notify.queueDoneBody": "{n} tamamlandı",
- "s.notify.queueDoneFailed": "{n} başarısız"
+ "s.notify.queueDoneFailed": "{n} başarısız",
+ "h.title.achievements": "Açılan başarımlar",
+ "a.nav.achievements": "Açılan başarımlar",
+ "f.ach.title": "Başarımlar",
+ "f.ach.none": "Bu oyunda başarım yok.",
+ "f.ach.rarity": "Oyuncuların %{p}'i",
+ "h.ach.help": "En az bir kez açtığın oyunların Steam, GOG ve Epic başarım toplamları (oyun sayfasından yüklenir).",
+ "h.ach.store": "{u}/{n} başarım · {g} oyun · {p} tamamlandı",
+ "h.ach.empty": "Başarımları yüklemek için bir Steam, GOG veya Epic oyununun sayfasını aç: toplamlar burada görünür.",
+ "f.ach.need.steam_key": "Steam başarımları için API anahtarı ve SteamID gerekir: Ayarlar > Mağaza > Hesaplar.",
+ "f.ach.need.login": "Başarımları görmek için ayarlardan mağaza hesabını bağla.",
+ "f.ach.need.gog_install": "GOG başarımları yüklü oyunlardan okunur: oyunu yükle.",
+ "f.ach.need.epic_install": "Epic başarımları yüklü oyunlardan okunur: oyunu yükle."
 }

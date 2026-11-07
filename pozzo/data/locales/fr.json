@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Jeu inconnu",
  "s.notify.queueDone": "Téléchargements terminés",
  "s.notify.queueDoneBody": "{n} terminés",
- "s.notify.queueDoneFailed": "{n} échoués"
+ "s.notify.queueDoneFailed": "{n} échoués",
+ "h.title.achievements": "Succès débloqués",
+ "a.nav.achievements": "Succès débloqués",
+ "f.ach.title": "Succès",
+ "f.ach.none": "Ce jeu n'a pas de succès.",
+ "f.ach.rarity": "{p} % des joueurs",
+ "h.ach.help": "Totaux des succès Steam, GOG et Epic des jeux ouverts au moins une fois (ils se chargent depuis la fiche du jeu).",
+ "h.ach.store": "{u}/{n} succès · {g} jeux · {p} terminés",
+ "h.ach.empty": "Ouvrez la fiche d'un jeu Steam, GOG ou Epic pour charger ses succès : les totaux apparaissent ici.",
+ "f.ach.need.steam_key": "Pour voir les succès Steam, il faut la clé API et le SteamID : Paramètres > Boutiques > Comptes.",
+ "f.ach.need.login": "Liez le compte de la boutique dans les paramètres pour voir les succès.",
+ "f.ach.need.gog_install": "Les succès GOG sont lus depuis les jeux installés : installez le jeu.",
+ "f.ach.need.epic_install": "Les succès Epic sont lus depuis les jeux installés : installez le jeu."
 }

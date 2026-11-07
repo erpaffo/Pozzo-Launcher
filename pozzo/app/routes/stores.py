@@ -59,6 +59,14 @@ def build_router(ctx) -> APIRouter:
         for k in ("api_key", "steamid"):
             if k in body:
                 cur[k] = (body[k] or "").strip()
+        if cur.get("api_key") and cur.get("steamid"):  # prova la chiave (come RetroAchievements); la rete assente non blocca
+            from ... import achievements as ACH
+            try:
+                with ACH.http(timeout=8) as c:
+                    ACH.steam_check(c, cur["api_key"], cur["steamid"])
+            except ACH.AchError as e:
+                if "negato" in str(e):
+                    raise HTTPException(400, str(e))
         PC.set(cfg, "steam", {k: v for k, v in cur.items() if v} or None)
         return api_accounts()
 

@@ -462,3 +462,18 @@ async function saveProfile(reset = false) {
   toast(reset ? t("h.prof.removed") : t("h.prof.saved"));
   if (S.detail?.id === PF.id) openDetail(PF.id);
 }
+
+/* ---- obiettivi sbloccati: totali per store dai giochi gia' aperti (Steam, GOG, Epic) */
+async function renderAchievements(pv) {
+  let d;
+  try { d = await api("/api/achievements"); } catch (e) { pv.innerHTML = `<div class="page"><p>${esc(e.message)}</p></div>`; return; }
+  if (S.view.type !== "achievements") return;
+  const names = { steam: "Steam", gog: "GOG", epic: "Epic Games" }, ids = Object.keys(d.stores);
+  const bar = (u, n) => `<div class="ra-bar"><span style="width:${n ? Math.round(u / n * 100) : 0}%"></span></div>`;
+  pv.innerHTML = `<div class="page" data-view="achievements"><div class="page-head"><div><h2>🏆 ${t("h.title.achievements")}</h2>
+    <p class="muted small">${t("h.ach.help")}</p></div></div>
+    ${ids.length ? ids.map((k) => { const s = d.stores[k]; return `<div style="margin-bottom:12px"><b>${names[k] || esc(k)}</b>
+      <span class="muted small">${t("h.ach.store", { u: s.unlocked, n: s.total, g: s.games, p: s.perfect })}</span>${bar(s.unlocked, s.total)}</div>`; }).join("")
+      + `<div class="ra-list" style="max-height:none">${d.games.map((x) => `<div class="ra-a on"><span><b>${esc(x.title)}</b> <span class="muted small">${names[x.source] || ""} · ${x.unlocked}/${x.total}</span>${bar(x.unlocked, x.total)}</span></div>`).join("")}</div>`
+      : `<p class="muted">${t("h.ach.empty")}</p>`}</div>`;
+}

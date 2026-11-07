@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "अज्ञात गेम",
  "s.notify.queueDone": "डाउनलोड पूरे हुए",
  "s.notify.queueDoneBody": "{n} पूरे हुए",
- "s.notify.queueDoneFailed": "{n} विफल"
+ "s.notify.queueDoneFailed": "{n} विफल",
+ "h.title.achievements": "अनलॉक की गई उपलब्धियाँ",
+ "a.nav.achievements": "अनलॉक की गई उपलब्धियाँ",
+ "f.ach.title": "उपलब्धियाँ",
+ "f.ach.none": "इस गेम में उपलब्धियाँ नहीं हैं।",
+ "f.ach.rarity": "{p}% खिलाड़ी",
+ "h.ach.help": "उन गेम की Steam, GOG और Epic उपलब्धियों का कुल योग जिन्हें आपने कम से कम एक बार खोला है (गेम पेज से लोड होती हैं)।",
+ "h.ach.store": "{u}/{n} उपलब्धियाँ · {g} गेम · {p} पूर्ण",
+ "h.ach.empty": "उपलब्धियाँ लोड करने के लिए किसी Steam, GOG या Epic गेम का पेज खोलें: कुल योग यहाँ दिखेगा।",
+ "f.ach.need.steam_key": "Steam उपलब्धियाँ देखने के लिए API कुंजी और SteamID चाहिए: सेटिंग > स्टोर > खाते।",
+ "f.ach.need.login": "उपलब्धियाँ देखने के लिए सेटिंग में स्टोर खाता जोड़ें।",
+ "f.ach.need.gog_install": "GOG उपलब्धियाँ इंस्टॉल किए गए गेम से पढ़ी जाती हैं: गेम इंस्टॉल करें।",
+ "f.ach.need.epic_install": "Epic उपलब्धियाँ इंस्टॉल किए गए गेम से पढ़ी जाती हैं: गेम इंस्टॉल करें।"
 }

@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Jogo desconhecido",
  "s.notify.queueDone": "Downloads concluídos",
  "s.notify.queueDoneBody": "{n} concluídos",
- "s.notify.queueDoneFailed": "{n} com falha"
+ "s.notify.queueDoneFailed": "{n} com falha",
+ "h.title.achievements": "Conquistas desbloqueadas",
+ "a.nav.achievements": "Conquistas desbloqueadas",
+ "f.ach.title": "Conquistas",
+ "f.ach.none": "Este jogo não tem conquistas.",
+ "f.ach.rarity": "{p}% dos jogadores",
+ "h.ach.help": "Totais de conquistas de Steam, GOG e Epic dos jogos que você abriu pelo menos uma vez (carregam da página do jogo).",
+ "h.ach.store": "{u}/{n} conquistas · {g} jogos · {p} concluídos",
+ "h.ach.empty": "Abra a página de um jogo Steam, GOG ou Epic para carregar as conquistas: os totais aparecem aqui.",
+ "f.ach.need.steam_key": "Para ver as conquistas da Steam são necessários a chave de API e o SteamID: Configurações > Loja > Contas.",
+ "f.ach.need.login": "Vincule a conta da loja nas configurações para ver as conquistas.",
+ "f.ach.need.gog_install": "As conquistas da GOG são lidas dos jogos instalados: instale o jogo.",
+ "f.ach.need.epic_install": "As conquistas da Epic são lidas dos jogos instalados: instale o jogo."
 }

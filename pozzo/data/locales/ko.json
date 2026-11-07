@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "알 수 없는 게임",
  "s.notify.queueDone": "다운로드 완료",
  "s.notify.queueDoneBody": "{n}개 완료",
- "s.notify.queueDoneFailed": "{n}개 실패"
+ "s.notify.queueDoneFailed": "{n}개 실패",
+ "h.title.achievements": "달성한 업적",
+ "a.nav.achievements": "달성한 업적",
+ "f.ach.title": "업적",
+ "f.ach.none": "이 게임에는 업적이 없습니다.",
+ "f.ach.rarity": "플레이어의 {p}%",
+ "h.ach.help": "한 번 이상 연 게임의 Steam, GOG, Epic 업적 합계입니다(게임 페이지에서 불러옵니다).",
+ "h.ach.store": "업적 {u}/{n} · 게임 {g}개 · {p}개 완료",
+ "h.ach.empty": "Steam, GOG 또는 Epic 게임 페이지를 열어 업적을 불러오면 합계가 여기에 표시됩니다.",
+ "f.ach.need.steam_key": "Steam 업적을 보려면 API 키와 SteamID가 필요합니다: 설정 > 스토어 > 계정.",
+ "f.ach.need.login": "업적을 보려면 설정에서 스토어 계정을 연결하세요.",
+ "f.ach.need.gog_install": "GOG 업적은 설치된 게임에서 읽습니다. 게임을 설치하세요.",
+ "f.ach.need.epic_install": "Epic 업적은 설치된 게임에서 읽습니다. 게임을 설치하세요."
 }

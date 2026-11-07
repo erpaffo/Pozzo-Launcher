@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "未知游戏",
  "s.notify.queueDone": "下载已完成",
  "s.notify.queueDoneBody": "{n} 个已完成",
- "s.notify.queueDoneFailed": "{n} 个失败"
+ "s.notify.queueDoneFailed": "{n} 个失败",
+ "h.title.achievements": "已解锁成就",
+ "a.nav.achievements": "已解锁成就",
+ "f.ach.title": "成就",
+ "f.ach.none": "此游戏没有成就。",
+ "f.ach.rarity": "{p}% 的玩家",
+ "h.ach.help": "你至少打开过一次的游戏的 Steam、GOG 和 Epic 成就总计(从游戏页面加载)。",
+ "h.ach.store": "{u}/{n} 个成就 · {g} 个游戏 · {p} 个已全成就",
+ "h.ach.empty": "打开 Steam、GOG 或 Epic 游戏的页面以加载成就:总计会显示在这里。",
+ "f.ach.need.steam_key": "查看 Steam 成就需要 API 密钥和 SteamID:设置 > 商店 > 账户。",
+ "f.ach.need.login": "请在设置中关联商店账户以查看成就。",
+ "f.ach.need.gog_install": "GOG 成就从已安装的游戏中读取:请先安装游戏。",
+ "f.ach.need.epic_install": "Epic 成就从已安装的游戏中读取:请先安装游戏。"
 }

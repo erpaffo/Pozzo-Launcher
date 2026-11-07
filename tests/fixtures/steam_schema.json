@@ -1,0 +1,3 @@
+{"game":{"gameName":"Demo","availableGameStats":{"achievements":[
+{"name":"ACH_WIN","displayName":"Winner","description":"Win once","icon":"https://cdn/win.jpg","icongray":"https://cdn/win_g.jpg"},
+{"name":"ACH_HIDDEN","displayName":"Secret","description":"Hidden","icon":"https://cdn/s.jpg","icongray":"https://cdn/s_g.jpg"}]}}}

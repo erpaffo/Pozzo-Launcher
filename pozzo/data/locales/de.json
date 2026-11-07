@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Unbekanntes Spiel",
  "s.notify.queueDone": "Downloads beendet",
  "s.notify.queueDoneBody": "{n} abgeschlossen",
- "s.notify.queueDoneFailed": "{n} fehlgeschlagen"
+ "s.notify.queueDoneFailed": "{n} fehlgeschlagen",
+ "h.title.achievements": "Freigeschaltete Erfolge",
+ "a.nav.achievements": "Freigeschaltete Erfolge",
+ "f.ach.title": "Erfolge",
+ "f.ach.none": "Dieses Spiel hat keine Erfolge.",
+ "f.ach.rarity": "{p}% der Spieler",
+ "h.ach.help": "Summen der Steam-, GOG- und Epic-Erfolge für Spiele, die du mindestens einmal geöffnet hast (sie laden von der Spielseite).",
+ "h.ach.store": "{u}/{n} Erfolge · {g} Spiele · {p} abgeschlossen",
+ "h.ach.empty": "Öffne die Seite eines Steam-, GOG- oder Epic-Spiels, um die Erfolge zu laden: die Summen erscheinen hier.",
+ "f.ach.need.steam_key": "Für Steam-Erfolge brauchst du API-Schlüssel und SteamID: Einstellungen > Store > Konten.",
+ "f.ach.need.login": "Verknüpfe das Store-Konto in den Einstellungen, um Erfolge zu sehen.",
+ "f.ach.need.gog_install": "GOG-Erfolge werden von installierten Spielen gelesen: installiere das Spiel.",
+ "f.ach.need.epic_install": "Epic-Erfolge werden von installierten Spielen gelesen: installiere das Spiel."
 }

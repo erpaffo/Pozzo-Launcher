@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "Gioco sconosciuto",
  "s.notify.queueDone": "Download finiti",
  "s.notify.queueDoneBody": "{n} completati",
- "s.notify.queueDoneFailed": "{n} falliti"
+ "s.notify.queueDoneFailed": "{n} falliti",
+ "h.title.achievements": "Obiettivi sbloccati",
+ "a.nav.achievements": "Obiettivi sbloccati",
+ "f.ach.title": "Obiettivi",
+ "f.ach.none": "Questo gioco non ha obiettivi.",
+ "f.ach.rarity": "{p}% dei giocatori",
+ "h.ach.help": "Totali degli obiettivi Steam, GOG ed Epic dei giochi che hai aperto almeno una volta (si caricano dalla scheda del gioco).",
+ "h.ach.store": "{u}/{n} obiettivi · {g} giochi · {p} completati",
+ "h.ach.empty": "Apri la scheda di un gioco Steam, GOG o Epic per caricarne gli obiettivi: i totali compaiono qui.",
+ "f.ach.need.steam_key": "Per vedere gli obiettivi Steam servono la chiave API e lo SteamID: impostazioni > Store > Account.",
+ "f.ach.need.login": "Collega l'account dello store dalle impostazioni per vedere gli obiettivi.",
+ "f.ach.need.gog_install": "Gli obiettivi GOG si leggono dai giochi installati: installa il gioco.",
+ "f.ach.need.epic_install": "Gli obiettivi Epic si leggono dai giochi installati: installa il gioco."
 }

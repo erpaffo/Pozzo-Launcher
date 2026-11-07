@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "不明なゲーム",
  "s.notify.queueDone": "ダウンロードが完了しました",
  "s.notify.queueDoneBody": "{n} 件完了",
- "s.notify.queueDoneFailed": "{n} 件失敗"
+ "s.notify.queueDoneFailed": "{n} 件失敗",
+ "h.title.achievements": "解除した実績",
+ "a.nav.achievements": "解除した実績",
+ "f.ach.title": "実績",
+ "f.ach.none": "このゲームには実績がありません。",
+ "f.ach.rarity": "プレイヤーの{p}%",
+ "h.ach.help": "一度でも開いたゲームの Steam・GOG・Epic の実績合計です(ゲームのページから読み込まれます)。",
+ "h.ach.store": "{u}/{n} 実績 · {g} ゲーム · {p} コンプリート",
+ "h.ach.empty": "Steam・GOG・Epic のゲームのページを開くと実績が読み込まれ、合計がここに表示されます。",
+ "f.ach.need.steam_key": "Steam の実績には API キーと SteamID が必要です:設定 > ストア > アカウント。",
+ "f.ach.need.login": "実績を見るには、設定でストアのアカウントを連携してください。",
+ "f.ach.need.gog_install": "GOG の実績はインストール済みのゲームから読み取ります。ゲームをインストールしてください。",
+ "f.ach.need.epic_install": "Epic の実績はインストール済みのゲームから読み取ります。ゲームをインストールしてください。"
 }

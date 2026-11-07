@@ -3377,5 +3377,17 @@
  "s.reco.unknownGame": "لعبة غير معروفة",
  "s.notify.queueDone": "انتهت التنزيلات",
  "s.notify.queueDoneBody": "اكتمل {n}",
- "s.notify.queueDoneFailed": "فشل {n}"
+ "s.notify.queueDoneFailed": "فشل {n}",
+ "h.title.achievements": "الإنجازات المفتوحة",
+ "a.nav.achievements": "الإنجازات المفتوحة",
+ "f.ach.title": "الإنجازات",
+ "f.ach.none": "لا تحتوي هذه اللعبة على إنجازات.",
+ "f.ach.rarity": "{p}% من اللاعبين",
+ "h.ach.help": "مجاميع إنجازات Steam وGOG وEpic للألعاب التي فتحتها مرة واحدة على الأقل (تُحمَّل من صفحة اللعبة).",
+ "h.ach.store": "{u}/{n} إنجازًا · {g} ألعاب · {p} مكتملة",
+ "h.ach.empty": "افتح صفحة لعبة من Steam أو GOG أو Epic لتحميل إنجازاتها: تظهر المجاميع هنا.",
+ "f.ach.need.steam_key": "لعرض إنجازات Steam تحتاج إلى مفتاح API ومعرّف SteamID: الإعدادات > المتجر > الحسابات.",
+ "f.ach.need.login": "اربط حساب المتجر من الإعدادات لعرض الإنجازات.",
+ "f.ach.need.gog_install": "تُقرأ إنجازات GOG من الألعاب المثبّتة: ثبّت اللعبة.",
+ "f.ach.need.epic_install": "تُقرأ إنجازات Epic من الألعاب المثبّتة: ثبّت اللعبة."
 }
