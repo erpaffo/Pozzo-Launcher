@@ -3377,5 +3377,22 @@
  "s.reco.unknownGame": "Jogo desconhecido",
  "s.notify.queueDone": "Downloads concluídos",
  "s.notify.queueDoneBody": "{n} concluídos",
- "s.notify.queueDoneFailed": "{n} com falha"
+ "s.notify.queueDoneFailed": "{n} com falha",
+ "w.wof.title": "Reduce disk space",
+ "w.wof.estimate": "CompactGUI community estimate ({name}): about {saved} saved with {best}.",
+ "w.wof.noEstimate": "Game not in the CompactGUI database: no estimate, measured size only.",
+ "w.wof.dstorage": "This game uses DirectStorage (dstorage.dll): it may fail to start or run slower when compressed.",
+ "w.wof.dstorageConfirm": "I understand, compress anyway",
+ "w.wof.algo": "Algorithm",
+ "w.wof.compress": "Compress",
+ "w.wof.uncompress": "Decompress",
+ "w.wof.cancel": "Cancel",
+ "w.wof.progress": "{done} / {total} files",
+ "w.wof.st.done": "Done.",
+ "w.wof.st.error": "Error.",
+ "w.wof.st.cancelled": "Cancelled.",
+ "s.wof.unavailable": "Compression unavailable: needs an installed PC game on Windows",
+ "s.wof.busy": "Compression already running for this game",
+ "s.wof.badAlgo": "Invalid algorithm",
+ "s.wof.dstorage": "The game uses DirectStorage: explicit confirmation required"
 }
