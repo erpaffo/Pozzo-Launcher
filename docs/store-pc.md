@@ -33,6 +33,31 @@ quello dell'account usato più di recente sul PC, oppure si indica in `[stores.s
 il codice di autorizzazione e da quel momento legge l'elenco dei giochi posseduti. La password non passa mai
 dall'app.
 
+### Epic, GOG e Amazon senza il client ufficiale
+
+Nel dettaglio del gioco, la sezione **Senza client ufficiale** permette di installare, aggiornare, verificare e
+disinstallare i giochi, di vedere e installare i DLC e, solo per Epic, di sincronizzare i salvataggi nel cloud (GOG e
+Amazon: niente cloud). Pozzo usa `legendary`, `gogdl` e `nile`, le stesse utility open source di Heroic: si scaricano
+da GitHub al primo utilizzo e non sono incluse in Pozzo (programmi di terzi, licenza GPL). Usano l'account già collegato
+in **Impostazioni › Account** (per Amazon c'è un accesso dedicato lì). I download passano dalla coda, con pausa e
+ripresa, e i giochi installati così compaiono come installati e partono senza aprire nessun launcher.
+
+### Steam senza il client (SteamCMD)
+
+Sui giochi posseduti ma non installati, **Scarica con SteamCMD** scarica il gioco senza aprire Steam. SteamCMD si
+scarica da solo; l'accesso, con il codice Steam Guard, si fa una volta in **Impostazioni › Store** (Pozzo non salva la
+password). Il download è nella coda dei Download, con pausa e ripresa, e a fine corsa il gioco entra in libreria.
+**Limite**: i giochi con il DRM di Steam richiedono comunque il client Steam in esecuzione per avviarsi.
+
+### Cartella di rete come store
+
+In **Impostazioni › Account** indica una o più **cartelle di rete**, una per riga (`\\NAS\Giochi`, un'unità mappata o
+una cartella locale) con installer, archivi (`.zip`, `.7z`, `.rar`) e cartelle di giochi. I giochi compaiono come
+posseduti da installare: **Installa** copia con avanzamento, poi estrae o lancia il setup (silenzioso per gli
+installer GOG/Inno, se vuoi); alla fine il gioco entra in libreria e si avvia come gli altri. Un file `pozzo.json`
+nella cartella del gioco può fissare titolo, eseguibile e argomenti. WebDAV non è supportato; per SMB servono le
+credenziali di Windows.
+
 ## Aggiungere un gioco qualsiasi
 
 Con **＋** accanto a *PC* scegli un `.exe`: il gioco entra in libreria tra i giochi PC. Copertina e immagini vengono
@@ -62,10 +87,20 @@ Il flusso dei giochi `.exe` e delle applicazioni non cambia.
 L'aggiunta è immediata e non avvia nessun aggiornamento degli store: la voce compare subito, mentre copertina e
 immagini arrivano in sottofondo.
 
+## Esportare in Steam
+
+**Impostazioni › Store › Esporta in Steam** aggiunge i giochi di Pozzo (tutti, solo i preferiti o alcune piattaforme)
+alla libreria di Steam come giochi non-Steam, con le copertine: così funzionano Steam Input, Steam Deck e Big Picture.
+I giochi si avviano sempre tramite Pozzo, quindi tempo di gioco e automazioni restano attivi. Le voci già presenti in
+Steam non vengono toccate, prima di scrivere viene fatta una copia di `shortcuts.vdf` e **Rimuovi le voci di Pozzo**
+toglie solo quelle create da Pozzo. **Steam deve essere chiuso** (anche dall'icona vicino all'orologio).
+
 ## Stesso gioco su più store
 
 Un gioco posseduto su più store (per esempio Steam ed Epic) è **una scheda sola** con più versioni. La versione
-principale è quella installata. Preferiti, stato e tempo di gioco valgono per tutte.
+principale è quella installata. Preferiti, stato e tempo di gioco valgono per tutte (il tempo è la somma delle versioni). Si avvia dallo store preferito,
+nell'ordine che scegli. Chi preferisce schede separate può togliere la spunta a **Unisci i giochi presenti su più store**
+in **Impostazioni › Libreria** (acceso di default); vale dalla prossima ricostruzione della libreria e non cancella nulla.
 
 ## Metadati dei giochi degli store
 

@@ -229,6 +229,39 @@ Google TV Streamer) al posto dell'app della TV, che decodifica molto più in fre
 - **Telefono o iPad**: tasti a schermo di Moonlight o un controller Bluetooth.
 - **Telefono come controller** di un gioco mostrato sulla TV o sul monitor: con l'app del telefono descritta sopra.
 
+## Libreria condivisa per famiglia e amici
+
+Puoi lasciare che famiglia e amici sfoglino, scarichino e giochino nel browser una parte della tua libreria, con un altro
+Pozzo o da una semplice pagina web. **Di default non è condiviso nulla**, e impostazioni, account e salvataggi non
+escono mai dal PC.
+
+### Cosa condividere e gli inviti
+
+In **Impostazioni › Controller › Condividi la libreria** scegli le **console condivise per intero** e i **giochi
+singoli**, poi crea un invito con **Nome dell'ospite** e **Validità (giorni)**. L'invito vale per **una persona sola**:
+codice e link (con il QR) si vedono **una volta sola**, subito dopo averlo creato, quindi mandali all'ospite. Nell'elenco
+Inviti ognuno mostra lo stato (in attesa, in uso, scaduto) e l'ultimo accesso, e **Revoca** toglie l'accesso subito.
+
+### Da casa o da internet
+
+Di base la libreria è raggiungibile solo sulla rete di casa. **Raggiungibile da internet** apre la porta sul router con
+**UPnP** e mostra l'indirizzo esterno; se il router non risponde a UPnP, la porta va aperta a mano. L'opzione è spenta
+di default.
+
+### Cosa vede l'ospite
+
+- Con **un altro Pozzo**: in **Impostazioni › Account** aggiunge lo store **Pozzo remoto** con indirizzo
+  (`https://host:8766`), codice d'invito, nome del server ed eventualmente una cartella di destinazione, poi preme
+  **Abbina**. Il certificato del server viene fissato al primo abbinamento. I giochi condivisi compaiono nella
+  libreria come in un altro store e si scaricano da lì.
+- **Dal browser**: apre il link dell'invito e inserisce il codice.
+
+In entrambi i casi l'ospite sfoglia i giochi condivisi, li scarica e gioca nel browser le ROM delle console leggere
+(vedi [Gioca nel browser](giocare.md#gioca-nel-browser)).
+
+**Limiti**: le ROM singole si scaricano con ripresa, mentre le **cartelle viaggiano come zip e, se si interrompono,
+ripartono da capo**. Un download alla volta per ospite.
+
 ## Giocare con un amico a distanza
 
 Un amico entra nella tua partita da casa sua: il suo telefono fa da **secondo controller** e il video arriva con

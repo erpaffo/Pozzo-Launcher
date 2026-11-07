@@ -50,6 +50,21 @@ bound to another action, the app alerts you and prevents overwriting. **Reset** 
 with multiple defaults (such as "Back") replaces both. The `/`, `Esc`, and `Enter` keys cannot be rebound.
 Preferences are saved in the app's browser storage (`gs.shortcuts`).
 
+## During a Game (Windows)
+
+While a game is running these shortcuts work, even with the game in the foreground:
+
+| Action | Keyboard | Controller |
+|---|---|---|
+| In-game overlay | `Ctrl+Shift+O` | Select + R3 |
+| Pause / resume the game | `Ctrl+Shift+P` | Select + L1 |
+| Screenshot | (see the screenshot settings) | Select + R1 |
+| Close the game | | Select + Start (held 2 seconds) |
+
+The two keyboard shortcuts can be changed in the screenshot settings. The overlay is not drawn over exclusive
+fullscreen games. Details in [Playing Games](giocare.md#in-game-overlay) and
+[Close Game, Job Object and Pause](giocare.md#close-game-job-object-and-pause).
+
 ## Controller (Big Picture)
 
 Uses standard Gamepad API mappings: Xbox, PlayStation (✕ ○ □ △), and Switch Pro. Visual labels adapt automatically.

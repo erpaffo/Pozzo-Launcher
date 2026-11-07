@@ -63,6 +63,42 @@ versioni). I campi vuoti usano le impostazioni della console:
 Per i giochi PC il profilo contiene i due script e l'app di accompagnamento: il gioco si avvia sempre come prevede il
 suo store.
 
+### Automazioni per gioco
+
+Nel **⚙ Profilo di avvio** la sezione **Automazioni** prepara il PC prima della partita e rimette tutto a posto alla
+fine, anche dopo un crash del gioco. Su Windows puoi impostare:
+
+- **Comando prima dell'avvio** e **dopo la chiusura**, con **cartella di lavoro** e, se serve, **Aspetta che finisca**;
+  gli script ricevono `POZZO_GAME_ID`, `POZZO_TITLE`, `POZZO_PLATFORM`, `POZZO_EXE` e `POZZO_EVENT`;
+- **Risoluzione e frequenza** dello schermo;
+- **Chiudi questi processi prima dell'avvio** (per esempio un programma che dà fastidio al gioco);
+- **Piano energetico** (il GUID del piano) e **HDR** acceso o spento durante il gioco (Win+Alt+B).
+
+Gli script che valgono per tutti i giochi (gioco avviato, gioco chiuso, download finito) stanno nelle Impostazioni,
+vicino a quelli descritti più sotto.
+
+#### Upscaling con Magpie
+
+Il menu **Upscaling con Magpie** ingrandisce il gioco in finestra a schermo intero con **FSR**, **Anime4K**,
+**Integer Scale** o **Lanczos**. Serve Windows 10 1903 o successivo; Magpie si scarica da GitHub al primo utilizzo.
+Quando la finestra del gioco passa in primo piano Pozzo prepara il profilo e avvia Magpie nella tray, e a fine partita
+lo chiude solo se l'aveva aperto lui.
+
+#### Remap del pad
+
+Per i giochi PC puoi riassegnare i tasti (per esempio `a=b, b=a, lb=lt`), impostare la zona morta degli stick
+(0-30%), scambiare gli stick, invertire l'asse Y e attivare il **turbo** (`a:10` = tasto A a 10 Hz). Pozzo legge il
+pad fisico e lo inoltra a un controller Xbox 360 virtuale: serve il driver **ViGEmBus**. Senza **HidHide** il gioco
+può vedere due controller; con HidHide installato il pad fisico viene nascosto durante la partita e sempre ripristinato
+dopo (se HidHide manca, compare un avviso).
+
+#### Archivi senza estrazione fissa
+
+Per un gioco PC o una ROM in `.zip`, `.7z` o `.rar`, l'opzione dell'archivio lo estrae in una cartella temporanea a
+ogni avvio (dopo aver controllato lo spazio libero) e la cancella a fine partita. I file nuovi o cambiati durante il
+gioco, come salvataggi e configurazioni, si conservano e si riapplicano all'avvio successivo. Se non si riescono a
+salvare, la cartella resta dov'è e l'app avvisa.
+
 ## Script prima e dopo il gioco
 
 In **Impostazioni › Emulatori › Avvio dei giochi** si indicano due script eseguiti per **tutti i giochi**, console e
@@ -107,6 +143,25 @@ Durante la partita la barra **In esecuzione** mostra il gioco in corso e permett
 **Select + Start (View + Menu) tenuti premuti per 2 secondi** chiudono il gioco in esecuzione, anche mentre il gioco
 è in primo piano, con i controller XInput (Xbox). Si disattiva con `[app] exit_combo = false`.
 
+### Chiudi gioco, Job Object e pausa
+
+Su Windows i giochi avviati direttamente da Pozzo sono tracciati con un **Job Object**: la partita finisce quando
+si chiude anche l'ultimo processo figlio, quindi il tempo di gioco è corretto anche con gli eseguibili che ne
+rilanciano un altro, e **Chiudi gioco** termina tutti i processi del gioco.
+
+La **Pausa** congela il gioco in corso (come Nyrna) e libera CPU e GPU anche nei giochi senza pausa propria. Si attiva
+con **Ctrl+Shift+P** (cambiabile nelle impostazioni delle schermate), con **Select + L1** sul controller o dal pulsante
+**Pausa** nella barra del gioco, in Big Picture e dal telefono. Il tempo in pausa non conta nel tempo di gioco e a
+fine sessione il gioco riprende sempre. Pausa e Job Object sono solo per Windows.
+
+### Splash all'avvio
+
+Premendo **Gioca** compare subito a tutto schermo l'immagine del gioco con il logo e un piccolo indicatore di
+caricamento, anche in Big Picture. Sparisce appena la finestra del gioco passa in primo piano (o dopo 60 secondi, o se
+l'avvio fallisce). Si disattiva da **Impostazioni › Emulatori** con **Mostra uno splash all'avvio dei giochi**.
+Su Windows, mentre il gioco è in primo piano, l'interfaccia di Pozzo si mette a riposo (animazioni ferme, anteprime
+audio e video in pausa) e riparte quando torni a Pozzo.
+
 ## Gioca da disco veloce
 
 Se la libreria sta su un disco lento (HDD), il gioco può essere copiato su un SSD e avviato da lì, per caricamenti più
@@ -131,6 +186,29 @@ Avvertenze:
 - **Chiudi gioco** durante la copia la annulla immediatamente;
 - le copie rimaste su disco dopo un arresto anomalo del PC o dell'emulatore vengono ripulite automaticamente al successivo avvio del launcher;
 - la modalità resta attiva anche dopo aver selezionato la finestra in cui avviare il gioco.
+
+## Gioca nel browser
+
+Le console leggere si giocano dentro Pozzo con **EmulatorJS** e i giochi Flash (`.swf`) con **Ruffle**: **Gioca nel
+browser** sta nella scheda del gioco, nel menu del tasto destro, in Big Picture e sul telefono. Le console sono NES,
+SNES, Game Boy, GBA, Mega Drive, Master System, Game Gear, PC Engine, PlayStation, Atari 2600, N64, DS e arcade.
+L'emulatore si scarica alla prima partita; salvataggi e stati stanno nei dati dell'utente e finiscono nel backup.
+Per la PlayStation serve il tuo BIOS.
+
+## RetroArch: bezel, shader e cheat
+
+Nella scheda di un gioco RetroArch la sezione **RetroArch: bezel, shader, cheat** permette di scegliere un **bezel**
+(dal repository libretro overlay-borders, scaricato e messo in cache), un preset **shader** tra quelli già presenti in
+RetroArch e i **cheat** della libretro-database con un interruttore ciascuno (**Cerca cheat**). Le scelte valgono per
+il gioco o come predefinito del core. Pozzo scrive solo le sue chiavi nei file di override e prima ne fa una copia
+`.pozzo-bak`.
+
+## Ridurre lo spazio dei giochi PC
+
+Per un gioco PC installato su Windows, **🗜 Riduci spazio su disco** (menu del tasto destro) comprime i file con la
+compressione di Windows. Scegli l'**algoritmo** e premi **Comprimi** (**Decomprimi** per tornare indietro); se il gioco
+è nel database di CompactGUI vedi una stima del risparmio. Se il gioco usa DirectStorage, su file compressi potrebbe
+non avviarsi o andare più lento, e Pozzo chiede una conferma esplicita.
 
 ## Tempo di gioco e partite
 

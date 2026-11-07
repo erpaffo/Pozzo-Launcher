@@ -65,6 +65,42 @@ For PC games, the profile contains the two scripts and the companion app: the ga
 store.
 
 <a id="script-prima-e-dopo-il-gioco"></a>
+### Per-Game Automations
+
+In the **⚙ Launch Profile**, the **Automations** section prepares the PC before the game and puts everything back at
+the end, even after a crash. On Windows you can set:
+
+- a **command before launch** and **after exit**, with a **working folder** and, if needed, **Wait for it to finish**;
+  scripts receive `POZZO_GAME_ID`, `POZZO_TITLE`, `POZZO_PLATFORM`, `POZZO_EXE` and `POZZO_EVENT`;
+- **resolution and refresh rate** of the screen;
+- **Close these processes before launch** (for example a program that interferes with the game);
+- a **power plan** (the plan GUID) and **HDR** on or off while playing (Win+Alt+B).
+
+Scripts that apply to every game (game started, game closed, download finished) live in Settings, next to the ones
+described further below.
+
+#### Upscaling with Magpie
+
+The **Upscaling with Magpie** menu enlarges the game running in a fullscreen window with **FSR**, **Anime4K**,
+**Integer Scale** or **Lanczos**. It needs Windows 10 1903 or later; Magpie is downloaded from GitHub on first use.
+When the game window comes to the foreground Pozzo prepares its profile and starts Magpie in the tray, and at the end
+of the session it closes it only if Pozzo opened it.
+
+#### Gamepad Remap
+
+For PC games you can reassign buttons (for example `a=b, b=a, lb=lt`), set the stick deadzone (0-30%), swap the
+sticks, invert the Y axis and enable **turbo** (`a:10` = button A at 10 Hz). Pozzo reads the physical pad and forwards
+it to a virtual Xbox 360 controller: the **ViGEmBus** driver is required. Without **HidHide** the game may see two
+controllers; with HidHide installed the physical pad is hidden during the game and always restored afterwards (if
+HidHide is missing, a warning appears).
+
+#### Archives Without a Fixed Extraction
+
+For a PC game or a ROM in `.zip`, `.7z` or `.rar`, the archive option extracts it to a temporary folder on every
+launch (after checking free space) and deletes it when the game ends. Files that are new or changed during play, such
+as saves and settings, are kept and reapplied at the next launch. If they cannot be saved, the folder stays in place
+and the app warns you.
+
 ## Pre-Launch and Post-Exit Scripts
 
 In **Settings › Emulators › Game Launch**, you can define two scripts executed for **all games**, console and
@@ -108,6 +144,25 @@ During gameplay, the **Running** bar shows the active game and lets you terminat
 **Select + Start (View + Menu) held for 2 seconds** closes the running game, even while the game is focused in the
 foreground, using XInput (Xbox) controllers. Can be disabled with `[app] exit_combo = false`.
 
+### Close Game, Job Object and Pause
+
+On Windows, games started directly by Pozzo are tracked with a **Job Object**: the session ends when the last child
+process closes too, so playtime is correct even with executables that relaunch another one, and **Close game**
+terminates every process of the game.
+
+**Pause** freezes the running game (like Nyrna) and frees CPU and GPU even for games without their own pause. Use
+**Ctrl+Shift+P** (configurable in the screenshot settings), **Select + L1** on the controller, or the **Pause** button
+in the game bar, in Big Picture and from the phone. Paused time does not count as playtime, and the game always
+resumes at the end of the session. Pause and Job Object are Windows only.
+
+### Splash Screen on Launch
+
+When you press **Play**, the game's image appears at once in fullscreen with the logo and a small loading indicator,
+also in Big Picture. It disappears as soon as the game window comes to the foreground (or after 60 seconds, or if the
+launch fails). Turn it off in **Settings › Emulators** with **Show a splash screen when games start**. On Windows,
+while the game is in the foreground, the Pozzo interface goes idle (animations stopped, audio and video previews
+paused) and wakes up when you return to Pozzo.
+
 ## Play from Fast Storage
 
 If your library resides on a slow drive (HDD), the game can be copied to an SSD and launched from there for faster
@@ -132,6 +187,28 @@ Warnings:
 - clicking **Close Game** during the copy process cancels it immediately;
 - leftover copies on disk after a PC or emulator crash are automatically cleaned up on next launcher launch;
 - the mode remains active even after selecting the window in which to launch the game.
+
+## Play in the Browser
+
+Light consoles can be played inside Pozzo with **EmulatorJS**, and Flash games (`.swf`) with **Ruffle**: **Play in
+browser** is in the game details, in the right-click menu, in Big Picture and on the phone. The consoles are NES, SNES,
+Game Boy, GBA, Mega Drive, Master System, Game Gear, PC Engine, PlayStation, Atari 2600, N64, DS and arcade. The
+emulator is downloaded on the first game; saves and states are stored in the user data and included in the backup.
+PlayStation needs your own BIOS.
+
+## RetroArch: Bezel, Shader and Cheats
+
+In the details of a RetroArch game, the **RetroArch: bezel, shader, cheats** section lets you pick a **bezel** (from
+the libretro overlay-borders repository, downloaded and cached), a **shader** preset among those already in RetroArch,
+and **cheats** from the libretro-database with one switch each (**Find cheats**). Choices apply to the game or as the
+core default. Pozzo writes only its own keys in the override files and makes a `.pozzo-bak` copy first.
+
+## Reducing PC Game Size
+
+For a PC game installed on Windows, **🗜 Reduce disk space** (right-click menu) compresses the files with Windows
+compression. Pick the **algorithm** and press **Compress** (**Decompress** to undo); if the game is in the CompactGUI
+database you see an estimate of the savings. If the game uses DirectStorage, it may fail to start or run slower on
+compressed files, and Pozzo asks for explicit confirmation.
 
 ## Playtime and Sessions
 

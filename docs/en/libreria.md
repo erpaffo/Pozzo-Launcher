@@ -93,6 +93,12 @@ The **Discover** panel filters and sorts the current view to help you find what 
 
 Can be combined with a **genre** and a **decade**. When a Discover filter dictates sorting order, standard sorting is temporarily disabled.
 
+### Consoles Without Games: "Other consoles"
+
+**All** consoles are shown, even those with no games or stores: these sit in the collapsible **Other consoles** group,
+so you can add a store to them too. Adding stores to a console (from the editor, from Minerva or from Link → Store)
+populates it immediately, without restarting the application.
+
 ## Game Details
 
 The detail pane displays box art, background art, description, developer, publisher, genres, release year, player count, ratings (user and critic), file size, data sources, and missing metadata if applicable. In the modal layout (Cinema), HowLongToBeat playtime estimates are also shown.
@@ -127,11 +133,34 @@ This also works for games where online scrapers found no match, such as Hearthst
 
 Managed in one central place, your chosen image applies everywhere: grid, detail card, Big Picture, phone remote, and exported web page.
 
+### Video Snaps
+
+Short gameplay clips (from ScreenScraper) play when you hover a cover, in the game details, in Big Picture and in the
+screensaver. They are **off by default**: turn them on in **Settings › Appearance** with **Download video snaps**; they
+are fetched at the next data collection (30 MB cap per clip, so they use disk space and bandwidth). They respect the
+animations setting.
+
+### Clips in the Gallery
+
+The **📷 Screenshots** view also shows the video clips (`.mp4`, `.webm`, `.mkv`) made by Xbox Game Bar, NVIDIA
+ShadowPlay and AMD ReLive during the session: they are imported automatically and play from the gallery. The videos are
+**not copied**: the gallery uses the original file, so if you move or delete it, it disappears from the gallery too.
+
+### Steam, GOG and Epic Achievements
+
+In the game details, Steam, GOG and Epic achievements appear (progress bar, icons, locked and unlocked, rarity) next to
+RetroAchievements. The **Unlocked achievements** page shows totals per store for the games whose details you have
+opened at least once. Steam needs the API key and SteamID (**Settings › Stores › Account**, checked when you save);
+GOG and Epic use the account already connected and read **installed** games only.
+
 ## One Version Per Game
 
 Regional versions and revisions of the same game are **grouped** into a single card: Ruby, Rubino, Rubin, and Rubis represent one unified game. Grouping relies on Nintendo product codes (e.g. AGB-**AXV**J), IGDB IDs, and ScreenScraper identity. The version matching your preferred language according to `languages` and `regions` in your configuration is displayed by default; other versions remain available in the detail pane.
 
-Favorites, playtime, status, and collections apply to the **entire game**, meaning all its versions. The same applies to a PC game available across multiple stores (for example Steam and Epic): it forms a single card with multiple versions, where the currently installed version takes priority as primary.
+Favorites, playtime, status, and collections apply to the **entire game**, meaning all its versions. The same applies to a PC game available across multiple stores (for example Steam and Epic): it forms a single card with multiple versions, where the currently installed version takes priority as primary. The store that launches the game is chosen in
+**Settings › Library**, with **Merge games owned on multiple stores** and the ordered list of **preferred stores**
+(Steam, GOG, Epic by default); turning the option off makes each store a separate card again. Playtime is the sum of
+the versions.
 
 ## Collections
 

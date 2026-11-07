@@ -50,6 +50,21 @@ un'altra azione l'app lo dice e non la salva. **Ripristina** torna a quella orig
 (per esempio «Indietro») la nuova combinazione sostituisce entrambe. I tasti `/`, `Esc` e `Enter` non si possono cambiare.
 Le scelte sono salvate nel browser dell'app (`gs.shortcuts`).
 
+## Durante la partita (Windows)
+
+Mentre un gioco è in esecuzione valgono queste scorciatoie, anche con il gioco in primo piano:
+
+| Azione | Tastiera | Controller |
+|---|---|---|
+| Overlay in gioco | `Ctrl+Shift+O` | Select + R3 |
+| Pausa / riprendi il gioco | `Ctrl+Shift+P` | Select + L1 |
+| Schermata | (vedi impostazioni delle schermate) | Select + R1 |
+| Chiudi il gioco | | Select + Start (tenuti 2 secondi) |
+
+Le due combinazioni da tastiera si cambiano nelle impostazioni delle schermate. L'overlay non si vede sopra i giochi
+a schermo intero esclusivo. Dettagli in [Giocare](giocare.md#overlay-in-gioco) e
+[Chiudi gioco, Job Object e pausa](giocare.md#chiudi-gioco-job-object-e-pausa).
+
 ## Controller (Big Picture)
 
 Funziona con la mappa standard della Gamepad API: Xbox, PlayStation (✕ ○ □ △) e Switch Pro. Le etichette si adattano da sole.
