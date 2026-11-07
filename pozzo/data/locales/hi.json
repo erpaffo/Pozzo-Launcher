@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "बंद होने के बाद",
  "j.emu.launch.after.ph": "जैसे C:\\Script\\dopo.bat",
  "j.emu.launch.close": "अगर गेम ने स्टोर का लॉन्चर खोला था, तो खेल खत्म होने पर उसे बंद करें (Steam, Epic, GOG Galaxy, Battle.net, Amazon)",
+ "j.emu.launch.splash": "गेम शुरू होने पर स्प्लैश स्क्रीन दिखाएँ",
  "j.emu.fast.title": "तेज़ डिस्क",
  "j.emu.fast.desc": "अगर लाइब्रेरी HDD पर है, तो तेज़ लोड के लिए शुरू करने से पहले गेम को तेज़ डिस्क (SSD) पर कॉपी करें।",
  "j.emu.fast.dir": "अस्थायी कॉपी का फ़ोल्डर",

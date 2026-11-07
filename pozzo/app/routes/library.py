@@ -458,6 +458,7 @@ def build_router(ctx) -> APIRouter:
                                    STORE_NAMES.get(g["store"], g["store"]), g["store"], fast=fast)
             except L.LaunchError as e:
                 raise HTTPException(409, str(e))
+            launcher.splash(gid, g["title"])
             return {"ok": True}
         p = P.PLATFORMS.get(g["platform"])
         path = next((Path(f) for f in g["files"] if Path(f).exists()), None)
@@ -470,6 +471,7 @@ def build_router(ctx) -> APIRouter:
             launcher.launch(g["key"], g["title"], p, path, fast=fast, fallback=str(fb) if fb else None)
         except L.LaunchError as e:
             raise launch_error(e)
+        launcher.splash(gid, g["title"])
         return {"ok": True}
 
     @router.post("/api/game/{gid}/shortcut")

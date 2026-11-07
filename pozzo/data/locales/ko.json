@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "종료 후",
  "j.emu.launch.after.ph": "예: C:\\Script\\dopo.bat",
  "j.emu.launch.close": "게임이 스토어 런처(Steam, Epic, GOG Galaxy, Battle.net, Amazon)를 열었다면 게임이 끝날 때 해당 런처를 닫습니다",
+ "j.emu.launch.splash": "게임을 시작할 때 스플래시 화면 표시",
  "j.emu.fast.title": "고속 디스크",
  "j.emu.fast.desc": "라이브러리가 HDD에 있을 때 로딩을 빠르게 하려고, 게임을 실행하기 전에 고속 디스크(SSD)로 복사합니다.",
  "j.emu.fast.dir": "임시 복사본 폴더",

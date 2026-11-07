@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "Kapandıktan sonra",
  "j.emu.launch.after.ph": "ör. C:\\Betikler\\sonra.bat",
  "j.emu.launch.close": "Oyun bitince, oyun açmışsa mağaza başlatıcısını (Steam, Epic, GOG Galaxy, Battle.net, Amazon) kapat",
+ "j.emu.launch.splash": "Oyunlar başlarken açılış ekranı göster",
  "j.emu.fast.title": "Hızlı disk",
  "j.emu.fast.desc": "Oyunu başlatmadan önce hızlı bir diske (SSD) kopyalar; kütüphane bir HDD'deyse yüklemeler daha hızlı olur.",
  "j.emu.fast.dir": "Geçici kopyalar klasörü",

@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "После закрытия",
  "j.emu.launch.after.ph": "напр. C:\\Скрипты\\после.bat",
  "j.emu.launch.close": "Закрывать лаунчер магазина (Steam, Epic, GOG Galaxy, Battle.net, Amazon) по окончании сессии, если его открыла игра",
+ "j.emu.launch.splash": "Показывать заставку при запуске игр",
  "j.emu.fast.title": "Быстрый диск",
  "j.emu.fast.desc": "Копирует игру на быстрый диск (SSD) перед запуском, для более быстрой загрузки, если библиотека на HDD.",
  "j.emu.fast.dir": "Папка временных копий",

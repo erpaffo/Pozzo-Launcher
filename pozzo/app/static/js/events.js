@@ -811,7 +811,7 @@ function bind() {
   // emulatori
   $("#emu-save").onclick = () => saveEmu();
   $("#ln-save").onclick = () => api("/api/app/launch", { body: { before: $("#ln-before").value, after: $("#ln-after").value,
-    close_launcher: $("#ln-close").checked } }).then(() => toast(t("g.ev.launch.saved")), (e) => toast(e.message, true));
+    close_launcher: $("#ln-close").checked, splash: $("#ln-splash").checked } }).then(() => toast(t("g.ev.launch.saved")), (e) => toast(e.message, true));
   $("#emu-folder-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#emu-folder").value = p; };
   $("#emu-detect").onclick = async () => {
     const folder = $("#emu-folder").value.trim();

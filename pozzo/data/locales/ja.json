@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "終了後",
  "j.emu.launch.after.ph": "例: C:\\Script\\dopo.bat",
  "j.emu.launch.close": "ゲームがストアのランチャー（Steam、Epic、GOG Galaxy、Battle.net、Amazon）を開いた場合、プレイ終了時にそれを閉じる",
+ "j.emu.launch.splash": "ゲームの起動時にスプラッシュ画面を表示する",
  "j.emu.fast.title": "高速ディスク",
  "j.emu.fast.desc": "ライブラリが HDD にある場合、読み込みを速くするため、起動前にゲームを高速ディスク（SSD）にコピーします。",
  "j.emu.fast.dir": "一時コピーのフォルダー",

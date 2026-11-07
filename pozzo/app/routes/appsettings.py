@@ -149,6 +149,8 @@ def build_router(ctx) -> APIRouter:
         conf = {k: v for k, v in conf.items() if v}
         if body.get("close_launcher"):
             conf["close_launcher"] = True
+        if body.get("splash") is False:
+            conf["splash"] = False  # default acceso: si salva solo lo spento
         C.save_settings(cfg, app={"launch": conf})
         cfg.app["launch"] = conf
         return conf

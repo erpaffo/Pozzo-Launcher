@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "Nach dem Schließen",
  "j.emu.launch.after.ph": "z. B. C:\\Script\\dopo.bat",
  "j.emu.launch.close": "Den Launcher des Stores (Steam, Epic, GOG Galaxy, Battle.net, Amazon) am Ende der Sitzung schließen, wenn ihn das Spiel geöffnet hat",
+ "j.emu.launch.splash": "Beim Start von Spielen einen Startbildschirm anzeigen",
  "j.emu.fast.title": "Schnelle Festplatte",
  "j.emu.fast.desc": "Kopiert das Spiel vor dem Start auf eine schnelle Festplatte (SSD), für schnellere Ladezeiten, wenn die Bibliothek auf einer HDD liegt.",
  "j.emu.fast.dir": "Ordner für die temporären Kopien",

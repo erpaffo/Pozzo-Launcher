@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "Después de cerrar",
  "j.emu.launch.after.ph": "ej. C:\\Scripts\\despues.bat",
  "j.emu.launch.close": "Cerrar el launcher de la tienda (Steam, Epic, GOG Galaxy, Battle.net, Amazon) al terminar la partida, si lo abrió el juego",
+ "j.emu.launch.splash": "Mostrar una pantalla de bienvenida al iniciar los juegos",
  "j.emu.fast.title": "Disco rápido",
  "j.emu.fast.desc": "Copia el juego en un disco rápido (SSD) antes de iniciarlo, para cargas más veloces si la biblioteca está en un HDD.",
  "j.emu.fast.dir": "Carpeta de las copias temporales",

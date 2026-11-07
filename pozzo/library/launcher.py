@@ -32,7 +32,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
-from . import automation, fastcopy
+from . import automation, fastcopy, foreground
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -767,6 +767,7 @@ class Launcher:
         self._pause_t0: float | None = None
         self._paused_total = 0.0  # secondi in pausa nella sessione: non contano come tempo di gioco
         self._comp_pid = None
+        self._fg = None  # foreground.Watcher della sessione
         atexit.register(self._unfreeze)  # mai lasciare un processo sospeso se Pozzo esce
         try:  # copie «disco veloce» rimaste da un crash (tenute se l'utente le vuole riusare)
             if (cfg.app.get("fastcopy") or {}).get("delete_after", True):
@@ -973,6 +974,12 @@ class Launcher:
         """Secondi di gioco da t0 a ora, senza gli intervalli in pausa."""
         self._unfreeze()
         return max(0.0, time.time() - t0 - self._paused_total)
+
+    def splash(self, gid: int, title: str):
+        """Splash di avvio nella UI (impostazione launch.splash, default acceso); sparisce al primo piano del gioco."""
+        if (self.cfg.app.get("launch") or {}).get("splash", True):
+            self.on_event("game_splash", {"gid": gid, "title": title, "hook": sys.platform == "win32"})
+            foreground.splash_timer(self.on_event)
 
     def running(self) -> dict:
         return dict(self.state)
@@ -1269,9 +1276,14 @@ class Launcher:
             except Exception:  # i dati utente non devono impedire di giocare
                 pass
             self.on_event("game_started", st)
+            self._fg = foreground.Watcher(self._session_pids, self.on_event)
+            self._fg.start()
             self._start_capture()
             threading.Thread(target=self._watch_combo, daemon=True).start()
         elif kw.get("status") in ("finished", "error") and prev in ("running", "starting", "extracting"):
+            if self._fg:
+                self._fg.stop()
+                self._fg = None
             if prev == "running":
                 self._stop_capture(st)
                 with self.lock:

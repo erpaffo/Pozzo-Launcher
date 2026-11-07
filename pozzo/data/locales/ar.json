@@ -2666,6 +2666,7 @@
  "j.emu.launch.after": "بعد الإغلاق",
  "j.emu.launch.after.ph": "مثال: C:\\Script\\dopo.bat",
  "j.emu.launch.close": "إغلاق مشغّل المتجر (Steam، وEpic، وGOG Galaxy، وBattle.net، وAmazon) عند انتهاء الجلسة، إن كانت اللعبة هي من فتحه",
+ "j.emu.launch.splash": "عرض شاشة افتتاحية عند بدء الألعاب",
  "j.emu.fast.title": "قرص سريع",
  "j.emu.fast.desc": "ينسخ اللعبة إلى قرص سريع (SSD) قبل تشغيلها، لتحميل أسرع إذا كانت المكتبة على HDD.",
  "j.emu.fast.dir": "مجلد النسخ المؤقتة",
