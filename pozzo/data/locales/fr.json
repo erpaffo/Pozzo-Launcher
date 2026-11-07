@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "Le jeu n'est plus dans le dossier réseau",
  "j.ctl.ds.led": "Couleur de la barre lumineuse d'après la jaquette",
  "j.ctl.ds.rumble": "Vibration pendant la navigation",
- "a.pad.battery": "Batterie de la manette : {n}%"
+ "a.pad.battery": "Batterie de la manette : {n}%",
+ "fr.shareTime": "Partager le temps de jeu",
+ "fr.shareAch": "Partager les succès",
+ "fr.privacy": "Activé, vos amis reçoivent vos 50 jeux les plus joués (et les succès, si activés) via le service Supabase. Désactivé : rien n'est envoyé.",
+ "fr.activity": "Activité récente",
+ "fr.noActivity": "Aucune activité",
+ "fr.back": "Retour",
+ "fr.common": "Jeux en commun",
+ "fr.noCommon": "Aucun jeu en commun (ou votre ami ne partage pas son temps de jeu)",
+ "fr.updated": "mis à jour le {date}",
+ "fr.you": "Vous",
+ "fr.achv": "{n}/{m} succès",
+ "fr.noData": "{name} n'a encore partagé aucune donnée : elles se mettent à jour quand il est en ligne.",
+ "fr.friendsPlaying": "Amis qui y jouent",
+ "fr.compare": "Comparer"
 }

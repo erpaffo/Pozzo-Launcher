@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "ゲームはネットワークフォルダーにありません",
  "j.ctl.ds.led": "カバーアートからライトバーの色を決める",
  "j.ctl.ds.rumble": "ナビゲーション時の振動",
- "a.pad.battery": "コントローラーの電池残量: {n}%"
+ "a.pad.battery": "コントローラーの電池残量: {n}%",
+ "fr.shareTime": "プレイ時間を共有",
+ "fr.shareAch": "実績を共有",
+ "fr.privacy": "オンにすると、Supabase サービスを通じてフレンドにプレイ時間が長い上位50本のゲーム(実績もオンの場合は実績も)が送られます。オフの間は何も送信されません。",
+ "fr.activity": "最近のアクティビティ",
+ "fr.noActivity": "アクティビティはありません",
+ "fr.back": "戻る",
+ "fr.common": "共通のゲーム",
+ "fr.noCommon": "共通のゲームはありません(またはフレンドがプレイ時間を共有していません)",
+ "fr.updated": "{date} に更新",
+ "fr.you": "あなた",
+ "fr.achv": "実績 {n}/{m}",
+ "fr.noData": "{name} はまだデータを共有していません。オンラインになると更新されます。",
+ "fr.friendsPlaying": "このゲームを遊んでいるフレンド",
+ "fr.compare": "比較"
 }

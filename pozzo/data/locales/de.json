@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "Das Spiel ist nicht mehr im Netzwerkordner",
  "j.ctl.ds.led": "Lichtleistenfarbe aus dem Cover",
  "j.ctl.ds.rumble": "Vibration bei der Navigation",
- "a.pad.battery": "Controller-Akku: {n}%"
+ "a.pad.battery": "Controller-Akku: {n}%",
+ "fr.shareTime": "Spielzeit teilen",
+ "fr.shareAch": "Erfolge teilen",
+ "fr.privacy": "Wenn aktiv, erhalten Freunde über den Supabase-Dienst deine 50 meistgespielten Spiele (und Erfolge, falls aktiv). Ausgeschaltet wird nichts gesendet.",
+ "fr.activity": "Letzte Aktivität",
+ "fr.noActivity": "Keine Aktivität",
+ "fr.back": "Zurück",
+ "fr.common": "Gemeinsame Spiele",
+ "fr.noCommon": "Keine gemeinsamen Spiele (oder dein Freund teilt keine Spielzeit)",
+ "fr.updated": "aktualisiert am {date}",
+ "fr.you": "Du",
+ "fr.achv": "{n}/{m} Erfolge",
+ "fr.noData": "{name} hat noch keine Daten geteilt: Sie werden aktualisiert, wenn die Person online ist.",
+ "fr.friendsPlaying": "Freunde, die es spielen",
+ "fr.compare": "Vergleichen"
 }

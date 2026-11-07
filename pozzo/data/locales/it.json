@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "Il gioco non è più nella cartella di rete",
  "j.ctl.ds.led": "Colore della barra luminosa dalla copertina",
  "j.ctl.ds.rumble": "Vibrazione nella navigazione",
- "a.pad.battery": "Batteria del controller: {n}%"
+ "a.pad.battery": "Batteria del controller: {n}%",
+ "fr.shareTime": "Condividi il tempo di gioco",
+ "fr.shareAch": "Condividi gli obiettivi",
+ "fr.privacy": "Se attivi, gli amici ricevono i tuoi 50 giochi più giocati (e gli obiettivi, se attivi) tramite il servizio Supabase. Spento: non viene inviato nulla.",
+ "fr.activity": "Attività recente",
+ "fr.noActivity": "Nessuna attività",
+ "fr.back": "Indietro",
+ "fr.common": "Giochi in comune",
+ "fr.noCommon": "Nessun gioco in comune (o l'amico non condivide il tempo di gioco)",
+ "fr.updated": "aggiornato il {date}",
+ "fr.you": "Tu",
+ "fr.achv": "{n}/{m} obiettivi",
+ "fr.noData": "{name} non ha ancora condiviso dati: si aggiornano quando è in linea.",
+ "fr.friendsPlaying": "Amici che ci giocano",
+ "fr.compare": "Confronta"
 }

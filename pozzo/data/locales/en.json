@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "The game is no longer in the network folder",
  "j.ctl.ds.led": "Lightbar colour from the cover art",
  "j.ctl.ds.rumble": "Vibration when navigating",
- "a.pad.battery": "Controller battery: {n}%"
+ "a.pad.battery": "Controller battery: {n}%",
+ "fr.shareTime": "Share my playtime",
+ "fr.shareAch": "Share my achievements",
+ "fr.privacy": "When on, friends receive your 50 most played games (and achievements, if on) through the Supabase service. When off, nothing is sent.",
+ "fr.activity": "Recent activity",
+ "fr.noActivity": "No activity",
+ "fr.back": "Back",
+ "fr.common": "Games in common",
+ "fr.noCommon": "No games in common (or your friend does not share playtime)",
+ "fr.updated": "updated {date}",
+ "fr.you": "You",
+ "fr.achv": "{n}/{m} achievements",
+ "fr.noData": "{name} has not shared any data yet: it updates when they are online.",
+ "fr.friendsPlaying": "Friends who play it",
+ "fr.compare": "Compare"
 }

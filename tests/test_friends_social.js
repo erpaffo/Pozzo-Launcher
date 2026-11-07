@@ -4,7 +4,7 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 
-function runTests() {
+async function runTests() {
   const code = fs.readFileSync(path.resolve(__dirname, "../pozzo/app/static/js/friends.js"), "utf8");
   assert(code.includes("SUPABASE_URL"), "Deve contenere SUPABASE_URL");
   assert(code.includes("SUPABASE_KEY"), "Deve contenere SUPABASE_KEY");
@@ -47,6 +47,7 @@ function runTests() {
     clearInterval: () => {},
     setTimeout: () => 1,
     clearTimeout: () => {},
+    crypto: globalThis.crypto, TextEncoder, TextDecoder, btoa, atob,
     console
   });
 
@@ -67,7 +68,34 @@ function runTests() {
   assert.strictEqual(me.id, me2.id, "Id deve essere persistito");
   assert.strictEqual(me.friend_code, me2.friend_code, "Friend code deve essere persistito");
 
+  // Funzioni pure: riepilogo con interruttori, giochi in comune, tetto del registro attività
+  const games = [{ title: "Zelda: BotW", minutes: 120, last: 5 }, { title: "Doom", minutes: 30, last: 6 }, { title: "Mai", minutes: 0 }];
+  const ach = [{ title: "doom", unlocked: 3, total: 10 }];
+  assert.strictEqual(Friends.buildSummary({ games, ach }), null, "tutto spento: niente da inviare");
+  const st = Friends.buildSummary({ games, ach, time: true });
+  assert.strictEqual(JSON.stringify(st.map((g) => g.k)), '["zeldabotw","doom"]');
+  assert(st.every((g) => g.a === undefined), "senza il consenso gli obiettivi non escono");
+  const sa = Friends.buildSummary({ games, ach, achievements: true });
+  assert.strictEqual(JSON.stringify(sa.map((g) => [g.k, g.a, g.n, g.m])), '[["doom",3,10,null]]', "solo obiettivi: niente tempi");
+  const sb = Friends.buildSummary({ games, ach, time: true, achievements: true, max: 1 });
+  assert.strictEqual(sb.length, 1);
+  const common = Friends.commonGames(st, [{ k: "doom", t: "Doom", m: 500 }, { k: "altro", t: "Altro", m: 9 }, { k: "zeldabotw", t: "Z" }]);
+  assert.strictEqual(JSON.stringify(common.map((c) => [c.k, c.mine, c.theirs])), '[["doom",30,500],["zeldabotw",120,0]]');
+  let log = [];
+  for (let i = 0; i < 130; i++) log = Friends.pushActivity(log, { i });
+  assert.strictEqual(log.length, 100);
+  assert.strictEqual(log[0].i, 129);
+
+  // Cifratura: roundtrip tra due coppie di chiavi, terzo escluso, ct manomesso scartato
+  const A = await Friends.genKeys(), B = await Friends.genKeys(), C = await Friends.genKeys();
+  const kA = await Friends.deriveKey(A.priv, B.pub), kB = await Friends.deriveKey(B.priv, A.pub);
+  const enc = await Friends.encryptSummary(kA, [{ k: "doom", m: 5 }]);
+  assert.strictEqual(JSON.stringify(await Friends.decryptSummary(kB, enc)), '[{"k":"doom","m":5}]');
+  assert.strictEqual(await Friends.decryptSummary(await Friends.deriveKey(C.priv, A.pub), enc), null, "un terzo non decifra");
+  const bytes = Buffer.from(enc.ct, "base64"); bytes[0] ^= 1;
+  assert.strictEqual(await Friends.decryptSummary(kB, { iv: enc.iv, ct: bytes.toString("base64") }), null, "ct manomesso");
+
   console.log("ok test_friends_social.js");
 }
 
-runTests();
+runTests().catch((e) => { console.error(e); process.exit(1); });

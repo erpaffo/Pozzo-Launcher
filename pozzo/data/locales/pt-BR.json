@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "O jogo não está mais na pasta de rede",
  "j.ctl.ds.led": "Cor da barra de luz a partir da capa",
  "j.ctl.ds.rumble": "Vibração ao navegar",
- "a.pad.battery": "Bateria do controle: {n}%"
+ "a.pad.battery": "Bateria do controle: {n}%",
+ "fr.shareTime": "Compartilhar o tempo de jogo",
+ "fr.shareAch": "Compartilhar as conquistas",
+ "fr.privacy": "Ativado, seus amigos recebem seus 50 jogos mais jogados (e as conquistas, se ativadas) pelo serviço Supabase. Desativado: nada é enviado.",
+ "fr.activity": "Atividade recente",
+ "fr.noActivity": "Sem atividade",
+ "fr.back": "Voltar",
+ "fr.common": "Jogos em comum",
+ "fr.noCommon": "Nenhum jogo em comum (ou seu amigo não compartilha o tempo de jogo)",
+ "fr.updated": "atualizado em {date}",
+ "fr.you": "Você",
+ "fr.achv": "{n}/{m} conquistas",
+ "fr.noData": "{name} ainda não compartilhou dados: eles são atualizados quando estiver online.",
+ "fr.friendsPlaying": "Amigos que jogam",
+ "fr.compare": "Comparar"
 }

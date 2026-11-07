@@ -3515,5 +3515,19 @@
  "s.netstore.gone": "게임이 더 이상 네트워크 폴더에 없습니다",
  "j.ctl.ds.led": "커버 이미지로 라이트바 색상 설정",
  "j.ctl.ds.rumble": "탐색 중 진동",
- "a.pad.battery": "컨트롤러 배터리: {n}%"
+ "a.pad.battery": "컨트롤러 배터리: {n}%",
+ "fr.shareTime": "플레이 시간 공유",
+ "fr.shareAch": "업적 공유",
+ "fr.privacy": "켜면 Supabase 서비스를 통해 친구에게 가장 많이 플레이한 50개 게임(업적을 켠 경우 업적도)이 전달됩니다. 끄면 아무것도 전송되지 않습니다.",
+ "fr.activity": "최근 활동",
+ "fr.noActivity": "활동 없음",
+ "fr.back": "뒤로",
+ "fr.common": "공통 게임",
+ "fr.noCommon": "공통 게임 없음(또는 친구가 플레이 시간을 공유하지 않음)",
+ "fr.updated": "{date}에 업데이트됨",
+ "fr.you": "나",
+ "fr.achv": "업적 {n}/{m}",
+ "fr.noData": "{name}님이 아직 데이터를 공유하지 않았습니다. 접속하면 업데이트됩니다.",
+ "fr.friendsPlaying": "이 게임을 하는 친구",
+ "fr.compare": "비교"
 }
