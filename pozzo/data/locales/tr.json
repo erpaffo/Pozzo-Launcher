@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "Araç indirilemedi: {err}",
  "s.noclient.toolMissing": "{tool} kurulu değil: oyun ayrıntılarından kur",
  "s.noclient.noCloud": "Bulut kayıtları yalnızca Epic için var",
- "s.noclient.loginFirst": "Önce Amazon girişini başlat"
+ "s.noclient.loginFirst": "Önce Amazon girişini başlat",
+ "a.prof.autoArchive": "Arşiv .zip/.7z/.rar: her başlatmada geçici klasöre çıkar, oyun bitince sil (kayıtlar korunur)",
+ "a.prof.autoPad": "Oyun kolunu yeniden eşleme (ViGEmBus gerekir; fiziksel kol okunur ve sanal bir kola aktarılır)",
+ "a.prof.autoPadMap": "Yeniden eşlenecek tuşlar (ör. a=b, b=a, lb=lt; tuşlar: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: tuş:Hz (ör. a:10, x:8)",
+ "a.prof.autoPadDz": "Analog çubuk ölü bölgesi (%0-30)",
+ "a.prof.autoPadSwap": "Çubukları değiştir",
+ "a.prof.autoPadInv": "Y eksenini ters çevir",
+ "a.prof.autoPadHint": "HidHide olmadan oyun iki kol görebilir (fiziksel ve sanal). HidHide kuruluysa fiziksel kol oyun sırasında gizlenir, sonra geri getirilir."
 }

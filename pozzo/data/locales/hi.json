@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "टूल डाउनलोड नहीं हो सका: {err}",
  "s.noclient.toolMissing": "{tool} इंस्टॉल नहीं है: इसे गेम के विवरण से इंस्टॉल करें",
  "s.noclient.noCloud": "क्लाउड सेव केवल Epic के लिए उपलब्ध हैं",
- "s.noclient.loginFirst": "पहले Amazon साइन-इन शुरू करें"
+ "s.noclient.loginFirst": "पहले Amazon साइन-इन शुरू करें",
+ "a.prof.autoArchive": "आर्काइव .zip/.7z/.rar: हर शुरुआत पर अस्थायी फ़ोल्डर में निकालें और खेल खत्म होने पर हटा दें (सेव सुरक्षित रहते हैं)",
+ "a.prof.autoPad": "गेमपैड रीमैप (ViGEmBus ज़रूरी; असली पैड को पढ़कर वर्चुअल पैड को भेजा जाता है)",
+ "a.prof.autoPadMap": "रीमैप करने वाले बटन (जैसे a=b, b=a, lb=lt; बटन: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "टर्बो: बटन:Hz (जैसे a:10, x:8)",
+ "a.prof.autoPadDz": "स्टिक डेडज़ोन (0-30%)",
+ "a.prof.autoPadSwap": "स्टिक आपस में बदलें",
+ "a.prof.autoPadInv": "Y अक्ष उलटें",
+ "a.prof.autoPadHint": "HidHide के बिना गेम को दो कंट्रोलर दिख सकते हैं (असली और वर्चुअल)। HidHide इंस्टॉल हो तो असली पैड खेल के दौरान छिपाया जाता है और बाद में वापस किया जाता है।"
 }

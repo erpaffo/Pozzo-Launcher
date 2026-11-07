@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "Could not download the tool: {err}",
  "s.noclient.toolMissing": "{tool} is not installed: install it from the game details",
  "s.noclient.noCloud": "Cloud saves are only available for Epic",
- "s.noclient.loginFirst": "Start the Amazon sign-in first"
+ "s.noclient.loginFirst": "Start the Amazon sign-in first",
+ "a.prof.autoArchive": "Archive .zip/.7z/.rar: extract to a temporary folder at each launch and delete it when the game ends (saves are kept)",
+ "a.prof.autoPad": "Gamepad remap (needs ViGEmBus; the physical pad is read and forwarded to a virtual pad)",
+ "a.prof.autoPadMap": "Buttons to remap (e.g. a=b, b=a, lb=lt; buttons: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: button:Hz (e.g. a:10, x:8)",
+ "a.prof.autoPadDz": "Stick deadzone (0-30%)",
+ "a.prof.autoPadSwap": "Swap the sticks",
+ "a.prof.autoPadInv": "Invert the Y axis",
+ "a.prof.autoPadHint": "Without HidHide the game may see two controllers (the physical one and the virtual one). With HidHide installed, the physical pad is hidden during the game and restored afterwards."
 }

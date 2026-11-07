@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "도구를 다운로드하지 못했습니다: {err}",
  "s.noclient.toolMissing": "{tool}이(가) 설치되어 있지 않습니다. 게임 상세 화면에서 설치하세요",
  "s.noclient.noCloud": "클라우드 저장은 Epic에서만 지원됩니다",
- "s.noclient.loginFirst": "먼저 Amazon 로그인을 시작하세요"
+ "s.noclient.loginFirst": "먼저 Amazon 로그인을 시작하세요",
+ "a.prof.autoArchive": "압축 파일 .zip/.7z/.rar: 실행할 때마다 임시 폴더에 풀고 게임이 끝나면 삭제합니다(저장 데이터는 유지됩니다)",
+ "a.prof.autoPad": "게임패드 리맵(ViGEmBus 필요, 실제 패드를 읽어 가상 패드로 전달합니다)",
+ "a.prof.autoPadMap": "리맵할 버튼(예: a=b, b=a, lb=lt; 버튼: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "터보: 버튼:Hz(예: a:10, x:8)",
+ "a.prof.autoPadDz": "스틱 데드존(0-30%)",
+ "a.prof.autoPadSwap": "스틱 맞바꾸기",
+ "a.prof.autoPadInv": "Y축 반전",
+ "a.prof.autoPadHint": "HidHide가 없으면 게임이 실제 패드와 가상 패드를 둘 다 인식할 수 있습니다. HidHide를 설치하면 플레이 중 실제 패드를 숨기고 이후 복원합니다."
 }

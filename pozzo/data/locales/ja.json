@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "ツールをダウンロードできませんでした: {err}",
  "s.noclient.toolMissing": "{tool} がインストールされていません。ゲームの詳細からインストールしてください",
  "s.noclient.noCloud": "クラウドセーブは Epic のみ対応です",
- "s.noclient.loginFirst": "先に Amazon のログインを開始してください"
+ "s.noclient.loginFirst": "先に Amazon のログインを開始してください",
+ "a.prof.autoArchive": "アーカイブ .zip/.7z/.rar: 起動のたびに一時フォルダーへ展開し、ゲーム終了時に削除します(セーブは保持されます)",
+ "a.prof.autoPad": "パッドのリマップ(ViGEmBus が必要。実機のパッドを読み取り、仮想パッドへ転送します)",
+ "a.prof.autoPadMap": "リマップするボタン(例: a=b, b=a, lb=lt。ボタン: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "ターボ: ボタン:Hz(例: a:10, x:8)",
+ "a.prof.autoPadDz": "スティックのデッドゾーン(0〜30%)",
+ "a.prof.autoPadSwap": "スティックを入れ替える",
+ "a.prof.autoPadInv": "Y 軸を反転",
+ "a.prof.autoPadHint": "HidHide がないと、ゲームが実機と仮想の2つのコントローラーを認識することがあります。HidHide をインストールすると、プレイ中は実機が隠され、終了後に元に戻ります。"
 }

@@ -32,7 +32,7 @@ import zipfile
 from pathlib import Path
 
 from .. import platforms as P, switchfiles as SF
-from . import automation, fastcopy, foreground, magpie
+from . import archiverun, automation, fastcopy, foreground, magpie
 
 RA = "retroarch"
 # piattaforma -> candidati (emulatore, core RetroArch) in ordine di preferenza
@@ -1067,6 +1067,31 @@ class Launcher:
         except Exception:
             pass
 
+    def _archive_prep(self, key: str, path, ar: list) -> Path:
+        """Opzione «archivio senza estrazione fissa» (profilo auto.archive): estrae in una cartella temporanea e
+        ritorna il percorso da avviare; senza l'opzione ritorna `path` com'e'. `ar` raccoglie la Run per _archive_done."""
+        if not archiverun.enabled(self.profile_of(key), path):
+            return Path(path)
+        run = archiverun.Run(self.cfg, Path(self.user.path).parent, key, path)
+        ar.append(run)
+        self._set(status="extracting", message=f"Estrazione di {Path(path).name}…")
+        try:
+            return run.prepare(lambda m: self._set(message=m), self._stop_evt.is_set)
+        except archiverun.ArchiveRunError as e:
+            raise LaunchError(str(e)) from e
+
+    def _archive_done(self, ar: list):
+        if ar and (msg := ar.pop().finish()):
+            self._set(message=msg)
+
+    @staticmethod
+    def _in_archive(p: str, archive: str, root: Path) -> str:
+        # shortcut: i percorsi del comando sono relativi o iniziano col percorso dell'archivio; altri restano invariati
+        s = str(p)
+        if s.lower().startswith(archive.lower()):
+            return str(root / s[len(archive):].lstrip("/\\"))
+        return s if Path(s).is_absolute() else str(root / s)
+
     def _fast_fail(self, e: Exception):
         known = isinstance(e, (LaunchError, fastcopy.FastCopyError))
         msg = "Copia annullata" if self._stop_evt.is_set() else (str(e) if known else f"{type(e).__name__}: {e}")
@@ -1174,7 +1199,7 @@ class Launcher:
         return out
 
     def _run_pc(self, key: str, launch: dict, install_dir: str, store_id: str = "", fast: bool = False):
-        fc = {"dir": None}
+        fc, ar = {"dir": None}, []
         try:
             if fast:
                 rels = self._fast_rels(launch, install_dir, store_id)
@@ -1182,10 +1207,14 @@ class Launcher:
                 root = self._fast_copy(key, Path(install_dir), fc)
                 launch = {**launch, **{k: str(root / r) for k, r in rels.items()}}
                 install_dir = str(root)
+            if install_dir and (root := self._archive_prep(key, install_dir, ar)) != Path(install_dir):
+                launch = {**launch, **{k: self._in_archive(launch[k], install_dir, root) for k in ("target", "cwd", "track_dir") if launch.get(k)}}
+                install_dir = str(root)
             self._run_pc_body(key, launch, install_dir, store_id, fc)
         except Exception as e:  # solo la fase di copia: il resto gestisce i propri errori
             self._fast_fail(e)
         finally:
+            self._archive_done(ar)
             if fc["dir"]:  # errore o arresto: la copia non serve piu'
                 self._fast_remove(fc["dir"])
 
@@ -1320,14 +1349,16 @@ class Launcher:
             self._set(message=f"Preset impostazioni non applicato: {e}")
 
     def _run(self, key: str, platform: P.Platform, path: Path, pl: dict, fast: bool = False):
-        fc = {"dir": None}
+        fc, ar = {"dir": None}, []
         try:
             # il gioco si identifica sempre con `path` (originale); la copia serve solo per avviarlo
             src = self._fast_copy(key, path, fc) if fast else path
+            src = self._archive_prep(key, src, ar)
             self._run_emu(key, platform, path, pl, src, fc)
         except Exception as e:  # solo la fase di copia: il resto gestisce i propri errori
             self._fast_fail(e)
         finally:
+            self._archive_done(ar)
             if fc["dir"]:
                 self._fast_remove(fc["dir"])
 

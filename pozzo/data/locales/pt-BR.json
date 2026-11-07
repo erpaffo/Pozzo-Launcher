@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "Não foi possível baixar a ferramenta: {err}",
  "s.noclient.toolMissing": "{tool} não está instalado: instale-o nos detalhes do jogo",
  "s.noclient.noCloud": "Saves na nuvem só estão disponíveis para a Epic",
- "s.noclient.loginFirst": "Inicie primeiro o login da Amazon"
+ "s.noclient.loginFirst": "Inicie primeiro o login da Amazon",
+ "a.prof.autoArchive": "Arquivo .zip/.7z/.rar: extrair para uma pasta temporária a cada início e apagar ao fim da partida (os saves são mantidos)",
+ "a.prof.autoPad": "Remapeamento do controle (requer ViGEmBus; o controle físico é lido e repassado a um virtual)",
+ "a.prof.autoPadMap": "Botões a remapear (ex.: a=b, b=a, lb=lt; botões: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: botão:Hz (ex.: a:10, x:8)",
+ "a.prof.autoPadDz": "Zona morta dos analógicos (0-30%)",
+ "a.prof.autoPadSwap": "Trocar os analógicos",
+ "a.prof.autoPadInv": "Inverter o eixo Y",
+ "a.prof.autoPadHint": "Sem o HidHide o jogo pode ver dois controles (o físico e o virtual). Com o HidHide instalado, o controle físico fica oculto durante a partida e é restaurado depois."
 }

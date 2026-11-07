@@ -218,6 +218,14 @@
       <label><span data-i18n="a.prof.autoPower">Piano energetico (GUID)</span> <input class="field" id="pf-au-power" placeholder="8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"></label>
       <label class="wide"><span data-i18n="a.prof.autoKill">Chiudi questi processi prima dell'avvio</span> <input class="field" id="pf-au-kill" placeholder="OneDrive.exe, Discord.exe"></label>
       <label class="chk wide"><input type="checkbox" id="pf-au-hdr"> <span data-i18n="a.prof.autoHdr">Attiva/disattiva l'HDR (Win+Alt+B) durante il gioco</span></label>
+      <label class="chk wide"><input type="checkbox" id="pf-au-archive"> <span data-i18n="a.prof.autoArchive">Archivo .zip/.7z/.rar: estrai in una cartella temporanea a ogni avvio e cancella a fine partita (i salvataggi si conservano)</span></label>
+      <label class="chk wide"><input type="checkbox" id="pf-au-pad"> <span data-i18n="a.prof.autoPad">Remap del pad (richiede ViGEmBus; il pad fisico viene riletto e inoltrato a un pad virtuale)</span></label>
+      <label class="wide"><span data-i18n="a.prof.autoPadMap">Tasti da rimappare (es. a=b, b=a, lb=lt; tasti: a b x y lb rb lt rt back start ls rs up down left right)</span> <input class="field" id="pf-au-padmap" placeholder="a=b, b=a"></label>
+      <label class="wide"><span data-i18n="a.prof.autoPadTurbo">Turbo: tasto:Hz (es. a:10, x:8)</span> <input class="field" id="pf-au-padturbo" placeholder="a:10"></label>
+      <label><span data-i18n="a.prof.autoPadDz">Zona morta degli stick (0-30%)</span> <input class="field" id="pf-au-paddz" type="number" min="0" max="30" value="0"></label>
+      <label class="chk"><input type="checkbox" id="pf-au-padswap"> <span data-i18n="a.prof.autoPadSwap">Scambia gli stick</span></label>
+      <label class="chk"><input type="checkbox" id="pf-au-padinv"> <span data-i18n="a.prof.autoPadInv">Inverti l'asse Y</span></label>
+      <p class="wide muted small"><span data-i18n="a.prof.autoPadHint">Senza HidHide il gioco potrebbe vedere due controller (quello fisico e quello virtuale). Con HidHide installato il pad fisico viene nascosto durante la partita e poi ripristinato.</span> <a href="https://github.com/nefarius/HidHide/releases" target="_blank" rel="noopener">HidHide</a></p>
       <label class="wide"><span data-i18n="a.prof.autoMagpie">Upscaling con Magpie (si scarica al primo uso; Windows 10 1903+)</span>
         <select class="field" id="pf-au-magpie"><option value="" data-i18n="a.prof.autoMagpieOff">Nessuno</option><option value="fsr">FSR</option><option value="anime4k">Anime4K</option><option value="integer">Integer Scale 2x</option><option value="lanczos">Lanczos</option></select></label>
     </div>

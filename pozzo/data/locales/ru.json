@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "Не удалось скачать утилиту: {err}",
  "s.noclient.toolMissing": "{tool} не установлен: установите его в карточке игры",
  "s.noclient.noCloud": "Облачные сохранения доступны только для Epic",
- "s.noclient.loginFirst": "Сначала начните вход в Amazon"
+ "s.noclient.loginFirst": "Сначала начните вход в Amazon",
+ "a.prof.autoArchive": "Архив .zip/.7z/.rar: распаковывать во временную папку при каждом запуске и удалять после игры (сохранения сохраняются)",
+ "a.prof.autoPad": "Переназначение геймпада (нужен ViGEmBus; физический геймпад считывается и передаётся виртуальному)",
+ "a.prof.autoPadMap": "Кнопки для переназначения (напр. a=b, b=a, lb=lt; кнопки: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Турбо: кнопка:Гц (напр. a:10, x:8)",
+ "a.prof.autoPadDz": "Мёртвая зона стиков (0-30%)",
+ "a.prof.autoPadSwap": "Поменять стики местами",
+ "a.prof.autoPadInv": "Инвертировать ось Y",
+ "a.prof.autoPadHint": "Без HidHide игра может увидеть два геймпада (физический и виртуальный). С HidHide физический геймпад скрывается на время игры и потом восстанавливается."
 }

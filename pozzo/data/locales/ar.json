@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "تعذّر تنزيل الأداة: {err}",
  "s.noclient.toolMissing": "{tool} غير مثبّت: ثبّته من تفاصيل اللعبة",
  "s.noclient.noCloud": "الحفظ السحابي متاح لـ Epic فقط",
- "s.noclient.loginFirst": "ابدأ تسجيل الدخول إلى Amazon أولاً"
+ "s.noclient.loginFirst": "ابدأ تسجيل الدخول إلى Amazon أولاً",
+ "a.prof.autoArchive": "أرشيف .zip/.7z/.rar: فك الضغط إلى مجلد مؤقت عند كل تشغيل وحذفه عند انتهاء اللعبة (تُحفظ ملفات الحفظ)",
+ "a.prof.autoPad": "إعادة تعيين أزرار وحدة التحكم (يتطلب ViGEmBus؛ تُقرأ الوحدة الفعلية وتُمرَّر إلى وحدة افتراضية)",
+ "a.prof.autoPadMap": "الأزرار المراد إعادة تعيينها (مثال: a=b, b=a, lb=lt؛ الأزرار: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "تيربو: الزر:هرتز (مثال: a:10, x:8)",
+ "a.prof.autoPadDz": "المنطقة الميتة للعصي (0-30%)",
+ "a.prof.autoPadSwap": "تبديل العصي",
+ "a.prof.autoPadInv": "عكس المحور Y",
+ "a.prof.autoPadHint": "بدون HidHide قد ترى اللعبة وحدتي تحكم (الفعلية والافتراضية). مع تثبيت HidHide تُخفى الوحدة الفعلية أثناء اللعب ثم تُستعاد."
 }

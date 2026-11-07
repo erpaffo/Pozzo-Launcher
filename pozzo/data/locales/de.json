@@ -3554,5 +3554,13 @@
  "s.noclient.toolFailed": "Das Tool konnte nicht heruntergeladen werden: {err}",
  "s.noclient.toolMissing": "{tool} ist nicht installiert: Installiere es in den Spieldetails",
  "s.noclient.noCloud": "Cloud-Spielstände gibt es nur für Epic",
- "s.noclient.loginFirst": "Starte zuerst die Amazon-Anmeldung"
+ "s.noclient.loginFirst": "Starte zuerst die Amazon-Anmeldung",
+ "a.prof.autoArchive": "Archiv .zip/.7z/.rar: bei jedem Start in einen temporären Ordner entpacken und nach dem Spiel löschen (Spielstände bleiben erhalten)",
+ "a.prof.autoPad": "Gamepad-Remap (benötigt ViGEmBus; das echte Pad wird gelesen und an ein virtuelles Pad weitergeleitet)",
+ "a.prof.autoPadMap": "Tasten umbelegen (z. B. a=b, b=a, lb=lt; Tasten: a b x y lb rb lt rt back start ls rs up down left right)",
+ "a.prof.autoPadTurbo": "Turbo: Taste:Hz (z. B. a:10, x:8)",
+ "a.prof.autoPadDz": "Stick-Totzone (0-30 %)",
+ "a.prof.autoPadSwap": "Sticks tauschen",
+ "a.prof.autoPadInv": "Y-Achse invertieren",
+ "a.prof.autoPadHint": "Ohne HidHide sieht das Spiel eventuell zwei Controller (den echten und den virtuellen). Mit HidHide wird das echte Pad während des Spiels versteckt und danach wiederhergestellt."
 }
