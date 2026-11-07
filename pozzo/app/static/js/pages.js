@@ -306,7 +306,7 @@ async function renderTop(pv) {
 }
 
 /* ---- schermate dei giochi */
-const SHOTS = { detail: [], page: [], hotkey: "Ctrl+Shift+S" };
+const SHOTS = { detail: [], page: [], hotkey: "Ctrl+Shift+S", pauseHotkey: "Ctrl+Shift+P" };
 
 async function loadDetailShots(id) {
   let r;
@@ -372,6 +372,7 @@ async function renderShots(pv) {
         <button class="btn" id="sh-set">⚙</button></div></div>
     <div class="wl-settings" id="sh-settings" hidden>
       <label>Scorciatoia da tastiera <input class="field" id="sh-hotkey" value="${esc(st.hotkey || "")}" placeholder="es. ctrl+shift+s, f10"></label>
+      <label>${t("h.shots.pauseHotkey")} <input class="field" id="sh-pause-hotkey" value="${esc(st.pause_hotkey || "")}" placeholder="ctrl+shift+p"></label>
       <label class="chk"><input type="checkbox" id="sh-pad"${st.pad ? " checked" : ""}> ${t("h.shots.padLabel")}</label>
       <label class="chk"><input type="checkbox" id="sh-emu"${st.import_emulator ? " checked" : ""}> ${t("h.shots.emuLabel")}</label>
       <button class="btn primary" id="sh-save">${t("h.common.save")}</button></div>
@@ -393,7 +394,7 @@ async function renderShots(pv) {
       catch (err) { toast(err.message, true); t.disabled = false; }
     } else if (t.id === "sh-save") {
       try {
-        await api("/api/shots/settings", { body: { hotkey: $("#sh-hotkey").value, pad: $("#sh-pad").checked, import_emulator: $("#sh-emu").checked } });
+        await api("/api/shots/settings", { body: { hotkey: $("#sh-hotkey").value, pause_hotkey: $("#sh-pause-hotkey").value, pad: $("#sh-pad").checked, import_emulator: $("#sh-emu").checked } });
         toast(window.t("h.shots.settingsSaved"));
         renderShots(pv);
       } catch (err) { toast(err.message, true); }

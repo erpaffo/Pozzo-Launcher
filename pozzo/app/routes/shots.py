@@ -89,11 +89,12 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/shots/settings")
     def api_shots_settings(body: dict = Body(...)):
         cur = SC.settings(cfg)
-        if "hotkey" in body:
-            hk = str(body.get("hotkey") or "").strip().lower()
-            if hk and not SC.parse_hotkey(hk):
-                raise HTTPException(400, I.tr("s.shots.hotkeyInvalid"))
-            cur["hotkey"] = hk
+        for name in ("hotkey", "pause_hotkey"):
+            if name in body:
+                hk = str(body.get(name) or "").strip().lower()
+                if hk and not SC.parse_hotkey(hk):
+                    raise HTTPException(400, I.tr("s.shots.hotkeyInvalid"))
+                cur[name] = hk
         for k in ("pad", "import_emulator"):
             if k in body:
                 cur[k] = bool(body[k])

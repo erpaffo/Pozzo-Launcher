@@ -19,6 +19,7 @@ eseguibile diverso (es. un'altra versione di PCSX2), argomenti e argomenti aggiu
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import re
@@ -438,7 +439,7 @@ def _xinput():
     return buttons
 
 
-XINPUT_BACK, XINPUT_START, XINPUT_RB = 0x0020, 0x0010, 0x0200
+XINPUT_BACK, XINPUT_START, XINPUT_RB, XINPUT_LB = 0x0020, 0x0010, 0x0200, 0x0100
 
 # applicazione da avviare insieme al gioco (es. il deck tracker di Hearthstone): programma, argomenti, "1" = chiudila a fine partita
 COMPANION_KEYS = ("companion", "companion_args", "companion_close")
@@ -496,11 +497,67 @@ class _Job:
             return 0
         return ctypes.c_uint.from_buffer(buf, 40).value
 
+    def pids(self) -> list[int]:
+        import ctypes
+
+        class IDS(ctypes.Structure):  # JOBOBJECT_BASIC_PROCESS_ID_LIST
+            _fields_ = [("n", ctypes.c_uint), ("listed", ctypes.c_uint), ("ids", ctypes.c_size_t * 256)]
+        buf = IDS()  # shortcut: al massimo 256 processi nel Job, gli altri non vengono sospesi
+        if not self.k.QueryInformationJobObject(self.h, 3, ctypes.byref(buf), ctypes.sizeof(buf), None):
+            return []
+        return list(buf.ids[:buf.listed])
+
     def kill(self):
         self.k.TerminateJobObject(self.h, 1)
 
     def close(self):
         self.k.CloseHandle(self.h)
+
+
+def _suspend(pid: int, on: bool) -> bool:
+    """Sospende/riprende un processo (NtSuspendProcess/NtResumeProcess, come Nyrna). Solo Windows."""
+    if sys.platform != "win32":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.OpenProcess.restype = wintypes.HANDLE
+    k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k.CloseHandle.argtypes = [wintypes.HANDLE]
+    nt = ctypes.WinDLL("ntdll")
+    nt.NtSuspendProcess.argtypes = nt.NtResumeProcess.argtypes = [wintypes.HANDLE]
+    h = k.OpenProcess(0x0800, False, pid)  # PROCESS_SUSPEND_RESUME
+    if not h:
+        return False
+    try:
+        return (nt.NtSuspendProcess if on else nt.NtResumeProcess)(h) == 0
+    finally:
+        k.CloseHandle(h)
+
+
+def _focus_pids(pids):
+    """Porta in primo piano la finestra visibile piu' grande dei processi indicati."""
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes
+    u = ctypes.windll.user32
+    best = []
+    cb_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def visit(hwnd, _):
+        pid = wintypes.DWORD()
+        u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value in pids and u.IsWindowVisible(hwnd):
+            r = wintypes.RECT()
+            u.GetWindowRect(hwnd, ctypes.byref(r))
+            best.append(((r.right - r.left) * (r.bottom - r.top), hwnd))
+        return True
+    u.EnumWindows(cb_t(visit), 0)
+    if best:
+        hwnd = max(best)[1]
+        u.ShowWindow(hwnd, 9)
+        u.SetForegroundWindow(hwnd)
 
 
 def _procs_named(name: str) -> list:
@@ -705,7 +762,12 @@ class Launcher:
         self.state: dict = {}
         self.next_args: list[str] = []  # argomenti in piu' per il solo prossimo avvio (es. netplay)
         self.lock = threading.Lock()
-        self._hotkey = None
+        self._hotkey = self._pause_hotkey = None
+        self._frozen: list[int] = []  # PID sospesi dalla pausa
+        self._pause_t0: float | None = None
+        self._paused_total = 0.0  # secondi in pausa nella sessione: non contano come tempo di gioco
+        self._comp_pid = None
+        atexit.register(self._unfreeze)  # mai lasciare un processo sospeso se Pozzo esce
         try:  # copie «disco veloce» rimaste da un crash (tenute se l'utente le vuole riusare)
             if (cfg.app.get("fastcopy") or {}).get("delete_after", True):
                 fastcopy.purge_stale(cfg)
@@ -734,11 +796,17 @@ class Launcher:
     def _start_capture(self):
         from . import screens
         st = screens.settings(self.cfg)
+        if st.get("pause_hotkey"):
+            self._pause_hotkey = screens.Hotkey(st["pause_hotkey"], self.toggle_pause)
+            self._pause_hotkey.start()
         if self.shots and st.get("hotkey"):
             self._hotkey = screens.Hotkey(st["hotkey"], self.screenshot)
             self._hotkey.start()
 
     def _stop_capture(self, st: dict):
+        if self._pause_hotkey:
+            self._pause_hotkey.stop()
+            self._pause_hotkey = None
         if self._hotkey:
             self._hotkey.stop()
             self._hotkey = None
@@ -766,7 +834,7 @@ class Launcher:
         if not pad_shot and not exit_combo:
             return
         since = 0.0
-        shot_held = False
+        shot_held = pause_held = False
         while self.state.get("status") == "running":
             pressed = read()
             if exit_combo and pressed & XINPUT_BACK and pressed & XINPUT_START:
@@ -780,6 +848,10 @@ class Launcher:
             if pad_shot and combo and not shot_held:
                 threading.Thread(target=self.screenshot, daemon=True).start()
             shot_held = combo
+            pause_combo = bool(pressed & XINPUT_BACK and pressed & XINPUT_LB)  # Select+L1: pausa/riprendi
+            if pause_combo and not pause_held:
+                threading.Thread(target=self.toggle_pause, daemon=True).start()
+            pause_held = pause_combo
             time.sleep(0.05)
 
     def _wait_proc(self, proc, job=None, comp=None):
@@ -802,6 +874,7 @@ class Launcher:
             return True
         if self.state.get("status") != "running":
             return False
+        self._unfreeze()  # un processo sospeso non gestisce la chiusura
         try:
             import psutil
         except ImportError:
@@ -839,6 +912,68 @@ class Launcher:
         self._stop_evt.set()  # l'attesa in _run_pc/_run finisce: tempo di gioco registrato e stato «finished»
         return True
 
+    def _session_pids(self) -> list[int]:
+        job = getattr(self, "_job", None)
+        pids = set(job.pids()) if job else set()
+        if not pids:
+            proc = getattr(self, "_proc", None)
+            if proc and proc.poll() is None:
+                pids.add(proc.pid)
+                try:
+                    import psutil
+                    pids.update(c.pid for c in psutil.Process(proc.pid).children(recursive=True))
+                except Exception:
+                    pass
+            track = getattr(self, "_track", None)
+            if track and Path(track).is_dir():
+                pids.update(p.pid for p in self._game_procs(track))
+        return sorted(pids - {os.getpid(), self._comp_pid})  # Pozzo e l'app abbinata restano attivi
+
+    def pause(self) -> bool:
+        """Congela il gioco (e i suoi figli): niente CPU/GPU, anche senza pausa nel gioco. Il tempo di gioco si ferma."""
+        if sys.platform != "win32" or self.state.get("status") != "running" or self._frozen:
+            return False
+        pids = self._session_pids()
+        if not pids:
+            return False
+        try:  # Pozzo davanti: chi gioca a schermo intero non resta davanti a una finestra congelata
+            from ..app.server import WINDOW_FOCUS
+            WINDOW_FOCUS["fn"] and WINDOW_FOCUS["fn"]()
+        except Exception:
+            pass
+        done = [p for p in pids if _suspend(p, True)]
+        if not done:
+            return False
+        self._frozen, self._pause_t0 = done, time.time()
+        self._set(paused=True)
+        return True
+
+    def _unfreeze(self) -> list[int]:
+        """Riprende i processi sospesi e chiude l'intervallo di pausa. Ritorna i PID ripresi."""
+        pids, self._frozen = self._frozen, []
+        for p in pids:
+            _suspend(p, False)
+        if self._pause_t0 is not None:
+            self._paused_total += time.time() - self._pause_t0
+            self._pause_t0 = None
+        if pids and self.state.get("paused"):
+            self._set(paused=False)
+        return pids
+
+    def resume(self) -> bool:
+        pids = self._unfreeze()
+        if pids:
+            _focus_pids(set(pids))
+        return bool(pids)
+
+    def toggle_pause(self) -> bool:
+        return self.resume() if self._frozen else self.pause()
+
+    def played_since(self, t0: float) -> float:
+        """Secondi di gioco da t0 a ora, senza gli intervalli in pausa."""
+        self._unfreeze()
+        return max(0.0, time.time() - t0 - self._paused_total)
+
     def running(self) -> dict:
         return dict(self.state)
 
@@ -860,6 +995,7 @@ class Launcher:
                                   f"sezione [emulators], uno di: {cands}", "emulator_missing",
                                   {"platform": platform.id, "platform_name": platform.name})
             self._stop_evt.clear()
+            self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],
                           "emulator_id": pl["emulator"], "exe": pl["exe"], "profile": pl.get("profile", False),
                           "started": time.time(), "shots": 0}
@@ -877,6 +1013,7 @@ class Launcher:
             if not launch or not launch.get("target"):
                 raise LaunchError("Questo gioco non ha un comando di avvio (prova ad aprirlo dallo store)")
             self._stop_evt.clear()
+            self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": store,
                           "emulator_id": "", "exe": launch.get("target") if launch.get("type") != "uri" else None,
                           "started": time.time(), "shots": 0}
@@ -985,6 +1122,7 @@ class Launcher:
         """Avvia (staccata) l'applicazione abbinata al gioco, se c'e'. Un errore non blocca il gioco."""
         import shlex
         pr = self.profile_of(key) or {}
+        self._comp_pid = None
         if not pr.get("companion"):
             return None
         try:
@@ -992,6 +1130,7 @@ class Launcher:
             proc = subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
             if job:
                 job.add(proc)
+            self._comp_pid = proc.pid
             return proc
         except Exception as e:
             self._set(message=f"Applicazione abbinata non avviata ({type(e).__name__}): {pr['companion']}")
@@ -1096,7 +1235,7 @@ class Launcher:
                 t0 = time.time() if self._game_procs(track) else t0
                 while self._game_procs(track) and not self._stop_evt.is_set():
                     self._stop_evt.wait(3)
-            played = time.time() - t0 if (not via_launcher or track) else 0
+            played = self.played_since(t0) if (not via_launcher or track) else 0
             self.user.record_play(key, played)
             self._end_companion(comp, key)
             self._job = None
@@ -1116,6 +1255,7 @@ class Launcher:
             self._end_companion(comp, key)
             self._set(status="error", message=f"{type(e).__name__}: {e}")
         finally:
+            self._unfreeze()
             self._auto_end(ses)  # anche dopo un crash o un errore: risoluzione, piano energetico e HDR tornano come prima
 
     def _set(self, **kw):
@@ -1204,7 +1344,7 @@ class Launcher:
                 job = job if job and job.add(proc) else None
                 self._proc, self._track, self._job = proc, None, job
                 self._wait_proc(proc, job, comp)
-                played = time.time() - t0
+                played = self.played_since(t0)
                 code = proc.returncode
                 stopped = self._stop_evt.is_set()  # «Chiudi gioco»: non e' un crash, qualunque sia il codice
                 log = ""
@@ -1249,4 +1389,5 @@ class Launcher:
         except Exception as e:
             self._set(status="error", message=f"{type(e).__name__}: {e}")
         finally:
+            self._unfreeze()
             ses and self._auto_end(ses)

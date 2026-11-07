@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS screenshots(id INTEGER PRIMARY KEY AUTOINCREMENT, key
                                        source TEXT, origin TEXT UNIQUE, w INT, h INT);
 CREATE INDEX IF NOT EXISTS screenshots_key ON screenshots(key);
 """
-DEFAULTS = {"hotkey": "ctrl+shift+s", "pad": True, "import_emulator": True}
+DEFAULTS = {"hotkey": "ctrl+shift+s", "pause_hotkey": "ctrl+shift+p", "pad": True, "import_emulator": True}
 
 
 def settings(cfg) -> dict:

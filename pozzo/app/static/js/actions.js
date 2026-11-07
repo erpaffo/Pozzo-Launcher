@@ -378,7 +378,7 @@ async function pollRunning() {
     bar.className = r.status === "extracting" ? "extracting" : "";
     const what = r.status === "extracting" ? (r.message || t("h.run.extract")) : r.status === "starting" ? t("h.run.starting") : t("h.run.running", {e: esc(r.emulator)});
     bar.innerHTML = `<span class="dot"></span><b>${esc(r.title)}</b><span class="muted">${esc(what)}</span>`
-      + (r.status === "running" ? `<button class="btn" id="run-stop" title="${t("h.run.closeTitle")}">■ ${t("h.run.close")}</button><button class="btn" id="run-shot" title="${t("h.run.shotTitle", {hk: esc(SHOTS.hotkey)})}">📷${r.shots ? " " + r.shots : ""}</button>` : "");
+      + (r.status === "running" ? `<button class="btn" id="run-pause" title="${t("h.run.pauseTitle", {hk: esc(SHOTS.pauseHotkey)})}">${r.paused ? "▶ " + t("h.run.resume") : "⏸ " + t("h.run.pause")}</button><button class="btn" id="run-stop" title="${t("h.run.closeTitle")}">■ ${t("h.run.close")}</button><button class="btn" id="run-shot" title="${t("h.run.shotTitle", {hk: esc(SHOTS.hotkey)})}">📷${r.shots ? " " + r.shots : ""}</button>` : "");
     if (S.running && r.status === "running" && (r.shots || 0) > (S.running.shots || 0)) toast("📷 " + t("h.run.shotSaved"));
     pollTimer = setTimeout(pollRunning, 1500);
   } else {

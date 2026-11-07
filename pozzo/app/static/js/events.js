@@ -666,6 +666,7 @@ function bind() {
   $("#pf-comp-pick").onclick = async () => { const p = await pickPath("file"); if (p) $("#pf-comp-exe").value = p; };
   $("#running").addEventListener("click", async (e) => {
     if (e.target.closest("#run-shot")) api("/api/running/screenshot", { body: {} });
+    if (e.target.closest("#run-pause")) { await api(S.running?.paused ? "/api/running/resume" : "/api/running/pause", { body: {} }); return pollRunning(); }
     if (!e.target.closest("#run-stop")) return;
     if (!confirm(t("g.ev.running.close_confirm", { title: S.running?.title || t("g.ev.running.default_title") }))) return;
     try {
@@ -676,6 +677,7 @@ function bind() {
   });
   api("/api/shots").then((d) => {
     $("#cnt-shots").textContent = d.shots.length || "";
+    SHOTS.pauseHotkey = (d.settings.pause_hotkey || "—").split("+").map((k) => k[0].toUpperCase() + k.slice(1)).join("+");
     SHOTS.hotkey = d.settings.hotkey ? d.settings.hotkey.split("+").map((k) => k[0].toUpperCase() + k.slice(1)).join("+") : "—";
   }).catch(() => {});
   $("#smart-new").onclick = () => openSmart();
