@@ -3483,5 +3483,19 @@
  "w.play.preparing": "Emülatör hazırlanıyor...",
  "w.play.downloading": "Emülatör indiriliyor... %{pct}",
  "w.play.error": "Oyun başlatılamadı: {msg}",
- "w.play.noBios": "Konsolun BIOS dosyası gerekli: BIOS klasörüne koy (Ayarlar > BIOS'a bak)."
+ "w.play.noBios": "Konsolun BIOS dosyası gerekli: BIOS klasörüne koy (Ayarlar > BIOS'a bak).",
+ "f.raextra.heading": "RetroArch: bezel, shader, hileler",
+ "f.raextra.notRetroarch": "Bu oyun RetroArch ile açılmıyor",
+ "f.raextra.noCfg": "RetroArch klasörü bulunamadı (retroarch.cfg yok)",
+ "f.raextra.noCheats": "Bu oyun için hile bulunamadı",
+ "f.raextra.bezel": "Bezel",
+ "f.raextra.shader": "Shader",
+ "f.raextra.cheats": "Hileler",
+ "f.raextra.none": "Yok",
+ "f.raextra.inherit": "Varsayılan",
+ "f.raextra.choose": "Bezel seç…",
+ "f.raextra.loadCheats": "Hile ara",
+ "f.raextra.core": "Çekirdek için varsayılan olarak kaydet ({core})",
+ "f.raextra.saved": "Kaydedildi",
+ "f.raextra.restartNote": "Oyun bir sonraki açılışta uygulanır."
 }

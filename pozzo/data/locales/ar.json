@@ -3483,5 +3483,19 @@
  "w.play.preparing": "جارٍ تجهيز المحاكي...",
  "w.play.downloading": "جارٍ تنزيل المحاكي... {pct}%",
  "w.play.error": "تعذّر تشغيل اللعبة: {msg}",
- "w.play.noBios": "يلزم BIOS الجهاز: ضعه في مجلد BIOS (انظر الإعدادات > BIOS)."
+ "w.play.noBios": "يلزم BIOS الجهاز: ضعه في مجلد BIOS (انظر الإعدادات > BIOS).",
+ "f.raextra.heading": "RetroArch: إطار، شيدر، غشّ",
+ "f.raextra.notRetroarch": "هذه اللعبة لا تعمل عبر RetroArch",
+ "f.raextra.noCfg": "مجلد RetroArch غير موجود (retroarch.cfg مفقود)",
+ "f.raextra.noCheats": "لم يُعثر على غشّ لهذه اللعبة",
+ "f.raextra.bezel": "إطار (Bezel)",
+ "f.raextra.shader": "شيدر",
+ "f.raextra.cheats": "غشّ",
+ "f.raextra.none": "بلا",
+ "f.raextra.inherit": "الافتراضي",
+ "f.raextra.choose": "اختر إطارًا…",
+ "f.raextra.loadCheats": "ابحث عن غشّ",
+ "f.raextra.core": "احفظ كافتراضي للنواة ({core})",
+ "f.raextra.saved": "تم الحفظ",
+ "f.raextra.restartNote": "يُطبَّق عند تشغيل اللعبة في المرة القادمة."
 }

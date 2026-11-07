@@ -3483,5 +3483,19 @@
  "w.play.preparing": "エミュレーターを準備しています...",
  "w.play.downloading": "エミュレーターをダウンロード中... {pct}%",
  "w.play.error": "ゲームを起動できません: {msg}",
- "w.play.noBios": "本体の BIOS が必要です。BIOS フォルダーに置いてください(設定 > BIOS を参照)。"
+ "w.play.noBios": "本体の BIOS が必要です。BIOS フォルダーに置いてください(設定 > BIOS を参照)。",
+ "f.raextra.heading": "RetroArch：ベゼル、シェーダー、チート",
+ "f.raextra.notRetroarch": "このゲームは RetroArch で起動しません",
+ "f.raextra.noCfg": "RetroArch のフォルダが見つかりません（retroarch.cfg がありません）",
+ "f.raextra.noCheats": "このゲームのチートは見つかりません",
+ "f.raextra.bezel": "ベゼル",
+ "f.raextra.shader": "シェーダー",
+ "f.raextra.cheats": "チート",
+ "f.raextra.none": "なし",
+ "f.raextra.inherit": "デフォルト",
+ "f.raextra.choose": "ベゼルを選択…",
+ "f.raextra.loadCheats": "チートを探す",
+ "f.raextra.core": "コア（{core}）のデフォルトとして保存",
+ "f.raextra.saved": "保存しました",
+ "f.raextra.restartNote": "次回ゲーム起動時に反映されます。"
 }

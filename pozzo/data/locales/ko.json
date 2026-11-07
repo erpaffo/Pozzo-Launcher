@@ -3483,5 +3483,19 @@
  "w.play.preparing": "에뮬레이터 준비 중...",
  "w.play.downloading": "에뮬레이터 다운로드 중... {pct}%",
  "w.play.error": "게임을 시작할 수 없습니다: {msg}",
- "w.play.noBios": "콘솔 BIOS가 필요합니다. BIOS 폴더에 넣어 주세요(설정 > BIOS 참고)."
+ "w.play.noBios": "콘솔 BIOS가 필요합니다. BIOS 폴더에 넣어 주세요(설정 > BIOS 참고).",
+ "f.raextra.heading": "RetroArch: 베젤, 셰이더, 치트",
+ "f.raextra.notRetroarch": "이 게임은 RetroArch로 실행되지 않습니다",
+ "f.raextra.noCfg": "RetroArch 폴더를 찾을 수 없습니다(retroarch.cfg 없음)",
+ "f.raextra.noCheats": "이 게임의 치트를 찾지 못했습니다",
+ "f.raextra.bezel": "베젤",
+ "f.raextra.shader": "셰이더",
+ "f.raextra.cheats": "치트",
+ "f.raextra.none": "없음",
+ "f.raextra.inherit": "기본값",
+ "f.raextra.choose": "베젤 선택…",
+ "f.raextra.loadCheats": "치트 찾기",
+ "f.raextra.core": "코어({core})의 기본값으로 저장",
+ "f.raextra.saved": "저장됨",
+ "f.raextra.restartNote": "다음에 게임을 시작할 때 적용됩니다."
 }

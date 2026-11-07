@@ -3483,5 +3483,19 @@
  "w.play.preparing": "正在准备模拟器...",
  "w.play.downloading": "正在下载模拟器... {pct}%",
  "w.play.error": "无法启动游戏:{msg}",
- "w.play.noBios": "需要主机的 BIOS:请放入 BIOS 文件夹(见 设置 > BIOS)。"
+ "w.play.noBios": "需要主机的 BIOS:请放入 BIOS 文件夹(见 设置 > BIOS)。",
+ "f.raextra.heading": "RetroArch：边框、着色器、金手指",
+ "f.raextra.notRetroarch": "此游戏不通过 RetroArch 启动",
+ "f.raextra.noCfg": "未找到 RetroArch 文件夹（缺少 retroarch.cfg）",
+ "f.raextra.noCheats": "未找到此游戏的金手指",
+ "f.raextra.bezel": "边框（Bezel）",
+ "f.raextra.shader": "着色器",
+ "f.raextra.cheats": "金手指",
+ "f.raextra.none": "无",
+ "f.raextra.inherit": "默认",
+ "f.raextra.choose": "选择边框…",
+ "f.raextra.loadCheats": "查找金手指",
+ "f.raextra.core": "保存为核心（{core}）的默认值",
+ "f.raextra.saved": "已保存",
+ "f.raextra.restartNote": "下次启动游戏时生效。"
 }

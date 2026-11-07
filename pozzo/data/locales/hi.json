@@ -3483,5 +3483,19 @@
  "w.play.preparing": "एमुलेटर तैयार हो रहा है...",
  "w.play.downloading": "एमुलेटर डाउनलोड हो रहा है... {pct}%",
  "w.play.error": "गेम शुरू नहीं हो सका: {msg}",
- "w.play.noBios": "कंसोल का BIOS चाहिए: उसे BIOS फ़ोल्डर में रखें (सेटिंग > BIOS देखें)।"
+ "w.play.noBios": "कंसोल का BIOS चाहिए: उसे BIOS फ़ोल्डर में रखें (सेटिंग > BIOS देखें)।",
+ "f.raextra.heading": "RetroArch: बेज़ल, शेडर, चीट",
+ "f.raextra.notRetroarch": "यह गेम RetroArch से नहीं चलता",
+ "f.raextra.noCfg": "RetroArch फ़ोल्डर नहीं मिला (retroarch.cfg नहीं है)",
+ "f.raextra.noCheats": "इस गेम के लिए कोई चीट नहीं मिला",
+ "f.raextra.bezel": "बेज़ल",
+ "f.raextra.shader": "शेडर",
+ "f.raextra.cheats": "चीट",
+ "f.raextra.none": "कोई नहीं",
+ "f.raextra.inherit": "डिफ़ॉल्ट",
+ "f.raextra.choose": "बेज़ल चुनें…",
+ "f.raextra.loadCheats": "चीट खोजें",
+ "f.raextra.core": "कोर ({core}) के लिए डिफ़ॉल्ट के रूप में सहेजें",
+ "f.raextra.saved": "सहेजा गया",
+ "f.raextra.restartNote": "गेम के अगली बार शुरू होने पर लागू होगा।"
 }

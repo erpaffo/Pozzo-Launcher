@@ -3483,5 +3483,19 @@
  "w.play.preparing": "Preparando el emulador...",
  "w.play.downloading": "Descargando el emulador... {pct}%",
  "w.play.error": "No se puede iniciar el juego: {msg}",
- "w.play.noBios": "Se necesita la BIOS de la consola: ponla en la carpeta de BIOS (ver Ajustes > BIOS)."
+ "w.play.noBios": "Se necesita la BIOS de la consola: ponla en la carpeta de BIOS (ver Ajustes > BIOS).",
+ "f.raextra.heading": "RetroArch: bezel, shader, trucos",
+ "f.raextra.notRetroarch": "Este juego no se inicia con RetroArch",
+ "f.raextra.noCfg": "Carpeta de RetroArch no encontrada (falta retroarch.cfg)",
+ "f.raextra.noCheats": "No hay trucos para este juego",
+ "f.raextra.bezel": "Bezel",
+ "f.raextra.shader": "Shader",
+ "f.raextra.cheats": "Trucos",
+ "f.raextra.none": "Ninguno",
+ "f.raextra.inherit": "Predeterminado",
+ "f.raextra.choose": "Elegir bezel…",
+ "f.raextra.loadCheats": "Buscar trucos",
+ "f.raextra.core": "Guardar como predeterminado del core ({core})",
+ "f.raextra.saved": "Guardado",
+ "f.raextra.restartNote": "Se aplica al iniciar el juego la próxima vez."
 }
