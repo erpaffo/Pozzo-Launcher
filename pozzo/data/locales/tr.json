@@ -3512,5 +3512,8 @@
  "s.netstore.done": "Kütüphanede: {title}",
  "s.netstore.noExe": "Kurulan oyunda çalıştırılabilir dosya bulunamadı",
  "s.netstore.notRecognized": "Kurulum bitti ama oyun tanınmadı",
- "s.netstore.gone": "Oyun artık ağ klasöründe değil"
+ "s.netstore.gone": "Oyun artık ağ klasöründe değil",
+ "j.ctl.ds.led": "Kapaktan ışık çubuğu rengi",
+ "j.ctl.ds.rumble": "Gezinirken titreşim",
+ "a.pad.battery": "Kol pili: %{n}"
 }

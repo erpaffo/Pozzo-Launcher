@@ -2291,3 +2291,5 @@ button.gs-ranking-item:hover, button.gs-ranking-item:focus-visible { border-colo
 /* video snap (videosnap.js): sopra l'immagine, appare quando parte */
 video.vsnap { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease; pointer-events: none; }
 video.vsnap.on { opacity: 1; }
+.ds-bat { font-size: .85rem; color: var(--muted); white-space: nowrap; align-self: center; }
+.ds-bat.low { color: #e5534b; }

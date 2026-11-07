@@ -253,3 +253,5 @@ html[data-bptext="xlarge"] .shelf h2 { font-size: 1.3rem; }
 
 /* video snap (videosnap.js) */
 #bp-bg > video.vsnap { filter: brightness(.4) saturate(1.1); }
+.ds-bat { flex: none; font-size: 1.05rem; color: var(--muted); }
+.ds-bat.low { color: #e5534b; }

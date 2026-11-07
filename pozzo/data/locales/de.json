@@ -3512,5 +3512,8 @@
  "s.netstore.done": "In der Bibliothek: {title}",
  "s.netstore.noExe": "Keine ausführbare Datei im installierten Spiel gefunden",
  "s.netstore.notRecognized": "Installation beendet, aber das Spiel wurde nicht erkannt",
- "s.netstore.gone": "Das Spiel ist nicht mehr im Netzwerkordner"
+ "s.netstore.gone": "Das Spiel ist nicht mehr im Netzwerkordner",
+ "j.ctl.ds.led": "Lichtleistenfarbe aus dem Cover",
+ "j.ctl.ds.rumble": "Vibration bei der Navigation",
+ "a.pad.battery": "Controller-Akku: {n}%"
 }

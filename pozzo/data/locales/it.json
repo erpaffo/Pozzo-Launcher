@@ -3512,5 +3512,8 @@
  "s.netstore.done": "In libreria: {title}",
  "s.netstore.noExe": "Nessun eseguibile trovato nel gioco installato",
  "s.netstore.notRecognized": "Installazione finita, ma non ho riconosciuto il gioco",
- "s.netstore.gone": "Il gioco non è più nella cartella di rete"
+ "s.netstore.gone": "Il gioco non è più nella cartella di rete",
+ "j.ctl.ds.led": "Colore della barra luminosa dalla copertina",
+ "j.ctl.ds.rumble": "Vibrazione nella navigazione",
+ "a.pad.battery": "Batteria del controller: {n}%"
 }

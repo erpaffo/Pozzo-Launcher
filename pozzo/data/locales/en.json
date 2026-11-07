@@ -3512,5 +3512,8 @@
  "s.netstore.done": "In library: {title}",
  "s.netstore.noExe": "No executable found in the installed game",
  "s.netstore.notRecognized": "Installation finished, but the game was not recognized",
- "s.netstore.gone": "The game is no longer in the network folder"
+ "s.netstore.gone": "The game is no longer in the network folder",
+ "j.ctl.ds.led": "Lightbar colour from the cover art",
+ "j.ctl.ds.rumble": "Vibration when navigating",
+ "a.pad.battery": "Controller battery: {n}%"
 }

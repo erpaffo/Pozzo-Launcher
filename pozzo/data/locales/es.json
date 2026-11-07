@@ -3512,5 +3512,8 @@
  "s.netstore.done": "En la biblioteca: {title}",
  "s.netstore.noExe": "No se encontró ningún ejecutable en el juego instalado",
  "s.netstore.notRecognized": "Instalación terminada, pero no se reconoció el juego",
- "s.netstore.gone": "El juego ya no está en la carpeta de red"
+ "s.netstore.gone": "El juego ya no está en la carpeta de red",
+ "j.ctl.ds.led": "Color de la barra de luz según la portada",
+ "j.ctl.ds.rumble": "Vibración al navegar",
+ "a.pad.battery": "Batería del mando: {n}%"
 }

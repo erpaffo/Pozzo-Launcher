@@ -3512,5 +3512,8 @@
  "s.netstore.done": "라이브러리에 추가됨: {title}",
  "s.netstore.noExe": "설치된 게임에서 실행 파일을 찾지 못했습니다",
  "s.netstore.notRecognized": "설치는 끝났지만 게임을 인식하지 못했습니다",
- "s.netstore.gone": "게임이 더 이상 네트워크 폴더에 없습니다"
+ "s.netstore.gone": "게임이 더 이상 네트워크 폴더에 없습니다",
+ "j.ctl.ds.led": "커버 이미지로 라이트바 색상 설정",
+ "j.ctl.ds.rumble": "탐색 중 진동",
+ "a.pad.battery": "컨트롤러 배터리: {n}%"
 }

@@ -3512,5 +3512,8 @@
  "s.netstore.done": "ライブラリに追加: {title}",
  "s.netstore.noExe": "インストールしたゲームに実行ファイルが見つかりません",
  "s.netstore.notRecognized": "インストールは完了しましたが、ゲームを認識できませんでした",
- "s.netstore.gone": "ゲームはネットワークフォルダーにありません"
+ "s.netstore.gone": "ゲームはネットワークフォルダーにありません",
+ "j.ctl.ds.led": "カバーアートからライトバーの色を決める",
+ "j.ctl.ds.rumble": "ナビゲーション時の振動",
+ "a.pad.battery": "コントローラーの電池残量: {n}%"
 }

@@ -2,6 +2,10 @@ async function cpInit() {
   const $ = (s) => document.querySelector(s), msg = $("#cp-msg");
   if (!$("#cp-type") || $("#cp-type").dataset.ready) return;
   $("#cp-type").dataset.ready = "1";
+  for (const [id, key, def] of [["#ds-led", "dsLed", true], ["#ds-rumble", "dsRumble", false]]) { // pad Sony: salvate nel dispositivo (dualsense.js)
+    $(id).checked = store.get(key, def);
+    $(id).onchange = (e) => store.set(key, e.target.checked);
+  }
   try {
     const d = await (await fetch("/api/controller-profiles")).json();
     $("#cp-type").innerHTML = Object.entries(d.types).map(([k, v]) => `<option value="${k}"${k === d.detected ? " selected" : ""}>${v}</option>`).join("");

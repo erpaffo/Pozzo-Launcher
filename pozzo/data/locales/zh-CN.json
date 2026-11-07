@@ -3512,5 +3512,8 @@
  "s.netstore.done": "已加入游戏库:{title}",
  "s.netstore.noExe": "在已安装的游戏中未找到可执行文件",
  "s.netstore.notRecognized": "安装已完成,但未能识别该游戏",
- "s.netstore.gone": "该游戏已不在网络文件夹中"
+ "s.netstore.gone": "该游戏已不在网络文件夹中",
+ "j.ctl.ds.led": "根据封面设置灯条颜色",
+ "j.ctl.ds.rumble": "导航时振动",
+ "a.pad.battery": "手柄电量：{n}%"
 }
