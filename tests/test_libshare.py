@@ -265,6 +265,7 @@ def test_norm_url():
         with pytest.raises(ValueError):
             PR.norm_url(bad)
 
+@pytest.mark.skipif(sys.platform != "win32", reason="le giunzioni NTFS (mklink /J) esistono solo su Windows")
 def test_zip_senza_giunzioni_ntfs(tmp_path):
     import subprocess
     outside = tmp_path / "fuori"
@@ -292,7 +293,7 @@ def test_un_solo_scorrimento_se_il_download_e_rifiutato(env, monkeypatch):
 
 def test_client_scarta_riferimenti_ostili(monkeypatch):
     from pozzo.stores import pozzoremote as PR
-    games = [{"id": 1, "ref": "0123456789ab"}, {"id": 2, "ref": "/../.."}, {"id": 3, "ref": "..\.."}, {"id": 4}]
+    games = [{"id": 1, "ref": "0123456789ab"}, {"id": 2, "ref": "/../.."}, {"id": 3, "ref": r"..\.."}, {"id": 4}]
     monkeypatch.setattr(PR, "call", lambda *a, **k: {"games": games})
     assert [g["id"] for g in PR.list_remote({})] == [1]
 

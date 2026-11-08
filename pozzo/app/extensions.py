@@ -37,6 +37,7 @@ import threading
 import time
 import tomllib
 import traceback
+import weakref
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -408,7 +409,7 @@ LOAD_MS: dict[str, float] = {}   # {id plugin: millisecondi spesi all'avvio (reg
 FIRST_USE_MS: dict[str, float] = {}  # {id plugin lazy: millisecondi di import + register() al primo accesso}
 EAGER_NEEDED: dict[str, set] = {}    # {id plugin lazy: API non differibili usate in register()}
 LOAD_TOTAL_MS = 0.0              # tempo totale di load_backends all'avvio
-_HOOKED_APPS: set[int] = set()
+_HOOKED_APPS: weakref.WeakSet = weakref.WeakSet()  # non id(): un'app liberata lascia il suo indirizzo a quella dopo
 ERRORS: dict[str, str] = {}      # errori di backend per id (lo stesso dict di load_backends)
 LAZY: dict[str, "LazyPlugin"] = {}  # segnaposto lazy montati, per spegnerne gli eventi in hot_unload
 
@@ -508,8 +509,8 @@ class PluginAPI:
             raise ValueError("every deve essere > 0 secondi")
         j = Job(self.id, name, fn, float(every), self.log)
         JOBS.append(j)
-        if id(self.app) not in _HOOKED_APPS and hasattr(self.app, "add_event_handler"):
-            _HOOKED_APPS.add(id(self.app))
+        if self.app not in _HOOKED_APPS and hasattr(self.app, "add_event_handler"):
+            _HOOKED_APPS.add(self.app)
             self.app.add_event_handler("shutdown", stop_jobs)
         threading.Thread(target=j._loop, args=(run_at_start,), daemon=True, name=f"plugin-{self.id}-{name}").start()
         return j

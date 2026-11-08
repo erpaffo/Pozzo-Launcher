@@ -91,6 +91,15 @@ def test_shutdown_hook_registered_once_per_app():
     assert len(app.handlers) == 1
 
 
+def test_shutdown_hook_not_skipped_when_an_old_app_is_freed():
+    """L'id() di un'app liberata viene riusato da quella dopo (su macOS quasi sempre): l'hook va registrato lo stesso."""
+    for _ in range(50):
+        app = FakeApp()
+        make_api(app).job("a", lambda: None, every=60)
+        assert [e for e, _ in app.handlers] == ["shutdown"]
+        del app
+
+
 def test_load_time_and_jobs_in_listing(tmp_path, monkeypatch):
     d = tmp_path / "plugins" / "lento"
     d.mkdir(parents=True)
