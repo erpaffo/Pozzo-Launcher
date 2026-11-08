@@ -19,7 +19,7 @@ def _env(d: Path):
 def test_target_portable_and_installed():
     saved = dict(os.environ)
     try:
-        with tempfile.TemporaryDirectory(prefix="_ra-", dir=Path(__file__).parent) as d:
+        with tempfile.TemporaryDirectory(prefix="_ra-") as d:
             d = Path(d).resolve()
             _env(d)
             exe = d / "portable" / "retroarch.exe"
@@ -57,7 +57,7 @@ def test_render_preserves_adds_and_is_idempotent():
 def test_full_cycle_byte_identical():
     saved = dict(os.environ)
     try:
-        with tempfile.TemporaryDirectory(prefix="_ra-", dir=Path(__file__).parent) as d:
+        with tempfile.TemporaryDirectory(prefix="_ra-") as d:
             d = Path(d)
             _env(d)
             exe = d / "ra" / "retroarch.exe"

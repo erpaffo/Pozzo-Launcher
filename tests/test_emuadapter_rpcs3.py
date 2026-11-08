@@ -16,7 +16,7 @@ ENV = ("HOME", "USERPROFILE", "XDG_CONFIG_HOME", "RPCS3_CONFIG_DIR")
 
 class Home:
     def __enter__(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="_rpcs3-", dir=Path(__file__).parent)
+        self.tmp = tempfile.TemporaryDirectory(prefix="_rpcs3-")
         self.dir = Path(self.tmp.name).resolve()
         self.old = {k: os.environ.get(k) for k in ENV}
         os.environ["HOME"] = os.environ["USERPROFILE"] = str(self.dir / "home")

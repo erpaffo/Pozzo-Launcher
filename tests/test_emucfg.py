@@ -33,7 +33,7 @@ class Env:
         self.data = data or CATALOG
 
     def __enter__(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="_emucfg-", dir=Path(__file__).parent)
+        self.tmp = tempfile.TemporaryDirectory(prefix="_emucfg-")
         self.dir = Path(self.tmp.name)
         (self.dir / "cat").mkdir()
         (self.dir / "cat" / "fake.json").write_text(json.dumps(self.data), encoding="utf-8")
@@ -163,7 +163,7 @@ def test_invalid_catalog_raises():
 
 
 def test_atomic_write_leaves_no_temp_and_keeps_old_on_failure():
-    with tempfile.TemporaryDirectory(prefix="_emucfg-", dir=Path(__file__).parent) as folder:
+    with tempfile.TemporaryDirectory(prefix="_emucfg-") as folder:
         target = Path(folder) / "a" / "x.cfg"
         emucfg._atomic_write(target, b"uno")
         emucfg._atomic_write(target, b"due")

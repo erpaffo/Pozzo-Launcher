@@ -28,10 +28,13 @@ SINGLE = re.compile(r"(\d+) (passed|failed|skipped|errors?)")
 RESET, GREEN, RED, YELLOW, DIM = "\033[0m", "\033[32m", "\033[31m", "\033[33m", "\033[2m"
 
 DOCKER_SCRIPT = (
+    "echo '@@ copio i sorgenti nel container'; "
     "cp -r /src /work && cd /work && find . -name '*.py' -not -path './.git/*' -exec sed -i 's/\\r$//' {{}} + ; "
+    "echo '@@ apt-get: installo librerie di sistema (libegl1, libnss3)'; "
     "(apt-get update -qq && apt-get install -y -qq libegl1 libnss3 >/dev/null) 2>&1 | tail -n 1; "
+    "echo '@@ pip: installo le dipendenze Python'; "
     "pip install -q -r requirements.txt -r requirements-dev.txt 2>&1 | tail -n 3; "
-    "echo '@@PRONTO'; PYTHONUTF8=1 python packaging/run_tests.py --shard {k}/{n}"
+    "echo '@@ avvio dei test'; PYTHONUTF8=1 python packaging/run_tests.py --shard {k}/{n}"
 )
 
 
@@ -40,7 +43,7 @@ class Shard:
         self.group, self.k, self.total, self.cmd = group, k, total, cmd
         self.done = self.failed = 0
         self.passed = self.skipped = self.nfailed = 0
-        self.current = "preparazione..." if group.startswith("Linux") else "avvio..."
+        self.current = "docker: avvio il container (la prima volta scarica python:3.12)" if group.startswith("Linux") else "avvio..."
         self.failed_names: list[str] = []
         self.finished = False
         self.code: int | None = None
@@ -48,7 +51,10 @@ class Shard:
 
     def feed(self, line: str) -> None:
         self.log.write(line + "\n")
-        if m := re.match(r"=== (\S+)", line):
+        self.last = line.strip() or getattr(self, "last", "")  # ultima riga non vuota: la causa se il processo muore subito
+        if line.startswith("@@ "):  # passo di preparazione del container
+            self.current = line[3:]
+        elif m := re.match(r"=== (\S+)", line):
             self.current = m.group(1)
         elif m := re.match(r"--- (\S+): (ok|FALLITO)", line):
             self.done += 1
@@ -138,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         for s in g:
             if s.code != 0 or s.failed_names:
                 bad = True
-                print(f"{RED}{name} parte {s.k}: {', '.join(s.failed_names) or 'errore (vedi log)'}{RESET}")
+                print(f"{RED}{name} parte {s.k}: {', '.join(s.failed_names) or getattr(s, 'last', 'errore (vedi log)')}{RESET}")
     print(f"\nLog completi: {logdir}")
     print(f"{RED}CI ROSSA{RESET}" if bad else f"{GREEN}TUTTO VERDE{RESET}")
     return 1 if bad else 0

@@ -17,7 +17,7 @@ class Home:
     """Cartelle utente finte dentro tmp (HOME, USERPROFILE, XDG, LOCALAPPDATA, Documents)."""
 
     def __enter__(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="_duck-", dir=Path(__file__).parent)
+        self.tmp = tempfile.TemporaryDirectory(prefix="_duck-")
         self.dir = Path(self.tmp.name).resolve()
         keys = ("HOME", "USERPROFILE", "XDG_CONFIG_HOME", "LOCALAPPDATA")
         self.env = {k: os.environ.get(k) for k in keys}

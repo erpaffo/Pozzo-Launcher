@@ -17,7 +17,7 @@ class Home:
     """Cartelle utente finte dentro tmp (HOME, USERPROFILE, XDG, Documents)."""
 
     def __enter__(self):
-        self.tmp = tempfile.TemporaryDirectory(prefix="_pcsx2-", dir=Path(__file__).parent)
+        self.tmp = tempfile.TemporaryDirectory(prefix="_pcsx2-")
         self.dir = Path(self.tmp.name).resolve()
         self.env = {k: os.environ.get(k) for k in ("HOME", "USERPROFILE", "XDG_CONFIG_HOME")}
         os.environ["HOME"] = os.environ["USERPROFILE"] = str(self.dir / "home")
