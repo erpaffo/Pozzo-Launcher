@@ -86,6 +86,7 @@ ALLOWLIST = {
     ('pozzo/app/static/js/actions.js', 't'): HTML,
     ('pozzo/app/static/js/detail-mods.js', 'results'): HTML,
     ('pozzo/app/static/js/detail.js', 'a.points'): NUM,
+    ('pozzo/app/static/js/detail.js', 'cur'): HTML,
     ('pozzo/app/static/js/detail.js', 'done'): NUM,
     ('pozzo/app/static/js/detail.js', 'g.unlocked'): NUM,
     ('pozzo/app/static/js/detail.js', 'parts'): HTML,
