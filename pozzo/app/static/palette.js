@@ -48,6 +48,7 @@
     const groups = [
       { id: "games", label: t("b.palette.group.games"), items: q ? rank(sources.games || [], q, lab, MAX_GAMES) : [] },
       { id: "consoles", label: t("b.common.console"), items: rank(sources.consoles || [], q, lab, MAX_OTHER) },
+      { id: "filters", label: t("b.palette.group.filters"), items: rank(sources.filters || [], q, lab, MAX_OTHER) },
       { id: "settings", label: t("b.common.settings"), items: rank(sources.settings || [], q, lab, MAX_OTHER) },
       { id: "actions", label: t("b.palette.group.actions"), items: rank(sources.actions || [], q, lab, q ? MAX_OTHER : 8) },
     ];
@@ -72,7 +73,8 @@
     const settings = (typeof SETTINGS_CATS !== "undefined" ? SETTINGS_CATS : []).map(([id, label]) => ({ label, hint: t("b.common.settings"), run: () => openSettings(id) }));
     const actions = (SC()?.REGISTRY || []).filter((en) => (en.scope === "desktop" || en.scope === "both") && en.id !== "palette")
       .map((en) => ({ label: en.label, hint: SC().keyLabel(en.id), run: () => SC().run(en.id) }));
-    return { games, consoles, settings, actions };
+    const filters = (st?.savedF || []).map((x) => ({ label: x.name, hint: t("a.nav.savedFilters"), run: () => { closeOverlays(); if (typeof runSavedFilter === "function") runSavedFilter(x.id); } }));
+    return { games, consoles, filters, settings, actions };
   }
   function closeOverlays() {
     if (typeof settingsOpen === "function" && settingsOpen()) closeSettings();

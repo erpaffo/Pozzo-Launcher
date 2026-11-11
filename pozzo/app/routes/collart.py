@@ -12,7 +12,27 @@ from fastapi.responses import FileResponse
 
 from .. import jobs as J
 from ... import config as C
+from ... import profilecfg as PC
 from ... import i18n as I
+
+
+def clean_filters(items: list, now_ms: int | None = None) -> list[dict]:
+    """Normalizza i filtri salvati: nome, ricerca, filtri della barra, ordine e la vista (console/store/stato)."""
+    now_ms = now_ms or int(time.time() * 1000)
+    clean = []
+    for it in items[:100]:
+        f = it.get("f") if isinstance(it, dict) else None
+        if not isinstance(f, dict) or not str(it.get("name") or "").strip():
+            continue
+        d = f.get("disc") if isinstance(f.get("disc"), dict) else {}
+        v = f.get("view") if isinstance(f.get("view"), dict) else {}
+        out = {**{k: str(f.get(k) or "")[:80] for k in ("lang", "sort", "group", "search", "inst")},
+               "disc": {k: str(d.get(k) or "")[:40] for k in ("preset", "genre", "decade")}}
+        if v.get("type") in ("all", "platform", "store", "status"):
+            out["view"] = {"type": v["type"], "id": str(v.get("id") or "")[:60]}
+        clean.append({"id": str(it.get("id") or "")[:40] or f"f{now_ms}{len(clean)}",
+                      "name": str(it["name"]).strip()[:80], "f": out})
+    return clean
 
 
 def build_router(ctx) -> APIRouter:
@@ -146,28 +166,24 @@ def build_router(ctx) -> APIRouter:
         cfg.app["smart_collections"] = clean
         return {"items": clean}
 
-    # ------------------------------------------------------------ filtri salvati (combinazioni di filtri con nome)
+    # ------------------------------------------------------------ filtri salvati (combinazioni di filtri con nome, per profilo)
+    def _saved_filters():
+        v = PC.get(cfg, "saved_filters")
+        if v is None and PC.active(cfg) == "default":  # prima erano globali in settings.json
+            v = cfg.app.get("saved_filters")
+        return v if isinstance(v, list) else []
+
     @router.get("/api/filters")
     def api_filters():
-        return {"items": cfg.app.get("saved_filters") or []}
+        return {"items": _saved_filters()}
 
     @router.post("/api/filters")
     def api_filters_save(body: dict = Body(...)):
         items = body.get("items")
         if not isinstance(items, list):
             raise HTTPException(400, I.tr("s.collart.list_invalid"))
-        clean = []
-        for it in items[:100]:
-            f = it.get("f") if isinstance(it, dict) else None
-            if not isinstance(f, dict) or not str(it.get("name") or "").strip():
-                continue
-            d = f.get("disc") if isinstance(f.get("disc"), dict) else {}
-            clean.append({"id": str(it.get("id") or "")[:40] or f"f{int(time.time() * 1000)}",
-                          "name": str(it["name"]).strip()[:80],
-                          "f": {**{k: str(f.get(k) or "")[:80] for k in ("lang", "sort", "group", "search", "inst")},
-                                "disc": {k: str(d.get(k) or "")[:40] for k in ("preset", "genre", "decade")}}})
-        C.save_settings(cfg, app={"saved_filters": clean})
-        cfg.app["saved_filters"] = clean
+        clean = clean_filters(items)
+        PC.set(cfg, "saved_filters", clean)
         return {"items": clean}
 
     return router

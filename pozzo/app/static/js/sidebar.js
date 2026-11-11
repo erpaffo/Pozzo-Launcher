@@ -155,6 +155,7 @@ function renderStatusList() {
 function renderSavedFilters() {
   $("#sf-list").innerHTML = (S.savedF || []).map((x) => `<a class="nav-item" role="button" tabindex="0" data-sf="${esc(x.id)}">`
     + `<span class="ico">▽</span><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span>`
+    + `<button class="icon-btn sf-ren" data-sf-ren="${esc(x.id)}" title="${t("a.nav.filterRename")}" aria-label="${t("a.nav.filterRename")}">✎</button>`
     + `<button class="icon-btn sf-del" data-sf-del="${esc(x.id)}" title="${t("a.common.delete")}" aria-label="${t("a.common.delete")}">✕</button></a>`).join("");
 }
 async function saveFilters(items) {
@@ -162,9 +163,12 @@ async function saveFilters(items) {
   renderSavedFilters();
 }
 function currentFilter() {
-  return { disc: { ...S.disc }, lang: S.langFilter, sort: S.sort, group: S.group, search: S.search, inst: S.instFilter };
+  const v = S.view || {}, view = ["all", "platform", "store", "status"].includes(v.type) ? { type: v.type, id: v.id || "" } : undefined;
+  return { disc: { ...S.disc }, lang: S.langFilter, sort: S.sort, group: S.group, search: S.search, inst: S.instFilter, ...(view ? { view } : {}) };
 }
 function applyFilter(f) {
+  // la console/lo store/lo stato salvati: si cambia vista prima, gli altri filtri la rinfrescano
+  if (f.view && JSON.stringify(f.view) !== JSON.stringify({ type: S.view.type, id: S.view.id || "" })) setView(f.view.id ? f.view : { type: f.view.type });
   S.disc = { preset: "", genre: "", decade: "", ...f.disc }; store.set("disc", S.disc);
   S.langFilter = f.lang || ""; store.set("language", S.langFilter);
   if (f.sort) { S.sort = f.sort; store.set("sorts", { ...store.get("sorts", {}), [S.view.type]: S.sort }); }
@@ -185,12 +189,27 @@ async function initSavedFilters() {
     if (name) saveFilters((S.savedF || []).concat([{ id: "f" + Date.now().toString(36), name, f: currentFilter() }]));
   };
   $("#sf-list").addEventListener("click", (e) => {
+    const ren = e.target.closest("[data-sf-ren]");
+    if (ren) {
+      e.stopPropagation();
+      const cur = S.savedF.find((y) => y.id === ren.dataset.sfRen);
+      const name = (prompt(t("a.nav.filterName"), cur?.name || "") || "").trim();
+      return name && cur && saveFilters(S.savedF.map((y) => (y === cur ? { ...y, name } : y)));
+    }
     const del = e.target.closest("[data-sf-del]");
     if (del) { e.stopPropagation(); return saveFilters(S.savedF.filter((x) => x.id !== del.dataset.sfDel)); }
     const a = e.target.closest("[data-sf]");
     const x = a && S.savedF.find((y) => y.id === a.dataset.sf);
     if (x) applyFilter(x.f);
   });
+  $("#sf-list").addEventListener("keydown", (e) => { // la voce è un role=button: Invio/Spazio come il clic
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-sf]")) { e.preventDefault(); e.target.click(); }
+  });
+}
+/* usati da palette Ctrl+K e widget della dashboard */
+function runSavedFilter(id) {
+  const x = (S.savedF || []).find((y) => y.id === id);
+  if (x) applyFilter(x.f);
 }
 
 function renderSmartList() {

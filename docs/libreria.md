@@ -98,6 +98,10 @@ delle impostazioni, in `profiles/`). Non si può cambiare profilo durante una pa
 - **🎲 Gioco a caso**: sceglie un gioco tra quelli mostrati (filtri e ricerca compresi), preferendo quelli avviabili
   subito.
 
+### Filtri salvati
+
+Il **＋** accanto a «Filtri salvati» nella barra laterale salva con un nome la combinazione attuale: la vista (console, store o stato), la ricerca, genere, decennio, lingua, installati, ordine e raggruppamento. Ogni voce si richiama con un clic, si rinomina (✎) o si elimina (✕). I filtri sono **per profilo**: ognuno ha i suoi. Si trovano anche nella palette **Ctrl+K** (gruppo «Filtri salvati») e nel widget «Filtri salvati» della dashboard.
+
 ### Scopri
 
 Il pannello **Scopri** filtra e ordina la vista corrente per trovare cosa giocare:
@@ -282,6 +286,12 @@ I numeri arrivano dal tempo di gioco registrato dall'app più quello dichiarato 
 
 Il voto mostrato combina tutte le fonti pesandole per **numero di voti** (media bayesiana): 4,7 con 1.800 voti conta
 più di 5,0 con 2 voti. Il voto della **critica** (Metacritic o IGDB) è mostrato a parte.
+
+## Importare da un altro launcher
+
+In **Impostazioni, Libreria, «Importa da un altro launcher»** scegli il formato e il file (o la cartella). Formati: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` oppure `userConfigurations.json`) e **RetroArch** (una playlist `.lpl` o la cartella `playlists`: ogni playlist diventa una raccolta, `content_favorites` i preferiti).
+
+Prima di scrivere, Pozzo mostra un'**anteprima**: quanti giochi sono **nuovi**, quanti **già presenti** e quanti **ignorati** (non abbinabili e senza eseguibile), più preferiti, tempi di gioco e raccolte che verrebbero aggiunti. Solo dopo la tua conferma importa. Non copia mai file di gioco, non cancella nulla e **non importa mai script o comandi** dell'altro launcher: li conta e ti avvisa.
 
 ## Scorciatoie della libreria
 

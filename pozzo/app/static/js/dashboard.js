@@ -405,6 +405,18 @@ const builtInWidgets = [
     },
   },
   {
+    id: "games:saved_filters",
+    title: "g.dash.filters.title",
+    description: "g.dash.filters.desc",
+    category: "games",
+    defaultSpan: 1,
+    render: () => {
+      const list = (typeof root.S !== "undefined" && root.S?.savedF) || [];
+      if (!list.length) return `<div class="gs-widget-empty"><p class="muted">${t("g.dash.filters.empty")}</p></div>`;
+      return `<div class="gs-quick-actions-grid">${list.slice(0, 12).map((x) => `<button class="btn" type="button" data-saved-filter="${esc(x.id)}">▽ ${esc(x.name)}</button>`).join("")}</div>`;
+    },
+  },
+  {
     id: "tools:quick_actions",
     title: "g.dash.quick.title",
     description: "g.dash.quick.desc",
@@ -711,6 +723,12 @@ function setupDashboardEvents(element, context) {
       if (find("[data-roulette-reroll]")) {
         rerollRoulette(context);
         renderCustomDashboard(element, context);
+        return;
+      }
+      const sf = find("[data-saved-filter]");
+      if (sf) {
+        const id = sf.getAttribute ? sf.getAttribute("data-saved-filter") : sf.dataset.savedFilter;
+        if (typeof root.runSavedFilter === "function") root.runSavedFilter(id);
         return;
       }
       const quick = find("[data-quick-action]");

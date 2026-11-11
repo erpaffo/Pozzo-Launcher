@@ -72,6 +72,10 @@ The **Main** profile is permanent and cannot be deleted. Deleting another profil
 - **Cover Size**: slider located next to the filters.
 - **🎲 Random Game**: selects a random game from currently visible entries (taking filters and search into account), prioritizing titles that are ready to launch immediately.
 
+### Saved filters
+
+The **＋** next to "Saved filters" in the sidebar saves the current combination under a name: the view (console, store or status), search, genre, decade, language, installed, sort and grouping. Click an entry to apply it, rename it (✎) or delete it (✕). Saved filters are **per profile**. They also appear in the **Ctrl+K** palette ("Saved filters" group) and as a "Saved filters" dashboard widget.
+
 ### Discover
 
 The **Discover** panel filters and sorts the current view to help you find what to play:
@@ -227,6 +231,12 @@ Figures are computed by combining playtime tracked directly by the app with offi
 ## Ratings
 
 The displayed score aggregates all sources weighted by **number of votes** (Bayesian average): a 4.7 score with 1,800 votes carries more weight than a 5.0 score with 2 votes. The **critic** rating (Metacritic or IGDB) is displayed separately.
+
+## Importing from another launcher
+
+Under **Settings, Library, "Import from another launcher"** pick the format and the file (or folder). Formats: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` or `userConfigurations.json`) and **RetroArch** (a `.lpl` playlist or the `playlists` folder: each playlist becomes a collection, `content_favorites` becomes favorites).
+
+Before writing anything Pozzo shows a **preview**: how many games are **new**, **already present** and **ignored** (no match and no executable), plus the favorites, playtimes and collections that would be added. It only imports after you confirm. It never copies game files, never deletes anything and **never imports scripts or commands** from the other launcher: it counts them and warns you.
 
 ## Library Shortcuts
 
