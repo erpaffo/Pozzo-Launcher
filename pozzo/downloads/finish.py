@@ -13,6 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from .. import platforms as P
+from ..tools import space as TS, trash as TT
 from ..matching import best
 from . import extract as X, ingest as I, install
 from .task import PAUSED, QUEUED, RUNNING, record_extract
@@ -277,14 +278,15 @@ def _s_convert(t, mgr, ctx, c) -> bool:
     for g, _ in todo:
         t.phase = f"Converto {g.name}…"
         try:
+            TS.check(TS.tree_size(g) * 2, g.parent)  # l'originale resta finche' il nuovo non e' pronto
             out = S.convert(g, fmt, g.parent, lambda d, n: (t.set_stage("convert", "active", d), mgr._poke()))
         except (S.SwitchPackError, InterruptedError, OSError) as e:
             t.log(f"Conversione di {g.name} non riuscita, tengo l'originale: {e}", "warn")
             continue
         try:
-            shutil.rmtree(g) if g.is_dir() else g.unlink()
+            TT.to_trash(g)  # recuperabile dal Cestino, mai cancellazione definitiva
         except OSError as e:
-            t.log(f"Convertito in {out.name}, ma non riesco a togliere l'originale: {e}", "warn")
+            t.log(f"Convertito in {out.name}, ma non riesco a spostare l'originale nel Cestino: {e}", "warn")
         c.games[c.games.index(g)] = out
         t.log(f"Convertito in {out.name}")
     t.phase = ""

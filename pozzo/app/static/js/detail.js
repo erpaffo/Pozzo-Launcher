@@ -207,6 +207,7 @@ async function openDetail(id) {
   renderDetailSections(d);
   if (typeof loadDetailMods === "function") loadDetailMods(d);
   if (typeof loadDetailNoclient === "function") loadDetailNoclient(d);
+  if (typeof toolsDetailButton === "function") toolsDetailButton(d);
   if (d.shots) loadDetailShots(d.id);
   loadSaves(d);
   loadSimilar(d);

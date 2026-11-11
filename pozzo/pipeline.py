@@ -30,6 +30,7 @@ from .sources.base import Context, Result, Skipped
 
 LIST_FIELDS = {"genres", "franchises"}
 END = object()  # fine del flusso in una coda
+MEDIA_MAX_SIDE = {"cover": 800, "box3d": 800, "wheel": 800, "marquee": 800, "title": 1280, "screenshot": 1280, "fanart": 1920}
 
 _PRIORITY: dict[str, list[str]] = {}
 
@@ -107,6 +108,15 @@ class Stage:
         cap = int(self.cfg.app.get("video_max_mb") or 30) * 2**20 if mtype == "video" else 0
         path = await download_media(src.client, url, dest, limiter=src.media_limiter, headers=headers, max_bytes=cap)
         self.progress.advance(self.mtask)
+        if path and path.suffix.lower() in (".png", ".jpg", ".jpeg", ".bmp"):
+            # WebP ridimensionato: le immagini originali (anche 4K) sono il grosso della cache; se non conviene resta l'originale
+            try:
+                from . import imgopt
+                path = await asyncio.to_thread(imgopt.optimize, path, 82, MEDIA_MAX_SIDE.get(mtype, 1600))
+            except Exception:
+                pass
+            if not path.exists():  # optimize ha tolto l'originale senza produrre il .webp
+                path = None
         if path:
             rel = path.relative_to(self.cache.folder).as_posix()
             self.cache.put(g.key, src.name, f"media:{mtype}", rel)

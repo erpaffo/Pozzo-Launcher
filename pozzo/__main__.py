@@ -1,6 +1,10 @@
 import sys
 
-from .cli import main
+try:
+    from .cli import main
+except ModuleNotFoundError as e:  # dipendenze non installate (rich...): errore chiaro, non un traceback
+    from .deps import hint
+    raise SystemExit(hint(e)) from e
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["test"] and not getattr(sys, "frozen", False):  # python -m pozzo test: suite come la CI

@@ -1,5 +1,12 @@
 # Changelog
 
+## Non rilasciato
+
+### Migliorato
+
+- Download: se il flusso degli eventi si chiude per un errore, dopo 10 secondi se ne apre uno dedicato ai download e finché non torna l'elenco si aggiorna ogni 2 secondi.
+- Impostazioni download: una sola opzione «Monitora gli appunti»; quando è attiva compare il banner «N link negli appunti — Aggiungi» al ritorno su Pozzo. Gli appunti non si leggono mai se è spenta.
+
 ## 0.17.6 (2026-11-11)
 
 ### Aggiunto
@@ -8,9 +15,17 @@
 - Gestione download: categorie e tag con cartella e limiti di condivisione, cartella dei download incompleti, filtro IP, feed RSS con filtri automatici, password per pacchetto e regole di destinazione, controllo dei link prima di accodare, limiti per sito e rilevamento dei link negli appunti.
 - Metadati: il pulsante «Completa i mancanti dal web» cerca su DuckDuckGo o Bing le immagini mancanti di un gioco e le salva solo dopo la tua conferma.
 
+- Download di giochi in più parti: scaricate tutte le parti RAR, si estraggono insieme appena sono arrivate tutte, con password per pacchetto o da una lista comune e regole di destinazione per nome (regex → console e sottocartella).
+- Switch 2: i file `.nup` sono riconosciuti come giochi e i titoli dei siti di ROM tipo «Gioco Switch 2 NUP [PC Emulation]» vengono ripuliti.
+
 ### Migliorato
 
 - Download: le fasi dopo lo scaricamento riprendono dopo un riavvio, l'estrazione parte solo quando tutte le parti del gruppo sono arrivate, il disco pieno mette in pausa senza perdere il file e il seeding riparte da solo.
+
+### Cambiato
+
+- Nuova dipendenza: `zstandard` (per i NUP di Switch 2). Con `pip install -r requirements.txt` si installa da sola.
+- L'estrazione degli archivi dei port usa lo stesso estrattore dei download, con la protezione contro i percorsi fuori cartella anche per 7z e rar.
 
 ### Corretto
 

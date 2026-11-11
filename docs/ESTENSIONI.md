@@ -432,7 +432,7 @@ non parte (WinError 448). La release contiene solo lo store.
 |---|---|
 | **Statistiche** | tempo di gioco per console e store, giochi più giocati, completezza dei metadati |
 | **Link → Store** | legge una pagina che raccoglie altri siti, raggruppa i link per intestazione (h2/h3) e aggiunge ciascuno come store di una console o come store PC (repack / download diretto) |
-| **Store Minerva + Switch** | importa in un clic le cartelle di minerva-archive.org elencate su r-roms.github.io **e** aggiunge gli store Switch preimpostati (NXBrew `game-index`, Ziperto NSP, Ziperto XCI) |
+| **Store Minerva + Switch** | importa in un clic le cartelle di minerva-archive.org elencate su r-roms.github.io **e** aggiunge gli store preimpostati: Switch (NXBrew `game-index`, Ziperto NSP, Ziperto XCI), Switch 2 (NXBrew `switch-2-games`), PS4 e PS5 (superpsx) |
 | **Cosa gioco stasera?** | propone un gioco dal backlog in base al tempo che hai (durata HowLongToBeat), al genere e alla console, con più probabilità per quelli che non giochi da più tempo; «Un altro» e «Avvia» |
 | **Anniversari retro** | badge «30 ANNI» sulle copertine dei giochi usciti proprio oggi e pagina «Oggi nel…» (servono le date di uscita complete) |
 | **Pulizia libreria** | duplicati, giochi mai avviati o fermi da anni, dati incompleti; azioni di massa (nascondi, abbandonato, backlog), badge «DUP» e **🧹 Rimuovi doppioni manuali** (voci aggiunte a mano con lo stesso eseguibile e gli stessi argomenti: si tiene la più vecchia) |

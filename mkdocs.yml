@@ -66,6 +66,7 @@ nav:
           - ROM e scraping dei dati: rom-e-scraping.md
           - Giocare: giocare.md
           - Giochi PC dagli store: store-pc.md
+          - Strumenti (conversioni, patch, dump): strumenti.md
       - Store:
           - Aggiungere store online e store PC: store-online.md
           - Giochi gratis, lista desideri, port PC: extra.md
@@ -94,6 +95,7 @@ nav:
               - ROMs & Scraping: en/rom-e-scraping.md
               - Playing: en/giocare.md
               - PC Store Games: en/store-pc.md
+              - Tools (conversions, patches, dump): en/tools.md
           - Stores:
               - Online Stores & PC Stores: en/store-online.md
               - Free Games, Wishlist, PC Ports: en/extra.md

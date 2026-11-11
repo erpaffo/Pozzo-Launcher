@@ -333,7 +333,7 @@ function viewTitle() {
   const v = S.view;
   if (v.type === "favorites" && v.plat) return `★ ${t("h.app.navFavorites")} · ${platName(v.plat)}`;
   if (v.type === "apps") return "🧩 " + t("h.title.apps");
-  return { shots: t("h.title.shots"), free: t("h.title.free"), ports: t("h.title.ports"), wishlist: t("h.wl.title"), stats: t("h.title.stats"), downloads: t("h.title.downloads"), achievements: "🏆 " + t("h.title.achievements"),
+  return { shots: t("h.title.shots"), free: t("h.title.free"), ports: t("h.title.ports"), wishlist: t("h.wl.title"), stats: t("h.title.stats"), downloads: t("h.title.downloads"), tools: "🛠 " + t("h.title.tools"), achievements: "🏆 " + t("h.title.achievements"),
     top: !v.id || v.id === "all" ? "🏆 " + t("h.title.topBest") : `🏆 ${t("h.title.top100Of", {p: platName(v.id)})}`,
     status: `${STATUS[v.id]?.icon || ""} ${STATUS[v.id]?.label || ""}`,
     smart: `${S.smart.find((x) => x.id === v.id)?.icon || "⚡"} ${S.smart.find((x) => x.id === v.id)?.name || t("h.coll.coll")}`,
@@ -398,7 +398,7 @@ function setView(v) {
   const pv = $("#plugin-view");
   if (v.type === "home") pv.className = "experience-home";
   else if (wasHome) pv.className = "";
-  document.body.classList.toggle("foryou-mode", ["foryou", "free", "ports", "wishlist", "stats", "shots", "top", "downloads", "achievements"].includes(v.type));
+  document.body.classList.toggle("foryou-mode", ["foryou", "free", "ports", "wishlist", "stats", "shots", "top", "downloads", "tools", "achievements"].includes(v.type));
   if (v.type !== "collection") $("#coll-banner").hidden = true;
   if (!same) queueMicrotask(() => window.GSMotion?.enter(pv.hidden ? $("#grid-scroll") : pv));
   if (v.type === "home") {
@@ -410,13 +410,13 @@ function setView(v) {
     renderExperienceHome(pv);
     return;
   }
-  if (["free", "ports", "wishlist", "stats", "shots", "top", "downloads", "achievements"].includes(v.type)) {
+  if (["free", "ports", "wishlist", "stats", "shots", "top", "downloads", "tools", "achievements"].includes(v.type)) {
     $("#grid-scroll").hidden = true;
     pv.hidden = false;
     markActive();
     updateHeader();
     $("#view-count").textContent = "";
-    ({ free: renderFree, ports: renderPorts, wishlist: renderWishlist, stats: renderStats, shots: renderShots, top: renderTop, downloads: renderDownloads, achievements: renderAchievements })[v.type](pv);
+    ({ free: renderFree, ports: renderPorts, wishlist: renderWishlist, stats: renderStats, shots: renderShots, top: renderTop, downloads: renderDownloads, tools: renderTools, achievements: renderAchievements })[v.type](pv);
     return;
   }
   if (v.type === "foryou") {

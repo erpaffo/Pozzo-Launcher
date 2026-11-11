@@ -413,7 +413,7 @@ To test an extension locally in your launcher, `python tools/extensions.py insta
 |---|---|
 | **Statistics** | Play time per console and store, most played titles, metadata completeness tracker |
 | **Link → Store** | Scrapes index pages collecting external links, groups URLs by header tags (h2/h3), and adds each as a console store or direct PC download/repack store |
-| **Store Minerva + Switch** | One-click import for minerva-archive.org directories listed on r-roms.github.io **and** adds preset Switch stores (NXBrew `game-index`, Ziperto NSP, Ziperto XCI) |
+| **Store Minerva + Switch** | One-click import for minerva-archive.org directories listed on r-roms.github.io **and** adds preset stores: Switch (NXBrew `game-index`, Ziperto NSP, Ziperto XCI), Switch 2 (NXBrew `switch-2-games`), PS4 and PS5 (superpsx) |
 | **What Should I Play Tonight?** | Recommends a backlog game tailored to your available time (using HowLongToBeat durations), preferred genre, and console, prioritizing titles you haven't played in a while; includes "Roll another" and "Play" |
 | **Retro Anniversaries** | Adds a "30 YEARS" badge to covers of games released on today's date in history and introduces an "On This Day in..." page (requires complete release date metadata) |
 | **Library Cleanup** | Detects duplicates, unplayed titles, neglected games, and incomplete metadata; provides bulk management (hide, abandoned, backlog), "DUP" badges, and **🧹 Remove manual duplicates** (items added manually sharing identical executables and arguments, retaining the oldest entry) |

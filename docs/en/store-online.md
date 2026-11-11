@@ -376,7 +376,8 @@ are preserved and **not re-read**: only newly added stores for that console are 
 e.g. after adding a new platform). Upon completion, the library updates.
 
 For **Switch**, it preconfigures three complete catalogs: NXBrew index (`type_b`), Ziperto NSP (`type_c`), and
-Ziperto XCI (`type_d`). For **PS4** and **PS5**, it preconfigures the superpsx archive (`type_c`). When a
+Ziperto XCI (`type_d`). For **Switch 2**, it preconfigures the NXBrew Switch 2 category archive (`type_c`,
+paginated). For **PS4** and **PS5**, it preconfigures the superpsx archive (`type_c`). When a
 console has multiple directories with different layouts, the plugin clears hardcoded type declarations in `settings.json`,
 allowing auto-detection to handle each page.
 

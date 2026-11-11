@@ -1,5 +1,5 @@
 // Store Minerva + Switch: «Importa store» riempie la sezione «Store online» di ogni console (cartelle di
-// minerva-archive.org elencate da r-roms, più Switch, PS4 e PS5 preimpostati) senza leggerli; «Leggi» scarica
+// minerva-archive.org elencate da r-roms, più Switch, Switch 2, PS4 e PS5 preimpostati) senza leggerli; «Leggi» scarica
 // l'elenco dei giochi di una console (o di tutte quelle mai lette) con la coda degli store dell'app.
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12,8 +12,8 @@ export default function (gs) {
     async render(el) {
       el.innerHTML = `<p class="muted">«Importa store» aggiunge allo «Store online» di ogni console le cartelle di
         minerva-archive.org elencate su r-roms.github.io, più gli store preimpostati: <b>Switch</b> (NXBrew, Ziperto
-        NSP e XCI), <b>PS4</b> e <b>PS5</b> (superpsx). Non scarica niente: gli elenchi dei giochi si leggono con
-        «Leggi», console per console. Gli store già presenti non si toccano.</p>
+        NSP e XCI), <b>Switch 2</b> (NXBrew), <b>PS4</b> e <b>PS5</b> (superpsx). Non scarica niente: gli elenchi dei
+        giochi si leggono con «Leggi», console per console. Gli store già presenti non si toccano.</p>
         <p><button class="btn primary" id="mv-go">Importa store</button>
           <button class="btn" id="mv-all" hidden>Leggi tutti quelli mai letti</button></p>
         <pre id="mv-log" class="muted" style="white-space:pre-wrap;max-height:30vh;overflow:auto"></pre>
@@ -68,7 +68,12 @@ export default function (gs) {
         do { await wait(1000); j = await gs.api("/plugin-api/minerva/stato"); if (el.isConnected) show(j); }
         while (j.status === "running");
         if (j.status !== "done") return gs.toast("Importazione degli store non riuscita", true);
-        gs.toast("Store aggiunti alle console");
+        const count = (o) => Object.values(o || {}).reduce((a, v) => a + (v && v.length ? v.length : Number(v) || 0), 0);
+        const added = count(j.added), unread = count(j.todo);  // added: {console: n}, todo: {console: [url]}
+        // dirlo anche quando non cambia nulla: prima sembrava che il pulsante non facesse niente
+        gs.toast(added ? `Store aggiunti: ${added}`
+          : unread ? `Nessuno store nuovo: ${unread} mai letti da aprire con «Leggi»`
+            : "Nessuno store nuovo: erano già tutti presenti");
         window.dispatchEvent(new CustomEvent("pz-catalogs-changed"));
         if (el.isConnected) drawList();
       };

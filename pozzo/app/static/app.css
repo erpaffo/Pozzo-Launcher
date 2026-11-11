@@ -2321,3 +2321,15 @@ p.bad { color: var(--bad); }
 .mf-card img { width: 100%; height: 100%; object-fit: contain; }
 .mf-card label { display: flex; gap: 6px; align-items: center; font-weight: 600; }
 .mf-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ---- vista «Strumenti» (js/tools.js) */
+.tools-page { display: grid; gap: 12px; align-content: start; }
+.tl-res { display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.tl-card, .tl-done { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+.tl-card h3, .tl-done h3 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tl-opts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tl-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tl-job progress { width: 100%; accent-color: var(--accent); }
+.tl-err { color: var(--bad); }
+.tools-page .btn:focus-visible, .tools-page .field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

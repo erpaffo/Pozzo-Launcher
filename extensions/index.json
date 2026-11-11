@@ -253,24 +253,24 @@
     {
       "id": "minerva",
       "name": "Store Minerva + Switch",
-      "version": "1.5",
+      "version": "1.6",
       "author": "Pozzo Launcher",
-      "description": "Importa con un clic gli archivi Minerva per ogni console e configura store Switch preimpostati (NXBrew, Ziperto) e PlayStation (superpsx).",
+      "description": "Importa con un clic gli archivi Minerva per ogni console e configura store Switch, Switch 2 e PlayStation (NXBrew, Ziperto, superpsx).",
       "min_app": "0.7.1",
       "base": "minerva/",
       "files": {
-        "backend.py": "9d45cd88fefb55490cecad34468aa05eeb68867226a7510dfef4ae1cb49bf609",
-        "frontend.js": "12d95359b55df563ca435eda47c522d28f0c6fb651b338685f429b32fa8563ba",
-        "plugin.toml": "7619b4b4eeacef3f3cf820f0a4c4e620199a889c82ee8bcb328b75f29783fc4d",
+        "backend.py": "c8faf620bbc6f7c2780aa03ae79af8b0520bb5a39ed3ecbaf9b37e6d9f4fa294",
+        "frontend.js": "e555b03ae2fd9a6e958e30c4c6a302301ec4fd851c5bff6f9ba22fdc8791eeab",
+        "plugin.toml": "b9571e9c83cbecf850c00e0e83367d97b5b00dd3e6fdd961cbdeeba19b9f1df2",
         "screenshot.png": "e1c74da2bc76a8235b9f3d748d58fb2dd3e6bd53ed58446b0bda00818d7a713f"
       },
       "icon": "🏛️",
       "screenshot": "screenshot.png",
-      "long_description": "Espande istantaneamente le fonti dello Store Online con un solo clic. Configura automaticamente le directory di minerva-archive.org indicizzate dal progetto r-roms per decine di console retro, insieme a preset pronti per Nintendo Switch (NXBrew, Ziperto) e PlayStation 4/5 (superpsx), senza dover inserire a mano lunghi elenchi di indirizzi.",
+      "long_description": "Espande istantaneamente le fonti dello Store Online con un solo clic. Configura automaticamente le directory di minerva-archive.org indicizzate dal progetto r-roms per decine di console retro, insieme a preset pronti per Nintendo Switch (NXBrew, Ziperto), Nintendo Switch 2 (NXBrew) e PlayStation 4/5 (superpsx), senza dover inserire a mano lunghi elenchi di indirizzi.",
       "how_it_works": "1. Installa l'estensione dallo store.\n2. Nella pagina dell'estensione trovi l'elenco dei preset disponibili suddivisi per piattaforma.\n3. Clicca su «Aggiungi preset Minerva» o «Aggiungi store Switch»: i link verranno configurati nello Store online.\n4. Premi «Leggi» accanto a una console per scaricare l'elenco aggiornato dei giochi disponibili.",
       "features": [
         "Archivi Minerva completi per oltre 30 console supportate",
-        "Preset dedicati per Nintendo Switch (NXBrew game-index, Ziperto NSP/XCI)",
+        "Preset dedicati per Nintendo Switch (NXBrew game-index, Ziperto NSP/XCI) e Switch 2 (NXBrew switch-2-games)",
         "Riconoscimento automatico del formato dell'indice (cartelle Apache, indici JSON, tabelle)",
         "Download diretto compatibile con il nuovo Download Manager integrato"
       ],

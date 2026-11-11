@@ -74,13 +74,18 @@ class Shard:
 
     def run(self) -> None:
         env = {**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"}
-        p = subprocess.Popen(self.cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             text=True, encoding="utf-8", errors="replace")
-        for line in p.stdout:  # type: ignore[union-attr]
-            self.feed(line.rstrip())
-        self.code = p.wait()
-        self.finished = True
-        self.log.close()
+        try:
+            p = subprocess.Popen(self.cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                 text=True, encoding="utf-8", errors="replace")
+            for line in p.stdout:  # type: ignore[union-attr]
+                self.feed(line.rstrip())
+            self.code = p.wait()
+        except OSError as e:  # es. docker non installato: senza questo il thread muore e il ciclo non finisce mai
+            self.feed(f"impossibile avviare '{self.cmd[0]}': {e.strerror or e}")
+            self.code = 127
+        finally:
+            self.finished = True
+            self.log.close()
 
 
 def count_scripts() -> list[int]:

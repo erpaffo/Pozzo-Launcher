@@ -187,7 +187,11 @@ def want_bigpicture(cfg, flag: bool = False, no_flag: bool = False) -> bool:
 
 def cmd_app(args):
     from . import applog
-    from .app.server import run
+    try:
+        from .app.server import run
+    except ModuleNotFoundError as e:  # fastapi/uvicorn/pywebview mancanti: errore chiaro
+        from .deps import hint
+        raise SystemExit(hint(e)) from e
     cfg = C.load(args.config)
     # log su file: --log (predefinito <cache>/logs/diagnostica.log) oppure POZZO_LOG=<percorso>
     applog.start(getattr(args, "log", None) or os.environ.get("POZZO_LOG"), cfg.cache)

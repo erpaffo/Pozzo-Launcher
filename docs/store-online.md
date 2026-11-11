@@ -377,7 +377,8 @@ nuovi per quella console (più quelli presenti ma mai letti, per esempio dopo av
 libreria si ricostruisce.
 
 Per **Switch** aggiunge anche tre elenchi completi **preimpostati**: l'indice dei giochi di NXBrew (formato `type_b`),
-Ziperto NSP (`type_c`) e Ziperto XCI (`type_d`). Per **PS4** e **PS5** preimposta l'archivio di superpsx
+Ziperto NSP (`type_c`) e Ziperto XCI (`type_d`). Per **Switch 2** preimposta l'archivio della categoria Switch 2 di
+NXBrew (`type_c`, paginato). Per **PS4** e **PS5** preimposta l'archivio di superpsx
 (`type_c`, letto come i siti di ROM). Quando una console ha più elenchi di formati diversi, il plugin
 toglie il tipo fisso da `settings.json`, così ogni pagina viene riconosciuta da sola.
 

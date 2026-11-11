@@ -180,6 +180,7 @@ function openCtx(e, g) {
     : r.stars ? `<div class="stars">${[5, 4, 3, 2, 1].map((n) => `<span class="st" data-n="${n}" title="${n}/5">★</span>`).join("")}</div>`
     : `<div class="ci${r.hl ? " hl" : ""}" data-i="${i}">${esc(r.l)}</div>`).join("");
   document.body.appendChild(m);
+  if (typeof toolsCtxRow === "function") toolsCtxRow(g, m, rows).catch(() => {});
   m.style.left = Math.max(6, Math.min(e.clientX, innerWidth - m.offsetWidth - 8)) + "px";
   m.style.top = Math.max(6, Math.min(e.clientY, innerHeight - m.offsetHeight - 8)) + "px";
   m.onclick = async (ev) => {

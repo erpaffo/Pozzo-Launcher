@@ -10,7 +10,7 @@ node = shutil.which("node")
 if not node:
     print("-- node non trovato: test saltato")
     sys.exit(0)
-for name in ("test_onboarding.js", "test_hints.js", "test_palette.js", "test_anchor.js", "test_tour.js", "test_downloads_ui.js", "test_detail_downloaded.js", "test_watch_ui.js"):
+for name in ("test_onboarding.js", "test_hints.js", "test_palette.js", "test_anchor.js", "test_tour.js", "test_downloads_ui.js", "test_tools_ui.js", "test_detail_downloaded.js", "test_watch_ui.js"):
     # stdin chiuso: con stdin ereditato node resta appeso su alcuni runner (macOS della CI)
     r = subprocess.run([node, str(ROOT / "tests" / name)], capture_output=True, text=True, encoding="utf-8",
                        timeout=60, stdin=subprocess.DEVNULL)

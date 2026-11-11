@@ -1377,8 +1377,7 @@ async function dlCheck() {
 }
 
 /* «Rileva link negli appunti»: solo se l'utente l'ha attivato (default spento); legge gli appunti quando la finestra torna in primo piano */
-const CLIPW_KEY = "pozzo.dl.clipwatch";
-const dlClipWatchOn = () => { try { return localStorage.getItem(CLIPW_KEY) === "1"; } catch { return false; } };
+const dlClipWatchOn = () => !!DL.settings?.clipboard; // stessa opzione «Monitora gli appunti» delle impostazioni
 let dlClipSeen = ""; // ultimo contenuto già proposto o scartato
 
 async function dlClipCheck() {
@@ -1660,9 +1659,6 @@ async function dlsListsBind() {
   wire(rss, $("#dls-rss-add"), dlsRssRow, saveRss, "[data-rss]");
   wire(rules, $("#dls-rule-add"), dlsRuleRow, saveRules, "[data-rule]");
   wire(hosts, $("#dls-host-add"), dlsHostRow, saveHosts, "[data-host]");
-  const cw = $("#dls-clipwatch");
-  cw.checked = dlClipWatchOn();
-  cw.onchange = () => { try { localStorage.setItem(CLIPW_KEY, cw.checked ? "1" : "0"); } catch { /* senza storage resta spento */ } dlClipSeen = ""; };
   try { // solo suggerimenti: senza elenco l'id della console si scrive a mano
     const dl = document.createElement("datalist");
     dl.id = "dls-platlist";
@@ -1692,6 +1688,15 @@ function dlStream() {
   });
   es.addEventListener("error", () => {
     poll ??= setInterval(() => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); }, 2000);
+    // errore HTTP: il browser chiude lo stream e non riprova. Un secondo flusso solo per i download, finche' non torna
+    if (es.readyState === EventSource.CLOSED && !dlStream.retry) {
+      dlStream.retry = setTimeout(() => {
+        dlStream.retry = null;
+        const e2 = new EventSource("/api/v1/events");
+        e2.addEventListener("downloads", (e) => { try { const d = JSON.parse(e.data); if (d.settings) DL.settings = d.settings; dlApply(d.tasks || []); } catch { /* fotogramma non valido */ } });
+        e2.addEventListener("open", () => { if (poll) { clearInterval(poll); poll = null; dlLoad().catch(() => {}); } });
+      }, 10000);
+    }
   });
 }
 

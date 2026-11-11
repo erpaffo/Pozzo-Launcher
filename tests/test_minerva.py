@@ -55,18 +55,20 @@ def test_platform_hints():
 
 
 def test_store_preimpostati():
-    """I preset: Switch (tre elenchi completi), PS4 e PS5 (superpsx) — e una copia indipendente dalla costante."""
+    """I preset: Switch (tre elenchi completi), Switch 2 (NXBrew) e PS4/PS5 (superpsx) — e una copia indipendente dalla costante."""
     pre = M.presets()
     assert pre["switch"] == [
         "https://nxbrew.net/game-index/",
         "https://www.ziperto.com/nintendo-switch-nsp/",
         "https://www.ziperto.com/nintendo-switch-xci/",
     ], pre
+    assert pre["switch2"] == ["https://nxbrew.net/switch-2-games/"], pre
     assert pre["ps4"] == ["https://www.superpsx.com/category/ps4/"], pre
     assert pre["ps5"] == ["https://www.superpsx.com/category/ps5/"], pre
     pre["switch"].append("https://esempio.test/")  # il chiamante non deve modificare PRESETS
     assert "https://esempio.test/" not in M.PRESETS["switch"], M.PRESETS
-    print("ok  preset: Switch (NXBrew, Ziperto NSP/XCI), PS4 e PS5 (superpsx), copia indipendente")
+    assert "https://esempio.test/" not in M.PRESETS["switch2"], M.PRESETS
+    print("ok  preset: Switch (NXBrew, Ziperto NSP/XCI), Switch 2 (NXBrew), PS4 e PS5 (superpsx), copia indipendente")
 
 
 def test_merge_salta_store_presenti():
@@ -93,6 +95,15 @@ def test_merge_salta_store_presenti():
     _, added3, todo3 = M.merge_catalogs({}, {"ps5": ["https://esempx.test/p/", "https://www.esempx.test/p"]},
                                         lambda pid, u: True)
     assert added3 == {"ps5": ["https://esempx.test/p/"]} == todo3, (added3, todo3)
+
+    # console con un solo elenco di formato non riconoscibile (NXBrew Switch 2): si fissa il tipo
+    cats4, _, _ = M.merge_catalogs({}, {"switch2": ["https://nxbrew.net/switch-2-games/"]},
+                                   lambda pid, u: True, types=M.PRESET_TYPES)
+    assert cats4 == {"switch2": {"urls": ["https://nxbrew.net/switch-2-games/"], "type": "type_c"}}, cats4
+    # con piu' elenchi il tipo fisso resta fuori (ogni pagina si riconosce da sola)
+    cats5, _, _ = M.merge_catalogs({}, {"switch2": ["https://a.test/", "https://b.test/"]},
+                                   lambda pid, u: True, types=M.PRESET_TYPES)
+    assert cats5 == {"switch2": ["https://a.test/", "https://b.test/"]}, cats5
     print("ok  merge: store già presenti saltati, si legge solo il nuovo (e quello mai letto)")
 
 

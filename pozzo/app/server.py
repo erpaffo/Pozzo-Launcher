@@ -11,6 +11,7 @@ Velocita' all'avvio:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import http
 import json
@@ -592,7 +593,12 @@ class LocalGuard:
                     and not self._token_ok(scope["headers"], scope.get("query_string", b""))):
                 return await JSONResponse({"detail": "Serve il token dell'API (Authorization: Bearer <token>)",
                                            "code": "unauthorized"}, status_code=401)(scope, receive, send)
-        return await self.app(scope, receive, send)
+        try:
+            return await self.app(scope, receive, send)
+        except asyncio.CancelledError:
+            # chiusura dell'app con stream SSE ancora aperti: uvicorn li cancella dopo il timeout e
+            # non deve stampare un traceback per un'uscita normale
+            return None
 
 
 WINDOW_FOCUS = {"fn": None}  # impostata quando l'app gira in una finestra nativa

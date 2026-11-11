@@ -1,6 +1,6 @@
 """Plugin Minerva: riempie gli "Store online" di ogni console con i link a minerva-archive.org
 elencati su https://r-roms.github.io (gli altri siti linkati da r-roms vengono ignorati), più gli
-store preimpostati (Switch: NXBrew e Ziperto; PS4 e PS5: superpsx).
+store preimpostati (Switch: NXBrew e Ziperto; Switch 2: NXBrew; PS4 e PS5: superpsx).
 Uno store già presente per la console non si aggiunge. L'importazione non legge gli store: si leggono a richiesta.
 
 POST /plugin-api/minerva/importa  -> aggiunge gli store alle console (in background), senza leggerli
@@ -29,11 +29,13 @@ def store_key(url: str) -> str:
     return host + p.path.rstrip("/") + ("?" + p.query if p.query else "")
 
 
-def merge_catalogs(cats: dict, found: dict[str, list[str]], read, say=lambda m: None):
+def merge_catalogs(cats: dict, found: dict[str, list[str]], read, say=lambda m: None,
+                   types: dict[str, str] | None = None):
     """Aggiunge a `cats` (settings.json › «catalogs») solo gli store non ancora presenti per la console.
 
     Ritorna (catalogs, store nuovi per console, store da leggere): da leggere sono i nuovi più quelli
     già presenti ma mai letti (`read(console, url)` falso), così un secondo import non rifà il lavoro.
+    `types` fissa il formato («type») delle console i cui elenchi non si riconoscono da soli.
     """
     added: dict[str, list[str]] = {}
     todo: dict[str, list[str]] = {}
@@ -63,6 +65,7 @@ def merge_catalogs(cats: dict, found: dict[str, list[str]], read, say=lambda m: 
             continue
         added[pid] = new
         merged = old + new
+        fixed = (types or {}).get(pid)
         if isinstance(cur, dict):
             # piu' elenchi della stessa console possono avere formati diversi: il "type"
             # fissato per la console ne romperebbe alcuni, quindi si lascia il riconoscimento
@@ -71,19 +74,24 @@ def merge_catalogs(cats: dict, found: dict[str, list[str]], read, say=lambda m: 
                     f"(con piu' elenchi ogni pagina viene riconosciuta da sola)")
                 cur = {k: v for k, v in cur.items() if k != "type"}
             cats[pid] = {**cur, "urls": merged}
+        elif fixed and len(merged) == 1:
+            cats[pid] = {"urls": merged, "type": fixed}
         else:
             cats[pid] = merged
     return cats, added, todo
 
 
-# Store preimpostati: per Switch le pagine che elencano TUTTI i giochi, per PS4/PS5 l'archivio di superpsx.
-# I formati sono diversi (type_b, type_c, type_d): non si fissa un "type" per la console,
-# ogni pagina viene riconosciuta da sola (catalog.detect_kind).
+# Store preimpostati: per Switch le pagine che elencano TUTTI i giochi, per Switch 2 l'archivio di NXBrew,
+# per PS4/PS5 l'archivio di superpsx. I formati sono diversi (type_b, type_c, type_d): non si fissa un
+# "type" per la console, ogni pagina viene riconosciuta da sola (catalog.detect_kind).
 PRESETS: dict[str, list[str]] = {
     "switch": [
         "https://nxbrew.net/game-index/",             # elenco A-Z su una pagina (type_b)
         "https://www.ziperto.com/nintendo-switch-nsp/",  # archivio paginato (type_c)
         "https://www.ziperto.com/nintendo-switch-xci/",  # elenco XCI su una pagina (type_d)
+    ],
+    "switch2": [
+        "https://nxbrew.net/switch-2-games/",         # archivio paginato: pagina 1 piu' /page/N/ (type_c)
     ],
     "ps4": [
         "https://www.superpsx.com/category/ps4/",
@@ -98,6 +106,10 @@ def presets() -> dict[str, list[str]]:
     """Copia degli store preimpostati {console: [url]} (così il chiamante non modifica la costante)."""
     return {pid: list(urls) for pid, urls in PRESETS.items()}
 
+
+# Formato da fissare per i preset a elenco unico. La pagina WordPress di NXBrew contiene nel testo un
+# link .zip (l'emulatore consigliato): letta come «filelist» darebbe una voce sola invece dei giochi.
+PRESET_TYPES: dict[str, str] = {"switch2": "type_c"}
 
 
 def subpages(index: str) -> list[str]:
@@ -157,7 +169,7 @@ def collect(get) -> dict[str, list[str]]:
 
 def register(gs):
     cfg = gs.cfg
-    job = {"status": "idle", "log": [], "found": {}, "todo": {}}
+    job = {"status": "idle", "log": [], "found": {}, "added": {}, "todo": {}}
 
     def run():
         import httpx
@@ -169,7 +181,7 @@ def register(gs):
             say("Lettura di r-roms.github.io…")
             with httpx.Client(follow_redirects=True, timeout=30) as h:
                 found = collect(lambda u: h.get(u).raise_for_status().text)
-            # store preimpostati (Switch, PS4, PS5), aggiunti a quelli trovati
+            # store preimpostati (Switch, Switch 2, PS4, PS5), aggiunti a quelli trovati
             pre = presets()
             for pid, urls in pre.items():
                 cur = found.setdefault(pid, [])
@@ -179,20 +191,26 @@ def register(gs):
                         cur.append(u)
                         have.add(store_key(u))
             job["found"] = {k: len(v) for k, v in found.items()}
-            say(f"{sum(map(len, found.values()))} store per {len(found)} console (Minerva + Switch, PS4, PS5)")
+            say(f"{sum(map(len, found.values()))} store per {len(found)} console (Minerva + Switch, Switch 2, PS4, PS5)")
             cats = C.read_settings(cfg).get("catalogs", {})
             c = Cache(cfg.cache)
             try:
                 # si aggiungono solo gli store che la console non ha già
                 cats, added, todo = merge_catalogs(
-                    cats, found, lambda pid, u: bool(catalog.cached_info(c, pid, u)["entries"]), say=say)
+                    cats, found, lambda pid, u: bool(catalog.cached_info(c, pid, u)["entries"]), say=say,
+                    types=PRESET_TYPES)
             finally:
                 c.close()
             if added:
                 C.set_setting(cfg, "catalogs", cats)
+            job["added"] = {k: len(v) for k, v in added.items()}
             job["todo"] = todo
-            say(f"Store aggiunti: {sum(map(len, added.values()))} · mai letti: {sum(map(len, todo.values()))}")
-            say("Gli elenchi dei giochi non vengono scaricati: usa «Leggi» sulla console che ti interessa.")
+            if added:
+                say(f"Store aggiunti: {sum(map(len, added.values()))} · mai letti: {sum(map(len, todo.values()))}")
+                say("Gli elenchi dei giochi non vengono scaricati: usa «Leggi» sulla console che ti interessa.")
+            else:
+                say("Nessuno store nuovo: erano già tutti presenti"
+                    + (f" ({sum(map(len, todo.values()))} mai letti, si leggono con «Leggi»)" if todo else ""))
             job["status"] = "done"
         except Exception as e:
             say(f"Errore: {type(e).__name__}: {e}")
@@ -202,7 +220,7 @@ def register(gs):
     def importa():
         """Solo la sezione «Store online» di ogni console: nessuna lettura degli store, nessuna ricostruzione."""
         if job["status"] != "running":
-            job.update(status="running", log=[], found={}, todo={})
+            job.update(status="running", log=[], found={}, added={}, todo={})
             threading.Thread(target=run, daemon=True).start()
         return job
 
