@@ -49,11 +49,19 @@ abbinati si scollegano dalla stessa sezione. Windows può chiedere di consentire
 ## Copie di sicurezza dei tuoi dati
 
 In **Impostazioni › Libreria › Copie di sicurezza dei tuoi dati** si salvano in uno zip preferiti, tempi di gioco,
-stati, note, collezioni personali (di tutti i profili) e `settings.json`. Le copie stanno in `<cache>/backups`.
+stati, note, collezioni personali (di tutti i profili), diario delle sessioni, wishlist, profili di avvio, giochi
+aggiunti a mano, salvataggi del browser, `settings.json`, i file dei profili utente e i temi personali. Le copie
+stanno in `<cache>/backups`, con un `manifest.json` che elenca il contenuto.
 
-- **Copia automatica settimanale** all'avvio; si tengono le ultime 10.
+- **Copia automatica settimanale** all'avvio: spenta di default, si attiva nella stessa sezione. Si tengono le
+  ultime N copie (10 di default, da 1 a 50).
+- **Credenziali**: «Includi credenziali» è attivo di default. Se lo spegni, chiavi API e token restano fuori dallo zip
+  (puoi tenerlo nel cloud) e al ripristino quelli attuali restano al loro posto.
+- **Anteprima del ripristino**: prima di confermare vedi quali file vengono sovrascritti o creati e, per i dati,
+  quante righe ci sono ora e quante nella copia. Se la copia contiene script prima/dopo il gioco, compare l'avviso.
 - **Ripristino a caldo**: funziona con l'app aperta. Prima di ripristinare viene salvata una copia dei dati attuali,
   così il ripristino si può annullare.
+- Non sono incluse cache, metadati, immagini, file delle schermate, coda dei download, `config.toml` ed emulatori.
 
 La libreria (`library.db`) non serve copiarla: si ricostruisce da sola. Per i salvataggi dei giochi vedi
 [Giocare](giocare.md#salvataggi).

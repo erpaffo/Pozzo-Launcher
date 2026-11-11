@@ -942,6 +942,34 @@ async function loadBackups() {
         + `<td><button class="btn bk-restore" data-name="${esc(b.name)}">${t("e.backup.restore")}</button></td></tr>`).join("") + `</table>`
       + `<p class="muted small">${t("e.storage.folder")} <code>${esc(d.folder)}</code></p>`
     : `<p class="muted small">${t("e.backup.none")}</p>`;
+  loadBackupOpts();
+}
+
+/* opzioni della copia: automatica (spenta di default), quante tenerne, credenziali incluse */
+async function loadBackupOpts() {
+  let o;
+  try { o = await api("/api/backups/settings"); } catch { return; }
+  $("#bk-auto").checked = o.auto;
+  $("#bk-keep").value = o.keep;
+  $("#bk-secrets").checked = o.secrets;
+  const save = async () => {
+    try { await api("/api/backups/settings", { body: { auto: $("#bk-auto").checked, keep: +$("#bk-keep").value || 10, secrets: $("#bk-secrets").checked } }); }
+    catch (e) { toast(e.message, true); }
+  };
+  $("#bk-auto").onchange = $("#bk-keep").onchange = $("#bk-secrets").onchange = save;
+}
+
+/* testo dell'anteprima di ripristino (puro: nessun accesso alla pagina) */
+function backupPreviewText(p) {
+  const lines = [t("e.backup.previewTitle", { name: p.name, date: fmtDate(p.created) }), ""];
+  for (const it of p.items) {
+    lines.push(`- ${it.file}: ${t(it.action === "overwrite" ? "e.backup.previewOverwrite" : "e.backup.previewCreate")}`);
+    for (const c of it.counts || []) lines.push(`    ${t(c.label)}: ${c.now} → ${c.backup}`);
+  }
+  if (!p.secrets) lines.push("", t("e.backup.previewNoSecrets"));
+  if (p.scripts_warning) lines.push("", p.scripts_warning);
+  lines.push("", t("e.backup.previewAsk"));
+  return lines.join("\n");
 }
 
 /* ---- manutenzione programmata (pannello in settings/dati.html; API /api/maintenance) */
@@ -1253,9 +1281,11 @@ async function backupNow() {
 }
 
 async function restoreBackup(name) {
-  if (!confirm(t("e.backup.restoreConfirm", { name }))) return;
+  let p;
+  try { p = await api("/api/backups/preview", { body: { name } }); } catch (e) { return toast(e.message, true); }
+  if (!confirm(backupPreviewText(p))) return;
   let r;
-  try { r = await api("/api/backups/restore", { body: { name } }); } catch (e) { return toast(e.message, true); }
+  try { r = await api("/api/backups/restore", { body: { name, confirm: true } }); } catch (e) { return toast(e.message, true); }
   toast(t("e.backup.restored", { list: r.restored.join(", "), copy: r.safety_copy }));
   if (r.scripts_warning) toast(r.scripts_warning, true);
   await reload(true);

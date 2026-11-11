@@ -37,9 +37,12 @@ From that point on, the second PC exchanges data with the first **bidirectionall
 
 ## Backups of Your Data
 
-In **Settings › Library › Data Backups**, favorites, playtime, statuses, notes, personal collections (across all profiles), and `settings.json` are saved into a zip archive. Backups reside in `<cache>/backups`.
+In **Settings › Library › Data Backups**, favorites, playtime, statuses, notes, personal collections (across all profiles), play session history, wishlist, launch profiles, manually added games, browser saves, `settings.json`, user profile files and custom themes are saved into a zip archive. Backups reside in `<cache>/backups`, with a `manifest.json` listing the contents.
 
-- **Automatic weekly backup** at startup; the last 10 backups are kept.
+- **Automatic weekly backup** at startup: off by default, enable it in the same section. The last N backups are kept (10 by default, 1 to 50).
+- **Credentials**: "Include credentials" is on by default. If you turn it off, API keys and tokens stay out of the zip (safe to keep in the cloud) and a restore leaves the current ones in place.
+- **Restore preview**: before confirming you see which files will be overwritten or created and, for data, how many rows exist now versus in the backup. If the backup contains before/after-game scripts, a warning is shown.
+- Not included: caches, metadata, images, screenshot files, the download queue, `config.toml` and emulators.
 - **Hot restore**: works while the app is running. Before restoring, a copy of the current data is saved so the restore operation can be undone.
 
 There is no need to back up the library database (`library.db`): it rebuilds itself automatically. For game saves, see [Playing](giocare.md#salvataggi).

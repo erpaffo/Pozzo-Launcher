@@ -47,9 +47,16 @@
 <p class="muted small" id="sync-saves-info"></p>
 
 <h3 data-i18n="j.dat.backup.title">Copie di sicurezza dei tuoi dati</h3>
-<p class="muted small" data-i18n="j.dat.backup.desc">Preferiti, tempi di gioco, stati, collezioni personali e impostazioni (emulatori, cartelle).
-  Metadati e immagini non servono: si riscaricano. Una copia automatica ogni settimana, si tengono le ultime 10.</p>
+<p class="muted small" data-i18n="j.dat.backup.desc2">Preferiti, tempi di gioco e diario delle sessioni, collezioni e liste, wishlist, profili di avvio, giochi aggiunti a mano, salvataggi del browser, profili utente, impostazioni (emulatori, cartelle) e temi personali.
+  Metadati e immagini non servono: si riscaricano. Prima di ripristinare vedi cosa verrà sovrascritto.</p>
 <button class="btn" id="backup-now">💾 <span data-i18n="j.dat.backup.now">Crea una copia adesso</span></button>
+<div class="row wrap" id="backup-opts">
+  <label class="chk"><input type="checkbox" id="bk-auto"> <span data-i18n="j.dat.backup.auto">Copia automatica ogni settimana (all'avvio)</span></label>
+  <label class="lbl-field"><span data-i18n="j.dat.backup.keep">Copie da tenere</span>
+    <input type="number" id="bk-keep" class="field" min="1" max="50" style="width:70px"></label>
+  <label class="chk"><input type="checkbox" id="bk-secrets"> <span data-i18n="j.dat.backup.secrets">Includi credenziali (chiavi API, token)</span></label>
+</div>
+<p class="muted small" data-i18n="j.dat.backup.secretsHint">Senza credenziali la copia si può condividere o tenere nel cloud; al ripristino quelle attuali restano al loro posto.</p>
 <div id="backup-list"></div>
 
 <h3 data-i18n="j.dat.saves.title">Salvataggi dei giochi</h3>
