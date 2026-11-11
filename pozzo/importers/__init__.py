@@ -80,3 +80,43 @@ def apply(user, lib, records: list[dict]) -> dict:
             for k in keys[:1]:
                 user.edit_membership(slug, k, "add")
     return out
+
+
+def preview(user, lib, records: list[dict]) -> dict:
+    """Dry-run di `apply`: stesso abbinamento, nessuna scrittura. new = verrebbero aggiunti (hanno un eseguibile),
+    present = gia' in libreria, ignored = ne' abbinati ne' importabili. Elenca al massimo 15 titoli per gruppo."""
+    from ..matching import normalize
+    by_title = {normalize(g["title"]): g["key"] for g in lib.games if g.get("store") != "online"}
+    cur = user.games()
+    colls = {c["name"].lower() for c in user.collections().values() if c.get("custom")}
+    out = {"new": 0, "present": 0, "ignored": 0, "favorites": 0, "playtime": 0, "collections": 0,
+           "scripts_ignored": 0, "total": 0, "samples": {"new": [], "present": [], "ignored": []}}
+    new_colls: set[str] = set()
+    for r in records[:MAX_GAMES]:
+        title = (r.get("title") or "").strip()
+        if not title:
+            continue
+        out["total"] += 1
+        out["scripts_ignored"] += 1 if r.get("scripts") else 0
+        key = by_title.get(normalize(title))
+        exe = r.get("exe")
+        if key:
+            bucket = "present"
+            if r.get("favorite") and not cur.get(key, {}).get("favorite"):
+                out["favorites"] += 1
+            if float(r.get("playtime") or 0) > (cur.get(key, {}).get("playtime") or 0):
+                out["playtime"] += 1
+        elif exe and Path(exe).is_file():
+            bucket = "new"
+        else:
+            bucket = "ignored"
+        out[bucket] += 1
+        if len(out["samples"][bucket]) < 15:
+            out["samples"][bucket].append(title)
+        if bucket != "ignored":
+            for name in r.get("collections") or []:
+                name = str(name).strip()[:80]
+                if name and name.lower() not in colls:
+                    new_colls.add(name.lower())
+    out["collections"] = len(new_colls)
+    return out

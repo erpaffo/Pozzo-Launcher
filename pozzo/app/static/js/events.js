@@ -588,10 +588,17 @@ function bind() {
   });
   $("#scan-plan").onclick = showPlan;
   $("#imp-go").onclick = async () => {
-    const fmt = $("#imp-fmt").value, dir = fmt === "heroic" || fmt === "launchbox" && confirm(t("k.lib.imp.pickFolder"));
+    const fmt = $("#imp-fmt").value, dir = fmt === "heroic" || (fmt === "launchbox" || fmt === "retroarch") && confirm(t("k.lib.imp.pickFolder"));
     const p = window.pywebview?.api ? await pickPath(dir ? "folder" : "file") : prompt(t("k.lib.imp.pathPrompt"));
     if (!p) return;
     try {
+      // anteprima (dry-run, non scrive nulla) e conferma, poi l'import vero
+      const pv = await api("/api/import/" + fmt + "/preview", { body: { path: p } });
+      const head = t("k.lib.imp.preview", { total: pv.total, new: pv.new, present: pv.present, ignored: pv.ignored, favorites: pv.favorites, playtime: pv.playtime, collections: pv.collections });
+      $("#imp-out").textContent = head;
+      if (!pv.total) return;
+      const msg = head + (pv.scripts_warning ? "\n\n" + pv.scripts_warning : "") + "\n\n" + t("k.lib.imp.confirm");
+      if (!confirm(msg)) return;
       const r = await api("/api/import/" + fmt, { body: { path: p } });
       $("#imp-out").textContent = t("k.lib.imp.result", { matched: r.matched, added: r.added, skipped: r.skipped, favorites: r.favorites, playtime: r.playtime, collections: r.collections });
       if (r.scripts_warning) toast(r.scripts_warning, true);

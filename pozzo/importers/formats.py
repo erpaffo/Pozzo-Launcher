@@ -190,5 +190,128 @@ def parse_pegasus(path) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ Steam ROM Manager
+def _vdf_bin(raw: bytes) -> dict:
+    """VDF binario di Steam (shortcuts.vdf): 0=sottomappa, 1=stringa, 2=int32, 8=fine. Solo quanto serve."""
+    pos = 0
+
+    def cstr() -> str:
+        nonlocal pos
+        end = raw.index(b"\0", pos)
+        s, pos = raw[pos:end].decode("utf-8", "replace"), end + 1
+        return s
+
+    def mapping(depth=0) -> dict:
+        nonlocal pos
+        d = {}
+        while pos < len(raw):
+            t = raw[pos]
+            pos += 1
+            if t == 8:
+                return d
+            k = cstr()
+            if t == 0 and depth < 8:
+                d[k] = mapping(depth + 1)
+            elif t == 1:
+                d[k] = cstr()
+            elif t == 2:
+                d[k] = int.from_bytes(raw[pos:pos + 4], "little")
+                pos += 4
+            else:
+                raise ValueError
+        return d
+    try:
+        return mapping()
+    except (ValueError, IndexError) as e:
+        raise ImportError_("format") from e
+
+
+def parse_srm(path) -> list[dict]:
+    """Steam ROM Manager. `shortcuts.vdf` (le scorciatoie non-Steam che SRM ha scritto: titolo, tag come raccolte,
+    ultimo avvio; LaunchOptions = comando, solo segnalato) oppure `userConfigurations.json` (un parser per ogni
+    emulatore: i file direttamente dentro romDirectory diventano titoli, nella raccolta col nome del parser)."""
+    p = Path(str(path or "").strip().strip('"'))
+    if p.suffix.lower() == ".vdf":
+        d = _vdf_bin(read_bytes(p, (".vdf",)))
+        sc = next((v for k, v in d.items() if k.lower() == "shortcuts" and isinstance(v, dict)), None)
+        if sc is None:
+            raise ImportError_("format")
+        out = []
+        for e in list(sc.values())[:MAX_GAMES]:
+            e = {str(k).lower(): v for k, v in e.items()} if isinstance(e, dict) else {}
+            if not e.get("appname"):
+                continue
+            tags = [str(t) for t in (e.get("tags") or {}).values()] if isinstance(e.get("tags"), dict) else []
+            out.append(_rec(e["appname"], 0, False, e.get("lastplaytime") or 0, tags,
+                            _exe(str(e.get("exe") or "").strip('"')), bool(e.get("launchoptions"))))
+        return out
+    cfg = _json(p)
+    if not isinstance(cfg, list):
+        raise ImportError_("format")
+    out = []
+    for c in cfg:
+        rd = c.get("romDirectory") if isinstance(c, dict) else None
+        if not rd or ".." in Path(str(rd)).parts or not Path(str(rd)).is_dir():
+            continue
+        name = str(c.get("configTitle") or c.get("parserType") or "").strip()
+        # comandi del parser (executableArgs/executableModifier): non si importano, si segnalano
+        scripts = bool(c.get("executableArgs") or c.get("executableModifier"))
+        for f in sorted(Path(rd).iterdir())[:MAX_GAMES - len(out)]:
+            if f.is_file() and not f.is_symlink() and not f.name.startswith("."):
+                out.append(_rec(f.stem, collections=[name] if name else [], scripts=scripts))
+    return out
+
+
+# ------------------------------------------------------------------ RetroArch
+def _lpl(f: Path) -> list[dict]:
+    try:
+        d = json.loads(read_bytes(f, (".lpl",)).decode("utf-8-sig", "replace"))
+    except json.JSONDecodeError as e:
+        raise ImportError_("json") from e  # il vecchio formato a 6 righe per voce non e' JSON
+    if not isinstance(d, dict) or not isinstance(d.get("items"), list):
+        raise ImportError_("format")
+    stem = f.stem
+    special = stem.lower() in ("content_favorites", "content_history", "content_image_history",
+                               "content_music_history", "content_video_history")
+    out = []
+    for it in d["items"][:MAX_GAMES]:
+        if not isinstance(it, dict) or not str(it.get("label") or "").strip():
+            continue
+        secs = (float(it.get("runtime_hours") or 0) * 3600 + float(it.get("runtime_minutes") or 0) * 60
+                + float(it.get("runtime_seconds") or 0))
+        last = 0.0
+        if it.get("last_played_year"):
+            try:
+                last = datetime(int(it["last_played_year"]), int(it.get("last_played_month") or 1), int(it.get("last_played_day") or 1),
+                                int(it.get("last_played_hour") or 0), int(it.get("last_played_minute") or 0)).timestamp()
+            except (ValueError, OverflowError, OSError):
+                pass
+        out.append(_rec(str(it["label"]).strip(), secs, stem.lower() == "content_favorites", last, [] if special else [stem]))
+    return out
+
+
+def parse_retroarch(path) -> list[dict]:
+    """Playlist `.lpl` (JSON) di RetroArch, o la cartella playlists: ogni playlist e' una raccolta (content_favorites
+    = preferiti, content_history ignorata). Tempo di gioco e ultimo avvio se presenti. I ROM non si toccano."""
+    p = Path(str(path or "").strip().strip('"'))
+    if p.is_dir():
+        p = _folder(p)
+        files = sorted(f for f in p.glob("*.lpl") if not f.is_symlink())
+        if not files:
+            raise ImportError_("format")
+    else:
+        files = [p]
+    merged: dict[str, dict] = {}
+    for f in files:
+        for r in _lpl(f):
+            m = merged.setdefault(r["title"].lower(), r)
+            if m is not r:
+                m["favorite"] |= r["favorite"]
+                m["playtime"] = max(m["playtime"], r["playtime"])
+                m["last_played"] = max(m["last_played"], r["last_played"])
+                m["collections"] += [c for c in r["collections"] if c not in m["collections"]]
+    return list(merged.values())[:MAX_GAMES]
+
+
 PARSERS = {"playnite": parse_playnite, "launchbox": parse_launchbox, "lutris": parse_lutris,
-           "heroic": parse_heroic, "pegasus": parse_pegasus}
+           "heroic": parse_heroic, "pegasus": parse_pegasus, "srm": parse_srm, "retroarch": parse_retroarch}
