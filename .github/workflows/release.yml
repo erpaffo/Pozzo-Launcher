@@ -101,6 +101,41 @@ jobs:
             Linux)   xvfb-run -a python packaging/smoke_test.py dist/PozzoLauncher/PozzoLauncher ;;
           esac
 
+      # Firma Windows: gira solo se il secret WIN_CODESIGN_PFX_BASE64 esiste (certificato .pfx in base64);
+      # altrimenti questi step saltano e la build esce con eseguibili non firmati, senza errori.
+      - name: Firma Windows attiva?
+        id: sign_check
+        shell: bash
+        env:
+          PFX_B64: ${{ secrets.WIN_CODESIGN_PFX_BASE64 }}
+        run: |
+          if [ -n "$PFX_B64" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Firma Windows saltata: manca il secret WIN_CODESIGN_PFX_BASE64."
+          fi
+
+      # firma gli .exe di dist/ prima del pacchetto, cosi' lo zip portatile e l'installer contengono file firmati
+      - name: Firma eseguibili (Windows)
+        if: runner.os == 'Windows' && steps.sign_check.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.WIN_CODESIGN_PFX_BASE64 }}
+          PFX_PASS: ${{ secrets.WIN_CODESIGN_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_B64))
+          # signtool sta nel Windows SDK del runner: prendo la versione piu' recente (x64)
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool non trovato" }
+          foreach ($f in Get-ChildItem dist\PozzoLauncher -Filter *.exe -Recurse) {
+            & $signtool.FullName sign /f $pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d "Pozzo Launcher" $f.FullName
+            if ($LASTEXITCODE -ne 0) { throw "firma fallita: $($f.Name)" }
+          }
+          Remove-Item $pfx -Force
+
       - name: Pacchetto
         id: pack
         shell: bash
@@ -153,6 +188,24 @@ jobs:
           esac
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
           ls -la release
+
+      # firma dell'installer (stesso secret dei sopra); l'impronta nel manifest winget va calcolata dopo questo step
+      - name: Firma installer (Windows)
+        if: runner.os == 'Windows' && steps.sign_check.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.WIN_CODESIGN_PFX_BASE64 }}
+          PFX_PASS: ${{ secrets.WIN_CODESIGN_PASSWORD }}
+          SETUP: ${{ steps.inst.outputs.file }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_B64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool non trovato" }
+          & $signtool.FullName sign /f $pfx /p $env:PFX_PASS /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d "Pozzo Launcher" $env:SETUP
+          if ($LASTEXITCODE -ne 0) { throw "firma fallita: installer" }
+          Remove-Item $pfx -Force
 
       # archive: false = il file (gia' uno zip / tar.gz) si scarica cosi' com'e', senza lo zip esterno che
       # upload-artifact aggiunge di solito; il nome dell'artifact e' il nome del file.
@@ -241,3 +294,62 @@ jobs:
         with:
           files: release/*
           body_path: notes.md
+
+  # manifest per winget e scoop, con le impronte SHA-256 degli asset Windows (quelli firmati, se c'e' la firma).
+  # Gira dopo la release: cosi' l'artifact non finisce nel download di «release» e le URL puntano gia' ai file pubblicati.
+  manifests:
+    name: manifest winget e scoop
+    needs: [build, release]
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        continue-on-error: true  # nessun asset Windows: niente manifest, lo dice lo step sotto
+        with:
+          path: win
+          pattern: "*windows-x64*"
+          merge-multiple: true
+          skip-decompress: true
+
+      - name: Manifest winget e scoop
+        shell: bash
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          ZIP=$(compgen -G "win/*-windows-x64.zip" | head -n 1)
+          SETUP=$(compgen -G "win/*-windows-x64-setup.exe" | head -n 1)
+          if [ -z "$ZIP" ] || [ -z "$SETUP" ]; then
+            echo "::warning::asset Windows non trovati: manifest non generati"
+            exit 0
+          fi
+          VER=$(basename "$ZIP" | sed 's/^PozzoLauncher-//; s/-windows-x64\.zip$//')
+          ZIP_SHA=$(sha256sum "$ZIP" | cut -d' ' -f1)
+          SETUP_SHA=$(sha256sum "$SETUP" | cut -d' ' -f1)
+          BASE="https://github.com/$REPO/releases/download/v$VER"
+          URL_ZIP="$BASE/$(basename "$ZIP")"
+          URL_SETUP="$BASE/$(basename "$SETUP")"
+          OUT=manifests
+          # cartella come la vuole winget-pkgs: manifests/e/erpaffo/PozzoLauncher/<versione>/
+          WINGET="$OUT/winget/manifests/e/erpaffo/PozzoLauncher/$VER"
+          mkdir -p "$WINGET" "$OUT/scoop"
+          render() {
+            sed -e "s|__VERSION__|$VER|g" -e "s|__SHA256_ZIP__|$ZIP_SHA|g" -e "s|__SHA256_SETUP__|$SETUP_SHA|g" \
+              -e "s|__URL_ZIP__|$URL_ZIP|g" -e "s|__URL_SETUP__|$URL_SETUP|g" "$1" > "$2"
+          }
+          for t in packaging/winget/*.tmpl; do render "$t" "$WINGET/$(basename "${t%.tmpl}")"; done
+          render packaging/scoop/pozzolauncher.json.tmpl "$OUT/scoop/pozzolauncher.json"
+          # un segnaposto rimasto vuol dire un template non allineato con questo step
+          if grep -rq '__[A-Z_]*__' "$OUT"; then echo "::error::segnaposto non sostituiti"; exit 1; fi
+          find "$OUT" -type f
+          {
+            echo "### Manifest Windows ($VER)"
+            echo "- SHA-256 zip: $ZIP_SHA"
+            echo "- SHA-256 setup: $SETUP_SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manifest-winget-scoop
+          path: manifests/

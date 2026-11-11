@@ -1,0 +1,17 @@
+# Template winget (installer). Il setup Inno Setup e' per-utente (PrivilegesRequired=lowest in installer.iss),
+# quindi Scope: user e nessuna richiesta UAC.
+PackageIdentifier: erpaffo.PozzoLauncher
+PackageVersion: __VERSION__
+MinimumOSVersion: 10.0.0.0
+InstallerType: inno
+Scope: user
+InstallerSwitches:
+  Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+  SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+UpgradeBehavior: install
+Installers:
+  - Architecture: x64
+    InstallerUrl: __URL_SETUP__
+    InstallerSha256: __SHA256_SETUP__
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -1,0 +1,25 @@
+{
+    "version": "__VERSION__",
+    "description": "Game library for ROMs and PC games from the stores, with covers and metadata.",
+    "homepage": "https://github.com/erpaffo/Pozzo-Launcher",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "__URL_ZIP__",
+            "hash": "__SHA256_ZIP__",
+            "extract_dir": "PozzoLauncher"
+        }
+    },
+    "bin": "PozzoLauncher.exe",
+    "shortcuts": [
+        ["PozzoLauncher.exe", "Pozzo Launcher"]
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/erpaffo/Pozzo-Launcher/releases/download/v$version/PozzoLauncher-$version-windows-x64.zip"
+            }
+        }
+    }
+}
