@@ -25,6 +25,7 @@ CREDIT = "Immagini delle console: RetroArch assets (libretro), licenza CC BY 4.0
 # nomi delle immagini quando non coincidono con i nomi libretro della piattaforma
 EXTRA = {
     "wiiu": ["Nintendo - Wii U"], "switch": ["Nintendo - Switch", "Nintendo - Nintendo Switch"],
+    "switch2": ["Nintendo - Switch 2", "Nintendo - Nintendo Switch 2", "Nintendo - Switch", "Nintendo - Nintendo Switch"],
     "ps3": ["Sony - PlayStation 3 (PSN)"], "ps4": ["Sony - PlayStation 4"], "ps5": ["Sony - PlayStation 5"],
     "psvita": ["Sony - PlayStation Vita"],
     "xbox360": ["Microsoft - Xbox 360"], "xbox": ["Microsoft - Xbox"], "atomiswave": ["Atomiswave"],

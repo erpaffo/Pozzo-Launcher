@@ -246,6 +246,11 @@
         <button class="btn" id="md-reset" type="button" hidden><span aria-hidden="true">↺</span> <span data-i18n="a.media.reset">Torna all'originale</span></button>
         <input type="file" id="md-file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" hidden>
       </div>
+      <div class="md-fill">
+        <button class="btn" id="md-fill" type="button"><span aria-hidden="true">🌐</span> <span data-i18n="a.media.fill">Completa i mancanti dal web</span></button>
+        <span class="muted small" data-i18n="a.media.fillHint">Cerca su DuckDuckGo/Bing le immagini che mancano. Vedi l'anteprima e confermi tu.</span>
+        <div id="md-fill-box" hidden aria-live="polite"></div>
+      </div>
       <div id="md-sgdb" hidden><div class="muted small" id="md-sgdb-msg" style="margin:10px 0 6px"></div><div class="md-cands" id="md-cands"></div></div>
       <label class="lbl-field"><span data-i18n="a.media.search">Ricerca</span>
         <span class="row tight"><input id="md-q" class="field grow" autocomplete="off">
@@ -399,6 +404,11 @@
     <div class="dlg-body">
       <label class="lbl-field"><span data-i18n="a.dl.links">Link, uno per riga (http, https, magnet o .torrent)</span>
         <textarea id="dl-links" class="field" rows="4" placeholder="https://…&#10;magnet:?xt=…"></textarea></label>
+      <div class="row wrap">
+        <button class="btn" id="dl-paste" type="button" data-i18n="a.dl.paste">Incolla dagli appunti</button>
+        <button class="btn" id="dl-check" type="button" data-i18n="a.dl.check">Controlla link</button>
+      </div>
+      <ul id="dl-check-list" class="dl-check-list" aria-live="polite"></ul>
       <button class="btn" id="dl-mu-go" type="button" hidden data-i18n-title="a.dl.muTitle" data-i18n="a.dl.muList">Elenca provider</button>
       <div id="dl-mu-list" aria-live="polite"></div>
       <label class="lbl-field"><span data-i18n="a.dl.torrent">Oppure un file .torrent (facoltativo)</span>
@@ -406,6 +416,14 @@
       <label class="lbl-field"><span data-i18n="a.dl.dest">Cartella di destinazione</span>
         <span class="row tight"><input id="dl-dest" class="field grow">
         <button class="btn" id="dl-dest-pick" type="button" data-i18n="a.common.change">Cambia…</button></span></label>
+      <div class="row wrap">
+        <label class="grow"><span data-i18n="a.dl.pass">Password del pacchetto (facoltativa)</span>
+          <input id="dl-pass" class="field" type="password" autocomplete="off" spellcheck="false"></label>
+        <label><span data-i18n="a.dl.cat">Categoria (facoltativa)</span>
+          <input id="dl-cat" class="field" list="dls-catlist" maxlength="64"></label>
+        <label class="grow"><span data-i18n="a.dl.tags">Tag, separati da virgola</span>
+          <input id="dl-tags" class="field" maxlength="200"></label>
+      </div>
       <div class="row end"><button class="btn primary" id="dl-add-go" type="button"><span aria-hidden="true">⬇</span> <span data-i18n="a.dl.download">Scarica</span></button></div>
     </div>
   </dialog>
@@ -472,6 +490,7 @@
 <script src="/static/js/dashboard.js?v={{v}}"></script>
 <script src="/static/js/detail.js?v={{v}}"></script>
 <script src="/static/js/actions.js?v={{v}}"></script>
+<script src="/static/js/mediafill.js?v={{v}}"></script>
 <script src="/static/js/ports.js?v={{v}}"></script>
 <script src="/static/js/pages.js?v={{v}}"></script>
 <script src="/static/js/remote.js?v={{v}}"></script>
@@ -494,6 +513,7 @@
 <script src="/static/palette.js?v={{v}}"></script>
 <script src="/static/onboarding.js?v={{v}}"></script>
 <script src="/static/settings/emulatori-extra.js?v={{v}}"></script>
+<script src="/static/settings/switch2.js?v={{v}}"></script>
 <script src="/static/settings/controller-extra.js?v={{v}}"></script>
 <script src="/static/settings/libshare.js?v={{v}}"></script>
 <script src="/static/anchor.js?v={{v}}"></script>

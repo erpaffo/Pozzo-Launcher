@@ -18,7 +18,7 @@ API = "https://api.rawg.io/api/games"
 RAWG_NAMES = {
     "nes": ["nes"], "snes": ["snes"], "n64": ["nintendo64"], "gb": ["gameboy"], "gbc": ["gameboycolor"],
     "gba": ["gameboyadvance"], "nds": ["nintendods"], "3ds": ["nintendo3ds"], "gc": ["gamecube"], "wii": ["wii"],
-    "wiiu": ["wiiu"], "switch": ["nintendoswitch"], "megadrive": ["genesis"], "mastersystem": ["segamastersystem"],
+    "wiiu": ["wiiu"], "switch": ["nintendoswitch"], "switch2": ["nintendoswitch2"], "megadrive": ["genesis"], "mastersystem": ["segamastersystem"],
     "gamegear": ["gamegear"], "segacd": ["segacd"], "sega32x": ["sega32x"], "saturn": ["segasaturn"],
     "dreamcast": ["dreamcast"], "psx": ["playstation"], "ps2": ["playstation2"], "ps3": ["playstation3"],
     "ps4": ["playstation4"], "ps5": ["playstation5"], "psp": ["psp"], "psvita": ["psvita"], "xbox": ["xbox"], "xbox360": ["xbox360"],

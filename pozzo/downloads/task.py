@@ -19,7 +19,9 @@ KIND_OF = {"game": "base", "update": "update", "dlc": "dlc", "extra": "altro", "
 _ARCHIVE = re.compile(r"\.(zip|rar|7z|iso|exe|nsp|xci|pkg|torrent)$", re.I)
 ACTIVE = (QUEUED, RUNNING)
 
-STAGES = (("download", "Scarico"), ("extract", "Estrazione"), ("library", "Inserimento in libreria"), ("data", "Dati e copertina"))
+# convert e verify restano "skip" se non servono: la UI mostra solo i passi che conosce e non sono saltati
+STAGES = (("download", "Scarico"), ("extract", "Estrazione"), ("convert", "Conversione"), ("verify", "Verifica"),
+          ("library", "Inserimento in libreria"), ("data", "Dati e copertina"))
 _PACKED = re.compile(r"\.(zip|rar|7z|[rz]\d{2,}|\d{3,})(\?|$)", re.I)
 LIBRARY_S, DATA_S, RATE_DEFAULT = 20, 20, 40 * 1048576  # secondi stimati; byte/s di estrazione senza storia
 RATE_FILE = None  # Path del json delle ultime estrazioni (lo imposta il Manager); None = solo in memoria
@@ -74,7 +76,8 @@ class DownloadTask:
     done: int = 0
     speed: float = 0.0  # byte/s, media mobile calcolata dal manager
     priority: int = 0  # -2 bassa .. 2 massima: ordine in coda e quota di banda (peso 2**priority)
-    category: str = ""
+    category: str = ""  # nome di una categoria di app.downloads.categories (cartella e limiti di condivisione)
+    tags: list = field(default_factory=list)
     error: str = ""
     phase: str = ""  # passaggio prima del download: «Salto la pubblicità», «Cerco il file su …»
     created: float = field(default_factory=time.time)
@@ -93,6 +96,11 @@ class DownloadTask:
             if self.status == COMPLETED and self.options.get("post_done"):  # task vecchio gia' passato in libreria
                 for s in self.stages:
                     s["state"], s["pct"] = ("skip" if s["state"] == "skip" else "done"), 100
+        if len(self.stages) < len(STAGES):  # salvato prima di convert/verify: si aggiungono come saltati
+            have = {s["id"] for s in self.stages}
+            ids = [i for i, _ in STAGES]
+            self.stages += [{"id": i, "label": l, "state": "skip", "pct": 0} for i, l in STAGES if i not in have]
+            self.stages.sort(key=lambda s: ids.index(s["id"]))
         return next(s for s in self.stages if s["id"] == sid)
 
     def set_stage(self, sid: str, state: str, pct: int | None = None, note: str = "") -> None:
@@ -196,7 +204,7 @@ class DownloadTask:
         d = self.data()
         d.update(progress=self.progress, eta=self.eta, ready=self.ready, ready_eta=self.ready_eta)
         del d["logs"]  # il registro si legge a parte (/log?after=): niente righe a ogni tick
-        d["options"] = {k: v for k, v in d["options"].items() if k not in ("segs", "headers", "priorities")}  # interni (le priorita' sono gia' in files)
+        d["options"] = {k: v for k, v in d["options"].items() if k not in ("segs", "headers", "priorities", "password")}  # interni (le priorita' sono gia' in files)
         if d["options"].get("wanted") and d["options"].get("files"):  # gioco scelto da un set: gli altri file non si mostrano
             d["options"]["files"] = [f for f in d["options"]["files"] if f["priority"]]
             d["options"]["files_locked"] = True

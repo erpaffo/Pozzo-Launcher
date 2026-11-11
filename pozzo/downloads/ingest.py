@@ -47,11 +47,33 @@ def _dirs(cfg, pid: str) -> list[Path]:
         return []
 
 
-def target_dir(cfg, platform_id: str, downloads_dir: str | Path | None = None) -> Path:
-    """Cartella console dove mettere i giochi scaricati (creata se manca)."""
-    p = _platform(platform_id)
+def match_rule(rules, *names: str, log=None) -> dict | None:
+    """Prima regola {match, platform?, subfolder?} il cui regex trova uno dei nomi. Regole o regex non validi: ignorati."""
+    for r in rules if isinstance(rules, list) else []:
+        try:
+            if isinstance(r, dict) and isinstance(r.get("match"), str) and any(re.search(r["match"], n, re.I) for n in names if n):
+                return r
+        except re.error as e:
+            if log:
+                log(f"Regola di destinazione ignorata (regex non valida): {e}", "warn")
+    return None
+
+
+def target_dir(cfg, platform_id: str, downloads_dir: str | Path | None = None, rule: dict | None = None) -> Path:
+    """Cartella console dove mettere i giochi scaricati (creata se manca). Una regola con subfolder aggiunge la
+    sottocartella, una con platform sceglie la console al posto di quella rilevata."""
+    p = _platform((rule or {}).get("platform") or platform_id)
     if not p:
         raise ValueError(f"Console non valida: {platform_id!r}")
+    base = _target_dir(cfg, p, downloads_dir)
+    sub = [x for x in (_BAD.sub("", x).strip(" .") for x in re.split(r"[\\/]+", str((rule or {}).get("subfolder") or ""))) if x]
+    if sub:  # ogni pezzo ripulito: niente "..", niente percorsi assoluti
+        base = base.joinpath(*sub)
+        base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _target_dir(cfg, p: P.Platform, downloads_dir) -> Path:
     dirs = _dirs(cfg, p.id)
     if dirs:
         return min(dirs, key=lambda d: (not d.is_relative_to(Path(cfg.roms)), len(d.parts)))  # sotto la ROM principale, la piu' vicina
@@ -188,7 +210,7 @@ def _recheck(ctx, pid: str, placed: list[Path], drop: str | None, say, poll: flo
 
 
 def ingest(ctx, game_id: int | None, platform: str | None, files: list[Path | str], timeout: float = 60,
-           poll: float = 1.0, on_status=None) -> dict:
+           poll: float = 1.0, on_status=None, rule: dict | None = None) -> dict:
     """Mette in libreria i giochi scaricati ed estratti (da chiamare in un thread).
     `ctx`: cfg, lib, events, api_scan_start; opzionali job/state (lavori in corso) e downloads (cartella download).
     `on_status(msg, level="info")`: cosa sta facendo, per il log del download. Dopo `timeout` secondi senza il gioco in
@@ -213,11 +235,11 @@ def ingest(ctx, game_id: int | None, platform: str | None, files: list[Path | st
         return {"ok": False, "game_id": None, "files": [],
                 "error": f"Nessun file giocabile per {p.name} (servono: {', '.join(p.exts)})"}
     mgr = getattr(ctx, "downloads", None)
-    dest = target_dir(cfg, p.id, mgr.settings().get("dir") if mgr else None)
+    dest = target_dir(cfg, p.id, mgr.settings().get("dir") if mgr else None, rule)
     scanned = _dirs(cfg, p.id)
     # file gia' sotto una cartella console scansionata (es. download dentro la cartella ROM): restano dove sono
     say(f"Cartella della console: {dest}")
-    placed = good if all(any(Path(_norm(f)).is_relative_to(_norm(d)) for d in scanned) for f in good) else _place(p, good, dest)
+    placed = good if not (rule or {}).get("subfolder") and all(any(Path(_norm(f)).is_relative_to(_norm(d)) for d in scanned) for f in good) else _place(p, good, dest)
     drop = online["key"] if online and online.get("store") == "online" else None
     if drop:  # il titolo della voce online resta "posseduto" alla ricostruzione
         c = Cache(cfg.cache)

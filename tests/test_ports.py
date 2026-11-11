@@ -239,24 +239,32 @@ def test_aggiorna_da_solo(tmp: Path):
 
 
 def test_estrazione_7z(tmp: Path):
-    """Un .7z che tar non riesce ad aprire: senza 7-Zip l'errore lo dice chiaramente (niente eccezioni oscure)."""
+    """Stesso estrattore dei download (downloads/extract.py): errore chiaro, cartella unica portata su, niente
+    file fuori dalla cartella di destinazione."""
     arc = tmp / "finto.7z"
     arc.write_bytes(b"non e' un archivio 7z")
-    saved = PT._7zip
     try:
-        PT._7zip = lambda: None
-        try:
-            PT._extract(arc, tmp / "uno", "finto.7z")
-            raise AssertionError("doveva rifiutare un archivio non estraibile")
-        except RuntimeError as e:
-            assert "7-Zip" in str(e), e
-        with zipfile.ZipFile(tmp / "vero.zip", "w") as z:  # gli zip non hanno bisogno di nulla
-            z.writestr("game.exe", "x")
-        PT._extract(tmp / "vero.zip", tmp / "due", "vero.zip")
-        assert (tmp / "due" / "game.exe").is_file()
-    finally:
-        PT._7zip = saved
-    print("ok  estrazione: zip diretto, .7z con 7-Zip (senza, errore chiaro)")
+        PT._extract(arc, tmp / "uno", "finto.7z")
+        raise AssertionError("doveva rifiutare un archivio non estraibile")
+    except RuntimeError as e:
+        assert "finto.7z" in str(e), e
+    assert not (tmp / "uno").exists() and not (tmp / "uno.estrazione").exists(), "niente avanzi dopo l'errore"
+    with zipfile.ZipFile(tmp / "vero.zip", "w") as z:
+        z.writestr("game.exe", "x")
+    PT._extract(tmp / "vero.zip", tmp / "due", "vero.zip")
+    assert (tmp / "due" / "game.exe").is_file()
+    with zipfile.ZipFile(tmp / "cartella.zip", "w") as z:  # una sola cartella dentro: il contenuto sale di un livello
+        z.writestr("Port-1.0/game.exe", "x")
+        z.writestr("Port-1.0/data/a.bin", "x")
+    PT._extract(tmp / "cartella.zip", tmp / "tre", "cartella.zip")
+    assert (tmp / "tre" / "game.exe").is_file() and (tmp / "tre" / "data" / "a.bin").is_file()
+    with zipfile.ZipFile(tmp / "cattivo.zip", "w") as z:
+        z.writestr("../../fuori.txt", "x")
+        z.writestr("game.exe", "x")
+    PT._extract(tmp / "cattivo.zip", tmp / "sub" / "quattro", "cattivo.zip")
+    assert (tmp / "sub" / "quattro" / "game.exe").is_file()
+    assert not list(tmp.rglob("fuori.txt")) and not (tmp.parent / "fuori.txt").exists(), "percorso fuori cartella scartato"
+    print("ok  estrazione: sandbox dei download, cartella unica portata su, errore chiaro")
 
 
 def test_percorso_breve(tmp: Path):

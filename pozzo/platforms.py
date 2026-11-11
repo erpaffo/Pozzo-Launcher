@@ -73,6 +73,8 @@ PLATFORMS: dict[str, Platform] = {p.id: p for p in [
     _p("wiiu", "Wii U", "wud wux rpx wua iso", 18, 41, 38, (), ("wii u",), long_names=("Nintendo - Wii U",), **CD),
     _p("switch", "Nintendo Switch", "xci nsp nsz xcz", 225, 130, 4971, (), ("nintendo switch",),
        long_names=("Nintendo - Nintendo Switch",), dir_games=True, **CD),
+    _p("switch2", "Nintendo Switch 2", "xci nsp nsz xcz nup", None, 508, None, (),
+       ("nintendo switch 2", "switch 2", "ns2"), long_names=("Nintendo - Nintendo Switch 2",), dir_games=True, **CD),
     # --- Sega ---
     _p("sg-1000", "SG-1000", "sg bin", 109, 84, 4949, "Sega - SG-1000", ("sg1000",)),
     _p("mastersystem", "Master System", "sms", 2, 64, 35, "Sega - Master System - Mark III", ("sms", "master system", "mark iii")),

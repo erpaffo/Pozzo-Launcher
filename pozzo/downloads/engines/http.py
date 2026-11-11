@@ -68,6 +68,17 @@ def _meta(r: httpx.Response, url: str) -> tuple[str, int, bool, str]:
     return _filename(r, url), total, r.status_code == 206 and total > 0,         r.headers.get("etag") or r.headers.get("last-modified") or ""
 
 
+def _coherent(segs, total: int) -> bool:
+    """I segmenti salvati coprono [0, total) senza buchi e ogni cursore sta dentro il suo segmento."""
+    pos = 0
+    for s in segs:
+        if not (isinstance(s, list) and len(s) == 3 and all(type(x) is int for x in s)
+                and s[0] == pos and s[0] <= s[2] <= s[1] + 1):
+            return False
+        pos = s[1] + 1
+    return pos == total
+
+
 def _sparse(f) -> None:
     """Windows: marca il file come sparso, cosi' truncate non scrive tutti gli zeri. Mai solleva."""
     if os.name != "nt":
@@ -166,7 +177,8 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
     task.options["part"] = str(part)
 
     old = task.options.get("segs") or []
-    if not (part.exists() and same and old and (ranged or len(old) == 1)):
+    # stato salvato rovinato (segmenti che non coprono il file): non ci si fida, si riparte da capo
+    if not (part.exists() and same and old and (ranged or len(old) == 1) and (not ranged or _coherent(old, total))):
         n = max(1, min(segments, total // MIN_SEGMENT)) if ranged else 1
         step = -(-total // n) if ranged else 0
         task.options["segs"] = [[i * step, min((i + 1) * step, total) - 1, i * step] for i in range(n)] if ranged \
@@ -178,6 +190,14 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
                 f.truncate(total)
         task.log(f"Nuovo download: {n} segment{'o' if n == 1 else 'i'}")
     else:
+        have = part.stat().st_size
+        for i, s in enumerate(old if ranged else []):
+            if s[2] > have:  # il .part e' piu' corto di quanto il segmento dice di avere: quei byte non ci sono
+                task.log(f"Segmento {i + 1}: il file parziale non ha i dati attesi, riparte dall'inizio", "warn")
+                s[2] = s[0]
+        if ranged and have != total:
+            with open(part, "r+b") as f:
+                f.truncate(total)
         task.log(f"Ripresa: {mb(sum(s[2] - s[0] for s in old))} già scaricati, {len(old)} segment{'o' if len(old) == 1 else 'i'}")
     segs = task.options["segs"]
     if not ranged:

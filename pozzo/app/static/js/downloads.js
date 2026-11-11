@@ -295,7 +295,14 @@ const DLU = (() => {
       return { day: x.day, bytes: x.bytes, x: +(i * slot + (slot - bw) / 2).toFixed(1), y: +(h - bh).toFixed(1), width: +bw.toFixed(1), height: +bh.toFixed(1) };
     }) };
   }
-  return { groupRows, groupAgg, KIND, spaceLines, copyable,logView, logMerge, logRel, logKind, logSummary, isMultiup, isMirrorSource, sortMirrors, mirrorView, defaultMirror, muTitle, bytes, speed, eta, status, FILE_PRIO, merge, summary, backoff, PRIO, clampPrio, prio, colW, FILTERS, filter, sortBy, host, select, limit, schedule,
+  /** limite per host come lo vuole il server: dominio minuscolo senza «www.», numero intero 1-10; altrimenti null */
+  function hostLimit(dom, n) {
+    const host = String(dom || "").trim().toLowerCase().replace(/^www\./, "");
+    const num = Number(n);
+    if (host.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,30}$/.test(host)) return null;
+    return Number.isInteger(num) && num >= 1 && num <= 10 ? { host, n: num } : null;
+  }
+  return { hostLimit, groupRows, groupAgg, KIND, spaceLines, copyable,logView, logMerge, logRel, logKind, logSummary, isMultiup, isMirrorSource, sortMirrors, mirrorView, defaultMirror, muTitle, bytes, speed, eta, status, FILE_PRIO, merge, summary, backoff, PRIO, clampPrio, prio, colW, FILTERS, filter, sortBy, host, select, limit, schedule,
     DEBRID, debridName, debridState, readyText, stepperHtml, sparkPath, pushSample, fmtGB, barsLayout };
 })();
 if (typeof module !== "undefined") module.exports = DLU;
@@ -734,7 +741,7 @@ function dlRow(t, member = false) {
   const note = t.status === "error" ? t.error || t.phase : t.phase; // errore corto in riga, completo nel title
   return `<tr class="dl-row${member ? " dl-member" : ""}" tabindex="0" data-id="${esc(t.id)}" data-status="${esc(t.status)}"${o.seeding ? ' data-seed="1"' : ""}>
     <td class="c-name"><span class="dl-ico" aria-hidden="true" title="${tor ? "Torrent" : "HTTP"}">${tor ? "🧲" : "🌐"}</span>${tor ? btn("toggle", "▸", tr("d.files.details", "File e dettagli")) : ""}<b title="${esc(t.source)}">${esc(name)}</b>${o.start_at ? `<span class="dl-type" title="${tr("d.sched.tt", "Avvio pianificato")}">⏰ ${esc(o.start_at)}</span>` : ""}${dlReadyHtml(t)}</td>
-    <td class="hide-s">${esc(DLU.host(t))}</td>
+    <td class="hide-s">${esc(DLU.host(t))}${t.category ? ` <span class="dl-type" title="${tr("d.cat", "Categoria")}">🏷 ${esc(t.category)}</span>` : ""}</td>
     <td class="num">${t.size ? DLU.bytes(t.size) : "?"}</td>
     <td class="c-prog"><div class="dl-bar" role="progressbar" aria-label="${tr("d.progress.aria", "Avanzamento: {name}", { name: esc(name) })}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span class="num">${pct}%</span></td>
     <td class="num">${t.status === "running" ? DLU.speed(t.speed) + dlSpark(t.id) : "—"}</td>
@@ -876,7 +883,11 @@ function dlPanelGeneral(t) {
     [tr("d.kv.peer", "Peer"), tor && o.peers != null ? tr("d.kv.peers", "{peers} peer, {seeds} seed", { peers: o.peers, seeds: o.seeds ?? 0 }) : ""], [tr("d.kv.up", "Invio"), tor && o.upload_rate ? DLU.speed(o.upload_rate) : ""],
     [tr("d.kv.ratio", "Rapporto"), tor && o.ratio != null ? Number(o.ratio).toFixed(2).replace(".", ",") : ""],
     [tr("d.kv.created", "Creato"), when(t.created)], [tr("d.kv.finished", "Finito"), when(t.finished)], [tr("d.status.error", "Errore"), t.status === "error" ? t.error : ""]];
-  return `<dl class="dl-kv">${kv.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd${k === tr("d.status.error", "Errore") ? ' class="bad"' : ""}>${esc(String(v))}</dd>`).join("")}</dl>`;
+  return `<dl class="dl-kv">${kv.filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd${k === tr("d.status.error", "Errore") ? ' class="bad"' : ""}>${esc(String(v))}</dd>`).join("")}</dl>
+    <div class="row wrap dl-cat">
+      <label>${tr("d.cat", "Categoria")} <input class="field" data-act="cat" data-k="category" list="dls-catlist" maxlength="64" value="${esc(t.category || "")}"></label>
+      <label class="grow">${tr("d.tags", "Tag (separati da virgola)")} <input class="field" data-act="cat" data-k="tags" maxlength="200" value="${esc((t.tags || []).join(", "))}"></label>
+    </div>`;
 }
 
 /** scheda Registro: stesse righe del modale (dlLogRow), ma lette per il task mostrato e accodate a ogni aggiornamento */
@@ -906,6 +917,7 @@ function dlRenderPanel() {
   const t = dlPanelTask();
   if (!$("#dl-pbody")) return;
   DL.panelId = t ? t.id : "";
+  dlsCatList();
   if (DL.tab === "files" && (!t || t.type !== "torrent")) DL.tab = "gen";
   document.querySelectorAll(".dl-ptab").forEach((b) => {
     b.setAttribute("aria-selected", b.dataset.ptab === DL.tab);
@@ -922,7 +934,7 @@ function dlPanelDraw() {
     : DL.tab === "files" ? dlTorrentBox(t) : DL.tab === "log" ? dlPanelLog(t) : dlPanelGeneral(t);
   if (same && html === DL.panelHtml) return;
   const act = document.activeElement;
-  if (same && body.contains(act) && act.tagName === "SELECT") return; // tendina aperta: si aggiorna al giro dopo
+  if (same && body.contains(act) && (act.tagName === "SELECT" || act.tagName === "INPUT")) return; // tendina aperta o testo in modifica: si aggiorna al giro dopo
   const top = body.scrollTop, bottom = body.scrollHeight - top - body.clientHeight < 24;
   const re = body.contains(act) && act.dataset.act ? `[data-act="${act.dataset.act}"]${act.dataset.file != null ? `[data-file="${act.dataset.file}"]` : ""}` : "";
   body.innerHTML = html;
@@ -1050,7 +1062,12 @@ async function dlAct(id, act, el) {
   }
   const url = dlUrl(id);
   try {
-    if (act === "up" || act === "down") {
+    if (act === "cat") {
+      const box = el.closest(".dl-cat"), category = $('[data-k="category"]', box).value.trim();
+      const tags = $('[data-k="tags"]', box).value.split(",").map((x) => x.trim()).filter(Boolean);
+      await api(url + "category", { body: { category, tags } });
+      dlApply([{ id, category, tags }]);
+    } else if (act === "up" || act === "down") {
       const priority = DLU.clampPrio((t.priority || 0) + (act === "up" ? 1 : -1));
       if (priority !== (t.priority || 0)) await dlPriority([id], priority);
     } else if (act === "fprio") await api(url + "files", { body: { priorities: { [el.dataset.file]: Number(el.value) } } });
@@ -1266,10 +1283,13 @@ function dlOpenAdd() {
   $("#dl-mu-list").replaceChildren();
   $("#dl-mu-go").hidden = true;
   $("#dl-links").value = "";
+  $("#dl-check-list").replaceChildren();
   $("#dl-file").value = "";
   $("#dl-dest").value = DL.settings.dir || "";
   dlAddStartField();
   $("#dl-start").value = "";
+  $("#dl-pass").value = $("#dl-cat").value = $("#dl-tags").value = "";
+  dlsCatList();
   $("#dl-add-dlg").showModal();
   $("#dl-links").focus();
 }
@@ -1281,13 +1301,15 @@ async function dlSubmit() {
     .flatMap((l) => (dlMuDone.has(l) ? picked.filter((i) => i.closest("fieldset").dataset.src === l).map((i) => i.value) : [l]));
   const file = $("#dl-file").files[0], save_path = $("#dl-dest").value.trim();
   const start_at = ($("#dl-start")?.value || "").trim(); // facoltativo: il download parte da solo a quest'ora
+  const password = $("#dl-pass").value, category = $("#dl-cat").value.trim(); // facoltativi: solo per i link (il .torrent non li accetta)
+  const tags = $("#dl-tags").value.split(",").map((x) => x.trim()).filter(Boolean);
   if (!links.length && !file) return toast(t("d.add.need"), true);
   const go = $("#dl-add-go");
   go.disabled = true;
   const added = [];
   try {
     if (links.length) {
-      added.push(...((await api("/api/downloads", { body: { links, save_path, start_at } })).tasks || []));
+      added.push(...((await api("/api/downloads", { body: { links, save_path, start_at, password, category, tags } })).tasks || []));
       $("#dl-links").value = ""; // se poi fallisce il .torrent, i link non si rimandano due volte
     }
     if (file) {
@@ -1302,21 +1324,108 @@ async function dlSubmit() {
     }
     $("#dl-add-dlg").close();
     toast(added.length === 1 ? t("d.added.one") : t("d.added.many", { n: added.length }));
-  } catch (e) { toast(e.message, true); }
+  } catch (e) {
+    const off = /^Link offline:\s*(.*)$/i.exec(e.message); // messaggio del server (check_links): tradotto qui
+    toast(off ? tr("d.add.offline", "Link offline, non aggiunto: {link}", { link: off[1] }) : e.message, true);
+  }
   finally { go.disabled = false; if (added.length) dlApply(added); }
+}
+
+/* ---- aggiunta: incolla dagli appunti, controllo dei link, rilevamento opzionale */
+const dlLinkLines = () => $("#dl-links").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+const dlParse = async (text) => (await api("/api/downloads/parse-links", { body: { text } })).links || [];
+
+/** aggiunge al campo i link nuovi (senza doppioni) */
+function dlAppendLinks(links) {
+  const have = new Set(dlLinkLines()), fresh = links.filter((l) => !have.has(l));
+  if (fresh.length) {
+    const box = $("#dl-links");
+    box.value = (box.value.trim() ? box.value.replace(/\s*$/, "\n") : "") + fresh.join("\n");
+    box.dispatchEvent(new Event("input"));
+  }
+  return fresh.length;
+}
+
+async function dlPaste() {
+  let text;
+  try { text = await navigator.clipboard.readText(); } // solo su click dell'utente
+  catch { $("#dl-links").focus(); return toast(tr("d.clip.denied", "Appunti non accessibili: incolla a mano con Ctrl+V"), true); }
+  try {
+    const links = await dlParse(text || "");
+    if (!links.length) return toast(tr("d.clip.none", "Nessun link negli appunti"), true);
+    dlAppendLinks(links);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function dlCheck() {
+  const links = dlLinkLines(), btn = $("#dl-check"), out = $("#dl-check-list");
+  if (!links.length) return toast(tr("d.add.need", "Incolla almeno un link o scegli un file .torrent"), true);
+  btn.disabled = true;
+  out.setAttribute("aria-busy", "true");
+  out.textContent = tr("d.check.running", "Controllo in corso…");
+  try {
+    const rows = (await api("/api/downloads/check", { body: { links } })).results || [];
+    const ST = { online: ["✓", tr("d.check.online", "Online")], offline: ["✕", tr("d.check.offline", "Offline")], unknown: ["?", tr("d.check.unknown", "Non verificabile")] };
+    out.innerHTML = rows.map((r) => {
+      const [ic, txt] = ST[r.status] || ST.unknown;
+      const meta = [r.name, r.size > 0 ? DLU.bytes(r.size) : ""].filter(Boolean).map(esc).join(" · ");
+      return `<li class="dl-chk" data-st="${esc(r.status)}"><b><span aria-hidden="true">${ic}</span> ${txt}</b>${meta ? " · " + meta : ""}
+        <span class="muted small dl-chk-url">${esc(r.url)}</span></li>`;
+    }).join("");
+  } catch (e) { out.replaceChildren(); toast(e.message, true); }
+  finally { btn.disabled = false; out.removeAttribute("aria-busy"); }
+}
+
+/* «Rileva link negli appunti»: solo se l'utente l'ha attivato (default spento); legge gli appunti quando la finestra torna in primo piano */
+const CLIPW_KEY = "pozzo.dl.clipwatch";
+const dlClipWatchOn = () => { try { return localStorage.getItem(CLIPW_KEY) === "1"; } catch { return false; } };
+let dlClipSeen = ""; // ultimo contenuto già proposto o scartato
+
+async function dlClipCheck() {
+  if (!dlClipWatchOn() || document.visibilityState !== "visible" || $("#dl-add-dlg").open) return;
+  try {
+    const text = ((await navigator.clipboard.readText()) || "").trim();
+    if (!text || text === dlClipSeen) return;
+    dlClipSeen = text;
+    const queued = new Set(DL.tasks.map((x) => x.source));
+    const links = (await dlParse(text)).filter((l) => !queued.has(l));
+    if (links.length) dlClipBanner(links);
+  } catch { /* appunti non leggibili in questo momento: nessun avviso */ }
+}
+
+function dlClipBanner(links) {
+  let b = $("#dl-clip-banner");
+  if (!b) {
+    b = document.createElement("div");
+    b.id = "dl-clip-banner";
+    b.setAttribute("role", "status");
+    document.body.append(b);
+  }
+  b.innerHTML = `<span>${esc(tr("d.clip.found", "{n} link negli appunti", { n: links.length }))}</span>
+    <button class="btn primary" type="button" data-a="add">${esc(tr("d.clip.add", "Aggiungi"))}</button>
+    <button class="btn" type="button" data-a="no" aria-label="${esc(tr("d.clip.ignore", "Ignora"))}">✕</button>`;
+  b.hidden = false;
+  b.onclick = (e) => {
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (!a) return;
+    b.hidden = true;
+    if (a === "add") { dlOpenAdd(); dlAppendLinks(links); }
+  };
 }
 
 /* ---- impostazioni › Download: ogni campo salva da solo (corpo parziale), il server risponde con i valori riportati nei limiti */
 const DLS_FIELDS = [
   ["#dls-dir", "dir", "str"], ["#dls-max", "max_active", "int"], ["#dls-max-http", "max_active_http", "int"],
   ["#dls-max-tor", "max_active_torrent", "int"], ["#dls-seg", "segments", "int"],
-  ["#dls-extract", "auto_extract", "bool"], ["#dls-showbrowser", "show_browser", "bool"], ["#dls-clip", "clipboard", "bool"],
+  ["#dls-extract", "auto_extract", "bool"], ["#dls-showbrowser", "show_browser", "bool"], ["#dls-clip", "clipboard", "bool"], ["#dls-check", "check_links", "bool"],
   ["#dls-down", "limit_down", "int"], ["#dls-up", "limit_up", "int"],
   ["#dls-alt-down", "alt_limit_down", "int"], ["#dls-alt-up", "alt_limit_up", "int"], ["#dls-alt-on", "alt_enabled", "bool"],
   ["#dls-port", "port", "int"], ["#dls-enc", "encryption", "str"],
   ["#dls-ratio", "seed_ratio", "num"], ["#dls-seed-min", "seed_minutes", "int"], ["#dls-trackers", "trackers", "lines"],
   ["#dls-game-mode", "game_mode", "str"], ["#dls-game-limit", "game_limit_kbps", "int"],
-  ["#dls-game-http", "game_pause_http", "bool"],
+  ["#dls-game-http", "game_pause_http", "bool"], ["#s2-fmt", "switch2_format", "str"],
+  ["#dls-incomplete", "incomplete_dir", "str"], ["#dls-seed-action", "seed_action", "str"],
+  ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"],
 ];
 
 function dlsRead(el, kind) {
@@ -1346,6 +1455,8 @@ function dlsFill(s) {
     $("[data-deb=saved]", box).hidden = !d.key_set;
     $("[data-deb=key]", box).placeholder = d.key_set ? t("d.deb.ph_replace") : t("d.deb.ph_new");
   });
+  $("#dls-ipf-err").textContent = s.ip_filter_error || "";
+  dlsListsFill(s);
   dlsAltState();
 }
 
@@ -1418,40 +1529,170 @@ function dlsBind() {
       finally { b.disabled = false; }
     };
   }
-  $("#dls-dir-pick").onclick = async () => {
-    const p = await pickPath("folder");
-    if (!p) return;
-    dir.focus(); // autosaveControl ricorda il valore precedente al focus (per «Annulla»)
-    dir.value = p;
-    dir.dispatchEvent(new Event("change"));
+  for (const [btn, input, kind] of [["#dls-dir-pick", dir, "folder"], ["#dls-incomplete-pick", $("#dls-incomplete"), "folder"], ["#dls-ipf-pick", $("#dls-ipf"), "file"]]) {
+    $(btn).onclick = async () => {
+      const p = await pickPath(kind);
+      if (!p) return;
+      input.focus(); // autosaveControl ricorda il valore precedente al focus (per «Annulla»)
+      input.value = p;
+      input.dispatchEvent(new Event("change"));
+    };
+  }
+  dlsListsBind();
+}
+
+/* ---- elenchi (categorie, feed RSS, regole): ogni modifica salva l'elenco intero; le righe senza nome/link/regola sono bozze e non partono */
+const dlsRe = (v) => { try { new RegExp(v); return true; } catch { return false; } };
+const dlsVal = (r, k) => $(`[data-k="${k}"]`, r).value.trim();
+const dlsInput = (k, v, label, extra = "") => `<label>${label} <input class="field" data-k="${k}" value="${esc(v ?? "")}" ${extra}></label>`;
+const dlsDel = (what) => `<button class="btn" type="button" data-del aria-label="${t("j.dl.remove")}: ${esc(what || "")}" title="${t("j.dl.remove")}">✕</button>`;
+
+function dlsCatRow(c) {
+  const act = (v, l) => `<option value="${v}"${(c.action || "") === v ? " selected" : ""}>${l}</option>`;
+  return `<div class="dls-item" data-cat><div class="row wrap">
+    ${dlsInput("name", c.name, t("j.dl.cat.name"), 'maxlength="64"')}
+    <label class="grow">${t("j.dl.cat.folder")} <span class="row tight"><input class="field grow" data-k="folder" value="${esc(c.folder || "")}">
+      <button class="btn" type="button" data-pick>${t("j.common.change")}</button></span></label>
+    ${dlsInput("seed_ratio", c.seed_ratio || 0, t("j.dl.share.ratio"), 'type="number" min="0" max="100" step="0.1"')}
+    ${dlsInput("seed_minutes", c.seed_minutes || 0, t("j.dl.share.minutes"), 'type="number" min="0" max="100000"')}
+    <label>${t("j.dl.seedaction")} <select class="field" data-k="action">${act("", t("j.dl.cat.global"))}${act("pause", t("j.dl.cat.pause"))}${act("remove", t("j.dl.cat.remove"))}</select></label>
+    ${dlsDel(c.name)}</div></div>`;
+}
+
+function dlsFilterRow(f) {
+  return `<div class="row wrap" data-flt>${dlsInput("regex", f.regex, t("j.dl.rss.regex"), 'spellcheck="false"')}
+    ${dlsInput("category", f.category, t("j.dl.rss.cat"), 'list="dls-catlist" maxlength="64"')}${dlsDel(f.regex)}</div>`;
+}
+
+function dlsRssRow(f) {
+  return `<div class="dls-item" data-rss><div class="row wrap">
+    <label class="grow">${t("j.dl.rss.url")} <input class="field" data-k="url" type="url" value="${esc(f.url || "")}" placeholder="https://…" spellcheck="false"></label>
+    ${dlsInput("interval_min", f.interval_min || 30, t("j.dl.rss.every"), 'type="number" min="5" max="1440"')}${dlsDel(f.url)}</div>
+    <div class="dls-flts">${(f.filters || []).map(dlsFilterRow).join("")}</div>
+    <button class="btn" type="button" data-addflt>${t("j.dl.rss.addflt")}</button></div>`;
+}
+
+function dlsRuleRow(r) {
+  return `<div class="dls-item" data-rule><div class="row wrap">
+    <label class="grow">${t("j.dl.rule.match")} <input class="field" data-k="match" value="${esc(r.match || "")}" spellcheck="false"></label>
+    ${dlsInput("platform", r.platform, t("j.dl.rule.platform"), 'list="dls-platlist"')}
+    ${dlsInput("subfolder", r.subfolder, t("j.dl.rule.sub"))}${dlsDel(r.match)}</div></div>`;
+}
+
+function dlsHostRow(h) {
+  return `<div class="row wrap" data-host>${dlsInput("host", h.host, t("j.dl.host.name"), 'spellcheck="false" placeholder="datanodes.to"')}
+    ${dlsInput("n", h.n ?? 2, t("j.dl.host.max"), 'type="number" min="1" max="10"')}${dlsDel(h.host)}</div>`;
+}
+
+function dlsListsFill(s) {
+  // niente ridisegno mentre si scrive in una riga: il salvataggio non deve far perdere il focus
+  const busy = document.activeElement?.closest?.("#dls-cats, #dls-rss, #dls-rules, #dls-hosts");
+  if (!busy) {
+    $("#dls-cats").innerHTML = (s.categories || []).map(dlsCatRow).join("");
+    $("#dls-rss").innerHTML = (s.rss || []).map(dlsRssRow).join("");
+    $("#dls-rules").innerHTML = (s.rules || []).map(dlsRuleRow).join("");
+    $("#dls-hosts").innerHTML = Object.entries(s.host_limits || {}).map(([host, n]) => dlsHostRow({ host, n })).join("");
+  }
+  dlsCatList();
+}
+
+/** suggerimenti per i campi «categoria» (feed, scheda del download, finestra di aggiunta) */
+function dlsCatList() {
+  let dl = $("#dls-catlist");
+  if (!dl) { dl = document.createElement("datalist"); dl.id = "dls-catlist"; document.body.append(dl); }
+  dl.innerHTML = ((DL.settings || {}).categories || []).map((c) => `<option value="${esc(c.name)}">`).join("");
+}
+
+async function dlsListsBind() {
+  const cats = $("#dls-cats"), rss = $("#dls-rss"), rules = $("#dls-rules"), hosts = $("#dls-hosts");
+  const mark = (el, bad) => { el.setAttribute("aria-invalid", bad); if (bad) el.title = t("j.dl.regex.bad"); else el.removeAttribute("title"); return !bad; };
+  // le regex sbagliate bloccano il salvataggio e restano segnate sul campo
+  const regexOk = (box, sel) => [...box.querySelectorAll(sel)].map((el) => mark(el, !!el.value.trim() && !dlsRe(el.value))).every(Boolean);
+  const run = async (fn) => { try { await fn(); savedToast(null); } catch (e) { toast(e.message, true); } };
+  const saveCats = () => run(async () => {
+    const categories = [...cats.querySelectorAll("[data-cat]")].map((r) => ({ name: dlsVal(r, "name"), folder: dlsVal(r, "folder"),
+      seed_ratio: Number(dlsVal(r, "seed_ratio")) || 0, seed_minutes: Math.round(Number(dlsVal(r, "seed_minutes"))) || 0, action: dlsVal(r, "action") })).filter((c) => c.name);
+    DL.settings.categories = (await api("/api/downloads/categories", { body: { categories } })).categories;
+    dlsCatList();
+  });
+  const saveRss = () => {
+    if (!regexOk(rss, '[data-k="regex"]')) return toast(t("j.dl.regex.bad"), true);
+    return run(async () => {
+      const feeds = [...rss.querySelectorAll("[data-rss]")].map((r) => ({ url: dlsVal(r, "url"), interval_min: Math.max(5, Math.round(Number(dlsVal(r, "interval_min"))) || 30),
+        filters: [...r.querySelectorAll("[data-flt]")].map((f) => ({ regex: dlsVal(f, "regex"), category: dlsVal(f, "category") })).filter((f) => f.regex) })).filter((f) => f.url);
+      await dlsSave({ rss: feeds });
+    });
   };
+  const saveRules = () => {
+    if (!regexOk(rules, '[data-k="match"]')) return toast(t("j.dl.regex.bad"), true);
+    return run(() => dlsSave({ rules: [...rules.querySelectorAll("[data-rule]")].map((r) => ({ match: dlsVal(r, "match"), platform: dlsVal(r, "platform"), subfolder: dlsVal(r, "subfolder") })).filter((r) => r.match) }));
+  };
+  const saveHosts = () => {
+    const rows = [...hosts.querySelectorAll("[data-host]")].filter((r) => dlsVal(r, "host"));
+    const ok = rows.map((r) => {
+      const v = DLU.hostLimit(dlsVal(r, "host"), dlsVal(r, "n"));
+      for (const k of ["host", "n"]) { const el = $(`[data-k="${k}"]`, r); el.setAttribute("aria-invalid", !v); if (v) el.removeAttribute("title"); else el.title = t("j.dl.host.bad"); }
+      return v;
+    });
+    if (ok.includes(null)) return toast(t("j.dl.host.bad"), true);
+    return run(() => dlsSave({ host_limits: Object.fromEntries(ok.map((v) => [v.host, v.n])) }));
+  };
+  const wire = (box, add, row, save, itemSel) => {
+    add.onclick = () => { box.insertAdjacentHTML("beforeend", row({})); box.lastElementChild.querySelector("input").focus(); };
+    box.addEventListener("change", save);
+    box.addEventListener("click", async (e) => {
+      const item = e.target.closest(itemSel);
+      if (!item) return;
+      if (e.target.closest("[data-del]")) {
+        (e.target.closest("[data-flt]") || item).remove();
+        save();
+      } else if (e.target.closest("[data-addflt]")) {
+        const l = item.querySelector(".dls-flts");
+        l.insertAdjacentHTML("beforeend", dlsFilterRow({}));
+        l.lastElementChild.querySelector("input").focus();
+      } else if (e.target.closest("[data-pick]")) {
+        const p = await pickPath("folder"), f = $('[data-k="folder"]', item);
+        if (p) { f.value = p; f.dispatchEvent(new Event("change", { bubbles: true })); }
+      }
+    });
+  };
+  wire(cats, $("#dls-cat-add"), dlsCatRow, saveCats, "[data-cat]");
+  wire(rss, $("#dls-rss-add"), dlsRssRow, saveRss, "[data-rss]");
+  wire(rules, $("#dls-rule-add"), dlsRuleRow, saveRules, "[data-rule]");
+  wire(hosts, $("#dls-host-add"), dlsHostRow, saveHosts, "[data-host]");
+  const cw = $("#dls-clipwatch");
+  cw.checked = dlClipWatchOn();
+  cw.onchange = () => { try { localStorage.setItem(CLIPW_KEY, cw.checked ? "1" : "0"); } catch { /* senza storage resta spento */ } dlClipSeen = ""; };
+  try { // solo suggerimenti: senza elenco l'id della console si scrive a mano
+    const dl = document.createElement("datalist");
+    dl.id = "dls-platlist";
+    dl.innerHTML = (await api("/api/platforms")).map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
+    document.body.append(dl);
+  } catch { /* suggerimenti assenti */ }
 }
 
 /* ---- avvio: stato iniziale e aggiornamenti dal server */
-/** stream SSE; se cade si interroga il server ogni 2 s e si riprova lo stream con attese crescenti (DLU.backoff).
- *  Alla riconnessione si smette di interrogare e si rilegge tutto: nel buco possono essersi perse delle notifiche. */
+/** stream SSE della finestra (window.gsEventSource, lo stesso degli altri script: il browser tiene 6 connessioni per
+ *  server e ogni stream ne occupa una per sempre, con tre aperti restavano tre posti per tutte le altre richieste).
+ *  Se cade si interroga il server ogni 2 s mentre il browser riprova da solo; alla riconnessione si smette di
+ *  interrogare e si rilegge tutto: nel buco possono essersi perse delle notifiche. */
 function dlStream() {
-  let fails = 0, poll = null;
-  const connect = () => {
-    const es = new EventSource("/api/downloads/events");
-    es.addEventListener("downloads", (e) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.settings) DL.settings = d.settings; // es. modalità lenta accesa dalla programmazione
-        dlApply(d.tasks || []);
-      } catch { /* fotogramma non valido */ }
-    });
-    es.onopen = () => {
-      if (poll) { clearInterval(poll); poll = null; dlLoad().catch(() => {}); }
-      fails = 0;
-    };
-    es.onerror = () => {
-      es.close();
-      poll ??= setInterval(() => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); }, 2000);
-      setTimeout(connect, DLU.backoff(fails++));
-    };
-  };
-  connect();
+  let poll = null;
+  const es = window.gsEventSource || new EventSource("/api/v1/events");
+  window.gsEventSource = es;
+  es.addEventListener("downloads", (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.settings) DL.settings = d.settings; // es. modalità lenta accesa dalla programmazione
+      dlApply(d.tasks || []);
+    } catch { /* fotogramma non valido */ }
+  });
+  es.addEventListener("open", () => {
+    if (poll) { clearInterval(poll); poll = null; dlLoad().catch(() => {}); }
+  });
+  es.addEventListener("error", () => {
+    poll ??= setInterval(() => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); }, 2000);
+  });
 }
 
 if (typeof window !== "undefined") {
@@ -1459,6 +1700,10 @@ if (typeof window !== "undefined") {
   dlLogInit();
   $("#dl-links").addEventListener("input", dlMuSync);
   $("#dl-mu-go").onclick = dlMuList;
+  $("#dl-paste").onclick = dlPaste;
+  $("#dl-check").onclick = dlCheck;
+  window.addEventListener("focus", dlClipCheck);
+  document.addEventListener("visibilitychange", dlClipCheck);
   $("#dl-dest-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#dl-dest").value = p; };
   dlLoad().catch(() => { /* server senza coda download: il contatore resta vuoto */ });
   if (window.EventSource) dlStream();

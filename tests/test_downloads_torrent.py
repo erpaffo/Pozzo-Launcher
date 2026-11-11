@@ -246,6 +246,27 @@ def test_condivisione_dopo_la_fine_non_occupa_posti(swarm, tmp):
     m.stop()
 
 
+def test_condivisione_riparte_dopo_il_riavvio(swarm, tmp):
+    m = _mgr(tmp, seed_ratio=50)
+    got = []
+    m.on_completed = got.append
+    m.start()
+    t = m.add(str(swarm.torrent), connect=[swarm.peer])
+    assert _wait(lambda: t.status == T.COMPLETED and t.options.get("seeding")), (t.status, t.error)
+    finished = t.finished
+    m.stop()  # chiusura del launcher: non e' una fine della condivisione
+    assert t.options.get("seeding") is True and t.status == T.COMPLETED
+    m2 = _mgr(tmp, seed_ratio=50)
+    m2.on_completed = got.append
+    m2.start()
+    t2 = m2.tasks[t.id]
+    assert _wait(lambda: t2.id in m2._torrent.handles), t2.options
+    assert t2.options["seeding"] is True and t2.status == T.COMPLETED and t2.finished == finished
+    m2.pause(t2.id)  # fermata a mano: finisce davvero, e solo ora parte il post-download
+    assert _wait(lambda: "seeding" not in t2.options and len(got) == 1), (t2.options, got)
+    m2.stop()
+
+
 def test_cancella_torrent_caricato_con_i_file(swarm, tmp):
     m = _mgr(tmp)
     m.start()

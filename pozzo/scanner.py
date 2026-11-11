@@ -19,7 +19,7 @@ import subprocess
 import sys
 import zipfile
 import zlib
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -276,15 +276,22 @@ def hash_games(cfg, cache, games: list[Game], progress=None, log=print):
             ProcessPoolExecutor(max_workers=max(1, io_workers)) as ex_heavy:
         futs = {ex_light.submit(_hash_job, job): g for g, job in light}
         futs.update({ex_heavy.submit(_hash_job, job): g for g, job in heavy})
-        for fut in as_completed(futs):
-            g = futs[fut]
-            res = fut.result()
-            res.pop("error", None)
-            g.apply_file_data(res)
-            g.needs_hash = False
-            cache.put_file(str(g.path), g.size, g.mtime, res)
-            if progress:
-                progress.advance(task)
+        pending = set(futs)
+        while pending:
+            # attesa a tempo: tra un file grande e l'altro passano minuti, e la transazione dei put_file lasciata
+            # aperta fermerebbe ogni altra scrittura su cache.db (le richieste dell'app aspettano fino a 60 s l'una)
+            done, pending = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
+            for fut in done:
+                g = futs[fut]
+                res = fut.result()
+                res.pop("error", None)
+                g.apply_file_data(res)
+                g.needs_hash = False
+                cache.put_file(str(g.path), g.size, g.mtime, res)
+                if progress:
+                    progress.advance(task)
+            if not done:
+                cache.commit()
     cache.commit()
 
 

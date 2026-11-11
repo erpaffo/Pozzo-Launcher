@@ -299,3 +299,11 @@ assert.deepStrictEqual(bl.bars.map((b) => [b.x, b.y, b.height]), [[3, 0, 30], [2
 assert.deepStrictEqual(DLU.barsLayout([], 60, 30), { bars: [], max: 0 });
 assert.ok(DLU.barsLayout([{ day: "x", bytes: 1 }], 60, 30).bars.every((b) => !Number.isNaN(b.y + b.height)));
 console.log("test_downloads_ui: velocita ok");
+
+// limiti per host: stessa regola del server (dominio senza www, intero 1-10)
+assert.deepStrictEqual(DLU.hostLimit(" WWW.DataNodes.to ", "3"), { host: "datanodes.to", n: 3 });
+assert.strictEqual(DLU.hostLimit("datanodes.to", 0), null);
+assert.strictEqual(DLU.hostLimit("datanodes.to", 11), null);
+assert.strictEqual(DLU.hostLimit("datanodes.to", 2.5), null);
+assert.strictEqual(DLU.hostLimit("localhost", 2), null);
+assert.strictEqual(DLU.hostLimit("", 2), null);

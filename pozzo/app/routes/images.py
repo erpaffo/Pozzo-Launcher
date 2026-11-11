@@ -58,6 +58,20 @@ def build_router(ctx) -> APIRouter:
             {"kind": k, "label": I.tr(label), "source": k in g["media"], "custom": k in own,
              "url": f"/img/{gid}/{k}" if k in g["media"] or k in own else None} for k, label in KINDS.items()]}
 
+    def _save_user(g: dict, kind: str, data: bytes, ext: str):
+        """Salva i byte (gia' verificati) nella cache dell'app e li sceglie come immagine dell'utente."""
+        folder = Path(cfg.cache) / "media" / "user"
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = folder / f"{hashlib.sha1(data).hexdigest()}.{ext}"
+        dest.write_bytes(data)
+        if ext in ("png", "jpg", "bmp"):
+            try:
+                from ... import imgopt
+                dest = imgopt.optimize(dest)
+            except Exception:  # resta l'originale
+                pass
+        user.set_media(g["key"], kind, dest.relative_to(cfg.cache).as_posix())
+
     @router.post("/api/game/{gid}/media/{kind}/file")
     async def api_media_upload(gid: int, kind: str, file: UploadFile = File(...)):
         """Immagine caricata dal PC: controllata dai primi byte (non dal nome), salvata nella cache dell'app."""
@@ -70,17 +84,7 @@ def build_router(ctx) -> APIRouter:
         ext = sniff(data[:16])
         if not ext or ext in ("webm", "mp4"):
             raise HTTPException(400, I.tr("s.images.not_image"))
-        folder = Path(cfg.cache) / "media" / "user"
-        folder.mkdir(parents=True, exist_ok=True)
-        dest = folder / f"{hashlib.sha1(data).hexdigest()}.{ext}"
-        dest.write_bytes(data)
-        if ext in ("png", "jpg", "bmp"):
-            try:
-                from ... import imgopt
-                dest = imgopt.optimize(dest)
-            except Exception:  # resta l'originale
-                pass
-        user.set_media(g["key"], kind, dest.relative_to(cfg.cache).as_posix())
+        _save_user(g, kind, data, ext)
         return api_media_list(gid)
 
     @router.delete("/api/game/{gid}/media/{kind}")
@@ -89,6 +93,117 @@ def build_router(ctx) -> APIRouter:
         g = lib.get(gid)
         user.clear_media(g["key"], _kind(kind))
         return api_media_list(gid)
+
+    # ------------------------------------------------ «Completa i mancanti dal web»
+    # tipo -> termine di ricerca (inglese: i motori trovano di piu'); icon escluso, non e' un'immagine da cercare
+    FILL_TERMS = {"cover": "cover art", "fanart": "wallpaper", "hero": "banner", "header": "header", "screenshot": "screenshot",
+                  "title": "title screen", "wheel": "logo", "logo": "logo", "marquee": "marquee"}
+    FILL_TTL, FILL_MAX, FILL_TRIES = 600, 30, 4
+    fill_cache: dict[str, dict] = {}  # token -> anteprima validata dal server (byte compresi): apply usa solo queste
+    fill_lock = threading.Lock()
+    fill_busy = threading.Semaphore(2)
+
+    def _fill_gc():
+        now = time.time()
+        for t in [t for t, e in fill_cache.items() if e["exp"] < now]:
+            fill_cache.pop(t, None)
+        while len(fill_cache) > FILL_MAX:
+            fill_cache.pop(next(iter(fill_cache)), None)
+
+    def _fill_query(g: dict, kind: str) -> str:
+        try:
+            from ... import platforms
+            plat = "" if g.get("store") else platforms.get(g["platform"]).name
+        except Exception:
+            plat = ""
+        return " ".join(x for x in (g["title"], plat, FILL_TERMS[kind]) if x)
+
+    @router.post("/api/game/{gid}/media/fill/preview")
+    def api_media_fill_preview(gid: int, body: dict = Body(default={})):
+        """Per ogni tipo mancante cerca sul web il primo risultato valido. NON salva nulla.
+        body: kinds (opzionale, per chiedere un tipo alla volta), skip (indirizzi da scartare: «Cambia»)."""
+        import secrets
+        from ... import imagesearch as IS
+        g = lib.get(gid)
+        have = _media(g)
+        asked = body.get("kinds")
+        kinds = [k for k in FILL_TERMS if k not in have and (not isinstance(asked, list) or k in asked)]
+        skip = {str(u) for u in (body.get("skip") or [])[:50]}
+        if not fill_busy.acquire(blocking=False):
+            raise HTTPException(429, I.tr("s.images.fill.busy"))
+        try:
+            items = []
+            for kind in kinds:
+                q = _fill_query(g, kind)
+                item = {"kind": kind, "label": I.tr(KINDS[kind]), "query": q}
+                try:
+                    urls = [u for u in IS.search(q, FILL_TRIES + len(skip)) if u not in skip][:FILL_TRIES]
+                except IS.SearchError as e:
+                    item["error"] = I.tr(f"s.images.fill.err.{e}")
+                    items.append(item)
+                    if str(e) in ("blocked", "changed"):  # inutile insistere con gli altri tipi
+                        break
+                    continue
+                for u in urls:  # il primo che si scarica ed e' davvero un'immagine
+                    try:
+                        f = IS.fetch_image(u)
+                    except ValueError:
+                        continue
+                    tok = secrets.token_urlsafe(12)
+                    with fill_lock:
+                        _fill_gc()
+                        fill_cache[tok] = {"gid": gid, "kind": kind, "url": u, "f": f, "exp": time.time() + FILL_TTL}
+                    item.update(candidate_url=u, domain=IS.domain(u), size=len(f.data), w=f.w, h=f.h,
+                                thumb=f"/api/game/{gid}/media/fill/thumb/{tok}")
+                    break
+                else:
+                    item["error"] = I.tr("s.images.fill.none")
+                items.append(item)
+            return {"items": items}
+        finally:
+            fill_busy.release()
+
+    @router.get("/api/game/{gid}/media/fill/thumb/{token}")
+    def api_media_fill_thumb(gid: int, token: str):
+        e = fill_cache.get(token)
+        if not e or e["gid"] != gid or e["exp"] < time.time():
+            raise HTTPException(404)
+        return Response(e["f"].data, media_type=f"image/{'jpeg' if e['f'].ext == 'jpg' else e['f'].ext}",
+                        headers={"Cache-Control": "no-store"})
+
+    @router.post("/api/game/{gid}/media/fill/apply")
+    def api_media_fill_apply(gid: int, body: dict = Body(...)):
+        """Salva solo le anteprime confermate. Il client manda tipo + indirizzo, ma conta quello che il server
+        ha scaricato e validato nell'anteprima; un'immagine comparsa nel frattempo non viene mai sostituita."""
+        from ... import imagesearch as IS
+        g = lib.get(gid)
+        have = _media(g)
+        results = []
+        for it in (body.get("items") or [])[:len(FILL_TERMS)]:
+            kind, url_ = str(it.get("kind") or ""), str(it.get("candidate_url") or "")
+            res = {"kind": kind, "ok": False}
+            results.append(res)
+            if kind not in FILL_TERMS:
+                res["error"] = I.tr("s.images.kind_invalid")
+                continue
+            if kind in have:
+                res["error"] = I.tr("s.images.fill.exists")
+                continue
+            with fill_lock:
+                _fill_gc()
+                tok = next((t for t, e in fill_cache.items() if (e["gid"], e["kind"], e["url"]) == (gid, kind, url_)), None)
+                e = fill_cache.pop(tok, None) if tok else None
+            if not e:
+                res["error"] = I.tr("s.images.fill.expired")
+                continue
+            try:
+                f = IS.validate_image(e["f"].data)  # ricontrollo: qui si scrive su disco
+            except ValueError:
+                res["error"] = I.tr("s.images.not_image")
+                continue
+            _save_user(g, kind, f.data, f.ext)
+            res["ok"] = True
+        return {**api_media_list(gid), "results": results}
 
     @router.post("/api/game/{gid}/media")
     def api_media_set(gid: int, body: dict = Body(...)):

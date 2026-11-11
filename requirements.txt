@@ -16,3 +16,4 @@ cryptography>=42   # certificato HTTPS per l'app del telefono
 libtorrent>=2.0     # download del solo gioco scelto da un torrent di set
 py7zr>=0.21         # estrazione dei .7z scaricati (Python puro)
 rarfile>=4.2        # .rar scaricati: serve 7-Zip o UnRAR installato
+zstandard>=0.22     # conversione Switch 2 cartella/NSP/NUP (pozzo/vendor/nspbox): il NUP e' compresso zstd

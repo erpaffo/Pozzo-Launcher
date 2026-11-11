@@ -7,19 +7,24 @@ e manda l'evento `downloads` (la UI lo legge dallo stream SSE).
 from __future__ import annotations
 
 import asyncio
+import errno
+import logging
 import math
+import os
 import random
 import re
+import shutil
 import socket
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 
 from .. import config as C, net
-from . import hosts, ingest as I, resolvers, task as TASK
+from . import hosts, ingest as I, linkcheck, resolvers, rss as RSS, task as TASK
 try:
     from .bandwidth import record as _record_bw
 except ImportError:  # modulo non ancora presente: niente statistiche di banda
@@ -39,17 +44,32 @@ DEFAULTS = {"dir": "", "max_active": 3, "segments": 4, "limit_down": 0, "limit_u
             "seed_ratio": 0.0, "seed_minutes": 0, "alt_limit_down": 0, "alt_limit_up": 0, "alt_enabled": False,
             "alt_schedule": {"enabled": False, "from": "22:00", "to": "07:00", "days": [0, 1, 2, 3, 4, 5, 6]},
             "debrid": {}, "clipboard": False, "auto_extract": True, "delete_archive": True,
-            "show_browser": False, "game_mode": "off", "game_limit_kbps": 0, "game_pause_http": False}
+            "show_browser": False, "game_mode": "off", "game_limit_kbps": 0, "game_pause_http": False,
+            "post_active": 2, "switch2_format": "nsp",  # conversione Switch 2 dopo l'estrazione: nsp|nup|folder|off
+            "passwords": [],  # password comuni degli archivi, provate in ordine dopo quella del pacchetto
+            "categories": [],  # [{name, folder, seed_ratio, seed_minutes, action}]: cartella e limiti prevalgono sui globali
+            "incomplete_dir": "",  # vuota = si scarica gia' nella cartella finale
+            "seed_action": "pause",  # azione al limite di condivisione se la categoria non ne ha una
+            "ip_filter_path": "",  # file PeerGuardian (.dat/.p2p) o elenco di CIDR
+            "rss": [],  # [{url, interval_min, filters: [{regex, category}]}]
+            "check_links": False,  # prima di accodare un link http(s): se risulta offline, add() lo rifiuta
+            "host_limits": {},  # {"dominio": N}: massimo N download HTTP insieme da quel dominio (e sottodomini)
+            "rules": []}  # [{match: regex su nome/gioco, platform: id console, subfolder: str}], la prima che combacia vale  # estrazioni/inserimenti in libreria insieme (letto all'avvio)
 INTS = {"max_active": (1, 10), "segments": (1, 8), "limit_down": (0, 10_000_000), "limit_up": (0, 10_000_000),
         "port": (0, 65535), "max_active_http": (0, 10), "max_active_torrent": (0, 10), "seed_minutes": (0, 100_000),
-        "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000), "game_limit_kbps": (0, 10_000_000)}
-BOOLS = ("alt_enabled", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
+        "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000), "game_limit_kbps": (0, 10_000_000), "post_active": (1, 4)}
+BOOLS = ("alt_enabled", "check_links", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
 SCHEMES = ("http://", "https://")
 TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")
 GAME_MODES = ("off", "limit", "pause")  # mentre giochi: niente, solo un limite di banda, torrent in pausa
 RESOLVERS_MAX = 3  # task HTTP che risolvono il link insieme (non occupano posti: senza tetto partirebbero tutti)
 SPACE_PHASE = "Spazio insufficiente"  # fase di un task in coda che non ha ancora spazio sul disco
 NET_TRIES = 20  # riprese automatiche per task dopo un errore di rete
+RESOLVE_TRIES, RESOLVE_WAIT = 5, 30  # nuovi tentativi se il link non si risolve (debrid/host occupato); attesa in s, raddoppia
+POST_TRIES = 3  # riprese del post-download dopo una chiusura a meta': oltre, e' lui che fa cadere il launcher
+DISK_FULL = "Disco pieno"  # motivo della pausa di un task fermato da un errore di scrittura (ENOSPC)
+log = logging.getLogger("pozzo.downloads")
+CAT_ACTIONS = ("pause", "remove")  # a limite di condivisione raggiunto: torrent fermo (il task resta) o tolto dalla lista (i file restano)
 SAVE_EVERY = 10 # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
 
 
@@ -165,6 +185,93 @@ def _port_ok(p: int) -> bool:
         return False
 
 
+def _folder(v) -> str:
+    """Cartella scelta dalla persona: creata se manca; "" = nessuna."""
+    if not v:
+        return ""
+    d = Path(str(v)).expanduser()
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise ValueError(f"Cartella non utilizzabile: {e}")
+    return str(d)
+
+
+def _tags(v) -> list:
+    if v in (None, ""):
+        return []
+    if isinstance(v, str):
+        v = v.split(",")
+    if not isinstance(v, list):
+        raise ValueError("tags deve essere un elenco")
+    return list(dict.fromkeys(x for x in (str(t).strip()[:32] for t in v) if x))[:20]
+
+
+def _categories(v) -> list:
+    if not isinstance(v, list) or not all(isinstance(c, dict) for c in v):
+        raise ValueError("categories deve essere un elenco di categorie")
+    out, seen = [], set()
+    for c in v[:100]:
+        name = str(c.get("name") or "").strip()[:64]
+        if not name:
+            raise ValueError("Ogni categoria ha bisogno di un nome")
+        if name.lower() in seen:
+            raise ValueError(f"Categoria doppia: {name}")
+        seen.add(name.lower())
+        if c.get("action") not in (None, "", *CAT_ACTIONS):
+            raise ValueError("action: pause o remove")
+        out.append({"name": name, "folder": _folder(c.get("folder")),
+                    "seed_ratio": min(max(_num("seed_ratio", c.get("seed_ratio") or 0, float), 0.0), 100.0),
+                    "seed_minutes": min(max(_num("seed_minutes", c.get("seed_minutes") or 0), 0), 100_000),
+                    "action": c.get("action") or ""})
+    return out
+
+
+_DOMAIN = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,30}")
+
+
+def _host_limits(v) -> dict:
+    if not isinstance(v, dict):
+        raise ValueError("host_limits deve essere un oggetto {dominio: numero}")
+    out = {}
+    for d, n in list(v.items())[:100]:
+        dom = str(d).strip().lower().removeprefix("www.")
+        if len(dom) > 253 or not _DOMAIN.fullmatch(dom):
+            raise ValueError(f"Dominio non valido: {d}")
+        if type(n) is not int or not 1 <= n <= 10:
+            raise ValueError(f"Limite per {dom}: un numero da 1 a 10")
+        out[dom] = n
+    return out
+
+
+def host_free(host: str, active: list, limits: dict) -> bool:
+    """C'e' posto per un altro download da `host`? `active` = host dei download HTTP in corso.
+    Un limite vale per il dominio e i suoi sottodomini (s12.datanodes.to conta come datanodes.to)."""
+    def under(h: str, dom: str) -> bool:
+        return h == dom or h.endswith("." + dom)
+    return all(sum(under(a, dom) for a in active) < n for dom, n in limits.items() if host and under(host, dom))
+
+
+def _feeds(v) -> list:
+    if not isinstance(v, list) or not all(isinstance(f, dict) for f in v):
+        raise ValueError("rss deve essere un elenco di feed")
+    out = []
+    for f in v[:20]:
+        url = str(f.get("url") or "").strip()
+        if not url.lower().startswith(SCHEMES) or len(url) > 1000:
+            raise ValueError("Il feed RSS deve essere un link http(s)")
+        flt = []
+        for x in (f.get("filters") if isinstance(f.get("filters"), list) else [])[:50]:
+            try:
+                re.compile(str(x.get("regex") or ""))
+            except (re.error, AttributeError):
+                raise ValueError("Filtro RSS: espressione regolare non valida")
+            if str(x.get("regex") or "").strip():
+                flt.append({"regex": str(x["regex"])[:300], "category": str(x.get("category") or "").strip()[:64]})
+        out.append({"url": url, "interval_min": min(max(_num("interval_min", f.get("interval_min") or 30), 5), 1440), "filters": flt})
+    return out
+
+
 def _free_port() -> int:
     """Porta a caso in 49152-65000 libera in TCP e UDP, 0 se non ne trova."""
     return next((p for p in (random.randint(49152, 65000) for _ in range(50)) if _port_ok(p)), 0)
@@ -198,11 +305,21 @@ class Manager:
         self._saved: dict[str, tuple] = {}  # task id -> (tempo, (status, phase, error, name)) dell'ultimo salvataggio nel tick
         self.ctx = None  # lo mette finish.run: serve a mark_ready per cercare il gioco in libreria
         self._pend_at = 0.0  # ultimo controllo dei task in attesa della scansione
+        self._wait_at = 0.0  # ultimo controllo dei task in attesa di volumi/gruppo (finish.py, options["post_wait"])
         self.on_idle = None  # fn(completati, falliti), in un thread: la coda si e' svuotata dopo aver lavorato
         self._batch = [0, 0]  # completati / falliti dall'ultima volta che la coda era vuota
         self._was_busy = False
         self._net_at = 0.0  # ultimo controllo della rete per i task caduti per errore di connessione
         self._dirty: set[str] = set()  # task con la vista cambiata dopo l'ultimo salvataggio nel tick
+        self._post_sem = threading.BoundedSemaphore(min(max(int(self._raw().get("post_active") or 1), 1), 4))
+        self._posting: set[str] = set()  # task col post-download in corso (o in attesa del semaforo)
+        self._interrupted: list[str] = []  # task col post-download interrotto dalla chiusura: li riavvia il tick
+        self._rss_fetch = RSS.fetch  # i test lo sostituiscono: nessuna rete
+        self._rss_at: dict[str, float] = {}  # url del feed -> ultimo controllo (monotonic)
+        self._rss_run: set[str] = set()  # feed con un controllo in corso
+        self._link_host: dict[str, str] = {}  # task id -> host del link risolto (per host_limits)
+        self._check = linkcheck.check  # i test lo sostituiscono: nessuna rete
+        self._stopping = False  # stop() in corso: chi condivide resta segnato, per ripartire al prossimo avvio
 
     # ------------------------------------------------------------ impostazioni
     def _raw(self) -> dict:
@@ -222,20 +339,31 @@ class Manager:
                        for k in SERVICES}
         s["alt_active"] = alt_active(s)
         s["game_active"] = self._game["on"]
+        s["ip_filter_error"] = self._torrent.ip_error if self._torrent else ""
         return s
 
     def update_settings(self, body: dict) -> dict:
         """Aggiornamento parziale: valori controllati e riportati nei limiti; ValueError se non validi."""
         with self.lock:
             cur, new = self._raw(), dict(self.cfg.app.get("downloads") or {})
-            if "dir" in body:
-                d = Path(str(body["dir"])).expanduser() if body["dir"] else None
-                if d:
-                    try:
-                        d.mkdir(parents=True, exist_ok=True)
-                    except OSError as e:
-                        raise ValueError(f"Cartella non utilizzabile: {e}")
-                new["dir"] = str(d) if d else ""
+            for k in ("dir", "incomplete_dir"):
+                if k in body:
+                    new[k] = _folder(body[k])
+            if "categories" in body:
+                new["categories"] = _categories(body["categories"])
+            if "rss" in body:
+                new["rss"] = _feeds(body["rss"])
+            if "host_limits" in body:
+                new["host_limits"] = _host_limits(body["host_limits"])
+            if "seed_action" in body:
+                if body["seed_action"] not in CAT_ACTIONS:
+                    raise ValueError("seed_action: pause o remove")
+                new["seed_action"] = body["seed_action"]
+            if "ip_filter_path" in body:
+                p = str(body["ip_filter_path"] or "").strip()
+                if p and not Path(p).expanduser().is_file():
+                    raise ValueError("File dell'IP filter non trovato")
+                new["ip_filter_path"] = p
             for k, (lo, hi) in INTS.items():
                 if k in body:
                     new[k] = min(max(_num(k, body[k]), lo), hi)
@@ -290,6 +418,22 @@ class Manager:
                         else:
                             e.pop("key", None)  # "" toglie la chiave
                 new["debrid"] = deb
+            if "passwords" in body:
+                v = body["passwords"]
+                if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+                    raise ValueError("passwords deve essere un elenco di testi")
+                new["passwords"] = list(dict.fromkeys(x for x in v if x and len(x) <= 128))[:50]
+            if "rules" in body:
+                v = body["rules"]
+                if not isinstance(v, list) or not all(isinstance(r, dict) for r in v):
+                    raise ValueError("rules deve essere un elenco di regole")
+                # regex non valide si accettano: le ignora (con avviso nel log) chi applica la regola
+                new["rules"] = [{k: str(r.get(k) or "")[:200] for k in ("match", "platform", "subfolder")}
+                                for r in v if str(r.get("match") or "").strip()][:100]
+            if "switch2_format" in body:
+                if body["switch2_format"] not in ("nsp", "nup", "folder", "off"):
+                    raise ValueError("switch2_format: nsp, nup, folder o off")
+                new["switch2_format"] = body["switch2_format"]
             if "game_mode" in body:
                 if body["game_mode"] not in GAME_MODES:
                     raise ValueError("game_mode: off, limit o pause")
@@ -363,7 +507,17 @@ class Manager:
                 t.status = QUEUED  # il launcher e' stato chiuso a meta': riprende da dove era
                 t.log("Il launcher era stato chiuso durante il download: riprendo", "warn")
             t.priority = _prio(t.priority)  # versioni vecchie: priorita' libera
-            t.options.pop("seeding", None)  # la condivisione non riparte dopo un riavvio
+            if not (t.options.get("seeding") and t.status == COMPLETED and t.type == "torrent" and self._torrent):
+                t.options.pop("seeding", None)  # chi condivideva resta segnato: il tick fa ripartire la condivisione
+            if t.status == COMPLETED and "steps" in t.options and not t.options.get("post_done")                     and not t.options.get("post_wait"):  # chi aspetta altri volumi lo ricontrolla il tick: non consuma tentativi
+                t.options["post_tries"] = int(t.options.get("post_tries") or 0) + 1
+                if t.options["post_tries"] > POST_TRIES:
+                    t.options["post_done"] = True
+                    t.fail_stage()
+                    t.log("Dopo il download: interrotto troppe volte, non riprovo", "error")
+                else:
+                    self._interrupted.append(t.id)
+                    t.log("Il launcher era stato chiuso dopo il download: riprendo dal passo interrotto", "warn")
             self.tasks[t.id] = t
         used = {Path(t.source) for t in self.tasks.values()}
         for p in self.uploads.glob("*.torrent"):  # .torrent caricati di task che non ci sono piu'
@@ -388,6 +542,7 @@ class Manager:
 
     def stop(self):
         """Ferma i download in corso conservandone lo stato: alla prossima apertura ripartono."""
+        self._stopping = True
         with self.lock:
             jobs = list(self._jobs.values())
             for tid in list(self._jobs):
@@ -422,13 +577,17 @@ class Manager:
             raise ValueError("SHA-256 non valido")
         if not all(isinstance(m, str) and m.lower().startswith(SCHEMES) for m in opts.get("mirrors") or []):
             raise ValueError("I mirror devono essere link http(s)")
-        dest = Path(save_path or self.settings()["dir"]).expanduser()
-        try:
-            dest.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
-            raise ValueError(f"Cartella non utilizzabile: {e}")
+        if "password" in opts and not (isinstance(opts["password"], str) and 0 < len(opts["password"]) <= 128):
+            raise ValueError("Password non valida (testo di al massimo 128 caratteri)")
+        s, cat = self._raw(), str(opts.pop("category", "") or "").strip()[:64]
+        if s["check_links"] and kind == "http" and self._check(source)["status"] == "offline":
+            raise ValueError(f"Link offline: {source}")
+        dest =Path(save_path or self._cat(cat, s).get("folder") or s["dir"]).expanduser()  # un percorso esplicito vince sulla categoria
+        _folder(dest)
         t = DownloadTask(source=source, save_path=str(dest), type=kind, name=opts.pop("name", ""), priority=_prio(opts.pop("priority", 0)),
-                         category=opts.pop("category", ""), options={**opts, **sched})
+                         category=cat, tags=_tags(opts.pop("tags", None)), options={**opts, **sched})
+        if s["incomplete_dir"] and kind in ("http", "torrent"):  # si scarica qui; a fine lavoro i file vanno in final_dir (_move_final)
+            t.save_path, t.options["final_dir"] = _folder(Path(s["incomplete_dir"]) / t.id), str(dest)
         t.log(f"Aggiunto ({kind}): {source}  ->  {dest}")
         with self.lock:
             self.tasks[t.id] = t
@@ -441,6 +600,42 @@ class Manager:
         if not t:
             raise KeyError(tid)
         return t
+
+    def _cat(self, name: str, s: dict | None = None) -> dict:
+        n = (name or "").lower()
+        return next((c for c in (s or self._raw())["categories"] if c["name"].lower() == n), {}) if n else {}
+
+    def _apply_seed(self, t: DownloadTask):
+        """Limiti di condivisione del torrent: quelli della categoria (campo per campo) prevalgono sui globali."""
+        s = self._raw()
+        c = self._cat(t.category, s)
+        if c.get("seed_ratio") or c.get("seed_minutes"):
+            t.options["seed_limits"] = [float(c.get("seed_ratio") or s["seed_ratio"] or 0), int(c.get("seed_minutes") or s["seed_minutes"] or 0)]
+        else:
+            t.options.pop("seed_limits", None)  # il motore usa i globali, anche se cambiano durante la condivisione
+        t.options["seed_action"] = c.get("action") or s["seed_action"]
+
+    def set_category(self, tid: str, category=None, tags=None):
+        """Categoria e/o tag di un download (None = non toccare). Una categoria con cartella sposta la destinazione
+        di un download non ancora iniziato; i limiti di condivisione valgono subito."""
+        tg = None if tags is None else _tags(tags)
+        with self.lock:
+            t = self._get(tid)
+            if category is not None:
+                t.category = str(category).strip()[:64]
+                folder = self._cat(t.category).get("folder")
+                if folder and "final_dir" in t.options:
+                    t.options["final_dir"] = folder
+                elif folder and t.status in (QUEUED, PAUSED) and not t.done:
+                    t.save_path = folder
+                if t.type == "torrent":
+                    self._apply_seed(t)
+                t.log(f"Categoria: {t.category or 'nessuna'}")
+            if tg is not None:
+                t.tags = tg
+                t.log(f"Tag: {', '.join(tg) or 'nessuno'}")
+            self.store.save([t])
+        self._poke()
 
     def pause(self, tid: str):
         with self.lock:
@@ -470,6 +665,9 @@ class Manager:
         with self.lock:
             t = self._get(tid)
             if t.status in (PAUSED, ERROR):
+                t.options.pop("retry_at", None)  # ripresa a mano: quelle automatiche non la devono rifare dopo
+                if t.options.pop("disk_full", None):
+                    t.phase = ""
                 t.status, t.error = QUEUED, ""
                 t.log("Ripreso: in coda")
                 self.store.save([t])
@@ -701,8 +899,14 @@ class Manager:
                     self.mark_ready(tid)
                 except Exception:  # noqa: BLE001 - un controllo fallito si ripete al giro dopo
                     pass
+        if time.monotonic() - self._wait_at >= 30:
+            self._wait_at = time.monotonic()
+            for x in [x for x in list(self.tasks.values()) if x.options.get("post_wait") and x.id not in self._posting]:
+                self._post(x)  # ricontrollo: i volumi/il gruppo ora ci sono?
         self._net_resume()
+        self._auto_resume()
         s = self._raw()
+        self._rss_tick(s)
         self._game_tick(s)
         down, up = self._limits(s)
         if self._torrent:
@@ -739,9 +943,13 @@ class Manager:
                 cap = int(s.get(f"max_active_{kind}") or 0)
                 return len(busy) < int(s["max_active"]) and not (cap and busy.count(kind) >= cap)
 
+            lim = s.get("host_limits") or {}
+            act = [self._link_host.get(i) or hosts.host(self.tasks[i].source) for i in self._dl_ids if i in self.tasks]
             for t in sorted((self.tasks[i] for i, f in self._gates.items() if not f.done() and i in self.tasks), key=_order):
-                if free("http"):  # link pronto e posto libero: si scarica (prima chi ha priorita')
+                h = self._link_host.get(t.id) or hosts.host(t.source)
+                if free("http") and host_free(h, act, lim):  # link pronto e posto libero (anche per l'host): si scarica (prima chi ha priorita')
                     busy.append("http")
+                    act.append(h)
                     self._dl_ids.add(t.id)
                     self._gates[t.id].set_result(None)
             for t in sorted((t for t in self.tasks.values() if t.status == QUEUED and t.id not in self._jobs), key=_order):
@@ -771,6 +979,10 @@ class Manager:
                     self.store.save([t])  # partito: la pianificazione non serve piu', neanche dopo un riavvio
                 t.log("Avviato")
                 self._jobs[t.id] = asyncio.ensure_future(self._job(t, int(s["segments"])))
+            for t in self.tasks.values():  # condivisione interrotta dalla chiusura: riparte, senza occupare posti
+                if t.options.get("seeding") and t.status == COMPLETED and t.id not in self._jobs and not self._stopping:
+                    t.log("Riprendo la condivisione")
+                    self._jobs[t.id] = asyncio.ensure_future(self._job(t, 0))
             self._share(down)
             changed, views = [], []
             for t in self.tasks.values():  # solo le viste cambiate: niente elenco file ogni secondo per nulla
@@ -806,6 +1018,37 @@ class Manager:
                 self._alt_sent, ev["settings"] = alt, self.settings()
             self.events.emit("downloads", ev)
 
+    def _rss_tick(self, s: dict):
+        """Un thread per feed scaduto (rete e parsing fuori dal ciclo); al massimo uno alla volta per feed."""
+        for f in s["rss"]:
+            if f["url"] in self._rss_run or time.monotonic() - self._rss_at.get(f["url"], -1e9) < f["interval_min"] * 60:
+                continue
+            self._rss_run.add(f["url"])
+            threading.Thread(target=self.rss_check, args=(f,), daemon=True, name="dl-rss").start()
+
+    def rss_check(self, feed: dict) -> int:
+        """Controlla un feed ora: accoda gli item nuovi che combaciano con un filtro (anche a mano, nei test). Ritorna quanti."""
+        url, n = feed["url"], 0
+        try:
+            items = RSS.parse(self._rss_fetch(url))
+            seen = self.store.rss_seen(url, [i["id"] for i in items])
+            hits = RSS.match(items, seen, feed.get("filters") or [])
+            self.store.rss_mark(url, [i["id"] for i in items if i["id"] not in seen])  # anche chi non combacia: un filtro nuovo non scarica l'arretrato
+            for item, cat in hits:
+                for link in item["links"]:  # il primo che la coda accetta
+                    try:
+                        self.add(link, category=cat)
+                        n += 1
+                        break
+                    except ValueError as e:
+                        log.warning("RSS %s: %s non accodato: %s", urlsplit(url).hostname, item["title"][:80], e)
+        except Exception as e:  # noqa: BLE001 - feed irraggiungibile o rotto: si riprova al prossimo giro
+            log.warning("RSS %s: %s", urlsplit(url).hostname, e)
+        finally:
+            self._rss_at[url] = time.monotonic()
+            self._rss_run.discard(url)
+        return n
+
     def _net_resume(self):
         """Task caduti per rete assente: ogni 30 s, se internet c'e' di nuovo, tornano in coda (al massimo NET_TRIES volte)."""
         if time.monotonic() - self._net_at < 30:
@@ -832,6 +1075,101 @@ class Manager:
                         self.store.save([t])
             self._poke()
         threading.Thread(target=probe, daemon=True, name="dl-net").start()
+
+    def _auto_resume(self):
+        """Riprese senza l'utente: post-download interrotto dalla chiusura, link da risolvere di nuovo (retry_at),
+        task fermati dal disco pieno appena lo spazio basta."""
+        with self.lock:
+            if self._interrupted:
+                ids, self._interrupted = self._interrupted, []
+                for tid in ids:
+                    if tid in self.tasks:
+                        self._post(self.tasks[tid])
+            for t in list(self.tasks.values()):  # condivisione finita con azione «rimuovi»: via dalla lista (i file restano), dopo il post-download
+                if t.options.get("autoremove") and t.status == COMPLETED and t.id not in self._jobs and t.id not in self._posting \
+                        and (t.options.get("post_done") or not (self.on_completed or t.options.get("final_dir"))):
+                    t.log("Limite di condivisione raggiunto: tolgo il torrent dalla lista")
+                    self.cancel(t.id)
+            for t in self.tasks.values():
+                if t.status == ERROR and t.options.get("retry_at") and time.time() >= t.options["retry_at"]:
+                    del t.options["retry_at"]
+                    t.log("Riprovo a risolvere il link")
+                # dimensione ignota = spazio non stimabile: ripartirebbe a ogni giro, lo riprende l'utente
+                elif t.status == PAUSED and t.options.get("disk_full") and t.size and not self._space_gap(t):
+                    del t.options["disk_full"]
+                    t.phase = ""
+                    t.log("C'è di nuovo spazio sul disco: riprendo")
+                else:
+                    continue
+                t.status, t.error = QUEUED, ""
+                self.store.save([t])
+
+    def _post(self, t: DownloadTask):
+        """Post-download (on_completed) in un thread, al massimo `post_active` insieme: dieci estrazioni sullo stesso
+        disco si rallentano a vicenda. options["steps"] resta sul disco senza post_done finche' non ha finito: e' cosi'
+        che start() riconosce un post-download interrotto e lo fa ripartire."""
+        with self.lock:
+            self._posting.add(t.id)
+            t.options.setdefault("steps", {})
+            self.store.save([t])
+
+        def work():
+            try:
+                if not self._post_sem.acquire(blocking=False):
+                    t.log("In attesa: altre estrazioni in corso")
+                    self._post_sem.acquire()
+                try:
+                    if t.options.get("final_dir"):
+                        try:
+                            self._move_final(t)
+                        except OSError as e:  # i file restano dove sono (completi): il resto della catena li lavora li'
+                            t.log(f"Spostamento dalla cartella degli incompleti non riuscito: {e}", "error")
+                    if self.on_completed:
+                        self.on_completed(t)
+                finally:
+                    self._post_sem.release()
+            except Exception as e:  # noqa: BLE001 - il download e' finito: l'errore resta nel registro
+                t.log(f"Dopo il download: {type(e).__name__}: {e}", "error")
+            finally:
+                with self.lock:
+                    self._posting.discard(t.id)
+                    if not t.options.get("post_wait"):  # in attesa dei volumi/gruppo: lo riprende il tick
+                        t.options["post_done"] = True  # una volta sola, comunque sia andata
+                    if t.id in self.tasks:
+                        self.store.save([t])
+                self._poke()
+        threading.Thread(target=work, daemon=True, name="dl-finish").start()
+
+    def _move_final(self, t: DownloadTask):
+        """Dalla cartella degli incompleti a quella finale. Riprendibile dopo una crash: ogni file arriva con un nome
+        provvisorio e poi con os.replace, quindi nella destinazione non c'e' mai un file a meta'; si rifa solo cio' che resta."""
+        src, dst = Path(t.save_path), Path(t.options["final_dir"])
+        if src != dst and src.is_dir():
+            t.log(f"Sposto i file in {dst}")
+            for f in sorted(p for p in src.rglob("*") if p.is_file()):
+                to = dst / f.relative_to(src)
+                to.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    os.replace(f, to)
+                except OSError:  # altro disco: copia con nome provvisorio, poi rinomina e solo dopo toglie l'originale
+                    tmp = to.with_name(to.name + ".pozzo-move")
+                    shutil.copy2(f, tmp)
+                    os.replace(tmp, to)
+                    f.unlink()
+            for d in sorted((p for p in src.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
+                try:
+                    d.rmdir()
+                except OSError:
+                    pass
+            try:
+                src.rmdir()
+            except OSError:
+                pass
+        with self.lock:
+            t.save_path = str(dst)
+            t.options.pop("final_dir", None)
+            t.options.pop("part", None)  # percorso del .part nella vecchia cartella
+            self.store.save([t])
 
     def _share(self, down: int):
         """Limite globale (KB/s) diviso tra i task in corso dello stesso motore con peso 2**priority, ricalcolato a ogni
@@ -878,6 +1216,7 @@ class Manager:
                                     on_log=lambda m, lv: live() and self._log(t, m, lv))
         with self.lock:
             if live():
+                self._link_host[t.id] = hosts.host(url)
                 t.options["resolved_by"] = by  # servizio debrid che ha sbloccato il link, "" se nessuno
                 self._log(t, (f"Link finale: {url}" if url != orig else "Link diretto, nessun passaggio da fare")
                           + (f" (sbloccato da {by})" if by else ""))
@@ -903,6 +1242,8 @@ class Manager:
     def _completed(self, t: DownloadTask):
         """Torrent finito che resta a condividere: completato per la coda (non occupa piu' un posto)."""
         with self.lock:
+            if t.options.get("seeding"):
+                return  # condivisione ripresa dopo un riavvio: era gia' completato
             t.status, t.speed, t.finished, t.error = COMPLETED, 0.0, time.time(), ""
             t.options["seeding"] = True
             t.log(f"Completato ({mb(t.size)}): resto a condividere")
@@ -921,8 +1262,10 @@ class Manager:
             self._gates.pop(t.id, None)
 
     async def _job(self, t: DownloadTask, segments: int):
-        net = False
+        net = res = False
         try:
+            if t.type == "torrent":
+                self._apply_seed(t)
             if t.type == "steamcmd":
                 await STEAMCMD.run(t, self.cfg)
             elif t.type == "cli":
@@ -941,18 +1284,44 @@ class Manager:
             notes = self._res.get(t.id, (0, []))[1]
             if t.phase and notes:  # fallito prima del download: porta con se' perche' i risolutori non hanno risolto
                 end = (ERROR, f"{end[1]} ({'; '.join(notes)})")
-            self._log(t, f"Errore: {end[1]}", "error")
+            if isinstance(e, OSError) and e.errno == errno.ENOSPC and t.type == "http":
+                # disco pieno a meta': niente errore, il .part e i segmenti restano e _auto_resume lo riprende
+                end = (PAUSED, f"{DISK_FULL}: libera spazio su {drive_of(t.save_path)}, il download riprende da solo")
+                self._log(t, end[1], "warn")
+            else:
+                code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else 0
+                # fallito prima di scaricare per un motivo che puo' passare: debrid/host che dicono perche', 429, 5xx
+                res = t.type == "http" and not net and bool(t.phase) and bool(notes or code == 429 or code >= 500)
+                self._log(t, f"Errore: {end[1]}", "error")
         with self.lock:
             self._res.pop(t.id, None)  # un thread del risolutore ancora vivo non scrive piu' sul task
             self._jobs.pop(t.id, None)
             self._dl_ids.discard(t.id)  # posto liberato: il tick lo da' al prossimo
+            self._link_host.pop(t.id, None)
             self._buckets.pop(t.id, None)
-            if t.options.pop("seeding", None):
+            if t.options.get("seeding"):
                 end = None  # gia' completato: un errore durante la condivisione non lo rovina
-                t.log("Condivisione terminata")
+                reached = t.options.pop("seed_reached", False)
+                if not self._stopping:  # alla chiusura resta segnato: riparte al prossimo avvio
+                    del t.options["seeding"]
+                    t.log("Condivisione terminata")
+                    if reached:  # limite (rapporto o minuti) raggiunto: azione della categoria o globale
+                        t.options["autoremove" if t.options.get("seed_action") == "remove" else "seed_stopped"] = True
             if end and t.id in self.tasks:
-                if not (net and (t.options.get("net_err") or 0) < NET_TRIES):  # un errore di rete che si ritenta non e' un fallimento
+                again = res and (t.options.get("res_err") or 0) < RESOLVE_TRIES
+                # un errore che si ritenta (rete, risoluzione) o una pausa per disco pieno non sono un fallimento
+                if not (again or end[0] == PAUSED or (net and (t.options.get("net_err") or 0) < NET_TRIES)):
                     self._batch[end[0] == ERROR] += 1
+                t.options.pop("retry_at", None)
+                if again:  # res_err = tentativi gia' fatti; retry_at (epoch) sopravvive al riavvio
+                    n = t.options["res_err"] = (t.options.get("res_err") or 0) + 1
+                    wait = min(RESOLVE_WAIT * 2 ** (n - 1), 900)
+                    t.options["retry_at"] = time.time() + wait
+                    t.log(f"Nuovo tentativo {n}/{RESOLVE_TRIES} tra {wait} s", "warn")
+                else:
+                    t.options.pop("res_err", None)
+                if end[0] == PAUSED:
+                    t.options["disk_full"], t.phase = True, DISK_FULL
                 # net_err = n. di riprese automatiche gia' fatte; False = non si riprende da sola
                 t.options["net_err"] = (t.options.get("net_err") or 1) if net else False
                 t.status, t.error = end
@@ -963,10 +1332,9 @@ class Manager:
             if t.id in self.tasks:
                 self.store.save([t])
             self._last.pop(t.id, None)
-            post = bool(self.on_completed and t.status == COMPLETED and t.id in self.tasks
-                        and not t.options.get("post_done") and not t.options.get("seeding"))
+            post = bool((self.on_completed or t.options.get("final_dir")) and t.status == COMPLETED and t.id in self.tasks
+                        and not t.options.get("post_done") and not t.options.get("seeding")
+                        and t.id not in self._posting)  # una volta sola, anche se il job finisce di nuovo
             if post:
-                t.options["post_done"] = True  # una volta sola, anche se la pausa di una condivisione rifa' finire il job
+                self._post(t)
         self._poke()  # l'evento lo manda il tick
-        if post:
-            threading.Thread(target=self.on_completed, args=(t,), daemon=True, name="dl-finish").start()

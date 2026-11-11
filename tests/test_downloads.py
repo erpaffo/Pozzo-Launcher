@@ -114,6 +114,45 @@ async def test_ripresa_non_riscarica_il_gia_fatto(server, tmp):
     assert not [r for r in REQS if re.fullmatch(r"bytes=0-\d+", r)]
 
 
+async def _interrotto(server, tmp):
+    t = _task(server + "/a", tmp)
+    b = H.Bucket()
+    b.rate = 1024 * 1024
+    async with httpx.AsyncClient() as c:
+        job = asyncio.ensure_future(H.run(t, c, b, 2, lambda u: u))
+        while t.done < 1024 * 1024:
+            await asyncio.sleep(0.05)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+    return t
+
+
+async def test_ripresa_con_part_troncato_riparte_il_segmento(server, tmp):
+    t = await _interrotto(server, tmp)
+    with open(t.options["part"], "r+b") as f:
+        f.truncate(100)  # il file parziale non contiene piu' cio' che i segmenti dicono di avere
+    async with httpx.AsyncClient() as c:
+        await H.run(t, c, H.Bucket(), 2, lambda u: u)
+    assert (tmp / "gioco.bin").read_bytes() == DATA
+    assert any("riparte dall'inizio" in l["msg"] for l in t.logs)
+
+
+async def test_ripresa_con_segmenti_incoerenti_riparte_da_capo(server, tmp):
+    t = await _interrotto(server, tmp)
+    t.options["segs"][1][0] += 10  # buco tra i due segmenti: lo stato salvato non descrive il file
+    async with httpx.AsyncClient() as c:
+        await H.run(t, c, H.Bucket(), 2, lambda u: u)
+    assert (tmp / "gioco.bin").read_bytes() == DATA
+    assert sum("Nuovo download" in l["msg"] for l in t.logs) == 2
+
+
+def test_segmenti_coerenti():
+    assert H._coherent([[0, 4, 5], [5, 9, 5]], 10)
+    for bad in ([[0, 4, 6], [5, 9, 5]], [[0, 4, 0], [6, 9, 6]], [[0, 4, 0]], [[0, -1, 3]], [[0, 9, "3"]], [[0, 9]]):
+        assert not H._coherent(bad, 10), bad
+
+
 async def test_ripresa_con_etag_diverso_riusa_link_e_part(server, tmp):
     calls = []
 

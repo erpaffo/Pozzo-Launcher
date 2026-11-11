@@ -30,7 +30,12 @@ def test_store_title():
     assert B._store_title("Silent Hill 2 PS2-PS4 Ported") == "Silent Hill 2"
     assert B._store_title("Battlefield 6 PS5 FPKG") == "Battlefield 6"
     assert B._store_title("PS4 Pro Test") == "PS4 Pro Test"  # in testa al titolo resta
-    print("ok  titoli online: «Switch NSP (eShop)» e «PS4/PS5» in fondo rimossi, titoli veri intatti")
+    # categoria Switch 2 di NXBrew: «Switch 2 NUP [PC Emulation]» in fondo
+    assert B._store_title("Kirby Air Riders Switch 2 NUP [PC Emulation]") == "Kirby Air Riders"
+    assert B._store_title("Mario Kart World Switch 2 [PC Emulation]") == "Mario Kart World"
+    # «Switch 2 Edition» fa parte del titolo e resta
+    assert B._store_title("Pokemon Legends Z-A Switch 2 Edition NUP [PC Emulation]") == "Pokemon Legends Z-A Switch 2 Edition"
+    print("ok  titoli online: «Switch NSP (eShop)», «Switch 2 NUP [PC Emulation]» e «PS4/PS5» in fondo rimossi, titoli veri intatti")
 
 
 def test_catalog_entries_merge(tmp_path):

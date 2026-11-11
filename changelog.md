@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.17.6 (2026-11-11)
+
+### Aggiunto
+
+- Nintendo Switch 2: nuova console con l'emulatore Eglantine (ultima pre-release da Forgejo), installabile con un clic. I giochi scaricati si convertono in NSP, NUP o cartella (richiede Eglantine 2.5.0 o superiore) in automatico o dalla scheda «Switch 2» nelle impostazioni dei download; la conversione usa il codice di NSP-Box (MIT) e non decifra nulla.
+- Gestione download: categorie e tag con cartella e limiti di condivisione, cartella dei download incompleti, filtro IP, feed RSS con filtri automatici, password per pacchetto e regole di destinazione, controllo dei link prima di accodare, limiti per sito e rilevamento dei link negli appunti.
+- Metadati: il pulsante «Completa i mancanti dal web» cerca su DuckDuckGo o Bing le immagini mancanti di un gioco e le salva solo dopo la tua conferma.
+
+### Migliorato
+
+- Download: le fasi dopo lo scaricamento riprendono dopo un riavvio, l'estrazione parte solo quando tutte le parti del gruppo sono arrivate, il disco pieno mette in pausa senza perdere il file e il seeding riparte da solo.
+
+### Corretto
+
+- L'app non si blocca più durante lo scraping o altre attività in background: ogni finestra usa un solo flusso di eventi e le scritture in cache non restano più aperte.
+
 ## 0.17.0 (2026-11-07)
 ### Aggiunto
 

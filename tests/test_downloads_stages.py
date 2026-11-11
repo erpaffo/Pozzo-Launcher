@@ -17,7 +17,7 @@ def states(t):
 def test_archive_flow():
     t = mk(status=RUNNING, size=1000, done=500)
     v = t.view()
-    assert [s["id"] for s in v["stages"]] == ["download", "extract", "library", "data"]
+    assert [s["id"] for s in v["stages"]] == ["download", "extract", "convert", "verify", "library", "data"]
     assert v["stages"][0]["state"] == "active" and v["stages"][0]["pct"] == 50
     assert not v["ready"] and v["ready_eta"] is None  # velocita' ignota
     t.status = COMPLETED
@@ -55,7 +55,7 @@ def test_persistence_round_trip():
     t.set_stage("extract", "done")
     t.set_stage("library", "active")
     back = DownloadTask(**json.loads(json.dumps(t.data())))
-    assert states(back) == {"download": "done", "extract": "done", "library": "active", "data": "todo"}
+    assert states(back) == {"download": "done", "extract": "done", "convert": "todo", "verify": "todo", "library": "active", "data": "todo"}
 
 
 def test_rate_file(tmp_path, monkeypatch):
@@ -70,9 +70,9 @@ def test_note_and_eta_unknown():
     t = mk(type="torrent", status=T.QUEUED)
     assert t.view()["ready_eta"] is None  # niente velocita' ne' dimensione
     t.set_stage("library", "active", note="In attesa della scansione")
-    assert t.view()["stages"][2]["note"] == "In attesa della scansione" and not t.ready
+    assert t.view()["stages"][4]["note"] == "In attesa della scansione" and not t.ready
     t.set_stage("library", "done")
-    assert "note" not in t.view()["stages"][2] and t.ready
+    assert "note" not in t.view()["stages"][4] and t.ready
 
 
 def test_mark_ready_needs_game(tmp_path):

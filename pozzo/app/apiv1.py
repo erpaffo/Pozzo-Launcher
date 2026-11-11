@@ -14,6 +14,7 @@ Le POST con `Idempotency-Key` ripetute entro 5 minuti restituiscono la prima ris
 
 from __future__ import annotations
 
+import asyncio
 import json
 import queue
 import time
@@ -28,18 +29,31 @@ _IDEM: dict[str, tuple[float, int, dict]] = {}
 _IDEM_TTL = 300.0
 
 
-def sse(events, heartbeat: float = 15.0):
+SSE_POLL = 0.1  # ogni quanto un flusso fermo riguarda la sua coda
+
+
+async def sse(events, heartbeat: float = 15.0):
     """Fotogrammi SSE dagli eventi del server (`game_started`, `library_built`, ...). Un commento `: ping`
-    ogni `heartbeat` secondi tiene viva la connessione attraverso i proxy."""
+    ogni `heartbeat` secondi tiene viva la connessione attraverso i proxy.
+    Asincrono: un generatore normale terrebbe fermo un thread del pool (40 in tutto, gli stessi delle altre
+    richieste) per ogni flusso aperto, e ancora per un `heartbeat` dopo la disconnessione.
+    shortcut: la coda si guarda ogni SSE_POLL secondi (eventi in ritardo fino a 0,1 s); se servisse meno, Events
+    dovrebbe svegliare il loop con call_soon_threadsafe."""
     q = events.subscribe()
     try:
         yield ": connesso\n\n"
+        idle = 0.0
         while True:
             try:
-                item = q.get(timeout=heartbeat)
+                item = q.get_nowait()
             except queue.Empty:
-                yield ": ping\n\n"
+                await asyncio.sleep(SSE_POLL)
+                idle += SSE_POLL
+                if idle >= heartbeat:
+                    idle = 0.0
+                    yield ": ping\n\n"
                 continue
+            idle = 0.0
             if item is None:  # Events.close(): l'app si sta chiudendo
                 return
             data = json.dumps(item.get("data") or {}, ensure_ascii=False, default=str)

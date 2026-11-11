@@ -118,6 +118,37 @@ def test_passi_in_libreria_nel_log_con_secondi_e_attesa_breve(tmp, monkeypatch):
     assert any(p.startswith("Aggiungo alla libreria") for p in phases) and t.phase == "" and t.options["post_done"]
 
 
+def test_ripresa_dopo_chiusura_non_riestrae_e_toglie_gli_avanzi(tmp, monkeypatch):
+    """Launcher chiuso a meta' del post-download: gli archivi gia' estratti non si rifanno, gli altri si'."""
+    ctx, calls, got, cfg = _ctx(tmp)
+    dl = tmp / "dl"
+    (dl / "Gioco").mkdir(parents=True)
+    (dl / "Gioco" / "Gioco [0100AAAA].xci").write_bytes(b"x" * 50)  # estratto prima della chiusura
+    (dl / "Gioco.zip").write_bytes(b"non serve aprirlo")
+    monkeypatch.setattr(finish.X, "extract", lambda *a, **k: pytest.fail("non deve estrarre di nuovo"))
+    t = _task(tmp, "Gioco.zip", steps={"extract": "done", "library": "active"},
+              extracted={str(dl / "Gioco.zip"): str(dl / "Gioco")})
+    finish.run(t, Mgr(), ctx)
+    assert len(list(cfg.roms.rglob("*.xci"))) == 1 and calls
+    assert (t.options["steps"]["extract"], t.options["steps"]["library"]) == ("done", "done") and t.options["post_done"]
+
+
+def test_estrazione_interrotta_riparte_e_pulisce_la_cartella_d_appoggio(tmp):
+    ctx, calls, got, cfg = _ctx(tmp)
+    dl = tmp / "dl"
+    (dl / ".estrazione-vecchia" / "Gioco").mkdir(parents=True)  # avanzo dell'estrazione interrotta
+    with zipfile.ZipFile(dl / "Gioco.zip", "w") as f:
+        f.writestr("Gioco/Gioco [0100AAAA].xci", b"x" * 50)
+    saved = []
+    mgr = Mgr()
+    mgr.store.save = lambda tasks: saved.append(dict(tasks[0].options["steps"]))
+    t = _task(tmp, "Gioco.zip", steps={"extract": "active"})
+    finish.run(t, mgr, ctx)
+    assert not (dl / ".estrazione-vecchia").exists() and len(list(cfg.roms.rglob("*.xci"))) == 1
+    assert {"extract": "active"} in saved and any(x.get("extract") == "done" and x.get("library") == "active" for x in saved)  # ogni passo va su disco
+    assert (t.options["steps"]["extract"], t.options["steps"]["library"]) == ("done", "done")
+
+
 def _unlinked(tmp, name, member):
     ctx, calls, got, cfg = _ctx(tmp)
     z = tmp / "dl" / name

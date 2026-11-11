@@ -25,6 +25,7 @@ datas = [
     (str(ROOT / "packaging" / "icon.ico"), "packaging"),  # icona nell'area di notifica
     (str(ROOT / "changelog.md"), "."),  # mostrato in Impostazioni > Info
     (str(ROOT / "pozzo" / "remote" / "vendor"), "pozzo/remote/vendor"),  # ViGEmClient.dll
+    (str(ROOT / "pozzo" / "vendor" / "nspbox" / "LICENSE.txt"), "pozzo/vendor/nspbox"),  # MIT: la licenza segue il codice
 ]
 if sys.platform == "win32":  # gioco d'esempio (pozzo/sample.py): il motore e' solo per Windows
     datas.append((str(ROOT / "pozzo" / "data" / "esempi"), "pozzo/data/esempi"))

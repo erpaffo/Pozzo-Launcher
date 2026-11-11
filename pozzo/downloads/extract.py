@@ -21,6 +21,7 @@ MAX_RATIO = 2000  # decompresso/compresso oltre questo (e oltre RATIO_MIN) = bom
 RATIO_MIN = 2**30
 CHUNK = 1 << 20
 SEVENZIP_PATHS = (r"C:\Program Files\7-Zip\7z.exe", r"C:\Program Files (x86)\7-Zip\7z.exe")
+TMP_PREFIX = ".estrazione-"  # cartella d'appoggio di extract(), dentro la destinazione
 NO_RAR = "Per i .rar serve 7-Zip o UnRAR: installalo da 7-zip.org"
 NO_BACKEND = "Non riesco ad aprire questo archivio: installa 7-Zip da 7-zip.org"
 _NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -479,7 +480,7 @@ def extract(archive, dest, *, password: str | None = None, on_progress=None, can
     dest.mkdir(parents=True, exist_ok=True)
     multi = len(g.volumes) > 1
     order = {"zip": [_zip, _via7z], "7z": [_py7zr, _via7z], "rar": [_via7z, _rarfile]}[g.kind]
-    tmp = Path(tempfile.mkdtemp(prefix=".estrazione-", dir=dest))
+    tmp = Path(tempfile.mkdtemp(prefix=TMP_PREFIX, dir=dest))
     try:
         for backend in order:
             try:
@@ -495,6 +496,14 @@ def extract(archive, dest, *, password: str | None = None, on_progress=None, can
         return _place(tmp, dest, g.name)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def clear_stale(dest) -> None:
+    """Toglie le cartelle d'appoggio lasciate in `dest` da un'estrazione interrotta (launcher chiuso a meta').
+    Solo quando li' non sta estraendo nessuno: porterebbe via anche l'appoggio di un'estrazione in corso."""
+    for d in Path(dest).glob(TMP_PREFIX + "*"):
+        if d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
 
 
 def find_games(root, exts: set[str]) -> list[Path]:

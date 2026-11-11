@@ -64,6 +64,11 @@ CONSIGLIATI: dict[str, tuple[str, str, dict[str, str]]] = {
         "prestazioni": "Richiede un PC potente con una scheda grafica dedicata.",
         "controller": "Supporta i gamepad moderni con mappatura dei tasti.",
     }),
+    "switch2": ("eglantine", "Eglantine è un fork di Eden per Switch 2 (versione sperimentale)", {
+        "fedelta": "Sperimentale: pochi giochi girano e non tutti bene.",
+        "prestazioni": "Richiede un PC molto potente con una scheda grafica dedicata.",
+        "controller": "Supporta i gamepad moderni con mappatura dei tasti.",
+    }),
     "ps3": ("rpcs3", "RPCS3 è l'emulatore PlayStation 3 di riferimento", {
         "fedelta": "Compatibilità variabile da gioco a gioco: conviene controllare la lista dei titoli.",
         "prestazioni": "Richiede un PC potente, con CPU veloce e scheda grafica dedicata.",

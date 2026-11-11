@@ -27,7 +27,7 @@ FOUND_TTL, MISS_TTL = TTL["hltb"]  # trovato / non trovato (cache negativa), ved
 HLTB_PLATFORMS = {
     "windows": "pc", "dos": "pc", "nes": "nes", "snes": "super nintendo", "n64": "nintendo 64", "gb": "game boy",
     "gbc": "game boy color", "gba": "game boy advance", "nds": "nintendo ds", "3ds": "nintendo 3ds", "gc": "gamecube",
-    "wii": "wii", "wiiu": "wii u", "switch": "nintendo switch", "psx": "playstation", "ps2": "playstation 2",
+    "wii": "wii", "wiiu": "wii u", "switch": "nintendo switch", "switch2": "nintendo switch 2", "psx": "playstation", "ps2": "playstation 2",
     "ps3": "playstation 3", "ps4": "playstation 4", "ps5": "playstation 5", "psp": "playstation portable",
     "psvita": "playstation vita",
     "megadrive": "sega mega drive", "mastersystem": "sega master system", "gamegear": "sega game gear",

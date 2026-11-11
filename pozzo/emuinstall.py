@@ -47,6 +47,9 @@ SOURCES: dict[str, dict] = {
     "xemu": {"repo": "xemu-project/xemu", "filter": "release"},
     "flycast": {"repo": "flyinghead/flycast", "filter": "win64"},
     "shadps4": {"repo": "shadps4-emu/shadPS4", "filter": "win64"},
+    # Switch 2: fork di Eden su Forgejo, pubblica solo pre-release (lo zip non dice «windows» nel nome)
+    "eglantine": {"repo": "Franseven/PokeDinner-a-Eglantine-Fork", "api": "https://git.eden-emu.dev/api/v1",
+                  "home": "https://git.eden-emu.dev/Franseven/PokeDinner-a-Eglantine-Fork", "prerelease": True},
 }
 CHECK_TTL = 12 * 3600
 CORES_URL = "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{core}_libretro.dll.zip"
@@ -85,7 +88,14 @@ def _latest(cfg, src: dict) -> tuple[str, dict]:
             raise RuntimeError(f"nessuna versione trovata nei tag di {src['repo']}")
         tag = max(tags)
     else:
-        rels = PT.releases("github", src["repo"], tok)
+        rels = PT.releases(src.get("api") or "github", src["repo"], tok)
+        if src.get("prerelease"):  # voluto: l'ultima pre-release, non l'ultima stabile
+            rels = [r for r in rels if r["prerelease"]] or rels
+            for r in rels:
+                a = PT.pick_asset(r["assets"], src.get("filter") or "")
+                if a:
+                    return r["tag"], a
+            raise RuntimeError(f"nessun file per Windows nelle release di {src['repo']}")
         if src.get("url"):
             tag = next((r["tag"] for r in rels if not r["prerelease"]), "")
             if not tag:
@@ -168,11 +178,11 @@ def rollback(emu_id: str, cfg) -> str:
 # Dati dell'utente: voci dentro la cartella dell'emulatore (modalita' portatile) e cartella in %APPDATA%.
 _USER_ENTRIES = {"portable", "portable.txt", "portable.ini", "user", "config", "saves", "sstates", "states",
                  "memcards", "dev_hdd0", "cache", "shaders", "gameprofiles", "games", "sys", "bis", "profiles"}
-APPDATA_DIRS = {"ryujinx": "Ryujinx", "eden": "eden", "cemu": "Cemu", "dolphin": "Dolphin Emulator",
+APPDATA_DIRS = {"ryujinx": "Ryujinx", "eden": "eden", "eglantine": "eden", "cemu": "Cemu", "dolphin": "Dolphin Emulator",
                 "duckstation": "DuckStation", "pcsx2": "PCSX2", "ppsspp": "PPSSPP", "melonds": "melonDS"}
 # file/cartella che fa leggere i dati accanto all'eseguibile: (nome, e' cartella)
 PORTABLE = {"dolphin": ("portable.txt", False), "duckstation": ("portable.txt", False), "pcsx2": ("portable.ini", False),
-            "ryujinx": ("portable", True), "cemu": ("portable", True), "eden": ("user", True),
+            "ryujinx": ("portable", True), "cemu": ("portable", True), "eden": ("user", True), "eglantine": ("user", True),
             "ppsspp": ("memstick", True), "melonds": ("portable.txt", False)}
 
 

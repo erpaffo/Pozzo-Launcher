@@ -201,7 +201,8 @@ def releases(provider: str, repo: str, token: str = "") -> list[dict]:
                  "url": (r.get("_links") or {}).get("self") or f"https://gitlab.com/{repo}/-/releases",
                  "assets": [{"name": a.get("name") or "", "url": a.get("direct_asset_url") or a.get("url"), "size": 0}
                             for a in (r.get("assets") or {}).get("links") or []]} for r in j]
-    base = "https://codeberg.org/api/v1" if provider == "codeberg" else "https://api.github.com"
+    # provider = "codeberg", oppure la base API di un'istanza Forgejo/Gitea (https://host/api/v1)
+    base = "https://codeberg.org/api/v1" if provider == "codeberg" else provider if provider.startswith("https://")         else "https://api.github.com"
     j = _get(f"{base}/repos/{repo}/releases", {"per_page": 10}, token)
     return [{"tag": r.get("tag_name") or "", "prerelease": bool(r.get("prerelease")), "url": r.get("html_url") or "",
              "assets": [{"name": a.get("name") or "", "url": a.get("browser_download_url"), "size": a.get("size") or 0,
@@ -327,42 +328,26 @@ def _download(url: str, dest: Path, progress=None, token: str = ""):
                     progress(done, total)
 
 
-def _7zip() -> str | None:
-    """7z.exe, se c'e': nel PATH (scoop, winget) o nella cartella standard di 7-Zip."""
-    exe = shutil.which("7z") or shutil.which("7za")
-    if exe:
-        return exe
-    for p in (r"C:\Program Files\7-Zip\7z.exe", r"C:\Program Files (x86)\7-Zip\7z.exe"):
-        if Path(p).is_file():
-            return p
-    return None
-
-
 def _extract(archive: Path, out: Path, name: str):
-    out.mkdir(parents=True)
     n = name.lower()
-    if n.endswith(".zip"):
-        with zipfile.ZipFile(archive) as z:
-            z.extractall(out)  # zipfile scarta percorsi assoluti e ".."
-    elif re.search(r"\.tar(\.\w+)?$|\.tgz$", n):
+    if n.endswith((".zip", ".7z", ".rar")):
+        # stesso estrattore dei download: percorsi fuori cartella e collegamenti scartati, tetto anti zip-bomb.
+        # Porta gia' su di un livello la cartella unica dell'archivio
+        from .downloads import extract as X  # import qui: serve solo a chi installa
+        work = out.with_name(out.name + ".estrazione")
+        shutil.rmtree(work, ignore_errors=True)
+        try:
+            got = X.extract(archive, work)[0]
+            got.rename(out)  # come mkdir: errore se `out` c'e' gia'
+        except X.ArchiveError as e:
+            raise RuntimeError(f"estrazione di {name} non riuscita: {e}") from e
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        return
+    out.mkdir(parents=True)
+    if re.search(r"\.tar(\.\w+)?$|\.tgz$", n):
         with tarfile.open(archive) as t:
             t.extractall(out, filter="data")
-    elif n.endswith((".7z", ".rar")):
-        # tar.exe di Windows (libarchive) legge 7z e rar, ma alcune build non hanno il codec LZMA: in quel caso 7-Zip
-        flags = 0x08000000 if sys.platform == "win32" else 0
-        try:
-            r = subprocess.run(["tar", "-xf", str(archive), "-C", str(out)], capture_output=True, creationflags=flags)
-        except OSError:  # niente tar: si prova direttamente 7-Zip
-            r = None
-        if r is None or r.returncode:
-            seven = _7zip()
-            if not seven:
-                raise RuntimeError(f"estrazione di {name} non riuscita: serve 7-Zip per gli archivi .7z/.rar")
-            shutil.rmtree(out, ignore_errors=True)
-            out.mkdir(parents=True)
-            r = subprocess.run([seven, "x", "-y", f"-o{out}", str(archive)], capture_output=True, creationflags=flags)
-            if r.returncode:
-                raise RuntimeError(f"estrazione di {name} non riuscita: {r.stdout.decode(errors='replace')[-200:]}")
     else:  # .exe portatile o installer: si copia cosi' com'e'
         shutil.copy2(archive, out / name)
     # archivio con una sola cartella dentro: il contenuto sale di un livello

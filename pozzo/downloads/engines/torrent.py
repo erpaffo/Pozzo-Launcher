@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import logging
 import re
 import socket
 import time
@@ -15,6 +17,7 @@ try:
 except ImportError:  # senza libtorrent i torrent non entrano in coda (e il dettaglio gioco ripiega sul client di sistema)
     lt = None
 
+log = logging.getLogger("pozzo.downloads.torrent")
 POLL = 0.5
 RESUME_EVERY = 30
 META_TIMEOUT = 240  # secondi: un magnet senza peer non tiene occupato un posto della coda per sempre
@@ -53,6 +56,37 @@ def pick_files(names: list[str], magnet: str, wanted: str) -> set[int]:
         return so
     w = wanted.lower().strip()
     return {i for i, n in enumerate(names) if w and w in Path(n).name.lower()}
+
+
+_IP4 = r"\d{1,3}(?:\.\d{1,3}){3}"
+_RANGE = re.compile(rf"({_IP4})\s*-\s*({_IP4})(?!.*{_IP4}\s*-)")  # PeerGuardian .dat/.p2p: l'ultimo intervallo della riga
+_CIDR = re.compile(r"\s*([0-9a-fA-F:.]+/\d{1,3})\s*")
+
+
+def _ip(a: str) -> str:
+    return str(ipaddress.ip_address(".".join(str(int(x)) for x in a.split("."))))  # .dat scrive 001.002.003.004
+
+
+def parse_ip_filter(path) -> list[tuple[str, str]]:
+    """Intervalli (primo, ultimo) da un file PeerGuardian (.dat, .p2p) o da un elenco di CIDR, uno per riga.
+    OSError se non si legge, ValueError (con la riga) se qualcosa non si capisce: il filtro non si applica a meta'."""
+    out = []
+    for n, line in enumerate(Path(path).read_text("utf-8", errors="replace").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith(("#", "//")):
+            continue
+        try:
+            if m := _RANGE.search(line):
+                a, b = _ip(m[1]), _ip(m[2])
+            elif m := _CIDR.fullmatch(line):
+                net = ipaddress.ip_network(m[1], strict=False)
+                a, b = str(net[0]), str(net[-1])
+            else:
+                raise ValueError("formato sconosciuto")
+        except ValueError as e:
+            raise ValueError(f"IP filter, riga {n}: {e}")
+        out.append((a, b))
+    return out
 
 
 def check_magnet(source: str):
@@ -101,6 +135,9 @@ class Engine:
         self.trackers: list[str] = []  # aggiunti a ogni torrent
         self.pex = True
         self.seed = (0.0, 0)  # (rapporto, minuti) di condivisione dopo la fine; (0, 0) = nessuna
+        self.ip_path = ""  # file dei blocchi IP in uso; ip_error = perche' non e' applicato ("" se va)
+        self.ip_error = ""
+        self._ranges: list = []
 
     def configure(self, s: dict):
         """Impostazioni del manager (limiti gia' scelti tra normali e «lenti»)."""
@@ -121,6 +158,16 @@ class Engine:
             self._pack = pack
             if self.ses:
                 self.ses.apply_settings(pack)
+        path = str(s.get("ip_filter_path") or "")
+        if path != self.ip_path:
+            self.ip_path, self._ranges, self.ip_error = path, [], ""
+            if path:
+                try:
+                    self._ranges = parse_ip_filter(Path(path).expanduser())
+                except (OSError, ValueError) as e:
+                    self.ip_error = str(e)
+                    log.warning("IP filter ignorato: %s", e)
+            self._apply_ip_filter()
         trackers = list(s.get("trackers") or [])
         if trackers != self.trackers:
             self.trackers = trackers
@@ -130,6 +177,13 @@ class Engine:
                     h.force_reannounce()
                 except RuntimeError:  # appena tolto dalla sessione
                     pass
+
+    def _apply_ip_filter(self):
+        if self.ses:
+            f = lt.ip_filter()
+            for a, b in self._ranges:
+                f.add_rule(a, b, 1)  # 1 = bloccato
+            self.ses.set_ip_filter(f)
 
     def add_trackers(self, h, task=None):
         tid = getattr(task, "id", "") or next((k for k, v in self.handles.items() if v == h), "")
@@ -162,6 +216,7 @@ class Engine:
                 self.ses.apply_settings(self._pack)
             except Exception:  # file assente/rovinato o libtorrent vecchio
                 self.ses = lt.session(self._pack)
+            self._apply_ip_filter()
         return self.ses
 
     def close(self):
@@ -403,12 +458,14 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
                     mile = m
                     task.log(f"Avanzamento {m * 10}% ({mb(task.done)} di {mb(task.size)})")
                 if task.done >= task.size:
-                    ratio, minutes = eng.seed
+                    ratio, minutes = task.options.get("seed_limits") or eng.seed  # quelli della categoria prevalgono
                     if not seeding and (ratio or minutes):
                         await eng.save(task.id)
                         seeding = time.monotonic()
                         on_complete()  # completato per la coda; il torrent resta a condividere
                     if not (ratio or minutes) or (ratio and _ratio(s) >= ratio) or (minutes and time.monotonic() - seeding >= minutes * 60):
+                        if seeding:
+                            task.options["seed_reached"] = True  # il manager applica l'azione (pausa o rimuovi)
                         break
             if time.monotonic() - last_save > RESUME_EVERY:
                 await eng.save(task.id)

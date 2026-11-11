@@ -52,6 +52,7 @@ PRESETS: dict[str, list[tuple[str, str | None]]] = {
     "wii": [("dolphin", None), (RA, "dolphin")],
     "wiiu": [("cemu", None)],
     "switch": [("ryujinx", None), ("eden", None)],
+    "switch2": [("eglantine", None)],
     "sg-1000": [(RA, "genesis_plus_gx")],
     "mastersystem": [(RA, "genesis_plus_gx")],
     "megadrive": [(RA, "genesis_plus_gx")],
@@ -106,6 +107,7 @@ STANDALONE_ARGS = {
     "cemu": ["-g", "{rom}"],
     "ryujinx": ["{rom}"],
     "eden": ["-g", "{rom}"],  # fork di yuzu: stessa riga di comando
+    "eglantine": ["-g", "{rom}"],  # fork di Eden per Switch 2: stessa riga di comando
     "rpcs3": ["--no-gui", "{rom}"],
     "xenia": ["{rom}"],
     "xemu": ["-dvd_path", "{rom}"],
@@ -124,7 +126,7 @@ STANDALONE_ARGS = {
 FULLSCREEN_KEY = "fullscreen"
 FULLSCREEN_ARGS = {
     RA: ["-f"], "dolphin": ["-C", "Dolphin.Display.Fullscreen=True"], "pcsx2": ["-fullscreen"], "duckstation": ["-fullscreen"],
-    "ppsspp": ["--fullscreen"], "cemu": ["-f"], "ryujinx": ["--fullscreen"], "eden": ["-f"], "xenia": ["--fullscreen=true"],
+    "ppsspp": ["--fullscreen"], "cemu": ["-f"], "ryujinx": ["--fullscreen"], "eden": ["-f"], "eglantine": ["-f"], "xenia": ["--fullscreen=true"],
     "xemu": ["-full-screen"], "azahar": ["-f"], "lime3ds": ["-f"], "citra": ["-f"], "melonds": ["-f"],
 }
 
@@ -144,6 +146,7 @@ KNOWN_EXES = {
     "cemu": ["cemu.exe", "cemu"],
     "ryujinx": ["ryujinx.exe", "ryujinx"],
     "eden": ["eden.exe", "eden*.appimage", "eden"],
+    "eglantine": ["eglantine.exe", "eglantine"],
     "xenia": ["xenia_canary.exe", "xenia.exe"],
     "xemu": ["xemu.exe", "xemu"],
     "flycast": ["flycast.exe", "flycast"],

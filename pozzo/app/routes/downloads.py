@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from ... import storelinks as SL
 from .. import browserdl
 from ...cache import Cache
-from ...downloads import bandwidth, debrid, finish, hosts, install, multiup, resolvers
+from ...downloads import bandwidth, debrid, finish, hosts, install, linkcheck, multiup, resolvers
 from ...downloads.engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from ...downloads.extract import queue_forecast
 from ...downloads.manager import Manager
@@ -97,16 +97,29 @@ def build_router(ctx) -> APIRouter:
         out = []
         for u in links:
             try:
-                # sha256/mirrors solo se il chiamante (catalogo, DAT, store) li conosce: add() li valida
-                extra = {k: body[k] for k in ("sha256", "mirrors") if body.get(k)}
+                # password dell'archivio (add() ne controlla tipo e lunghezza); sha256/mirrors solo se il chiamante (catalogo, DAT, store) li conosce: add() li valida
+                extra = {k: body[k] for k in ("sha256", "mirrors", "password") if body.get(k)}
                 if len(links) > 1:
                     extra.pop("sha256", None)  # un hash vale per un file solo
                 out.append(mgr.add(u, body.get("save_path") or "", priority=body.get("priority") or 0,
-                                   category=body.get("category") or "", start_at=body.get("start_at"),
+                                   category=body.get("category") or "", tags=body.get("tags"), start_at=body.get("start_at"),
                                    days=body.get("days"), **extra).view())
             except ValueError as e:
                 raise HTTPException(400, str(e))
         return {"ok": True, "tasks": out}
+
+    @router.post("/api/downloads/check")
+    def api_downloads_check(body: dict = Body(...)):
+        """Online/offline dei link prima di accodarli (stessa validazione di POST /api/downloads)."""
+        links = [str(x).strip() for x in body.get("links") or [] if str(x).strip()][:linkcheck.MAX_LINKS]
+        if not links:
+            raise HTTPException(400, I.tr("s.downloads.no_link"))
+        return {"ok": True, "results": linkcheck.check_many(links)}
+
+    @router.post("/api/downloads/parse-links")
+    def api_downloads_parse_links(body: dict = Body(...)):
+        """Link http(s)/magnet trovati in un testo (appunti letti dalla UI)."""
+        return {"links": linkcheck.parse_links(str(body.get("text") or ""))}
     # la usa POST /m/api/downloads (remote/phone.py): con FastAPI recente app.routes non elenca le rotte dei router inclusi
     ctx.app.state.downloads_add = api_downloads_add
 
@@ -165,6 +178,23 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/downloads/{tid}/move")
     def api_downloads_move(tid: str, body: dict = Body(...)):
         return _act(tid, mgr.move, body.get("to"))
+
+    @router.post("/api/downloads/{tid}/category")
+    def api_downloads_category(tid: str, body: dict = Body(...)):
+        """Categoria e/o tag del download (chiave assente = non cambia; categoria "" = nessuna)."""
+        return _act(tid, mgr.set_category, body.get("category"), body.get("tags"))
+
+    @router.get("/api/downloads/categories")
+    def api_downloads_categories():
+        return {"categories": mgr.settings()["categories"]}
+
+    @router.post("/api/downloads/categories")
+    def api_downloads_categories_set(body: dict = Body(...)):
+        """Sostituisce l'elenco delle categorie (nome, cartella, limiti di condivisione); le cartelle sono validate come `dir`."""
+        try:
+            return {"categories": mgr.update_settings({"categories": body.get("categories")})["categories"]}
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
     @router.post("/api/downloads/{tid}/schedule")
     def api_downloads_schedule(tid: str, body: dict = Body(...)):

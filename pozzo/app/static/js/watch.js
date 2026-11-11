@@ -59,7 +59,8 @@ async function watchStatusStart() {
 
 if (typeof window !== "undefined") {
   if (window.EventSource) {
-    const es = new EventSource("/api/v1/events"); // il browser si riconnette da solo
+    const es = window.gsEventSource || new EventSource("/api/v1/events"); // uno per finestra: ogni stream occupa una delle 6 connessioni del browser
+    window.gsEventSource = es;
     es.addEventListener("library_watch", (e) => {
       let ev; try { ev = JSON.parse(e.data); } catch { return; }
       const t = watchToastText(ev);

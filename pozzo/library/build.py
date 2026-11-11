@@ -369,11 +369,15 @@ def _platform_exts(pid: str) -> set[str]:
     return set(getattr(P.PLATFORMS.get(pid), "exts", ()) or ())
 
 
-# rumore dei siti di ROM in fondo al titolo: "Gioco Switch NSP (eShop)", "Gioco XCI", "Gioco - NSP"
-_STORE_NOISE = re.compile(r"\s*(?:[-–|:]\s*)?(?:\bswitch\s+)?\b(?:nsp|xci|eshop|nsz)\b.*$", re.I | re.S)
+# rumore dei siti di ROM in fondo al titolo: "Gioco Switch NSP (eShop)", "Gioco XCI", "Gioco - NSP",
+# "Gioco Switch 2 NUP [PC Emulation]" (la categoria Switch 2 di NXBrew)
+_STORE_NOISE = re.compile(r"\s*(?:[-–|:]\s*)?(?:\bswitch\s*™?\s*(?:2\s+)?)?\b(?:nsp|xci|nup|eshop|nsz)\b.*$"
+                          r"|\s*(?:switch\s*2\s*)?\[pc emulation\]\s*$", re.I | re.S)
 _STORE_VERSION = re.compile(r"\s+v\d+(?:\.\d+)*$", re.I)
-# console in fondo al titolo (superpsx e simili): "Gioco PS4", "Gioco PS2-PS4 Ported", "Gioco PS5 FPKG"
-_STORE_CONSOLE = re.compile(r"\s+\(?ps[1-5](?:\s*[-/+&]\s*ps[1-5])*\)?(?:\s+(?:ported|port|fpkg|pkg))*\s*$", re.I)
+# console in fondo al titolo (superpsx e simili): "Gioco PS4", "Gioco PS2-PS4 Ported", "Gioco PS5 FPKG",
+# "Gioco Switch 2"
+_STORE_CONSOLE = re.compile(r"\s+\(?(?:ps[1-5](?:\s*[-/+&]\s*ps[1-5])*|switch\s*2)\)?"
+                            r"(?:\s+(?:ported|port|fpkg|pkg))*\s*$", re.I)
 
 
 @lru_cache(maxsize=300_000)  # stesse voci a ogni ricostruzione della libreria

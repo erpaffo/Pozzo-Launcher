@@ -179,26 +179,37 @@ def test_guard(cfg):
 
 def test_sse():
     """Gli eventi arrivano come fotogrammi SSE e chi ascolta non blocca l'app."""
+    import asyncio
     ev = Events()
-    gen = sse(ev, heartbeat=5)
-    assert next(gen) == ": connesso\n\n"
-    ev.emit("library_built", {"games": 4})
-    frame = next(gen)
-    assert "event: library_built" in frame and '"games": 4' in frame, frame
-    ev.emit("game_stopped", {"title": "Rubino"})
-    assert "event: game_stopped" in next(gen)
-    gen.close()
-    assert not ev.subs, "chiudendo il flusso l'ascoltatore deve sparire"
 
-    # chiusura dell'app: il flusso finisce subito, anche con la coda piena (niente attesa del heartbeat)
-    gen = sse(ev, heartbeat=60)
-    next(gen)
-    for i in range(150):
-        ev.emit("x", {"i": i})
-    ev.close()
-    t0 = time.time()
-    assert sum(1 for _ in gen) == 99 and time.time() - t0 < 2, "close() deve terminare il flusso"
-    assert not ev.subs
+    async def go():
+        gen = sse(ev, heartbeat=5)
+        assert await anext(gen) == ": connesso\n\n"
+        ev.emit("library_built", {"games": 4})
+        frame = await anext(gen)
+        assert "event: library_built" in frame and '"games": 4' in frame, frame
+        ev.emit("game_stopped", {"title": "Rubino"})
+        assert "event: game_stopped" in await anext(gen)
+        await gen.aclose()
+        assert not ev.subs, "chiudendo il flusso l'ascoltatore deve sparire"
+
+        # senza eventi arriva il battito
+        gen = sse(ev, heartbeat=0.2)
+        await anext(gen)
+        assert await anext(gen) == ": ping\n\n"
+        await gen.aclose()
+
+        # chiusura dell'app: il flusso finisce subito, anche con la coda piena (niente attesa del heartbeat)
+        gen = sse(ev, heartbeat=60)
+        await anext(gen)
+        for i in range(150):
+            ev.emit("x", {"i": i})
+        ev.close()
+        t0 = time.time()
+        assert len([f async for f in gen]) == 99 and time.time() - t0 < 2, "close() deve terminare il flusso"
+        assert not ev.subs
+
+    asyncio.run(go())
     print("ok  SSE: eventi in streaming e ascoltatori rimossi")
 
 

@@ -3,6 +3,10 @@
 <label class="lbl-field"><span data-i18n="j.dl.dir">Cartella dei download</span>
   <span class="row tight"><input class="field grow" id="dls-dir">
   <button class="btn" id="dls-dir-pick" type="button" data-i18n="j.common.change">Cambia…</button></span></label>
+<label class="lbl-field"><span data-i18n="j.dl.incomplete">Cartella dei download incompleti (facoltativa)</span>
+  <span class="row tight"><input class="field grow" id="dls-incomplete">
+  <button class="btn" id="dls-incomplete-pick" type="button" data-i18n="j.common.change">Cambia…</button></span></label>
+<p class="muted small" data-i18n="j.dl.incomplete.desc">Vuota = si scarica direttamente nella cartella finale. Se la imposti, a download finito i file vengono spostati nella cartella di destinazione.</p>
 <div class="row wrap">
   <label><span data-i18n="j.dl.max">Download simultanei</span> <input class="field" id="dls-max" type="number" min="1" max="10"></label>
   <label><span data-i18n="j.dl.max.http">di cui HTTP</span> <input class="field" id="dls-max-http" type="number" min="0" max="10"></label>
@@ -13,6 +17,8 @@
   (alcuni siti li rifiutano: in quel caso si torna a uno).</p>
 <label class="chk"><input type="checkbox" id="dls-extract"> <span data-i18n="j.dl.extract">Estrai automaticamente gli archivi a download finito</span></label>
 <label class="chk"><input type="checkbox" id="dls-showbrowser"> <span data-i18n="j.dl.showbrowser">Mostra il browser mentre risolve i link (per vedere la pagina e superare i controlli anti-bot a mano)</span></label>
+<label class="chk"><input type="checkbox" id="dls-check"> <span data-i18n="j.dl.check">Controlla i link prima di accodare (un link offline non viene aggiunto)</span></label>
+<label class="chk"><input type="checkbox" id="dls-clipwatch"> <span data-i18n="j.dl.clipwatch">Rileva link negli appunti quando torni su Pozzo (gli appunti si leggono solo con questa opzione attiva)</span></label>
 <label class="chk"><input type="checkbox" id="dls-clip"> <span data-i18n="j.dl.clip">Monitora gli appunti: proponi i link da scaricare che copi</span></label>
 
 <h3 data-i18n="j.dl.speed.title">Velocità</h3>
@@ -76,10 +82,70 @@
   <label><span data-i18n="j.dl.share.minutes">oppure dopo (minuti)</span> <input class="field" id="dls-seed-min" type="number" min="0"></label>
 </div>
 <p class="muted small" data-i18n="j.dl.share.desc">Rapporto = dati inviati ÷ dimensione del torrent. 0 = non condividere: il torrent si ferma appena finito.</p>
+<label class="lbl-field"><span data-i18n="j.dl.seedaction">Al limite di condivisione</span>
+  <select class="field" id="dls-seed-action">
+    <option value="pause" data-i18n="j.dl.seedaction.pause">Metti in pausa il torrent</option>
+    <option value="remove" data-i18n="j.dl.seedaction.remove">Togli il torrent dall'elenco (i file restano)</option></select></label>
+<label class="lbl-field"><span data-i18n="j.dl.ipf">File IP filter (PeerGuardian .dat/.p2p o elenco di CIDR)</span>
+  <span class="row tight"><input class="field grow" id="dls-ipf" aria-describedby="dls-ipf-err">
+  <button class="btn" id="dls-ipf-pick" type="button" data-i18n="j.s2.pickFile">File…</button></span></label>
+<p class="small bad" id="dls-ipf-err" role="status"></p>
 <label class="lbl-field"><span data-i18n="j.dl.trackers">Tracker aggiuntivi, uno per riga (aggiunti a ogni torrent)</span>
   <textarea class="field" id="dls-trackers" rows="4" spellcheck="false" placeholder="udp://tracker.example.org:1337/announce"></textarea></label>
+
+<h3 data-i18n="j.dl.cats.title">Categorie</h3>
+<p class="muted small" data-i18n="j.dl.cats.desc">Una categoria ha una sua cartella e limiti di condivisione che valgono al posto di quelli globali (0 = come globale).
+  Si assegna dalla finestra «Aggiungi download» o dai dettagli di un download.</p>
+<div id="dls-cats"></div>
+<button class="btn" id="dls-cat-add" type="button" data-i18n="j.dl.cats.add">Aggiungi categoria</button>
+
+<h3 data-i18n="j.dl.rss.title">Feed RSS</h3>
+<p class="muted small" data-i18n="j.dl.rss.desc">Pozzo controlla i feed e scarica solo gli elementi che combaciano con un filtro (espressione regolare sul titolo),
+  nella categoria indicata. Gli elementi già presenti nel feed quando lo aggiungi non vengono scaricati.</p>
+<div id="dls-rss"></div>
+<button class="btn" id="dls-rss-add" type="button" data-i18n="j.dl.rss.add">Aggiungi feed</button>
+
+<h3 data-i18n="j.dl.host.title">Limiti per sito</h3>
+<p class="muted small" data-i18n="j.dl.host.desc">Massimo di download HTTP contemporanei da uno stesso sito (vale anche per i suoi sottodomini), da 1 a 10.</p>
+<div id="dls-hosts"></div>
+<button class="btn" id="dls-host-add" type="button" data-i18n="j.dl.host.add">Aggiungi sito</button>
+
+<h3 data-i18n="j.dl.pw.title">Archivi con password</h3>
+<label class="lbl-field"><span data-i18n="j.dl.pw">Password comuni, una per riga (provate in ordine dopo quella del pacchetto)</span>
+  <textarea class="field" id="dls-pw" rows="3" spellcheck="false" autocomplete="off"></textarea></label>
+
+<h3 data-i18n="j.dl.rules.title">Regole di destinazione</h3>
+<p class="muted small" data-i18n="j.dl.rules.desc">Per i giochi estratti: la prima regola che combacia col nome decide console e sottocartella.
+  Il nome si confronta con un'espressione regolare.</p>
+<div id="dls-rules"></div>
+<button class="btn" id="dls-rule-add" type="button" data-i18n="j.dl.rules.add">Aggiungi regola</button>
 
 <h3 data-i18n="j.dl.debrid.title">Estensioni / Debrid</h3>
 <p class="muted small" data-i18n="j.dl.debrid.desc">Con un servizio debrid i link dei siti di hosting (Mega, 1fichier, Rapidgator…) scaricano alla massima velocità.
   I link passano dal primo servizio attivo, nell'ordine qui sotto. La chiave resta su questo PC e non viene più mostrata.</p>
 <div id="dls-debrid"></div>
+
+<h3 data-i18n="j.s2.title">Switch 2</h3>
+<p class="muted small" data-i18n="j.s2.desc">Converte i giochi Switch 2 già in chiaro tra cartella (exefs/romfs), NSP e NUP. Serve Eglantine 2.5.0 o successiva.
+  Pozzo non usa chiavi e non decifra: gli NSP retail o cifrati vengono rifiutati.</p>
+<p class="small" id="s2-status" role="status"></p>
+<label class="lbl-field"><span data-i18n="j.s2.fmt">Dopo il download converti in</span>
+  <select class="field" id="s2-fmt">
+    <option value="nsp">NSP</option><option value="nup">NUP</option>
+    <option value="folder" data-i18n="j.s2.fmt.folder">Cartella</option>
+    <option value="off" data-i18n="j.s2.fmt.off">Non convertire</option>
+  </select></label>
+<h4 data-i18n="j.s2.tool">Converti un file o una cartella</h4>
+<label class="lbl-field"><span data-i18n="j.s2.src">File o cartella da convertire</span>
+  <span class="row tight"><input class="field grow" id="s2-src">
+  <button class="btn" id="s2-pick-file" type="button" data-i18n="j.s2.pickFile">File…</button>
+  <button class="btn" id="s2-pick-dir" type="button" data-i18n="j.s2.pickDir">Cartella…</button></span></label>
+<div class="row wrap">
+  <label><span data-i18n="j.s2.to">Formato di arrivo</span>
+    <select class="field" id="s2-to"><option value="nsp">NSP</option><option value="nup">NUP</option>
+      <option value="folder" data-i18n="j.s2.fmt.folder">Cartella</option></select></label>
+  <button class="btn" id="s2-go" type="button" data-i18n="j.s2.go">Converti</button>
+  <button class="btn" id="s2-cancel" type="button" hidden data-i18n="j.s2.cancel">Annulla</button>
+</div>
+<progress id="s2-bar" max="100" value="0" hidden aria-labelledby="s2-msg"></progress>
+<p class="muted small" id="s2-msg" role="status" aria-live="polite"></p>
