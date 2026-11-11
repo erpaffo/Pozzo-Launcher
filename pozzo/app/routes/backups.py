@@ -37,8 +37,11 @@ def build_router(ctx) -> APIRouter:
         if launcher.running().get("status") in ("starting", "extracting", "running"):
             raise HTTPException(409, I.tr("s.backups.close_game_first"))  # registrerebbe la partita sui dati vecchi
         try:
-            return BK.restore(cfg, body.get("name") or "", user=user_of("default"),
-                              profiles={k: v for k, v in users.items() if k != "default"})
+            r = BK.restore(cfg, body.get("name") or "", user=user_of("default"),
+                           profiles={k: v for k, v in users.items() if k != "default"})
+            if r.get("runs_commands"):  # la copia puo' venire da altrove: si dice che ora girano suoi comandi
+                r["scripts_warning"] = I.tr("s.backups.scriptsWarning", n=r["runs_commands"])
+            return r
         except (FileNotFoundError, ValueError) as e:
             raise HTTPException(400, str(e))
 

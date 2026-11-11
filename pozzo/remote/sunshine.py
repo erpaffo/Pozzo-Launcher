@@ -13,6 +13,7 @@ Sunshine (Desktop, Steam Big Picture, ...) non vengono toccate.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -156,10 +157,57 @@ def optimize_checks() -> list[dict]:
     return out
 
 
+class CertChanged(PermissionError):
+    """Il certificato di Sunshine non e' quello visto al primo uso."""
+
+
+def cert_fingerprint(base: str = API, timeout: float = 10) -> str:
+    """SHA-256 (esadecimale) del certificato DER presentato dal server, senza validarlo."""
+    import socket
+    import ssl
+    from urllib.parse import urlsplit
+    u = urlsplit(base)
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE
+    with socket.create_connection((u.hostname, u.port or 443), timeout=timeout) as raw:
+        with ctx.wrap_socket(raw, server_hostname=u.hostname) as tls:
+            return hashlib.sha256(tls.getpeercert(binary_form=True)).hexdigest()
+
+
 class Sunshine:
-    def __init__(self, user: str, password: str, base: str = API):
+    """Client dell'API web di Sunshine. Il certificato e' autofirmato: invece di ignorarlo (verify=False, che
+    permette a chiunque risponda su quella porta di rubare le credenziali) si fissa l'impronta SHA-256 al primo
+    uso (TOFU). pin = impronta salvata; on_pin(fp) la salva quando e' la prima volta."""
+
+    def __init__(self, user: str, password: str, base: str = API, pin: str | None = None, on_pin=None):
         import httpx
-        self.c = httpx.Client(base_url=base, auth=(user, password), verify=False, timeout=15)  # certificato autofirmato locale
+        self.base, self.pin, self.on_pin, self._checked = base, (pin or "").lower() or None, on_pin, False
+        # la verifica vera e' in _verify (impronta); la catena autofirmata non puo' essere validata
+        self.c = httpx.Client(base_url=base, auth=(user, password), verify=False, timeout=15)
+        self.c.event_hooks["request"].append(lambda _req: self._verify())
+
+    @classmethod
+    def from_conf(cls, conf: dict, save=None) -> "Sunshine":
+        """conf: impostazioni 'sunshine' (user, password, cert_sha256). save(conf) le salva dopo il primo uso."""
+        def on_pin(fp):
+            conf["cert_sha256"] = fp
+            if save:
+                save(conf)
+        return cls(conf["user"], conf["password"], pin=conf.get("cert_sha256"), on_pin=on_pin)
+
+    def _verify(self):
+        if self._checked:
+            return
+        fp = cert_fingerprint(self.base)  # prima di inviare le credenziali
+        if self.pin and fp != self.pin:
+            raise CertChanged("Il certificato di Sunshine è cambiato rispetto al primo collegamento (reinstallazione "
+                              "di Sunshine, oppure qualcuno risponde al suo posto sulla porta 47990). Se hai appena "
+                              "reinstallato Sunshine, reimposta il certificato salvando di nuovo la password di Sunshine.")
+        if not self.pin:
+            self.pin = fp
+            if self.on_pin:
+                self.on_pin(fp)
+        self._checked = True
 
     def close(self):
         self.c.close()
@@ -200,12 +248,13 @@ def ours(app: dict) -> bool:
     return MARK_PLAY in cmd or cmd.endswith(MARK_BP) or (app.get("name") == CURRENT and not cmd)
 
 
-def publish(cfg, user: str, password: str, games: list[dict], covers_dir: Path, cover_of) -> dict:
+def publish(cfg, user: str, password: str, games: list[dict], covers_dir: Path, cover_of,
+            pin: str | None = None, on_pin=None) -> dict:
     """Sostituisce le app di Pozzo Launcher in Sunshine. games: [{key, title, id}];
     cover_of(game) -> Path di un'immagine o None. Ritorna {"published", "removed"}."""
     base, wd = launcher_cmd(cfg)
     covers_dir.mkdir(parents=True, exist_ok=True)
-    s = Sunshine(user, password)
+    s = Sunshine(user, password, pin=pin, on_pin=on_pin)
     try:
         old = s.apps()
         removed = 0

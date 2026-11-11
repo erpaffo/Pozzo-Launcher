@@ -30,6 +30,10 @@ def build_router(ctx) -> APIRouter:
     def _sun_conf() -> dict:
         return dict(cfg.app.get("sunshine") or {})
 
+    def _sun_save(conf: dict):
+        cfg.app["sunshine"] = conf
+        C.save_settings(cfg, app={"sunshine": conf})
+
     def _stream_games(limit: int) -> list[dict]:
         v = view()
         out, seen = [], set()
@@ -58,7 +62,7 @@ def build_router(ctx) -> APIRouter:
               "last": conf.get("last"), "web": SUN.API, "apps": None, "error": ""}
         if d and conf.get("user") and conf.get("password") and st["service"] != "stopped":
             try:
-                s = SUN.Sunshine(conf["user"], conf["password"])
+                s = SUN.Sunshine.from_conf(conf, _sun_save)
                 try:
                     st["apps"] = [{"name": a.get("name"), "ours": SUN.ours(a)} for a in s.apps()]
                 finally:
@@ -75,6 +79,9 @@ def build_router(ctx) -> APIRouter:
             conf["user"] = str(body["user"]).strip()
         if body.get("password"):
             conf["password"] = str(body["password"])
+            conf.pop("cert_sha256", None)  # nuove credenziali = si rifissa il certificato (Sunshine reinstallato)
+        if body.get("reset_cert"):
+            conf.pop("cert_sha256", None)
         if body.get("count") not in (None, ""):
             conf["count"] = max(0, min(100, int(body["count"])))
         C.save_settings(cfg, app={"sunshine": conf})
@@ -90,7 +97,8 @@ def build_router(ctx) -> APIRouter:
             return Path(cfg.cache) / rel if rel and not rel.startswith("url:") else None
         try:
             r = SUN.publish(cfg, conf["user"], conf["password"], _stream_games(int(conf.get("count", 24))),
-                            C.settings_path(cfg).parent / "sunshine", cover_of)
+                            C.settings_path(cfg).parent / "sunshine", cover_of,
+                            pin=conf.get("cert_sha256"), on_pin=lambda fp: conf.__setitem__("cert_sha256", fp))
         except PermissionError as e:
             raise HTTPException(401, str(e))
         except Exception as e:

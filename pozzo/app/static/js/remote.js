@@ -14,8 +14,9 @@ async function loadRemote() {
   let ph, sun;
   try { [ph, sun] = await Promise.all([api("/api/phone"), api("/api/sunshine")]); } catch (e) { return toast(e.message, true); }
   $("#ph-on").checked = ph.enabled;
+  const phExpo = (ph.enabled && (ph.exposure || []).length) ? `<p class="status-bad small">⚠ ${t("i.remote.exposed")}</p>` : "";
   const mins = ph.code_until ? Math.max(0, Math.round((ph.code_until - Date.now() / 1000) / 60)) : 0;
-  $("#ph-box").innerHTML = !ph.enabled ? "" : ph.error ? `<p class="status-bad">${esc(ph.error)}</p>` : !ph.running ? `<p class="muted">${t("i.remote.starting")}</p>` : `
+  $("#ph-box").innerHTML = !ph.enabled ? "" : ph.error ? `<p class="status-bad">${esc(ph.error)}</p>` : !ph.running ? `<p class="muted">${t("i.remote.starting")}</p>` : phExpo + `
     <h4>🔒 ${t("i.remote.cert.title")}</h4>
     <p class="muted small">${t("i.remote.cert.intro")}</p>
     <div class="ph-pair"${ph.ca_installed ? " hidden" : ""}>

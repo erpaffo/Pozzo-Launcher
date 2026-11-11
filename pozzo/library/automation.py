@@ -62,6 +62,38 @@ def clean(body: dict) -> dict:
     return out
 
 
+class ScriptsNeedConfirm(Exception):
+    """Un salvataggio introduce o cambia comandi da eseguire: serve la conferma esplicita dell'utente."""
+
+    def __init__(self, changed: dict):
+        super().__init__("scripts_confirm")
+        self.changed = changed
+
+
+def commands(profile: dict | None) -> dict[str, str]:
+    """Tutti i comandi shell di un profilo di gioco: {'before'|'after'|'auto.before_cmd'|'auto.after_cmd': testo}."""
+    p = profile or {}
+    out = {k: str(p[k]).strip() for k in ("before", "after") if str(p.get(k) or "").strip()}
+    auto = p.get(KEY) if isinstance(p.get(KEY), dict) else {}
+    for w in ("before", "after"):
+        if str(auto.get(f"{w}_cmd") or "").strip():
+            out[f"{KEY}.{w}_cmd"] = str(auto[f"{w}_cmd"]).strip()
+    return out
+
+
+def check_confirm(old: dict, new: dict, confirmed: bool):
+    """Comandi nuovi o modificati rispetto a `old` richiedono confirmed=True; quelli invariati passano (la UI li
+    rimanda a ogni salvataggio). Chi scrive da fuori dalla UI (import, API, estensioni) non e' mai «confermato»."""
+    changed = {k: v for k, v in new.items() if old.get(k) != v}
+    if changed and not confirmed:
+        raise ScriptsNeedConfirm(changed)
+
+
+def confirm_body(e: ScriptsNeedConfirm, message: str) -> dict:
+    """Corpo della risposta 428: la UI mostra `message` + i comandi e rimanda il salvataggio con confirm_scripts=true."""
+    return {"detail": message, "code": "scripts_confirm", "scripts": [{"field": k, "cmd": v} for k, v in e.changed.items()]}
+
+
 def env_for(event: str, key: str, title: str, platform: str, exe: str | None, **extra) -> dict:
     return {**os.environ, "POZZO_GAME_ID": key or "", "POZZO_TITLE": title or "", "POZZO_PLATFORM": platform or "",
             "POZZO_EXE": exe or "", "POZZO_EVENT": event, **{k: str(v) for k, v in extra.items()}}

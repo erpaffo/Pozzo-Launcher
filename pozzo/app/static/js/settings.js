@@ -1257,6 +1257,7 @@ async function restoreBackup(name) {
   let r;
   try { r = await api("/api/backups/restore", { body: { name } }); } catch (e) { return toast(e.message, true); }
   toast(t("e.backup.restored", { list: r.restored.join(", "), copy: r.safety_copy }));
+  if (r.scripts_warning) toast(r.scripts_warning, true);
   await reload(true);
   loadBackups();
 }

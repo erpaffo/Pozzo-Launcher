@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Body, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from .. import extensions as X
 from ... import config as C, profilecfg as PC
@@ -147,6 +147,11 @@ def build_router(ctx) -> APIRouter:
         """Script prima/dopo ogni gioco e chiusura del launcher dello store a fine partita."""
         conf = {k: str(body.get(k) or "").strip() for k in L.SCRIPT_KEYS}
         conf = {k: v for k, v in conf.items() if v}
+        try:  # comandi nuovi o cambiati: solo con conferma esplicita
+            A.check_confirm({k: v for k, v in (cfg.app.get("launch") or {}).items() if k in L.SCRIPT_KEYS},
+                            {k: v for k, v in conf.items() if k in L.SCRIPT_KEYS}, body.get("confirm_scripts") is True)
+        except A.ScriptsNeedConfirm as e:
+            return JSONResponse(A.confirm_body(e, I.tr("s.automation.confirm")), 428)
         if body.get("close_launcher"):
             conf["close_launcher"] = True
         if body.get("splash") is False:
@@ -164,6 +169,10 @@ def build_router(ctx) -> APIRouter:
         """Script globali su gioco avviato, gioco chiuso, download finito (stesse variabili POZZO_* dei profili)."""
         conf = {k: str(body.get(k) or "").strip() for k in A.GLOBAL_EVENTS.values()}
         conf = {k: v for k, v in conf.items() if v}
+        try:  # comandi nuovi o cambiati: solo con conferma esplicita
+            A.check_confirm(dict(cfg.app.get(A.GLOBAL_KEY) or {}), conf, body.get("confirm_scripts") is True)
+        except A.ScriptsNeedConfirm as e:
+            return JSONResponse(A.confirm_body(e, I.tr("s.automation.confirm")), 428)
         C.save_settings(cfg, app={A.GLOBAL_KEY: conf})
         cfg.app[A.GLOBAL_KEY] = conf
         return conf

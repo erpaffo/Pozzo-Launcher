@@ -21,7 +21,10 @@ def build_router(ctx) -> APIRouter:
         if fmt not in PARSERS:
             raise HTTPException(404, I.tr("s.libimport.fmtUnknown"))
         try:
-            return IMP.apply(user, lib, PARSERS[fmt](body.get("path")))
+            out = IMP.apply(user, lib, PARSERS[fmt](body.get("path")))
+            if out.get("scripts_ignored"):  # gli script della fonte non vengono importati: lo si dice
+                out["scripts_warning"] = I.tr("s.libimport.scriptsIgnored", n=out["scripts_ignored"])
+            return out
         except IMP.ImportError_ as e:
             raise HTTPException(400, I.tr(ERR[str(e)]) if str(e) in ERR else str(e))
         except OSError as e:

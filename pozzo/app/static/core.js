@@ -357,7 +357,13 @@ async function api(path, opts = {}) {
   catch { throw new Error(t("b.core.api.noResponse")); }  // fetch dice solo «Failed to fetch»
   if (!r.ok) {
     let m = r.statusText || t("b.core.api.error", {n: r.status});
-    try { m = (await r.json()).detail || m; } catch { /* risposta non JSON */ }
+    let j = null;
+    try { j = await r.json(); m = j.detail || m; } catch { /* risposta non JSON */ }
+    // comandi shell nuovi o cambiati: il server vuole la conferma esplicita; se l'utente accetta si rimanda con confirm_scripts
+    if (r.status === 428 && j && j.code === "scripts_confirm" && opts.body && !opts.body.confirm_scripts) {
+      const list = (j.scripts || []).map((s) => `${s.field}: ${s.cmd}`).join("\n");
+      if (confirm(`${j.detail}\n\n${list}`)) return api(path, { ...opts, body: { ...opts.body, confirm_scripts: true } });
+    }
     throw new Error(m);
   }
   return r.json();

@@ -2,7 +2,8 @@
 
 Ogni formato e' una funzione `parse_*(path) -> list[record]` (modulo formats); `apply` li porta nei dati utente.
 record = {"title", "playtime" (secondi), "favorite" (bool), "last_played" (epoch|0), "collections" [nomi],
-          "exe" (percorso gia' esistente sul disco, opzionale)}"""
+          "exe" (percorso gia' esistente sul disco, opzionale), "scripts" (bool: la fonte ha script/comandi,
+          mai importati: solo contati in `scripts_ignored` per avvisare l'utente)}"""
 
 from __future__ import annotations
 
@@ -44,7 +45,8 @@ def apply(user, lib, records: list[dict]) -> dict:
             continue
         by_title.setdefault(normalize(g["title"]), []).append(g["key"])
     colls = {c["name"].lower(): s for s, c in user.collections().items() if c.get("custom")}
-    out = {"matched": 0, "added": 0, "skipped": 0, "favorites": 0, "playtime": 0, "collections": 0}
+    out = {"matched": 0, "added": 0, "skipped": 0, "favorites": 0, "playtime": 0, "collections": 0,
+           "scripts_ignored": sum(1 for r in records[:MAX_GAMES] if r.get("scripts"))}
     for r in records[:MAX_GAMES]:
         title = (r.get("title") or "").strip()
         keys = by_title.get(normalize(title)) if title else None

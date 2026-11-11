@@ -594,6 +594,7 @@ function bind() {
     try {
       const r = await api("/api/import/" + fmt, { body: { path: p } });
       $("#imp-out").textContent = t("k.lib.imp.result", { matched: r.matched, added: r.added, skipped: r.skipped, favorites: r.favorites, playtime: r.playtime, collections: r.collections });
+      if (r.scripts_warning) toast(r.scripts_warning, true);
       reload(true);
     } catch (e) { toast(e.message, true); }
   };

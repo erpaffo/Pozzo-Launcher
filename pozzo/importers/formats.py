@@ -37,9 +37,10 @@ def _ts(v) -> float:
         return 0.0
 
 
-def _rec(title, playtime=0.0, favorite=False, last_played=0.0, collections=None, exe=None) -> dict:
+def _rec(title, playtime=0.0, favorite=False, last_played=0.0, collections=None, exe=None, scripts=False) -> dict:
+    # scripts: la fonte ha comandi/script propri. Si segnalano soltanto: non si importano MAI (vedi importers.apply)
     return {"title": str(title), "playtime": float(playtime or 0), "favorite": bool(favorite),
-            "last_played": float(last_played or 0), "collections": collections or [], "exe": exe}
+            "last_played": float(last_played or 0), "collections": collections or [], "exe": exe, "scripts": bool(scripts)}
 
 
 # ------------------------------------------------------------------ Playnite
@@ -60,8 +61,11 @@ def parse_playnite(path) -> list[dict]:
         exe = next((a.get("Path") for a in g.get("GameActions") or [] if isinstance(a, dict) and a.get("Path")), None)
         if exe:
             exe = _exe(str(exe).replace("{InstallDir}", str(g.get("InstallDirectory") or "")))
+        # script di Playnite: PreScript/PostScript/GameStartedScript e azioni di tipo Script
+        scripts = any(g.get(k) for k in ("PreScript", "PostScript", "GameStartedScript")) or any(
+            isinstance(a, dict) and str(a.get("Type")).lower() in ("script", "2") for a in g.get("GameActions") or [])
         out.append(_rec(g["Name"], g.get("Playtime"), g.get("Favorite"), _ts(g.get("LastActivity")) if g.get("LastActivity") else 0,
-                        [c for c in cats if isinstance(c, str)], exe))
+                        [c for c in cats if isinstance(c, str)], exe, scripts))
     return out
 
 
@@ -177,6 +181,8 @@ def parse_pegasus(path) -> list[dict]:
         elif key == "game":
             cur = _rec(val, collections=[coll] if coll else [])
             out.append(cur)
+        elif cur is not None and key in ("launch", "command", "launch.command"):
+            cur["scripts"] = True  # comando di avvio di Pegasus: non si importa
         elif cur is not None and key == "collections":
             cur["collections"] = [c.strip() for c in val.split(",") if c.strip()]
         if len(out) >= MAX_GAMES:

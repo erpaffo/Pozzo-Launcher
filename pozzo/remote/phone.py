@@ -579,10 +579,30 @@ class PhoneHub:
         c["rumble"](255, 255)
         threading.Timer(0.7, stop).start()
 
+    def exposure(self) -> list[str]:
+        """Motivi per cui il server telefono e' raggiungibile oltre la LAN privata (vuoto = solo rete di casa).
+        Il bind 0.0.0.0 da solo e' il caso normale (LAN): conta solo cio' che lo apre a internet."""
+        import ipaddress
+        out = []
+        host = str(self.conf.get("host") or "").strip()
+        if host and host not in ("0.0.0.0", "::", "localhost"):
+            try:
+                a = ipaddress.ip_address(host)
+                if not (a.is_private or a.is_loopback or a.is_link_local):
+                    out.append("host")  # interfaccia con indirizzo pubblico
+            except ValueError:
+                out.append("host")
+        if str(self.conf.get("public_url") or "").strip():
+            out.append("public_url")  # tunnel / dominio pubblico verso il PC
+        if self.lib_upnp:
+            out.append("upnp")  # porta aperta sul router
+        return out
+
     def status(self) -> dict:
         from .vigem import available
         ok, err = available()
-        return {"enabled": self.conf["enabled"], "running": self.running(), "error": self.error, "port": self.conf["port"],
+        return {"exposure": self.exposure(),
+                "enabled": self.conf["enabled"], "running": self.running(), "error": self.error, "port": self.conf["port"],
                 "urls": self.urls(), "devices": [d for d in self.devices() if d.get("kind") not in ("pc", "guest", "lib")],
                 "guests": [d for d in self.devices() if d.get("kind") == "guest"],
                 "public_url": self.conf.get("public_url", ""), "video_addr": self.conf.get("video_addr", ""),
@@ -719,7 +739,10 @@ def register(app, hub: PhoneHub, static_dir: Path):
         if not (conf.get("user") and conf.get("password")):
             raise HTTPException(409, "Il PC non ha le credenziali di Sunshine: vanno salvate in Impostazioni › Telefono e streaming")
         dev = hub.device_for(request.cookies.get(COOKIE)) or {}
-        s = Sunshine(conf["user"], conf["password"])
+        def _save(c):
+            hub.cfg.app["sunshine"] = c
+            hub.save_settings(hub.cfg, app={"sunshine": c})
+        s = Sunshine.from_conf(dict(conf), _save)
         try:
             return {"ok": True, **s.pin(pin, dev.get("name", ""))}
         except PermissionError as e:

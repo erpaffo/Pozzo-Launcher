@@ -79,6 +79,33 @@ def auto(cfg) -> Path | None:
     return create(cfg, "auto")
 
 
+def _db_commands(con) -> int:
+    """Profili di avvio con comandi shell (prima/dopo il gioco) dentro un userdata.db."""
+    from .library import automation as A
+    try:
+        rows = con.execute("SELECT data FROM game_profiles").fetchall()
+    except sqlite3.Error:
+        return 0
+    n = 0
+    for (d,) in rows:
+        try:
+            n += bool(A.commands(json.loads(d or "{}")))
+        except ValueError:
+            pass
+    return n
+
+
+def _settings_commands(raw: bytes) -> int:
+    """Comandi globali (prima/dopo ogni gioco, eventi) in un settings.json."""
+    from .library import automation as A
+    try:
+        app = json.loads(raw).get("app") or {}
+    except ValueError:
+        return 0
+    return sum(1 for k, v in [*((app.get("launch") or {}).items()), *((app.get(A.GLOBAL_KEY) or {}).items())]
+               if k in ("before", "after", *A.GLOBAL_EVENTS.values()) and str(v or "").strip())
+
+
 def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
     """Ripristina una copia. Prima ne crea una dei dati attuali, cosi' il ripristino si puo' annullare.
     `user` (UserData del profilo principale) e `profiles` ({id: UserData} degli altri profili aperti) permettono di
@@ -88,6 +115,7 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
         raise FileNotFoundError(f"Copia non trovata: {name}")
     before = create(cfg, "prima-del-ripristino")
     restored = []
+    cmds = 0  # profili/impostazioni ripristinati che eseguono comandi: l'utente va avvisato
     with tempfile.TemporaryDirectory() as t, zipfile.ZipFile(p) as z:
         names = set(z.namelist())
         if "userdata.db" in names:
@@ -96,6 +124,7 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
             if src.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 src.close()
                 raise ValueError("La copia di userdata.db e' danneggiata")
+            cmds += _db_commands(src)
             if user is not None:
                 with user.lock:
                     src.backup(user.db)
@@ -111,6 +140,7 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
             if src.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 src.close()
                 continue  # un profilo danneggiato non blocca il ripristino degli altri
+            cmds += _db_commands(src)
             ud = (profiles or {}).get(Path(n).stem)
             if ud is not None:
                 with ud.lock:
@@ -134,8 +164,9 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
             C._replace(tmp, pj / Path(n).name)
             restored.append(n)
         if "settings.json" in names:
+            cmds += _settings_commands(z.read("settings.json"))
             s = C.settings_path(cfg)
             s.write_bytes(z.read("settings.json"))
             C.apply_settings(cfg)
             restored.append("settings.json")
-    return {"restored": restored, "safety_copy": before.name}
+    return {"restored": restored, "safety_copy": before.name, "runs_commands": cmds}

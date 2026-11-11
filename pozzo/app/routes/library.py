@@ -554,6 +554,10 @@ def build_router(ctx) -> APIRouter:
                 data[A.KEY] = auto
         except ValueError:
             raise HTTPException(400, I.tr("s.library.badAuto"))
+        try:  # comandi nuovi o cambiati: solo con conferma esplicita (la UI la chiede all'utente)
+            A.check_confirm(A.commands(user.profile(g["key"])), A.commands(data), body.get("confirm_scripts") is True)
+        except A.ScriptsNeedConfirm as e:
+            return JSONResponse(A.confirm_body(e, I.tr("s.automation.confirm")), 428)
         if data.get("preset") not in (None, "inherit", "leave", "quality", "performance", "faithful"):
             raise HTTPException(400, I.tr("s.library.badPreset"))
         if data.get("emulator") and data["emulator"] not in L.EMULATOR_NAMES:
