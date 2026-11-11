@@ -66,3 +66,21 @@ def best(query: str, candidates: list, key=lambda c: c, min_score: float = 70):
         if s > top_s:
             top, top_s = c, s
     return (top, top_s) if top_s >= min_score else (None, top_s)
+
+
+# ---------------------------------------------------------------- correzione manuale del match
+# campi che una correzione dell'utente porta con se' (dal risultato scelto di una sorgente)
+OVERRIDE_FIELDS = ("title", "description", "developer", "publisher", "genres", "release_date", "players",
+                   "rating", "rating_count", "rating_critics", "ages", "igdb_id", "igdb_url", "ss_id")
+
+
+def make_override(title: str, source: str = "", fields: dict | None = None, cover: str = "") -> dict:
+    """Correzione salvata in userdata: il titolo scelto (con cui tutte le sorgenti cercano il resto) e i campi
+    del risultato scelto. Solo valori semplici, cosi' resta serializzabile in JSON."""
+    title = " ".join(str(title or "").split())[:200]
+    if not title:
+        raise ValueError("titolo vuoto")
+    f = {k: v for k, v in (fields or {}).items()
+         if k in OVERRIDE_FIELDS and isinstance(v, (str, int, float, list)) and v not in ("", [])}
+    f["title"] = title
+    return {"title": title, "source": str(source or "")[:40], "fields": f, "cover": str(cover or "")}

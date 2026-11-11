@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS manual_games(id INTEGER PRIMARY KEY AUTOINCREMENT, ti
                                         cwd TEXT, added REAL, kind TEXT DEFAULT 'game', meta TEXT);
 -- immagini scelte dall'utente (percorso nella cache), valide al posto di quelle delle fonti
 CREATE TABLE IF NOT EXISTS media_overrides(key TEXT, kind TEXT, path TEXT, PRIMARY KEY(key, kind));
+-- correzione manuale del match dei metadati (JSON), per chiave del gioco: vince su scansioni e scraping
+CREATE TABLE IF NOT EXISTS match_overrides(key TEXT PRIMARY KEY, data TEXT);
 """
 DELETED = "__deleted__"
 
@@ -180,6 +182,29 @@ class UserData:
                 else:
                     self.db.execute("DELETE FROM game_profiles WHERE key=?", (k,))
             self.db.commit()
+
+    # ------------------------------------------------------------ correzione manuale del match
+    def match_overrides(self) -> dict[str, dict]:
+        import json
+        out = {}
+        for k, d in self._q("SELECT key, data FROM match_overrides"):
+            try:
+                out[k] = json.loads(d)
+            except ValueError:
+                pass
+        return out
+
+    def set_match_override(self, keys: list[str], data: dict | None):
+        """Correzione per tutte le versioni del gioco (None = annulla e torna al match automatico)."""
+        import json
+        with self.lock:
+            for k in keys:
+                if data:
+                    self.db.execute("INSERT OR REPLACE INTO match_overrides VALUES(?, ?)", (k, json.dumps(data, ensure_ascii=False)))
+                else:
+                    self.db.execute("DELETE FROM match_overrides WHERE key=?", (k,))
+            self.db.commit()
+            self.rev += 1
 
     def media_overrides(self, key: str) -> dict[str, str]:
         return dict(self._q("SELECT kind, path FROM media_overrides WHERE key=?", (key,)))

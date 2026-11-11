@@ -46,6 +46,140 @@ def build_router(ctx) -> APIRouter:
         PC.set(cfg, "retroachievements", c)
         return api_ra_state()
 
+    # ------------------------------------------------------------ «Correggi match» dei metadati
+    match_found: dict[int, dict] = {}  # gid -> {exp, cands}: i campi si salvano dal risultato che il SERVER ha trovato
+    MATCH_TTL = 900
+
+    def _match_game(gid: int) -> dict:
+        g = lib.get(gid)
+        if g.get("store") or not g.get("files") or g["platform"] not in P.PLATFORMS:
+            raise HTTPException(400, I.tr("s.match.notRom"))
+        return g
+
+    def _match_keys(g: dict) -> list[str]:
+        return [m["key"] for m in lib.groups[g["grp"]]]
+
+    def _match_apply_later(gid: int):
+        """Libreria ricostruita con la correzione, poi si cercano i campi che mancano ancora (titolo nuovo)."""
+        import threading
+
+        def run():
+            try:
+                ctx._rebuild()
+                ctx.api_scan_start({"game": gid, "mode": "missing"})
+            except Exception:  # un altro lavoro in corso: la libreria e' comunque aggiornata
+                pass
+        threading.Thread(target=run, daemon=True).start()
+
+    @router.get("/api/game/{gid}/match")
+    def api_match_get(gid: int):
+        g = _match_game(gid)
+        ov = ctx.user.match_overrides().get(g["key"])
+        return {"override": ov, "query": g["title"], "match_by": g.get("match_by"), "canonical": g.get("canonical")}
+
+    @router.post("/api/game/{gid}/match/search")
+    def api_match_search(gid: int, body: dict = Body(...)):
+        import asyncio
+        from ...cache import Cache
+        from ... import pipeline as PL
+        from ...scanner import Game
+        g = _match_game(gid)
+        query = str(body.get("query") or "").strip()[:200]
+        if not query:
+            raise HTTPException(400, I.tr("s.match.queryEmpty"))
+        game = Game(path=Path(g["files"][0]), platform=P.PLATFORMS[g["platform"]], size=0, mtime=0,
+                    is_dir=Path(g["files"][0]).is_dir())
+        cache = Cache(cfg.cache)
+        try:
+            PL.set_priority(cfg)
+            cands = asyncio.run(PL.search_candidates(cfg, cache, game, query))
+        finally:
+            cache.close()
+        for i, c in enumerate(cands):
+            c["i"] = i
+        now = time.time()
+        for k in [k for k, v in match_found.items() if v["exp"] < now]:
+            match_found.pop(k, None)
+        match_found[gid] = {"exp": now + MATCH_TTL, "cands": cands, "query": query}
+        return {"candidates": [{"i": c["i"], "source": c["source"], "title": c["title"], "cover": c["cover"],
+                                "year": str(c["fields"].get("release_date") or "")[:4],
+                                "developer": c["fields"].get("developer") or "",
+                                "description": str(c["fields"].get("description") or "")[:300]} for c in cands]}
+
+    @router.post("/api/game/{gid}/match")
+    def api_match_set(gid: int, body: dict = Body(...)):
+        """Salva la scelta (un risultato della ricerca, o solo un titolo) e la fa valere su tutte le versioni."""
+        import hashlib
+        import httpx
+        from ...cache import Cache
+        from ... import pipeline as PL
+        from ...matching import make_override
+        from ...net import sniff
+        g = _match_game(gid)
+        keys = _match_keys(g)
+        cand = None
+        if body.get("i") is not None:
+            found = match_found.get(gid)
+            cands = found["cands"] if found and found["exp"] > time.time() else []
+            cand = next((c for c in cands if c["i"] == body.get("i")), None)
+            if not cand:
+                raise HTTPException(409, I.tr("s.match.expired"))
+        try:
+            ov = make_override(cand["title"] if cand else body.get("title"), cand["source"] if cand else "manual",
+                               cand["fields"] if cand else None)
+        except ValueError:
+            raise HTTPException(400, I.tr("s.match.queryEmpty"))
+        old = ctx.user.match_overrides().get(g["key"]) or {}
+        if cand and cand["cover"].startswith(("http://", "https://")):  # copertina del risultato scelto (se scaricabile)
+            try:
+                r = httpx.get(cand["cover"], timeout=15, follow_redirects=True)
+                ext = sniff(r.content[:16]) if r.status_code == 200 and len(r.content) < 15 * 2**20 else None
+                if ext and ext not in ("webm", "mp4"):
+                    folder = Path(cfg.cache) / "media" / "user"
+                    folder.mkdir(parents=True, exist_ok=True)
+                    dest = folder / f"{hashlib.sha1(r.content).hexdigest()}.{ext}"
+                    dest.write_bytes(r.content)
+                    ov["cover"] = dest.relative_to(cfg.cache).as_posix()
+                    for k in keys:
+                        ctx.user.set_media(k, "cover", ov["cover"])
+            except Exception:  # la copertina e' un extra: la correzione vale lo stesso
+                ov["cover"] = ""
+        else:
+            ov["cover"] = ""
+        if old.get("cover") and old["cover"] != ov["cover"]:
+            for k in keys:
+                if ctx.user.media_overrides(k).get("cover") == old["cover"]:
+                    ctx.user.clear_media(k, "cover")
+        ctx.user.set_match_override(keys, ov)
+        cache = Cache(cfg.cache)
+        try:
+            PL.purge_keys(cache, keys)
+        finally:
+            cache.close()
+        _match_apply_later(gid)
+        return {"ok": True, "override": ov}
+
+    @router.delete("/api/game/{gid}/match")
+    def api_match_clear(gid: int):
+        """Annulla la correzione: i dati tornano a quelli del match automatico (si ricercano)."""
+        from ...cache import Cache
+        from ... import pipeline as PL
+        g = _match_game(gid)
+        keys = _match_keys(g)
+        old = ctx.user.match_overrides().get(g["key"]) or {}
+        if old.get("cover"):
+            for k in keys:
+                if ctx.user.media_overrides(k).get("cover") == old["cover"]:
+                    ctx.user.clear_media(k, "cover")
+        ctx.user.set_match_override(keys, None)
+        cache = Cache(cfg.cache)
+        try:
+            PL.purge_keys(cache, keys)
+        finally:
+            cache.close()
+        _match_apply_later(gid)
+        return {"ok": True}
+
     @router.get("/api/game/{gid}/hltb")
     def api_game_hltb(gid: int):
         """Durata di un gioco da HowLongToBeat, cercata al volo se non e' gia' in cache (stessa chiave del job)."""

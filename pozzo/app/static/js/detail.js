@@ -142,6 +142,7 @@ async function openDetail(id) {
       ${pc && d.page ? `<button class="btn" id="d-page">🛒 ${t("f.btn.store_page")}</button>` : ""}
       ${!pc || (d.installed && d.files.length) ? `<button class="btn" id="d-folder">📁 ${t("f.btn.folder")}</button>` : ""}
       <button class="btn" id="d-hide">${u.hidden ? t("f.btn.show") : t("f.btn.hide")}</button>
+      ${!pc && d.files && d.files.length ? `<button class="btn" id="d-match" title="${t("f.match.title")}">🔎 ${t("f.match.button")}</button>` : ""}
       ${d.store === "manual" ? `<button class="btn" id="d-manual-del">🗑 ${t("f.btn.remove")}</button>` : ""}
       ${d.store === "ports" ? `<button class="btn" data-port="${esc(d.key.split(":").slice(1).join(":"))}">🕹 ${t("f.btn.manage_port")}</button>` : ""}
       ${(d.ports || []).map((p) => `<button class="btn" data-port="${esc(p.slug)}" title="${t("f.port.native_title", {name: esc(p.name)})}">🕹 ${t("f.port.available")}</button>`).join("")}
@@ -925,11 +926,79 @@ async function openDiagnose(id) {
 }
 if (typeof window !== "undefined") window.openDiagnose = openDiagnose;
 
+/* ---- «Correggi match»: ricerca manuale sulle sorgenti e scelta del risultato giusto ---- */
+function matchResultHtml(c) {
+  const meta = [c.source, c.year, c.developer].filter(Boolean).map(esc).join(" · ");
+  return `<li class="mt-item" style="display:flex;gap:10px;align-items:flex-start;margin:8px 0"><div class="mt-cover" style="flex:0 0 48px">${c.cover ? `<img src="${esc(c.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:48px;border-radius:4px">` : ""}</div>`
+    + `<div class="mt-info" style="flex:1;min-width:0"><b>${esc(c.title)}</b><div class="muted small">${meta}</div>`
+    + (c.description ? `<div class="small">${esc(c.description)}</div>` : "") + `</div>`
+    + `<button class="btn primary" type="button" data-mt-pick="${c.i}">${t("f.match.use")}</button></li>`;
+}
+
+let matchSeq = 0;
+async function openMatch(id) {
+  let dlg = document.getElementById("match-dlg");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "match-dlg";
+    dlg.className = "small-dlg";
+    dlg.setAttribute("aria-labelledby", "match-title");
+    document.body.appendChild(dlg);
+  }
+  const seq = ++matchSeq;
+  dlg.innerHTML = `<form method="dialog" class="dlg-head"><h2 id="match-title">${t("f.match.button")}</h2><button class="icon-btn" aria-label="${t("f.btn.close")}">✕</button></form>`
+    + `<div class="dlg-body" id="match-body" aria-live="polite"><span class="muted small">${t("f.match.loading")}</span></div>`;
+  if (!dlg.open) dlg.showModal();
+  const body = dlg.querySelector("#match-body");
+  let info;
+  try { info = await api(`/api/game/${id}/match`); } catch (e) { body.innerHTML = `<p class="err" role="alert">${esc(e.message)}</p>`; return; }
+  if (seq !== matchSeq) return;
+  const cur = info.override
+    ? `<p class="small">${t("f.match.current", {title: esc(info.override.title), source: esc(info.override.source || "")})} `
+      + `<button class="btn" type="button" id="mt-undo">${t("f.match.undo")}</button></p>`
+    : `<p class="muted small">${t("f.match.auto", {by: esc(info.match_by || "—")})}</p>`;
+  body.innerHTML = `<p class="muted small">${t("f.match.help")}</p>${cur}`
+    + `<form id="mt-form" class="row"><input id="mt-q" type="search" value="${esc(info.query)}" aria-label="${t("f.match.query")}">`
+    + `<button class="btn primary" type="submit">${t("f.match.search")}</button>`
+    + `<button class="btn" type="button" id="mt-title" title="${t("f.match.title_only_tip")}">${t("f.match.title_only")}</button></form>`
+    + `<ul class="mt-list" id="mt-list" style="list-style:none;padding:0"></ul>`;
+  const list = body.querySelector("#mt-list"), q = body.querySelector("#mt-q");
+  const done = (msg) => { dlg.close(); toast(msg); setTimeout(() => { if (typeof syncLibrary === "function") syncLibrary(); }, 2500); };
+  body.querySelector("#mt-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const my = ++matchSeq;
+    list.innerHTML = `<li class="muted small">${t("f.match.searching")}</li>`;
+    try {
+      const r = await api(`/api/game/${id}/match/search`, { body: { query: q.value } });
+      if (my !== matchSeq) return;
+      list.innerHTML = r.candidates.length ? r.candidates.map(matchResultHtml).join("") : `<li class="muted small">${t("f.match.none")}</li>`;
+    } catch (err) { if (my === matchSeq) list.innerHTML = `<li class="err" role="alert">${esc(err.message)}</li>`; }
+  });
+  list.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-mt-pick]");
+    if (!b) return;
+    b.disabled = true;
+    try { await api(`/api/game/${id}/match`, { body: { i: +b.dataset.mtPick } }); done(t("f.match.saved")); }
+    catch (err) { b.disabled = false; toast(err.message, true); }
+  });
+  body.querySelector("#mt-title").addEventListener("click", async () => {
+    try { await api(`/api/game/${id}/match`, { body: { title: q.value } }); done(t("f.match.saved")); }
+    catch (err) { toast(err.message, true); }
+  });
+  const undo = body.querySelector("#mt-undo");
+  if (undo) undo.addEventListener("click", async () => {
+    try { await api(`/api/game/${id}/match`, { method: "DELETE" }); done(t("f.match.undone")); }
+    catch (err) { toast(err.message, true); }
+  });
+}
+if (typeof window !== "undefined") window.openMatch = openMatch;
+
 // in node (test) il file si carica senza DOM
 if (typeof document !== "undefined") document.addEventListener("click", (e) => {
-  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose, #d-webplay");
+  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose, #d-webplay, #d-match");
   if (!t) return;
-  if (t.id === "join-btn") openJoin();
+  if (t.id === "d-match") { if (S.detail) openMatch(S.detail.id); }
+  else if (t.id === "join-btn") openJoin();
   else if (t.id === "d-play-fast") { if (S.detail) play(S.detail.id, { fast: true }); } // stesso flusso di d-play (events.js)
   else if (t.id === "d-webplay") { if (S.detail) openWebPlay(S.detail.id); }
   else if (t.id === "d-diagnose") { if (S.detail) openDiagnose(S.detail.id); }

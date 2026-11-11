@@ -117,6 +117,9 @@ L'identificazione è **offline**:
 
 Su una raccolta reale di 14.782 giochi su HDD, i dati da leggere per i giochi DS passano così da 149 GB a 3,6 GB.
 
+Gli hash servono a tutta la cascata: se il file è riconosciuto dal DAT, il nome No-Intro/Redump diventa il nome con cui
+IGDB, TheGamesDB e le altre fonti per nome cercano il gioco, e ScreenScraper riceve CRC, MD5 e SHA1.
+
 ### Nomi in stile scene
 
 I nomi delle cartelle PS4 come `Sekiro.Shadows.Die.Twice.PS4-CUSA12047` diventano «Sekiro Shadows Die Twice»;
@@ -201,6 +204,15 @@ La vista **? Senza dati** della barra laterale raccoglie tutti i giochi che ness
 controllarli in blocco:
 
 ![La vista Senza dati: i giochi per cui nessuna fonte ha trovato informazioni](images/libreria-senza-dati.jpg)
+
+## Correggere il match di un gioco
+
+Se una ROM è stata abbinata al gioco sbagliato, nel dettaglio premi **🔎 Correggi match**: scrivi il titolo giusto, **Cerca**
+interroga le fonti attive (senza usare l'hash, che ha dato l'abbinamento sbagliato) e mostra il miglior risultato di ognuna,
+con copertina e descrizione. **Usa questo** salva la scelta per tutte le versioni del gioco; **Usa solo questo titolo** salva
+il titolo digitato e cerca i dati con quel nome. La correzione vale anche per le scansioni e gli scraping successivi (anche
+«Riscarica tutto»); **Annulla correzione** torna al match automatico. Il controllo dell'hash (verificata / sconosciuta)
+non cambia. Le correzioni stanno nei dati dell'utente e valgono per tutti i profili.
 
 ## Durate (HowLongToBeat)
 

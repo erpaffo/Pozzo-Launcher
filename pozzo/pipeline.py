@@ -36,6 +36,8 @@ _PRIORITY: dict[str, list[str]] = {}
 
 
 def _rank(field: str, source: str) -> int:
+    if source == "manual":  # correzione dell'utente: nessuna sorgente la scavalca
+        return -1
     lst = _PRIORITY.get(field) or _PRIORITY.get("*", [])
     return lst.index(source) if source in lst else 99
 
@@ -74,6 +76,110 @@ def load_cached(cfg, cache, games: list[Game]):
                     except ValueError:
                         pass
                 apply_field(g, field, value, src)
+    ov = load_match_overrides(cfg)  # per ultima: la correzione manuale vince su cache, hash e rescan
+    if ov:
+        for g in games:
+            if g.key in ov:
+                apply_match_override(g, ov[g.key])
+
+
+def load_match_overrides(cfg) -> dict[str, dict]:
+    """Correzioni manuali del match (chiave gioco -> dati), lette dal userdata.db comune a tutti i profili."""
+    import sqlite3
+    path = Path(cfg.cache) / "userdata.db"
+    if not path.exists():
+        return {}
+    try:
+        db = sqlite3.connect(path, timeout=10)
+        try:
+            rows = db.execute("SELECT key, data FROM match_overrides").fetchall()
+        finally:
+            db.close()
+    except sqlite3.Error:  # tabella non ancora creata o database occupato: nessuna correzione
+        return {}
+    out = {}
+    for k, d in rows:
+        try:
+            out[k] = json.loads(d)
+        except ValueError:
+            pass
+    return out
+
+
+def apply_match_override(g: Game, ov: dict):
+    """Imposta i campi scelti dall'utente (origine «manual»). Il titolo diventa anche il nome con cui le
+    sorgenti cercano i campi che mancano ancora; verify_status resta quello dell'hash."""
+    for field, value in (ov.get("fields") or {}).items():
+        g.data[field] = value
+        g.origin[field] = "manual"
+    title = ov.get("title")
+    if title:
+        g.data["title"], g.origin["title"] = title, "manual"
+        g.canonical = title
+    g.match_by = "manual"
+    g.data["match_by"], g.origin["match_by"] = "manual", "manual"
+
+
+def purge_keys(cache, keys: list[str], keep: tuple = ("libretro",)):
+    """Toglie dalla cache i dati scaricati per questi giochi, tranne quelli dell'identificazione offline
+    (hash/DAT): dopo una correzione le altre sorgenti ripartono dal titolo nuovo."""
+    marks = ",".join("?" * len(keep))
+    for i in range(0, len(keys), 400):
+        chunk = keys[i:i + 400]
+        kmarks = ",".join("?" * len(chunk))
+        for tbl in ("resources", "lookups"):
+            cache.db.execute(f"DELETE FROM {tbl} WHERE key IN ({kmarks}) AND source NOT IN ({marks})", [*chunk, *keep])
+    cache.commit()
+
+
+async def search_candidates(cfg, cache, game: Game, query: str, log=lambda m: None, only: list[str] | None = None) -> list[dict]:
+    """Ricerca manuale per titolo sulle sorgenti attive: il miglior risultato di ciascuna, da far scegliere.
+    Si interroga una copia del gioco senza hash e col nome cercato, cosi' le sorgenti che
+    identificano per hash (ScreenScraper) non riportano lo stesso match sbagliato."""
+    from dataclasses import replace
+    from .matching import OVERRIDE_FIELDS
+    from .policy import Ledger
+    clean = re.sub(r'[\\/:*?"<>|]+', " ", query).strip()
+    if not clean:
+        return []
+    path = game.path.with_name(clean) if game.is_dir else game.path.with_name(clean + game.path.suffix)
+    probe = replace(game, path=path, crc="", crc_nh="", md5="", sha1="", dat_crc="", dat_md5="", dat_sha1="", dat_size=0,
+                    inner_name="", inner_size=0, canonical=clean, match_by="", verify_status="", needs_hash=False,
+                    data={}, origin={})
+    names = [n for n in (only or cfg.sources) if n in SOURCES and n != "libretro"]
+    ledger = Ledger(cache.folder / "cache.db")
+    out: list[dict] = []
+    try:
+        async with make_client() as client:
+            ctx = Context(cfg, cache, client, log)
+            srcs = []
+            for n in names:
+                s = SOURCES[n](ctx)
+                try:
+                    if await s.setup({game.platform}) and s.supports(game.platform):
+                        guard_source(s, cfg, ledger, log)
+                        srcs.append(s)
+                except Exception as e:
+                    log(f"{n}: {type(e).__name__}: {e}")
+
+            async def one(s):
+                try:
+                    async for _g, res in s.lookup_many([probe]):
+                        if isinstance(res, Result) and res.fields.get("title"):
+                            return {"source": s.name, "title": str(res.fields["title"]),
+                                    "fields": {k: v for k, v in res.fields.items() if k in OVERRIDE_FIELDS},
+                                    "cover": "" if res.media_headers else str(res.media.get("cover") or "")}
+                except Exception as e:
+                    log(f"{s.name}: {type(e).__name__}: {e}")
+                finally:
+                    await s.close()
+                return None
+
+            done = await asyncio.gather(*(asyncio.wait_for(one(s), 40) for s in srcs), return_exceptions=True)
+            out = [d for d in done if isinstance(d, dict)]
+    finally:
+        ledger.close()
+    return out
 
 
 class Stage:
@@ -391,6 +497,16 @@ async def _scrape_inner(cfg, cache, games: list[Game], sources: list[str], refre
         #    il lavoro vero e' nei processi figli)
         if any(g.needs_hash for g in games):
             hash_games(cfg, cache, games, progress, log)
+
+        # 3b. giochi con hash gia' noti ma mai identificati: il nome del DAT (canonical) serve a TUTTE le
+        #     sorgenti a ricerca per nome, qualunque sia il loro ordine nella cascata (offline, senza riletture)
+        if lib:
+            todo = [g for g in games if not g.canonical and not g.needs_hash and not g.is_dir
+                    and (g.crc or g.sha1 or g.md5)]
+            if todo:
+                n = len(lib.name_first(todo))
+                if n:
+                    log(f"Identificati dal DAT (hash o nome): [bold]{n:,}[/] su {len(todo):,} con hash noti")
 
         # 4. pipeline a catena
         load_cached(cfg, cache, games)

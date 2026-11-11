@@ -117,6 +117,9 @@ Identification is performed **offline**:
 
 On a real-world collection of 14,782 games on an HDD, the amount of data read for Nintendo DS games dropped from 149 GB to just 3.6 GB.
 
+Hashes serve the whole cascade: when the DAT recognizes the file, its No-Intro/Redump name becomes the name that IGDB,
+TheGamesDB and the other name-based sources search with, and ScreenScraper receives the CRC, MD5 and SHA1.
+
 ### Scene-Style Release Names
 
 PS4 folder names such as `Sekiro.Shadows.Die.Twice.PS4-CUSA12047` are cleaned to "Sekiro Shadows Die Twice";
@@ -201,6 +204,15 @@ The **? Missing Data** view in the sidebar gathers all games that failed to be i
 you to review them in bulk:
 
 ![Missing Data view: games for which no source found information](../images/libreria-senza-dati.jpg)
+
+## Correcting a game's match
+
+If a ROM was matched to the wrong game, press **🔎 Fix match** in the details view: type the right title and **Search**
+queries the active sources (without using the hash, which led to the wrong match), showing each source's best result with
+cover and description. **Use this** saves the choice for every version of the game; **Use only this title** saves the typed
+title and looks up the data under that name. The fix also holds for later scans and scrapes (including "Re-download
+everything"); **Undo fix** goes back to the automatic match. The hash check (verified / unknown) is unaffected. Fixes are
+stored in user data and apply to all profiles.
 
 ## Game Lengths (HowLongToBeat)
 
