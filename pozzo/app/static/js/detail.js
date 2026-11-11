@@ -224,8 +224,8 @@ async function loadSimilar(d) {
   try { r = await api(`/api/similar/${d.id}`); } catch { return; }
   const box = $("#d-similar");
   if (!box || S.detail !== d || !r.items.length) return;
-  box.innerHTML = `<div class="d-h">${t("f.sim.heading")}</div>` + r.items.map((i) => `<div class="sv-row" data-sim="${i.id}">
-    <span>${i.owned ? `<a href="#" data-sim-open="${i.id}">${esc(i.title)}</a>` : esc(i.title)}</span>
+  box.innerHTML = `<div class="d-h">${t("f.sim.heading")}</div>` + r.items.map((i) => `<div class="sv-row" data-sim="${esc(i.id)}">
+    <span>${i.owned ? `<a href="#" data-sim-open="${esc(i.id)}">${esc(i.title)}</a>` : esc(i.title)}</span>
     <span class="muted small">${esc(i.reasons.map((x) => x.text).join(" · "))}</span>
     ${i.owned ? `<span class="muted small">${t("f.sim.owned")}</span>` : `<button class="btn" data-sim-wish="${esc(i.title)}">${t("f.sim.addWish")}</button>`}</div>`).join("");
   box.onclick = async (e) => {

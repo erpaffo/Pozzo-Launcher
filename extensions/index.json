@@ -407,7 +407,7 @@
       "base": "pulizia/",
       "files": {
         "backend.py": "355a7180514956d9e16c4cbb95ddeec475cac7256fc47f810bbd4560fdb69713",
-        "frontend.js": "e2cba54b22fd546d98d5ebb3445664f796dc59d0a2091a86d7ba47f8c8951549",
+        "frontend.js": "647ecd1ba1c2796e5d1e7b2db104cc392a028c959b0664d445b065cfcd826dae",
         "logica.js": "7e2a77f2f74cdc97d07ac69b394fa412f1fb3ebb0c104d6f4f4e77c85f7a847f",
         "plugin.toml": "c281805c972c3e8c26adff8efdfee3f88abe164d88cf796eb20f532a82d59fbb",
         "screenshot.png": "d4ddda29e550fc78794a80b0a68fee25deee932e4d56157d3a92d1634eea3f94",

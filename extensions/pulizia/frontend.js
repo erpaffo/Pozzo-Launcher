@@ -53,7 +53,7 @@ export default function (gs) {
             const on = r.ids.slice(r.ids.length > 1 ? 1 : 0).every((id) => sel.has(id));
             return `<li><label><input type="checkbox" data-i="${i}" ${on ? "checked" : ""}> <b>${gs.esc(r.main.title)}</b>
               <span class="muted">${gs.esc(platName(r.main))} · ${gs.esc(r.extra)}</span></label>
-              <a href="#" data-open="${r.main.id}">Apri</a></li>`; }).join("")}</ul>`;
+              <a href="#" data-open="${gs.esc(r.main.id)}">Apri</a></li>`; }).join("")}</ul>`;
         el._rows = shown;
       };
 

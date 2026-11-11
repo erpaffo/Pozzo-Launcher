@@ -100,6 +100,7 @@ def _silence_proactor_pipe_reset() -> None:
 _silence_proactor_pipe_reset()
 
 STATIC = Path(__file__).parent / "static"
+CSP_REPORT_ONLY = "script-src 'self'; object-src 'none'; base-uri 'self'"
 THUMB_WIDTHS = (200, 300, 450, 700, 1280)
 
 
@@ -252,6 +253,12 @@ def create_app(cfg) -> FastAPI:
             with PC.override(pid):
                 return await call_next(request)
         return await call_next(request)
+    @app.middleware("http")
+    async def _csp_report_only(request, call_next):
+        """CSP in sola segnalazione: le pagine hanno ancora script inline e onclick= nei template, quindi niente enforce."""
+        resp = await call_next(request)
+        resp.headers.setdefault("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY)
+        return resp
     sync = SY.Sync(cfg, user_of)
     events = X.Events()
     app.state.events = events  # chi ascolta in streaming (/api/v1/events) e i test

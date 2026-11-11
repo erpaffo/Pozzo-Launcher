@@ -9,7 +9,7 @@ async function cpInit() {
   try {
     const d = await (await fetch("/api/controller-profiles")).json();
     $("#cp-type").innerHTML = Object.entries(d.types).map(([k, v]) => `<option value="${k}"${k === d.detected ? " selected" : ""}>${v}</option>`).join("");
-    $("#cp-emu").innerHTML = d.emulators.filter((e) => e.exe).map((e) => `<option value="${e.id}">${e.id}${e.exists ? "" : t("k.ctrl.new")}</option>`).join("") || "<option value=''>" + t("k.ctrl.no_emu") + "</option>";
+    $("#cp-emu").innerHTML = d.emulators.filter((e) => e.exe).map((e) => `<option value="${esc(e.id)}">${esc(e.id)}${e.exists ? "" : t("k.ctrl.new")}</option>`).join("") || "<option value=''>" + t("k.ctrl.no_emu") + "</option>";
   } catch (e) { msg.textContent = t("k.ctrl.read_fail"); }
   $("#cp-apply").onclick = async () => {
     const r = await fetch("/api/controller-profiles/apply", { method: "POST", headers: { "Content-Type": "application/json" },
