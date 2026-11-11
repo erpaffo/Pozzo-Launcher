@@ -353,3 +353,29 @@ jobs:
         with:
           name: manifest-winget-scoop
           path: manifests/
+
+  # firma Ed25519 del manifest di aggiornamento (opzionale: salta se manca il secret MANIFEST_SIGNING_KEY
+  # o se la release non ha un manifest). Carica <manifest>.sig accanto al manifest.
+  sign-manifest:
+    name: firma manifest aggiornamento
+    needs: [release]
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Firma del manifest
+        shell: bash
+        env:
+          MANIFEST_SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$MANIFEST_SIGNING_KEY" ]; then echo "::notice::MANIFEST_SIGNING_KEY assente: manifest non firmato"; exit 0; fi
+          mkdir sign && cd sign
+          gh release download "$TAG" --repo "${{ github.repository }}" --pattern '*-manifest.json' || true
+          M=$(compgen -G "*-manifest.json" | head -n 1)
+          if [ -z "$M" ]; then echo "::notice::nessun manifest nella release: niente da firmare"; exit 0; fi
+          pip install cryptography
+          python ../tools/sign_manifest.py sign "$M"
+          gh release upload "$TAG" "$M.sig" --repo "${{ github.repository }}" --clobber

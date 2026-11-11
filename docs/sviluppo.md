@@ -251,3 +251,8 @@ in `store:<id>:<profilo>` (`stores.snap_key`). Libreria, metadati e cache non si
 `GET/POST/DELETE /api/exp-profiles` elencano, salvano ed eliminano preset `{id, nome, experience, theme, animations}`; `POST /api/exp-profiles/activate` applica il preset. I quattro iniziali sono Classico, Cinema serata, Console TV e Leggero.
 La collezione e le animazioni attive sono salvate in `profiles/<id>.json` per profilo utente (`profilecfg.set`); tema ed esperienza non disponibili ricadono su `default` e `catalog`.
 La UI è `pozzo/app/static/js/profiles-exp.js`: va inclusa da `index.html` dopo `motion-settings.js`; il mount usa `#experience-list` in `settings/aspetto.html`.
+
+## Firma del manifest di aggiornamento
+Il manifest della release (`PozzoLauncher-<versione>-manifest.json`) può essere firmato Ed25519; la firma è l'asset `<manifest>.sig` (base64 sui byte esatti del file). `pozzo/updates.py` la verifica con la costante `PUBKEY` prima di leggere il manifest: se `PUBKEY` è vuota la verifica è saltata (warning nel log), se è valorizzata un manifest senza firma valida viene rifiutato e l'aggiornamento non parte (senza ripiegare sul pacchetto completo). Il manifest e la firma non coprono l'installer `setup` e il `.deb`, che restano protetti dall'impronta SHA-256 dell'asset.
+
+Attivazione, una tantum: `python tools/sign_manifest.py keygen` crea la chiave privata (PEM, fuori dal repo) e stampa la pubblica; incolla la pubblica in `PUBKEY` e metti il contenuto del PEM nel secret GitHub `MANIFEST_SIGNING_KEY`. Il job `sign-manifest` di `release.yml` firma e carica il `.sig` solo se il secret esiste. A mano: `python tools/sign_manifest.py sign manifest.json --key chiave.pem`. Test: `tests/test_update_signature.py`.

@@ -6,8 +6,11 @@ release adatto a come e' installata l'app (installer Windows, zip/tar.gz portati
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
+import logging
 import os
 import re
 import shlex
@@ -24,6 +27,8 @@ from pathlib import Path, PurePosixPath
 import httpx
 
 from . import __version__
+
+log = logging.getLogger(__name__)
 
 REPO = "erpaffo/Pozzo-Launcher"
 LATEST = f"https://api.github.com/repos/{REPO}/releases/latest"
@@ -147,6 +152,37 @@ def swap_script(tmp: Path, src: Path, dst: Path, pid: int) -> list[str]:
                  f"mv {shlex.quote(str(backup))} {shlex.quote(str(dst))}; exit 1; fi\n"
                  f"rm -rf {shlex.quote(str(backup))}\n{run}\n", encoding="utf-8")
     return ["/bin/sh", str(s)]
+
+
+# Chiave pubblica Ed25519 (32 byte grezzi in base64) con cui e' firmato il manifest di aggiornamento.
+# Vuota = firma non ancora attivata: la verifica e' saltata (e lo dice il log). Generala con tools/sign_manifest.py keygen.
+PUBKEY = ""
+
+
+class SignatureError(ValueError):
+    """Firma del manifest assente o non valida: l'aggiornamento non deve partire (ne' ripiegare sul completo)."""
+
+
+def verify_manifest_signature(raw: bytes, signature: bytes | str | None, pubkey: str | None = None) -> bool:
+    """True se la firma e' valida, False se la verifica e' saltata (nessuna chiave); SignatureError altrimenti.
+
+    La firma e' sui byte esatti del manifest scaricato, prima di leggerlo come JSON.
+    """
+    key = PUBKEY if pubkey is None else pubkey
+    if not key.strip():
+        log.warning("Aggiornamento: PUBKEY non impostata, firma del manifest non verificata")
+        return False
+    if not signature:
+        raise SignatureError("Manifest senza firma")
+    try:
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        public = Ed25519PublicKey.from_public_bytes(base64.b64decode(key.strip(), validate=True))
+        sig = base64.b64decode(signature.strip() if isinstance(signature, (bytes, str)) else signature, validate=True)
+        public.verify(sig, raw)
+    except (InvalidSignature, binascii.Error, ValueError) as e:
+        raise SignatureError("Firma del manifest non valida") from e
+    return True
 
 
 def _version(value) -> str:
@@ -495,6 +531,13 @@ def install(cache, quit) -> None:
                 STATE.update(phase="Download manifest aggiornamento", done=0, total=manifest_asset["size"])
                 _download(manifest_asset["url"], manifest_file, digest=manifest_asset.get("digest"),
                           total=manifest_asset["size"])
+                sig_asset = assets.get(manifest_asset["name"] + ".sig")
+                sig_data = None
+                if sig_asset:
+                    sig_file = work / sig_asset["name"]
+                    _download(sig_asset["url"], sig_file, digest=sig_asset.get("digest"), total=sig_asset["size"])
+                    sig_data = sig_file.read_bytes()
+                verify_manifest_signature(manifest_file.read_bytes(), sig_data)
                 remote = _manifest(json.loads(manifest_file.read_text(encoding="utf-8")), release_version)
                 _platform_files(remote, platform)
             local_path = target / MANIFEST
@@ -540,7 +583,7 @@ def install(cache, quit) -> None:
             else:
                 raise ValueError("Manifest locale o remoto non valido")
         except Exception as diff_error:
-            if full_attempted:
+            if full_attempted or isinstance(diff_error, SignatureError):
                 raise
             _remove(stage)
             STATE.update(phase=f"Differenziale non applicabile ({type(diff_error).__name__}); "
