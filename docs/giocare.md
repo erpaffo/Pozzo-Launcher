@@ -113,6 +113,8 @@ per giochi diversi.
 
 Ogni gioco può avere i suoi script nel **⚙ Profilo di avvio**: vengono eseguiti **dopo** quelli di tutti i giochi.
 
+**Conferma degli script.** Se salvi uno script nuovo o modificato (per tutti i giochi, per un gioco o per gli eventi come «gioco avviato»), Pozzo mostra i comandi e chiede conferma: senza il tuo «sì» non viene salvato nulla. Gli script invariati non chiedono niente. Importando da un altro launcher gli script non vengono copiati (compare un avviso). Ripristinando una copia di sicurezza gli script che contiene tornano attivi, e Pozzo ti avvisa prima.
+
 ## Chiudere il launcher dello store
 
 Sempre in **Impostazioni › Emulatori › Avvio dei giochi**, l'opzione **Chiudi il launcher dello store** chiude a fine

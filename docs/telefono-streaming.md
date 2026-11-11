@@ -76,6 +76,8 @@ Senza abbinamento il telefono non raggiunge niente. Anche abbinato può solo sfo
 i giochi, fare schermate, fare da controller e premere i tasti del **telecomando** (un elenco chiuso: mai testo
 digitato): le impostazioni e i file del PC restano fuori portata. L'**ospite a distanza** ha solo il controller.
 
+**Avviso di esposizione.** Se il telefono risulta raggiungibile anche fuori dalla rete di casa (indirizzo pubblico, indirizzo esterno impostato o porta aperta sul router con UPnP), in Impostazioni compare un avviso: abbina solo dispositivi di cui ti fidi.
+
 ### Cosa si fa dal telefono
 
 - Home con *In corso*, *Giocati di recente*, *Preferiti* e giochi PC installati; ricerca e filtro per console.
@@ -197,6 +199,8 @@ l'emulatore a finestre separate, e a fine partita rimette la configurazione com'
 Per giocare **lontano dal PC** (telefono, tablet, TV, un altro PC) si usano
 [Sunshine](https://app.lizardbyte.dev/Sunshine), sul PC, e [Moonlight](https://moonlight-stream.org), sul
 dispositivo che guarda.
+
+**Certificato di Sunshine.** Al primo collegamento Pozzo memorizza l'impronta del certificato di Sunshine. Se in seguito cambia, rifiuta di inviare le credenziali e lo segnala; per reimpostarla salva di nuovo la password di Sunshine.
 
 ### Pubblicare i giochi in Moonlight
 

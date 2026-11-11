@@ -76,6 +76,8 @@ close games, take screenshots, act as a controller, and press **remote control**
 no arbitrary typed text): PC settings and files remain completely out of reach. A **remote guest** only has access
 to the controller.
 
+**Exposure warning.** If the phone app is reachable from outside your home network (public address, an external URL, or a router port opened through UPnP), Settings shows a warning: pair only devices you trust.
+
 ### What You Can Do from Your Phone
 
 - Home tab with *Now Playing*, *Recently Played*, *Favorites*, and installed PC games; search and filter by console.
@@ -195,6 +197,8 @@ the emulator into separate windows, and restore the original configuration when 
 
 To play **away from your PC** (phone, tablet, TV, or another PC), use
 [Sunshine](https://app.lizardbyte.dev/Sunshine) on your PC, and [Moonlight](https://moonlight-stream.org) on the client device.
+
+**Sunshine certificate.** On first connection Pozzo remembers Sunshine's certificate fingerprint. If it later changes, Pozzo refuses to send credentials and reports it; to reset it, save the Sunshine password again.
 
 ### Publishing Games to Moonlight
 

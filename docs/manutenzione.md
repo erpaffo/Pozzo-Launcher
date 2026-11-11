@@ -53,7 +53,7 @@ stati, note, collezioni personali (di tutti i profili), diario delle sessioni, w
 aggiunti a mano, salvataggi del browser, `settings.json`, i file dei profili utente e i temi personali. Le copie
 stanno in `<cache>/backups`, con un `manifest.json` che elenca il contenuto.
 
-- **Copia automatica settimanale** all'avvio: spenta di default, si attiva nella stessa sezione. Si tengono le
+- **Copia automatica settimanale** all'avvio: accesa di default, si spegne nella stessa sezione. Si tengono le
   ultime N copie (10 di default, da 1 a 50).
 - **Credenziali**: «Includi credenziali» è attivo di default. Se lo spegni, chiavi API e token restano fuori dallo zip
   (puoi tenerlo nel cloud) e al ripristino quelli attuali restano al loro posto.

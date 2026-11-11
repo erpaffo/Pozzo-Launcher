@@ -114,6 +114,8 @@ and `POZZO_KEY` (game key in library), allowing the same script to behave differ
 
 Each game can also have its own scripts in the **⚙ Launch Profile**: they are executed **after** the global ones.
 
+**Script confirmation.** When you save a new or changed script (for all games, for one game, or for events such as "game started"), Pozzo shows the commands and asks you to confirm: nothing is saved without your "yes". Unchanged scripts don't ask. Importing from another launcher doesn't copy scripts (a warning appears). Restoring a backup brings back the scripts it contains, and Pozzo warns you first.
+
 ## Closing the Store Launcher
 
 Also in **Settings › Emulators › Game Launch**, the option **Close store launcher** closes Steam, Epic, GOG Galaxy,
