@@ -1,1 +1,4 @@
 pytest>=8
+ruff>=0.6          # lint del job "lint" di ci.yml (non bloccante)
+bandit>=1.7        # analisi di sicurezza statica, job "lint"
+pip-audit>=2.7     # vulnerabilità note nelle dipendenze, job "lint"

@@ -55,6 +55,36 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
 
+  # Lint e sicurezza: informativo, mai bloccante finché le violazioni esistenti non sono ripulite.
+  lint:
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dipendenze Python
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff (regole minime, vedi pyproject.toml)
+        continue-on-error: true
+        env:
+          PYTHONUTF8: "1"
+        run: ruff check pozzo
+
+      - name: Bandit (sicurezza, solo severità media/alta)
+        continue-on-error: true
+        run: bandit -ll -r pozzo -x pozzo/vendor
+
+      - name: pip-audit (vulnerabilità nelle dipendenze)
+        continue-on-error: true
+        run: pip-audit -r requirements.txt
+
   # Notturno/manuale, mai bloccante per push e PR: emulatore vero + ROM libera (tests/smoke).
   smoke:
     if: github.event_name != 'push' && github.event_name != 'pull_request'
