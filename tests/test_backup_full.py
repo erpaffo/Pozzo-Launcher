@@ -76,6 +76,35 @@ def test_secrets_included_and_rotation_and_auto():
         assert len(names) == 2 and p.name in names, names  # rotazione: ultime N
 
 
+def _copia_con_settings(cfg, raw_settings):
+    # copia normale, poi si sostituisce solo settings.json
+    out = backup.create(cfg, secrets=False)
+    with zipfile.ZipFile(out) as z:
+        entries = {n: z.read(n) for n in z.namelist()}
+    entries["settings.json"] = raw_settings
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for n, b in entries.items():
+            z.writestr(n, b)
+    return out
+
+
+def test_settings_non_valido_non_tocca_il_file():
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        cfg = make(t)
+        user = UserData(Path(cfg.cache) / "userdata.db")
+        for raw in (b"{rotto", b"[1, 2]"):  # JSON rotto; JSON valido ma non un oggetto
+            name = _copia_con_settings(cfg, raw).name
+            prima = config.settings_path(cfg).read_bytes()
+            try:
+                backup.restore(cfg, name, user=user)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"restore doveva fallire con {raw!r}")
+            assert config.settings_path(cfg).read_bytes() == prima, raw
+        user.db.close()
+
+
 def test_api_preview_and_confirm():
     from fastapi.testclient import TestClient
 
@@ -95,5 +124,6 @@ def test_api_preview_and_confirm():
 if __name__ == "__main__":
     test_round_trip_preview_and_secrets()
     test_secrets_included_and_rotation_and_auto()
+    test_settings_non_valido_non_tocca_il_file()
     test_api_preview_and_confirm()
     print("ok  backup completo")

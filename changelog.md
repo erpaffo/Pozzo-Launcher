@@ -1,11 +1,42 @@
 # Changelog
 
-## Non rilasciato
+## 0.18.0 (2026-11-13)
+
+### Aggiunto
+
+- **Scheda gioco ridisegnata**: due nuovi layout selezionabili da **Impostazioni › Aspetto** (**Cockpit a 2 colonne** ed **Editoriale + Cassetto laterale**, oltre al **Classico**), con card di anteprima visive, cambio immediato e supporto su tutte le esperienze desktop.
+- **Importatori**: supporto a Steam ROM Manager e alle playlist RetroArch con anteprima dei giochi prima di importare.
+- **Filtri salvati**: salvataggio per profilo con vista dedicata, accesso rapido dalla palette (`Ctrl+K`) e widget in dashboard.
+- **Backup avanzati**: anteprima del ripristino, inclusione dei temi, opzione per le credenziali e rotazione automatica (backup automatico attivo di default).
+- **Aggiornamenti e release**: verifica della firma Ed25519 del manifest degli aggiornamenti (quando `PUBKEY` è configurata), manifest `winget`/`scoop` e firma Windows opzionale nel workflow di release.
+- Novità dopo ogni aggiornamento: alla prima apertura di una nuova versione compare la finestra «Ecco cosa c'è di nuovo» con le funzioni aggiunte e, accanto a ciascuna, «Mostra come», un tutorial passo passo nello stile del tour guidato che porta nel punto giusto dell'app. Si riapre da Impostazioni › Sistema.
 
 ### Migliorato
 
+- **Metadati e matching**: la correzione manuale del match ora prevale sui successivi rescan e viene mostrato il nome DAT per le fonti basate su nome.
+- **Sicurezza**: conferma esplicita per l'esecuzione degli script, avviso di esposizione per l'accesso da telefono, pinning del certificato Sunshine, test XSS su `innerHTML`, CSP in sola segnalazione e verifiche su tastiera/focus.
+- **Traduzioni**: aggiornate tutte le 7 lingue per i nuovi layout della scheda gioco, importatori, correzione match, backup e filtri salvati.
 - Download: se il flusso degli eventi si chiude per un errore, dopo 10 secondi se ne apre uno dedicato ai download e finché non torna l'elenco si aggiorna ogni 2 secondi.
 - Impostazioni download: una sola opzione «Monitora gli appunti»; quando è attiva compare il banner «N link negli appunti — Aggiungi» al ritorno su Pozzo. Gli appunti non si leggono mai se è spenta.
+- Rete: dopo l'ultimo tentativo fallito non si aspetta più inutilmente (fino a 10 minuti con Retry-After).
+
+### Corretto
+
+- **Dashboard (Home)**: risolto il blocco dello scorrimento verticale con la rotella del mouse sopra i widget al centro della pagina (`.gs-widget-body` e `.shelf-lane`).
+- **Scheda gioco**: il cambio di layout in **Impostazioni › Aspetto** ora si applica cliccando qualsiasi gioco anche nelle esperienze a pannello laterale (`panel`), non solo in quelle modali o a pagina intera.
+- **Log e cache statica**: evitata la ripetizione nei log dell'avviso sul `config.toml` ignorato e incluso `pozzo/app/static/js/` nel calcolo di `_asset_version` per evitare script vecchi in cache.
+- Pausa/Riprendi nascosta fuori da Windows: la sospensione dei processi funziona solo lì, il pulsante ora non compare su macOS e Linux (sessione, Big Picture e app del telefono).
+- Server famiglia: un solo download alla volta per ospite anche se un flusso si blocca, blocco dei codici sbagliati per indirizzo (non piu' per tutti) e un invito revocato o scaduto ferma subito il download in corso.
+- Disinstallare un emulatore tenendo i dati non cancella più i salvataggi PSP (memstick), gli stati salvati, i BIOS e le cartelle dati portatili; disinstallarne uno non toglie più gli altri dall'elenco degli installati, e una cartella dati condivisa (Eden ed Eglantine) resta finché l'usa un altro emulatore.
+- Ripristino dei salvataggi: con una copia danneggiata si ferma prima di toccare i file, invece di lasciare i salvataggi a metà.
+- Ripristino di un backup: settings.json si scrive con la stessa scrittura protetta del resto dell'app (niente impostazioni perse se un'altra parte salva nello stesso momento); una copia con settings.json non valido non sovrascrive nulla.
+- Telefoni, ospiti e libreria condivisa: una revoca non può più essere annullata da un accesso o da un salvataggio contemporaneo.
+- Riconoscimento dei titoli: i numeri romani fino a XX («Final Fantasy XII» = «Final Fantasy 12») e un titolo identico vince su uno uguale solo dopo la conversione («Mega Man X» non diventa «Mega Man 10»).
+
+### Cambiato
+
+- Aggiornamenti: con la chiave pubblica impostata la firma del manifest diventa obbligatoria anche per l'installer di Windows/Linux e per le release senza manifest (nessun ripiego sul pacchetto completo).
+- Release: `__version__` si allinea da sola al tag e la CI esegue controlli di lint non bloccanti.
 
 ## 0.17.6 (2026-11-11)
 

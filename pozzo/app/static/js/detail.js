@@ -67,7 +67,203 @@ async function syncGameAccent(id, my) {
   const c = await gameAccentOf(id);
   if (my === S.openSeq && coverAccentOn()) paintGameAccent(c);
 }
-if (typeof window !== "undefined") window.addEventListener("gs-ui-change", () => { if (S.detail) syncGameAccent(S.detail.id, S.openSeq); });
+const detailModalLayout = () => (typeof GSUi !== "undefined" ? GSUi.prefs(GSUi.saved()).detailLayout : "cockpit");
+if (typeof window !== "undefined") window.addEventListener("gs-ui-change", () => {
+  if (!S.detail) return;
+  syncGameAccent(S.detail.id, S.openSeq);
+  const det = $("#detail");
+  if (det?.classList.contains("open") && det.dataset.modalLayout !== detailModalLayout()) {
+    openDetail(S.detail.id);
+  }
+});
+
+let modalSlotObs = null;
+function wireModalInteractions(body) {
+  if (modalSlotObs) { modalSlotObs.disconnect(); modalSlotObs = null; }
+  const slot = body.querySelector("#d-slot-mods");
+  if (slot && typeof MutationObserver !== "undefined") {
+    const adopt = (n) => {
+      if (n.nodeType === 1 && n.parentElement === body && ["d-mod-sites", "d-mods", "d-noclient", "d-emucfg", "d-retroarch"].includes(n.id)) slot.append(n);
+    };
+    modalSlotObs = new MutationObserver((list) => list.forEach((m) => m.addedNodes.forEach(adopt)));
+    modalSlotObs.observe(body, { childList: true });
+  }
+  body.querySelectorAll("[data-dtab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      body.querySelectorAll("[data-dtab]").forEach((b) => { b.classList.remove("active"); b.setAttribute("aria-selected", "false"); });
+      body.querySelectorAll("[data-dpane]").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+      body.querySelector(`[data-dpane="${btn.dataset.dtab}"]`)?.classList.add("active");
+    });
+  });
+  body.querySelectorAll("[data-dpop]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const target = body.querySelector(`#${btn.dataset.dpop}`);
+      body.querySelectorAll(".d-popover.open").forEach((p) => { if (p !== target) p.classList.remove("open"); });
+      target?.classList.toggle("open");
+    });
+  });
+  body.addEventListener("click", (e) => {
+    if (!e.target.closest(".d-popover") && !e.target.closest("[data-dpop]")) {
+      body.querySelectorAll(".d-popover.open").forEach((p) => p.classList.remove("open"));
+    }
+  });
+}
+
+function buildStructuredModal(d, ctx, layout) {
+  const { u, pc, online, minerva, oneFile, dlBase, storePages, updates, shots, dl, actions } = ctx;
+  const primaryBtn = online
+    ? (minerva && oneFile
+      ? `<button class="btn primary" id="d-torrent" title="${t("f.btn.torrent_title")}">⬇ ${t("f.btn.download")} ${t("f.btn.only_this")}</button>`
+      : `<button class="btn primary" id="d-download" title="${t("f.btn.download_title")}">⬇ ${t("f.btn.download")}</button>`)
+    : pc && !d.installed
+    ? `<button class="btn primary" id="d-install" ${d.can_install ? "" : "disabled"}>⬇ ${t("f.btn.install")}</button>`
+    : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ ${t("f.btn.play")}</button>`;
+
+  const launchOpts = [
+    online && !minerva && oneFile ? `<button class="btn" id="d-torrent" title="${t("f.btn.torrent_title")}">🧲 Torrent ${t("f.btn.only_this")}</button>` : "",
+    pc && !d.installed && d.store === "steam" ? `<button class="btn" id="d-scmd" title="${t("h.steamcmd.tip")}">⬇ ${t("h.steamcmd.menu")}</button>` : "",
+    !online && (d.installed || !pc) ? `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="${t("f.btn.play_fast_title")}">⚡ ${t("f.btn.play_fast")}</button>` : "",
+    !online && d.webplay ? `<button class="btn" id="d-webplay" title="${t("f.btn.webplay_title")}">🌐 ${t("f.btn.webplay")}</button>` : "",
+    !online && d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? t("f.party.invite_title") : t("f.party.unavailable_title")}">👥 ${t("f.party.button")}</button>` : "",
+  ].filter(Boolean);
+
+  const gameTools = [
+    !online && (d.installed || !pc) ? `<button class="btn" id="d-diagnose" title="${t("f.btn.diagnose_title")}">❔ ${t("f.btn.diagnose")}</button>` : "",
+    !online ? `<button class="btn" id="d-profile" title="${pc ? t("f.profile.pc_title") : t("f.profile.emu_title")}">⚙ ${t("f.profile.label")}</button>` : "",
+    !pc && !d.emulator ? `<button class="btn" id="d-emu-cfg">🎛 ${t("f.emu.settings")}</button>` : "",
+    d.store === "ports" ? `<button class="btn" data-port="${esc(d.key.split(":").slice(1).join(":"))}">🕹 ${t("f.btn.manage_port")}</button>` : "",
+    ...(d.ports || []).map((p) => `<button class="btn" data-port="${esc(p.slug)}" title="${t("f.port.native_title", {name: esc(p.name)})}">🕹 ${t("f.port.available")}</button>`),
+  ].filter(Boolean);
+
+  const libTools = [
+    pc && d.page ? `<button class="btn" id="d-page">🛒 ${t("f.btn.store_page")}</button>` : "",
+    !pc || (d.installed && d.files.length) ? `<button class="btn" id="d-folder">📁 ${t("f.btn.folder")}</button>` : "",
+    !pc && d.files && d.files.length ? `<button class="btn" id="d-match" title="${t("f.match.title")}">🔎 ${t("f.match.button")}</button>` : "",
+    `<button class="btn" id="d-media" title="${t("f.media.title")}">🖼 ${t("f.media.label")}</button>`,
+    !online ? `<button class="btn" id="d-shortcut" title="${t("f.shortcut.title")}">🖥 ${t("f.shortcut.label")}</button>` : "",
+    `<button class="btn" id="d-hide">${u.hidden ? t("f.btn.show") : t("f.btn.hide")}</button>`,
+    d.store === "manual" ? `<button class="btn" id="d-manual-del">🗑 ${t("f.btn.remove")}</button>` : "",
+    ...actions.map((a) => `<button class="btn" data-ga="${esc(a.id)}">${esc((a.icon ? a.icon + " " : "") + a.label)}</button>`),
+  ].filter(Boolean);
+
+  const statusSelect = online ? "" : `<select class="d-status-select" id="d-status-select" aria-label="Status">
+    <option value="">${esc(t("f.dl_modal.status_none"))}</option>
+    ${Object.entries(STATUS).map(([k, s]) => `<option value="${k}"${u.status === k ? " selected" : ""}>${s.icon} ${esc(s.label)}</option>`).join("")}
+  </select>`;
+
+  const stars = `<div class="d-mine"><span class="muted small">${t("f.rate.mine")}</span><span class="d-stars">${[1, 2, 3, 4, 5].map((n) =>
+    `<button class="star${n <= (u.my_rating || 0) ? " on" : ""}" data-myrate="${n}" title="${n}/5" aria-label="${t("f.rate.aria", {n})}" aria-pressed="${n <= (u.my_rating || 0)}">★</button>`).join("")}</span></div>`;
+
+  const collections = `<div class="chips">${d.collections.map((c) => `<span class="chip" data-slug="${esc(c.slug)}">${esc(c.name)}<button class="x" title="${t("f.coll.remove_title")}" aria-label="${t("f.coll.remove_aria", {name: esc(c.name)})}">✕</button></span>`).join("")}
+    <span class="chip add" id="d-add-coll">＋ ${t("f.btn.add")}</span></div>`;
+
+  const alertsAndLinks = `
+    ${d.missing && d.missing.length ? `<div class="d-missing"><span>${t("f.missing.label")} ${esc(d.missing.join(", "))}</span><button class="btn" id="d-scrape" title="${t("f.missing.retry_title")}">⟳ ${t("f.missing.search")}</button></div>` : ""}
+    ${online && d.magnet && !oneFile ? `<div class="d-note">${t("f.magnet.whole_set", {file: esc(d.file_name || d.title)})}</div>` : ""}
+    ${storePages.length ? `<div class="d-emu muted d-link-row"><span>🌐 ${t("f.store.pages")}</span>${storePages.map((s) => `<button class="btn" data-open="${esc(s.url)}" title="${t("f.store.open_title", {site: esc(s.site || t("f.store.this_site"))})}">⬇ ${esc((s.site || "sito").replace(/^www\./, ""))}</button>`).join("")}</div>` : ""}
+    ${updates.length ? `<div class="d-emu muted d-link-row"><span>⬆ ${t("f.upd.label", {n: updates.length})}</span>${updates.map((s) => `<button class="btn" data-open="${esc(s.url)}" title="${esc(s.name || t("f.upd.title_default"))}">⬆ ${s.version ? "v" + esc(s.version) : t("f.upd.default")}${s.size ? " · " + fmtSize(s.size) : ""}</button>`).join("")}</div>` : ""}
+    ${online && dlBase.length ? `<div class="d-emu muted d-link-row"><span>🌐 ${t("f.store.page")}</span>${dlBase.map((s) => `<button class="btn" data-open="${esc(s.url)}" title="${t("f.store.open_title", {site: esc(s.site || t("f.store.this_site"))})}">${esc((s.site || "sito").replace(/^www\./, ""))} ↗</button>`).join("")}</div>` : ""}
+    ${online || storePages.length ? `<div id="d-links"></div>` : ""}`;
+
+  const noteBox = `<textarea class="field d-note" id="d-note" rows="2" placeholder="${t("f.notes.placeholder")}">${esc(u.note || "")}</textarea>`;
+  const techGrid = `<dl class="d-grid">${dl.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`;
+  const desc = d.description ? `<div class="d-h">${t("f.desc.heading")}</div><div class="d-desc">${esc(d.description)}</div>` : "";
+  const mediaHtml = `
+    ${d.shots ? `<div class="d-h">📷 ${t("f.shots.mine", {n: d.shots})} <a href="#" id="d-shots-all" class="muted small">${t("f.shots.see_all")}</a></div><div class="my-shots" id="d-myshots"></div>` : ""}
+    ${shots.length ? `<div class="d-h">${t("f.media.label")}</div><div class="shots">${shots.map((k) => `<img loading="lazy" src="${d.media[k]}?w=700" alt="${k}">`).join("")}</div>` : ""}`;
+  const versionsHtml = d.versions.length > 1 ? `<div class="d-h">${t("f.versions.heading", {n: d.versions.length})}</div><div class="versions">${d.versions.map((v) =>
+    `<div class="version ${v.primary ? "primary" : ""}"><span class="f" title="${esc(v.file)}">${esc(v.file)}</span>`
+    + (v.store ? `<span class="muted">${v.installed ? t("f.emu.installed") : t("f.emu.not_installed")}</span>` : "")
+    + (v.primary ? `<span class="muted">${t("f.versions.primary")}</span>` : `<button class="btn" data-pref="${v.id}">${t("f.versions.use")}</button>`)
+    + (v.store && !v.installed ? `<button class="btn" data-install="${v.id}">⬇</button>` : `<button class="btn" data-play="${v.id}" ${d.emulator ? "" : "disabled"}>▶</button>`) + `</div>`).join("")}</div>` : "";
+  const filesHtml = `<div class="d-h">${t("f.files.heading")}</div><div class="files">${d.files.map(esc).join("<br>")}${d.crc ? `<br>CRC ${esc(d.crc)}` : ""}
+    ${Object.keys(d.sources).length ? `<br>${t("f.files.sources")}: ${esc([...new Set(Object.values(d.sources))].join(", "))}` : ""}</div>`;
+  const hltbHtml = !online ? `<div class="d-hltb" id="d-hltb" title="${t("f.hltb.title")}">${hltbBlock(d.hltb)}</div>` : "";
+  const runtimeLabel = online ? t("f.emu.online") : pc ? `${esc(d.store_name)} · ${d.installed ? t("f.emu.installed") : t("f.emu.not_installed")}`
+    : d.emulator ? `${esc(d.emulator)}${d.profile ? ` <span class="tag">${t("f.emu.profile")}</span>` : ""}` : t("f.emu.none", {platform: esc(d.platform_name)});
+
+  if (layout === "editorial") {
+    return `<div class="dm-ed">
+      <div class="dm-ed-main">
+        <div class="d-top">
+          <div class="d-cover">${d.media.cover ? `<img src="${d.media.cover}?w=450" alt="">` : ""}</div>
+          <div class="d-title"><h2 id="detail-title">${esc(d.title)}</h2><div class="muted">${esc(d.platform_name)}${d.year ? " · " + d.year : ""} · ${runtimeLabel}</div></div>
+        </div>
+        ${ratingBlock(d)}
+        ${alertsAndLinks}
+        ${desc}
+        <details class="dm-acc" open><summary>${esc(t("f.dl_modal.acc_details"))}</summary><div class="dm-acc-body">${hltbHtml}${noteBox}${techGrid}</div></details>
+        <details class="dm-acc"><summary>${esc(t("f.dl_modal.acc_progress"))}</summary><div class="dm-acc-body"><div id="d-ra"></div><div id="d-saves"></div></div></details>
+        <details class="dm-acc"><summary>${esc(t("f.dl_modal.acc_media"))}</summary><div class="dm-acc-body">${mediaHtml}<div id="d-similar"></div></div></details>
+        <details class="dm-acc"><summary>${esc(t("f.dl_modal.acc_tech"))}</summary><div class="dm-acc-body">${versionsHtml}<div id="d-slot-mods"></div><div id="d-ext"></div>${filesHtml}</div></details>
+      </div>
+      <aside class="dm-ed-aside">
+        <div class="dm-aside-primary">${primaryBtn}</div>
+        ${launchOpts.length ? `<div class="dm-aside-group"><h5>${esc(t("f.dl_modal.group_launch"))}</h5><div class="dm-aside-list">${launchOpts.join("")}</div></div>` : ""}
+        <div class="dm-aside-group"><h5>${esc(t("f.dl_modal.group_collection"))}</h5><div class="dm-aside-list">
+          <button class="btn ${u.favorite ? "on" : ""}" id="d-fav">${u.favorite ? "★ " + t("f.btn.favorite") : "☆ " + t("f.btn.favorite")}</button>
+          ${statusSelect}${stars}${collections}
+        </div></div>
+        ${gameTools.length ? `<div class="dm-aside-group"><h5>${esc(t("f.dl_modal.group_game"))}</h5><div class="dm-aside-list">${gameTools.join("")}</div></div>` : ""}
+        <div class="dm-aside-group"><h5>${esc(t("f.dl_modal.group_tools"))}</h5><div class="dm-aside-list d-actions">${libTools.join("")}</div></div>
+      </aside>
+    </div>`;
+  }
+
+  // Default: "cockpit"
+  return `<div class="dm-cockpit">
+    <aside class="dm-rail">
+      <div class="d-cover">${d.media.cover ? `<img src="${d.media.cover}?w=450" alt="">` : ""}</div>
+      <div class="dm-split">
+        ${primaryBtn}
+        ${launchOpts.length ? `<button class="btn primary dm-caret" type="button" data-dpop="d-pop-launch" aria-label="${esc(t("f.dl_modal.launch_opts"))}">▾</button>
+          <div class="d-popover" id="d-pop-launch"><div class="d-pop-h">${esc(t("f.dl_modal.launch_opts"))}</div>${launchOpts.join("")}</div>` : ""}
+      </div>
+      <div class="dm-card">
+        ${statusSelect}
+        ${stars}
+        <div class="dm-kv"><span class="muted">${t("f.dl.playtime")}</span><b>${u.playtime ? fmtTime(u.playtime) : "—"}</b></div>
+        <div class="dm-kv"><span class="muted">${t("f.dl.last_played")}</span><span>${u.last_played ? fmtDate(u.last_played) : "—"}</span></div>
+        <div class="dm-kv"><span class="muted">${t("f.emu.emulator")}</span><span>${runtimeLabel}</span></div>
+        ${d.size ? `<div class="dm-kv"><span class="muted">${t("f.dl.size")}</span><span>${fmtSize(d.size)}</span></div>` : ""}
+      </div>
+      <div class="dm-card">
+        <div class="dm-kv"><span class="muted">${t("f.coll.heading")}</span></div>
+        ${collections}
+      </div>
+    </aside>
+    <div class="dm-main">
+      <div class="dm-head">
+        <div class="d-title"><h2 id="detail-title">${esc(d.title)}</h2><div class="muted">${esc(d.platform_name)}${d.year ? " · " + d.year : ""}</div>${ratingBlock(d)}</div>
+        <div class="dm-toolbar">
+          <button class="btn ${u.favorite ? "on" : ""}" id="d-fav">${u.favorite ? "★ " + t("f.btn.favorite") : "☆ " + t("f.btn.favorite")}</button>
+          <button class="btn" type="button" data-dpop="d-pop-more">⋯ ${esc(t("f.dl_modal.more"))}</button>
+          <div class="d-popover d-pop-right" id="d-pop-more">
+            ${gameTools.length ? `<div class="d-pop-h">${esc(t("f.dl_modal.group_game"))}</div>${gameTools.join("")}` : ""}
+            <div class="d-pop-h">${esc(t("f.dl_modal.group_library"))}</div>
+            <div class="d-actions dm-pop-actions">${libTools.join("")}</div>
+          </div>
+        </div>
+      </div>
+      ${alertsAndLinks}
+      <div class="dm-tabs" role="tablist">
+        <button class="dm-tab active" type="button" role="tab" aria-selected="true" data-dtab="ov">${esc(t("f.dl_modal.tab_overview"))}</button>
+        <button class="dm-tab" type="button" role="tab" aria-selected="false" data-dtab="pr">${esc(t("f.dl_modal.tab_progress"))}</button>
+        <button class="dm-tab" type="button" role="tab" aria-selected="false" data-dtab="sv">${esc(t("f.dl_modal.tab_saves"))}</button>
+        <button class="dm-tab" type="button" role="tab" aria-selected="false" data-dtab="md">${esc(t("f.dl_modal.tab_mods"))}</button>
+        <button class="dm-tab" type="button" role="tab" aria-selected="false" data-dtab="tc">${esc(t("f.dl_modal.tab_tech"))}</button>
+      </div>
+      <div class="dm-pane active" data-dpane="ov">${desc}<div class="d-h">${t("f.notes.placeholder")}</div>${noteBox}${techGrid}</div>
+      <div class="dm-pane" data-dpane="pr">${hltbHtml}<div id="d-ra"></div></div>
+      <div class="dm-pane" data-dpane="sv"><div id="d-saves"></div>${versionsHtml}</div>
+      <div class="dm-pane" data-dpane="md"><div id="d-slot-mods"></div><div id="d-ext"></div></div>
+      <div class="dm-pane" data-dpane="tc">${mediaHtml}<div id="d-similar"></div>${filesHtml}</div>
+    </div>
+  </div>`;
+}
 
 async function openDetail(id) {
   const my = ++S.openSeq; // un fetch lento non deve sovrascrivere il gioco aperto dopo
@@ -131,7 +327,11 @@ async function openDetail(id) {
       + `<button class="btn" id="d-diagnose" title="${t("f.btn.diagnose_title")}">❔ ${t("f.btn.diagnose")}</button>`
       + (d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? t("f.party.invite_title") : t("f.party.unavailable_title")}">👥 ${t("f.party.button")}</button>` : "");
   const actions = GS.ui.gameActions.filter((a) => { try { return !a.when || a.when(d); } catch { return false; } });
-  const bodyHtml = `
+  const modalLayout = detailModalLayout();
+  $("#detail").dataset.modalLayout = modalLayout;
+  const bodyHtml = modalLayout !== "classic"
+    ? buildStructuredModal(d, { u, pc, online, minerva, oneFile, dlBase, storePages, updates, shots, dl, actions }, modalLayout)
+    : `
     <div class="d-top">
       <div class="d-cover">${d.media.cover ? `<img src="${d.media.cover}?w=450" alt="">` : ""}</div>
       <div class="d-title"><h2 id="detail-title">${esc(d.title)}</h2><div class="muted">${esc(d.platform_name)}${d.year ? " · " + d.year : ""}</div></div>
@@ -202,7 +402,11 @@ async function openDetail(id) {
     <div class="files">${d.files.map(esc).join("<br>")}${d.crc ? `<br>CRC ${esc(d.crc)}` : ""}
       ${Object.keys(d.sources).length ? `<br>${t("f.files.sources")}: ${esc([...new Set(Object.values(d.sources))].join(", "))}` : ""}</div>`;
   const wasOpen = $("#detail").classList.contains("open"); // già aperta (cambio gioco/riapertura): niente volo
-  await coverTransition(wasOpen ? null : tileCover(id), () => { $("#detail-body").innerHTML = bodyHtml; presentDetail(); }, () => $("#detail .d-cover"));
+  await coverTransition(wasOpen ? null : tileCover(id), () => {
+    $("#detail-body").innerHTML = bodyHtml;
+    if (modalLayout !== "classic") wireModalInteractions($("#detail-body"));
+    presentDetail();
+  }, () => $("#detail .d-cover"));
   if (my !== S.openSeq) return;
   window.dispatchEvent(new CustomEvent("pozzo:detail-open", { detail: d }));
   renderDetailSections(d);
@@ -215,7 +419,7 @@ async function openDetail(id) {
   if (online || storePages.length) loadGameLinks(d);
   if (d.platform === "switch") loadSwitchContents(d);
   if (!pc) loadRA(d); else loadAch(d);
-  if (GS.experience.detail === "modal" && !online && !d.hltb) loadHltb(d);
+  if ((GS.experience.detail === "modal" && !online && !d.hltb) || (modalLayout !== "classic" && !online && !d.hltb)) loadHltb(d);
   GS.emit("gameOpened", d);
 }
 

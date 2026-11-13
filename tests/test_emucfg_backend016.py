@@ -119,10 +119,65 @@ def test_uninstall_keep_data(tmp_path, monkeypatch):
     (d / "user").mkdir()
     (d / "user" / "save.bin").write_text("s")
     (d / "portable.txt").write_text("")
+    for rel in ("memcards/x.mcd", "savestates/x.sav", "bios/b.bin"):
+        (d / rel).parent.mkdir()
+        (d / rel).write_text("s")
     EI.uninstall(cfg, "duckstation", keep_data=True)
     assert not exe.exists() and not (d / "lib.dll").exists()
+    assert all((d / rel).is_file() for rel in ("memcards/x.mcd", "savestates/x.sav", "bios/b.bin"))
     assert (d / "user" / "save.bin").is_file() and (d / "portable.txt").exists()
     assert "duckstation" not in cfg.emulators and not EI.installed(cfg).get("duckstation")
+
+
+def _fake_install(EI, cfg, tmp: Path, emu: str) -> Path:
+    """Segna `emu` come installato da Pozzo con un exe finto (basta a installed())."""
+    d = tmp / "emus" / emu
+    d.mkdir(parents=True)
+    (d / f"{emu}.exe").write_text("x")
+    from pozzo import config as C
+    C.save_settings(cfg, emulators={emu: str(d / f"{emu}.exe")},
+                    app={"emu_installed": {**(cfg.app.get("emu_installed") or {}), emu: {"version": "", "dir": str(d)}}})
+    return d
+
+
+@win_only
+def test_uninstall_ppsspp_tiene_memstick(tmp_path, monkeypatch):
+    EI, cfg, _ = _installed(tmp_path, monkeypatch)
+    d = _fake_install(EI, cfg, tmp_path, "ppsspp")
+    sav = d / "memstick/PSP/SAVEDATA/ULUS10041DATA00/a.bin"
+    sav.parent.mkdir(parents=True)
+    sav.write_text("s")
+    EI.uninstall(cfg, "ppsspp", keep_data=True)
+    assert sav.is_file() and not (d / "ppsspp.exe").exists()
+
+
+@win_only
+def test_uninstall_appdata_condivisa(tmp_path, monkeypatch):
+    EI, cfg, _ = _installed(tmp_path, monkeypatch)
+    ad = tmp_path / "ad"
+    monkeypatch.setenv("APPDATA", str(ad))
+    sav = ad / "eden" / "salvataggio.bin"
+    sav.parent.mkdir(parents=True)
+    sav.write_text("s")
+    _fake_install(EI, cfg, tmp_path, "eden")
+    _fake_install(EI, cfg, tmp_path, "eglantine")
+    EI.uninstall(cfg, "eglantine", keep_data=False)
+    assert sav.is_file()  # eden la usa ancora
+    assert "eden" in EI.installed(cfg) and "duckstation" in EI.installed(cfg)  # disinstallarne uno non cancella gli altri
+    EI.uninstall(cfg, "eden", keep_data=False)
+    assert not sav.parent.exists()  # ultimo a usarla: via
+
+
+@win_only
+def test_uninstall_appdata_non_condivisa(tmp_path, monkeypatch):
+    EI, cfg, _ = _installed(tmp_path, monkeypatch)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "ad"))
+    sav = tmp_path / "ad" / "eden" / "salvataggio.bin"
+    sav.parent.mkdir(parents=True)
+    sav.write_text("s")
+    _fake_install(EI, cfg, tmp_path, "eglantine")
+    EI.uninstall(cfg, "eglantine", keep_data=False)
+    assert not sav.parent.exists()  # nessun altro la usa: via
 
 
 @win_only

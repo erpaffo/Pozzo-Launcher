@@ -481,6 +481,22 @@ def _download(url: str, dest: Path, *, digest: str | None = None, total: int | N
         raise RuntimeError("File scaricato danneggiato (checksum diverso): riprova")
 
 
+def _verified_manifest(work: Path, manifest_asset: dict, assets: dict) -> Path:
+    """Scarica manifest e .sig e verifica la firma (se PUBKEY e' impostata); ritorna il file del manifest."""
+    manifest_file = work / manifest_asset["name"]
+    STATE.update(phase="Download manifest aggiornamento", done=0, total=manifest_asset["size"])
+    _download(manifest_asset["url"], manifest_file, digest=manifest_asset.get("digest"),
+              total=manifest_asset["size"])
+    sig_asset = assets.get(manifest_asset["name"] + ".sig")
+    sig_data = None
+    if sig_asset:
+        sig_file = work / sig_asset["name"]
+        _download(sig_asset["url"], sig_file, digest=sig_asset.get("digest"), total=sig_asset["size"])
+        sig_data = sig_file.read_bytes()
+    verify_manifest_signature(manifest_file.read_bytes(), sig_data)
+    return manifest_file
+
+
 def install(cache, quit) -> None:
     """Scarica e installa l'ultima versione; quit() chiude l'app perche' la nuova prenda il suo posto.
     Avanzamento ed errori in STATE (da eseguire in un thread)."""
@@ -506,6 +522,14 @@ def install(cache, quit) -> None:
         file = work / Path(a["name"]).name
         STATE.update(phase=f"Download di {file.name}", done=0, total=a["size"])
         if kind in ("setup", "deb"):
+            if PUBKEY.strip():
+                # lega la release alla chiave prima di eseguire l'installer; lo sha256 dell'installer
+                # non e' nel manifest (vedi release_manifest.py), quindi qui non si puo' controllare
+                m = next((x for x in info.get("assets", [])
+                          if x["name"] == f"PozzoLauncher-{_version(info['latest'])}-manifest.json"), None)
+                if not m:
+                    raise SignatureError("Release senza manifest firmato")
+                _verified_manifest(work, m, {x["name"]: x for x in info.get("assets", [])})
             _download(a["url"], file, digest=a.get("digest"), total=a["size"])
             if kind == "deb":
                 _detach(["xdg-open", str(file)])
@@ -526,18 +550,11 @@ def install(cache, quit) -> None:
         full_attempted = False
         assets = {x["name"]: x for x in info.get("assets", [])}
         try:
+            if not manifest_asset and PUBKEY.strip():
+                # senza manifest non c'e' nulla da verificare: con la firma attiva non si installa alla cieca
+                raise SignatureError("Release senza manifest firmato")
             if manifest_asset:
-                manifest_file = work / manifest_asset["name"]
-                STATE.update(phase="Download manifest aggiornamento", done=0, total=manifest_asset["size"])
-                _download(manifest_asset["url"], manifest_file, digest=manifest_asset.get("digest"),
-                          total=manifest_asset["size"])
-                sig_asset = assets.get(manifest_asset["name"] + ".sig")
-                sig_data = None
-                if sig_asset:
-                    sig_file = work / sig_asset["name"]
-                    _download(sig_asset["url"], sig_file, digest=sig_asset.get("digest"), total=sig_asset["size"])
-                    sig_data = sig_file.read_bytes()
-                verify_manifest_signature(manifest_file.read_bytes(), sig_data)
+                manifest_file = _verified_manifest(work, manifest_asset, assets)
                 remote = _manifest(json.loads(manifest_file.read_text(encoding="utf-8")), release_version)
                 _platform_files(remote, platform)
             local_path = target / MANIFEST

@@ -381,6 +381,31 @@ function initUiPrefs() {
     autosaveControl(vs, async (v) => { await api("/api/app/video-snap", { body: { enabled: !!v } }); GSVideo.reset(); });
   }
   fill("#ui-density", [["comfortable", t("e.density.comfortable")], ["compact", t("e.density.compact")]], p.density, (v) => uiSavePrefs({ density: v }));
+  const dlList = $("#detail-layout-list");
+  if (dlList) {
+    const dlOpts = [
+      ["cockpit", t("e.detailLayout.cockpit"), `<div class="dl-preview dl-preview--cockpit" aria-hidden="true">
+        <div class="dl-pv-rail"><span class="dl-pv-cov"></span><span class="dl-pv-cta"></span><span class="dl-pv-box"></span></div>
+        <div class="dl-pv-main"><span class="dl-pv-top"></span><span class="dl-pv-tabs"><i></i><i></i><i></i></span><span class="dl-pv-body"></span></div>
+      </div>`],
+      ["editorial", t("e.detailLayout.editorial"), `<div class="dl-preview dl-preview--editorial" aria-hidden="true">
+        <div class="dl-pv-main"><span class="dl-pv-top"></span><span class="dl-pv-acc"></span><span class="dl-pv-acc"></span><span class="dl-pv-acc"></span></div>
+        <div class="dl-pv-aside"><span class="dl-pv-cta"></span><span class="dl-pv-box"></span><span class="dl-pv-box"></span></div>
+      </div>`],
+      ["classic", t("e.detailLayout.classic"), `<div class="dl-preview dl-preview--classic" aria-hidden="true">
+        <div class="dl-pv-main"><span class="dl-pv-top"></span><span class="dl-pv-pills"><i></i><i></i><i></i><i></i></span><span class="dl-pv-body"></span></div>
+      </div>`],
+    ];
+    dlList.innerHTML = dlOpts.map(([val, label, preview]) => `<label class="experience-choice">
+      <span><input type="radio" name="detailLayout" value="${esc(val)}" ${p.detailLayout === val ? "checked" : ""}><b>${esc(label)}</b></span>
+      ${preview}</label>`).join("");
+    if (!dlList.dataset.bound) {
+      dlList.dataset.bound = "1";
+      dlList.addEventListener("change", (e) => {
+        if (e.target.name === "detailLayout") uiSavePrefs({ detailLayout: e.target.value });
+      });
+    }
+  }
   fill("#ui-idle", GSUi.IDLE.map((m) => [m, m ? t("e.idle.minutes", { m }) : t("e.idle.off")]), p.idle, (v) => uiSavePrefs({ idle: +v }));
 
   const msg = (s, err) => { const m = $("#te-msg"); m.textContent = s; m.className = err ? "status-bad small" : "muted small"; };

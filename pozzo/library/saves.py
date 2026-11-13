@@ -617,19 +617,19 @@ def restore(cfg, key: str, name: str) -> dict:
     d, b = _open(cfg, key, name)
     m = _mapping(d)
     dirs = [x for x in ((_index(cfg, key).get("backups") or {}).get(name) or {}).get("dirs") or [] if Path(x).is_dir()]
-    members = list(_members(d, b, m["drives"]))
-    cur_files = [dest for _, dest, _ in members if dest.is_file()
+    data = [(dest, read()) for read, dest, _ in _members(d, b, m["drives"])]  # tutto in memoria prima di toccare il disco (i salvataggi sono piccoli)
+    cur_files = [dest for dest, _ in data if dest.is_file()
                  and not any(Path(x).resolve() in dest.resolve().parents for x in dirs)]
     safety = backup(cfg, key, m["name"], [Path(x) for x in dirs] + cur_files, "prima-del-ripristino", protect=name)
-    inside = {os.path.normcase(str(dest.resolve())) for _, dest, _ in members}
+    inside = {os.path.normcase(str(dest.resolve())) for dest, _ in data}
     removed = 0
     for f in _extra(dirs, inside):
         f.unlink(missing_ok=True)
         removed += 1
     written = 0
-    for read, dest, _ in _members(d, b, m["drives"]):
+    for dest, content in data:
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(read())
+        dest.write_bytes(content)
         written += 1
     return {"written": written, "removed": removed, "safety_copy": safety.name if safety else None}
 

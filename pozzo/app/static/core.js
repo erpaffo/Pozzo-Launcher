@@ -29,6 +29,7 @@ const store = {
 const GSUi = (() => {
   const ZOOMS = [90, 95, 100, 105, 110, 115, 120, 125];
   const DENSITIES = ["comfortable", "compact"];
+  const DETAIL_LAYOUTS = ["cockpit", "editorial", "classic"];
   const IDLE = [0, 1, 2, 3, 5, 10, 15, 30]; // minuti prima del salvaschermo; 0 = disattivato
   const TOKENS = ["bg", "bg-2", "bg-3", "panel", "line", "text", "muted", "accent", "accent-2", "fav"];
   const HEX = /^#[0-9a-f]{6}$/i;
@@ -38,6 +39,7 @@ const GSUi = (() => {
   const prefs = (raw) => {
     const o = raw && typeof raw === "object" ? raw : {};
     return { zoom: ZOOMS.includes(o.zoom) ? o.zoom : 100, density: DENSITIES.includes(o.density) ? o.density : "comfortable",
+      detailLayout: DETAIL_LAYOUTS.includes(o.detailLayout) ? o.detailLayout : "cockpit",
       idle: IDLE.includes(o.idle) ? o.idle : 3, coverAccent: typeof o.coverAccent === "boolean" ? o.coverAccent : true };
   };
 
@@ -125,6 +127,7 @@ const GSUi = (() => {
     if (p.zoom === 100) delete root.dataset.uiZoom; else root.dataset.uiZoom = String(p.zoom);
     root.style.setProperty("--ui-zoom", String(p.zoom / 100));
     root.dataset.uiDensity = p.density;
+    root.dataset.detailLayout = p.detailLayout;
     return p;
   };
   const applyTheme = (doc) => { const t = savedTheme(); return setStyle(doc, "gs-user-theme", t && t.enabled ? themeCss(t.tokens) : ""); };
@@ -150,7 +153,7 @@ const GSUi = (() => {
     const close = () => { if (!active) return false; active = false; env.stop(); return true; };
     return { arm, close, isActive: () => active, activity() { const was = close(); arm(); return was; } };
   };
-  return { ZOOMS, DENSITIES, IDLE, TOKENS, CHECKS, prefs, toHex, hexToHsl, hslToHex, contrastRatio, contrastReport, parseTheme, checkTheme,
+  return { ZOOMS, DENSITIES, DETAIL_LAYOUTS, IDLE, TOKENS, CHECKS, prefs, toHex, hexToHsl, hslToHex, contrastRatio, contrastReport, parseTheme, checkTheme,
     serializeTheme, themeCss, setStyle, saved, savedTheme, applyPrefs, applyTheme, pickSlides, attractMotion, createIdle };
 })();
 window.GSUi = GSUi;

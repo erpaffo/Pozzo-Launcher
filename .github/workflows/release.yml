@@ -18,8 +18,41 @@ permissions:
   contents: write
 
 jobs:
+  # la versione in pozzo/__init__.py deve essere quella del tag: se no l'app installata si vede "vecchia"
+  # e propone all'infinito lo stesso aggiornamento. Se differiscono, corregge __init__, committa sul branch
+  # di default e sposta il tag sul nuovo commit; gli altri job fanno checkout di quel commit (nessun rilancio:
+  # i push fatti con GITHUB_TOKEN non fanno partire altri workflow, quindi niente cicli).
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.fix.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Allinea __version__ al tag
+        id: fix
+        shell: bash
+        env:
+          BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          [ "$GITHUB_REF_TYPE" = "tag" ] || exit 0
+          TAGVER="${GITHUB_REF_NAME#v}"
+          CODEVER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' pozzo/__init__.py | tr -d '\r')
+          [ "$TAGVER" != "$CODEVER" ] || exit 0
+          echo "::warning::__version__ ($CODEVER) diverso dal tag ($TAGVER): lo correggo"
+          sed -i "s/^__version__ = .*/__version__ = \"$TAGVER\"/" pozzo/__init__.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Versione $TAGVER in __init__ allineata al tag"
+          git push origin "HEAD:refs/heads/$BRANCH"
+          git tag -f "$GITHUB_REF_NAME"
+          git push -f origin "$GITHUB_REF_NAME"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   # i test girano in parallelo alla build (3 parti per sistema); la release parte solo se sono tutti verdi
   test:
+    needs: version
     name: test ${{ matrix.name }} (${{ matrix.shard }}/3)
     runs-on: ${{ matrix.os }}
     strategy:
@@ -33,6 +66,8 @@ jobs:
           - { os: ubuntu-22.04, name: linux-x64 }
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version.outputs.sha }}
 
       - uses: actions/setup-python@v6
         with:
@@ -57,6 +92,7 @@ jobs:
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
 
   build:
+    needs: version
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -68,6 +104,8 @@ jobs:
           - { name: linux-x64, os: ubuntu-22.04 }
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version.outputs.sha }}
 
       - uses: actions/setup-python@v6
         with:
@@ -223,10 +261,12 @@ jobs:
     # parte anche se una build e' fallita: si pubblicano le piattaforme riuscite (vedi «Piattaforme mancanti»)
     # (ma solo con i test verdi)
     if: ${{ !cancelled() && needs.test.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
-    needs: [test, build]
+    needs: [version, test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version.outputs.sha }}
 
       - uses: actions/download-artifact@v8
         continue-on-error: true  # nessun artifact = nessuna build riuscita: lo dice «Piattaforme mancanti»

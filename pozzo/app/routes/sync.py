@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import re
 import threading
 from pathlib import Path
 
@@ -66,14 +65,6 @@ def build_router(ctx) -> APIRouter:
         sync.saves_of = _saves_of
     if hasattr(sync, "title_of"):
         sync.title_of = lambda key: _game(key).get("title") or key
-    # il cancello del server di rete (remote/phone.py) lascia passare ai PC abbinati solo lo scambio: aggiunge la
-    # richiesta dei singoli file di salvataggio
-    try:
-        if not any(p == r"/api/sync/saves/file" for _m, p in PH.PC_ALLOWED):
-            PH.PC_ALLOWED = [*PH.PC_ALLOWED, ("POST", r"/api/sync/saves/file")]
-            PH._PC_ALLOWED = [(m, re.compile(p + r"$")) for m, p in PH.PC_ALLOWED]
-    except Exception:
-        pass
 
     # ------------------------------------------------------------ sincronizzazione tra PC
     def _sync_loop():

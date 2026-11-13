@@ -66,14 +66,21 @@ output = "output"
 """
 
 
+_WARNED_IGNORED: set[Path] = set()
+
+
 def _warn_ignored_copy(chosen: Path | None):
     """Dai sorgenti, un config.toml nel progetto non e' piu' quello usato se esiste la cartella dei dati dell'utente."""
     if FROZEN or chosen is None:
         return
     for c in (Path("config.toml"), Path(__file__).resolve().parent.parent / "config.toml"):
         if c.exists() and c.resolve() != Path(chosen).resolve():
-            print(f"Nota: uso {chosen}. La copia in {c.resolve().parent} non viene piu' letta "
-                  f"(per usarla: POZZO_CONFIG={c.resolve()}).", file=sys.stderr)
+            key = c.resolve()
+            if key in _WARNED_IGNORED:
+                return
+            _WARNED_IGNORED.add(key)
+            print(f"Nota: uso {chosen}. La copia in {key.parent} non viene piu' letta "
+                  f"(per usarla: POZZO_CONFIG={key}).", file=sys.stderr)
             return
 
 

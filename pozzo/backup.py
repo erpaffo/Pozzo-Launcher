@@ -172,9 +172,10 @@ def _settings_commands(raw: bytes) -> int:
     """Comandi globali (prima/dopo ogni gioco, eventi) in un settings.json."""
     from .library import automation as A
     try:
-        app = json.loads(raw).get("app") or {}
+        data = json.loads(raw)
     except ValueError:
         return 0
+    app = (data.get("app") if isinstance(data, dict) else None) or {}  # JSON valido ma non un oggetto: niente comandi
     return sum(1 for k, v in [*((app.get("launch") or {}).items()), *((app.get(A.GLOBAL_KEY) or {}).items())]
                if k in ("before", "after", *A.GLOBAL_EVENTS.values()) and str(v or "").strip())
 
@@ -325,8 +326,10 @@ def restore(cfg, name: str, user=None, profiles: dict | None = None) -> dict:
                     raw = json.dumps(_graft(json.loads(raw), _read_json(s)), indent=2, ensure_ascii=False).encode("utf-8")
                 except ValueError:
                     pass
-            s.write_bytes(raw)
-            C.apply_settings(cfg)
+            data = json.loads(raw)  # una copia con settings.json rotto si ferma qui, prima di toccare il file
+            if not isinstance(data, dict):
+                raise ValueError("settings.json della copia non valido")
+            C._update_settings(cfg, lambda cur: (cur.clear(), cur.update(data)))  # lock + scrittura atomica come gli altri
             restored.append("settings.json")
         td = C.settings_path(cfg).parent / "themes"
         for n in sorted(x for x in names if x.startswith("themes/") and "/" not in x[7:] and x[7:]):

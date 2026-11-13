@@ -22,7 +22,8 @@ except ImportError:  # fallback senza dipendenze
 
         token_sort_ratio = ratio
 
-ROMAN = {"ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6", "vii": "7", "viii": "8", "ix": "9", "x": "10"}
+ROMAN = {"ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6", "vii": "7", "viii": "8", "ix": "9", "x": "10",
+         "xi": "11", "xii": "12", "xiii": "13", "xiv": "14", "xv": "15", "xvi": "16", "xvii": "17", "xviii": "18", "xix": "19", "xx": "20"}
 _TAGS = re.compile(r"[\(\[][^\)\]]*[\)\]]")
 
 
@@ -42,6 +43,9 @@ def score(a: str, b: str) -> float:
     if not na or not nb:
         return 0.0
     if na == nb:
+        # uguali solo grazie ai numeri romani (es. «Mega Man X» / «Mega Man 10»): buono, ma un titolo identico vince
+        if re.findall(r"\b\d+\b", _TAGS.sub(" ", a.lower())) != re.findall(r"\b\d+\b", _TAGS.sub(" ", b.lower())):
+            return 85.0
         return 100.0
     s = max(fuzz.ratio(na, nb), fuzz.token_sort_ratio(na, nb))
     # "Sonic" vs "Sonic the Hedgehog": se uno e' prefisso dell'altro con sottotitolo, buono ma non perfetto

@@ -110,7 +110,8 @@ def new_invite(hub, name: str, days: float = 30) -> tuple[dict, str]:
     days = min(365.0, max(0.04, float(days)))
     inv = {"id": secrets.token_hex(6), "name": (name or "Ospite").strip()[:40] or "Ospite", "hash": _sha(code),
            "created": time.time(), "exp": time.time() + days * 86400, "used": False, "device": ""}
-    hub._save(lib_invites=[*hub.conf.get("lib_invites", []), inv])
+    with hub.devlock:  # lettura e salvataggio insieme: una revoca nel mezzo non va persa
+        hub._save(lib_invites=[*hub.conf.get("lib_invites", []), inv])
     return inv, code
 
 
@@ -130,27 +131,29 @@ def pair(hub, code: str, name: str, ip: str = "") -> str:
         if len(mine) >= MAX_FAILS or len(hub.lib_fails) >= GLOBAL_FAILS:
             raise ValueError("Troppi tentativi sbagliati: riprova tra qualche minuto")
         h = _sha(_norm(code))
-        invites = [dict(i) for i in hub.conf.get("lib_invites", [])]
-        hit = None
-        for i in invites:  # confronto a tempo costante su tutti
-            if secrets.compare_digest(i["hash"], h):
-                hit = i
-        if not hit or hit["used"] or now > hit["exp"]:
-            hub.lib_fails.append(now)
-            mine.append(now)
-            raise ValueError("Invito non valido, scaduto o gia' usato")
-        token = secrets.token_urlsafe(32)
-        dev = {"id": secrets.token_hex(6), "name": (name or hit["name"]).strip()[:40], "token": _sha(token),
-               "created": now, "last": now, "kind": "lib", "exp": hit["exp"], "invite": hit["id"]}
-        hit["used"], hit["device"] = True, dev["id"]
-        hub._save(devices=[*hub.conf["devices"], dev], lib_invites=invites)
+        with hub.devlock:  # inviti letti e salvati insieme: una revoca nel mezzo non va persa
+            invites = [dict(i) for i in hub.conf.get("lib_invites", [])]
+            hit = None
+            for i in invites:  # confronto a tempo costante su tutti
+                if secrets.compare_digest(i["hash"], h):
+                    hit = i
+            if not hit or hit["used"] or now > hit["exp"]:
+                hub.lib_fails.append(now)
+                mine.append(now)
+                raise ValueError("Invito non valido, scaduto o gia' usato")
+            token = secrets.token_urlsafe(32)
+            dev = {"id": secrets.token_hex(6), "name": (name or hit["name"]).strip()[:40], "token": _sha(token),
+                   "created": now, "last": now, "kind": "lib", "exp": hit["exp"], "invite": hit["id"]}
+            hit["used"], hit["device"] = True, dev["id"]
+            hub._save(devices=[*hub.conf["devices"], dev], lib_invites=invites)
     return token
 
 
 def revoke_invite(hub, iid: str) -> None:
     """Toglie l'invito e, se era stato usato, l'accesso dell'ospite (il suo token smette di funzionare subito)."""
-    hub._save(lib_invites=[i for i in hub.conf.get("lib_invites", []) if i["id"] != iid],
-              devices=[d for d in hub.conf["devices"] if d.get("invite") != iid])
+    with hub.devlock:
+        hub._save(lib_invites=[i for i in hub.conf.get("lib_invites", []) if i["id"] != iid],
+                  devices=[d for d in hub.conf["devices"] if d.get("invite") != iid])
 
 
 def invites(hub) -> list[dict]:

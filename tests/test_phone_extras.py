@@ -358,11 +358,39 @@ def test_avvisi_giochi_gratis_e_port(tmp_path, monkeypatch=None):
     print("ok  avvisi: giochi gratis e port aggiornati, una volta sola per offerta/versione")
 
 
+def test_revoca_non_annullata_da_touch(tmp_path=None):
+    """Un 'ultimo accesso' in corso non deve far tornare un dispositivo appena revocato."""
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    from pozzo.remote.phone import PhoneHub
+
+    class SlowApp(dict):
+        def get(self, *a):  # cede il turno dopo la lettura: allarga la finestra tra lettura e salvataggio
+            v = super().get(*a)
+            time.sleep(0)
+            return v
+
+    cfg = SimpleNamespace(app=SlowApp(), config_path=None)
+    hub = PhoneHub(cfg, lambda c, app=None: None)  # salvataggio finto: niente disco
+    for _ in range(200):
+        token = hub.pair(hub.new_code(), "T")
+        did = hub.conf["devices"][-1]["id"]
+        t = threading.Thread(target=lambda: [hub._touch(did) for _ in range(50)])
+        t.start()
+        hub.revoke(did)
+        t.join()
+        assert did not in [d["id"] for d in hub.conf["devices"]], "dispositivo revocato tornato dalla lista"
+        assert hub.device_for(token) is None
+    print("ok  revoca non annullata da un aggiornamento dell'ultimo accesso")
+
+
 if __name__ == "__main__":
     for fn in (test_pwa_installabile, test_certificato_firmato_dalla_ca, test_libreria_pronta_in_cache,
                test_pad_salvato_sul_pc, test_ca_installata_nasconde_il_qr, test_telecomando, test_prova_controller,
                test_power_a_fine_lavori,
-               test_notifiche, test_avvisi_giochi_gratis_e_port):
+               test_notifiche, test_avvisi_giochi_gratis_e_port, test_revoca_non_annullata_da_touch):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
             fn(Path(t))
     print("TUTTI I TEST OK")

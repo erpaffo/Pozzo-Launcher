@@ -125,6 +125,16 @@ all'eseguibile restano. Se la cartella dell'app non è scrivibile, l'app lo dice
 
 ![Impostazioni › Info: versione installata, controllo aggiornamenti, dati scaricati e novità](images/impostazioni-info.jpg)
 
+### Le novità dopo un aggiornamento
+
+Alla prima apertura dopo un aggiornamento compare la finestra **Ecco cosa c'è di nuovo**: l'elenco delle funzioni
+aggiunte, ognuna con una riga di spiegazione. Accanto a quelle che hanno un tutorial c'è **Mostra come**: il tutorial
+ti porta nel punto giusto dell'app (per esempio Impostazioni › Aspetto per i temi) e, passo dopo passo, evidenzia
+cosa toccare, come il tour guidato. Finito il tutorial torni all'elenco, con una spunta su quelli già visti.
+
+La finestra esce una volta per versione; la riapri quando vuoi con **✨ Rivedi le novità con i tutorial** in
+**Impostazioni › Sistema**, sopra il changelog. Al primo avvio in assoluto non compare (c'è già il tour guidato).
+
 ## Avvio dai sorgenti
 
 Per sviluppare o provare le ultime modifiche:

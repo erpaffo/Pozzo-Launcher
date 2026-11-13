@@ -255,6 +255,8 @@ async def request(client: httpx.AsyncClient, method: str, url: str, *, limiter: 
                 if r.status_code == 429:
                     limiter.slow_down()
                 limiter.report(False)
+            if attempt == retries - 1:
+                break  # ultimo tentativo: inutile aspettare se non si riprova
             ra = r.headers.get("Retry-After")
             await asyncio.sleep(min(float(ra), 600) if ra and ra.isdigit() else delay + random.random())
             delay *= 2

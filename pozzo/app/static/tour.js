@@ -74,16 +74,19 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
     return { done: o.done === true, off: o.off === true };
   };
 
-  /** Passi realmente mostrabili: senza sel sempre; con sel solo se un candidato esiste ed e' visibile nella finestra. */
+  /** Passi realmente mostrabili: senza sel sempre; con sel solo se un candidato esiste ed e' visibile nella finestra.
+   * wait: il passo resta anche senza bersaglio (scheda centrata finche' compare, es. dopo prep() che apre una pagina). */
   function resolve(steps, find, vp, A) {
     const out = [];
     for (const step of steps) {
       if (!step.sel) { out.push({ step, el: null }); continue; }
+      let hit = null;
       for (const sel of step.sel) {
         let el = null;
         try { el = find(sel); } catch { /* selettore non valido: prossimo */ }
-        if (el && A.inView(el.getBoundingClientRect(), vp)) { out.push({ step, el }); break; }
+        if (el && A.inView(el.getBoundingClientRect(), vp)) { hit = el; break; }
       }
+      if (hit || step.wait) out.push({ step, el: hit });
     }
     return out;
   }
@@ -91,11 +94,12 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
   function create(env) {
     const { win, doc, store, A } = env;
     let mem = null, ui = null, cur = null, shownId = null, opener = null, raf = 0, timer = 0, armed = false;
+    let steps = STEPS, custom = false; // custom: tutorial con passi propri (non tocca lo stato del tour di primo avvio)
 
     const read = () => mem || loadState(store);
     const write = (st) => { mem = st; try { store.setItem(KEY, JSON.stringify(st)); } catch { /* si perde solo la memoria */ } };
     const vp = () => ({ w: win.innerWidth, h: win.innerHeight });
-    const list = () => resolve(STEPS, (s) => doc.querySelector(s), vp(), A);
+    const list = () => resolve(steps, (s) => doc.querySelector(s), vp(), A);
     const safe = (f) => (...a) => { try { return f(...a); } catch (e) { try { console.warn("tour", e); } catch { /* niente console */ } } };
 
     function keys() {
@@ -126,12 +130,13 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       u.dots.setAttribute("aria-hidden", "true");
       u.back = btn("btn", t("b.common.back"), () => go(-1));
       u.next = btn("btn accent", t("b.common.next"), () => go(1));
-      u.skip = btn("btn", t("b.tour.skip"), () => end("done"));
+      u.skip = btn("btn", t(custom ? "b.common.close" : "b.tour.skip"), () => end("done"));
       u.off = btn("gs-tour-off", t("b.tour.off"), () => end("off"));
       const meta = el("div", "gs-tour-meta"); meta.append(u.count, u.dots);
       const r1 = el("div", "gs-tour-row"); r1.append(u.back, u.next, u.skip);
       const r2 = el("div", "gs-tour-row end"); r2.append(u.off);
-      u.card.append(u.title, u.text, meta, r1, r2);
+      u.card.append(u.title, u.text, meta, r1);
+      if (!custom) u.card.append(r2); // «non mostrare piu' il tour» ha senso solo per il tour di primo avvio
       u.root.append(u.veil, u.ring, u.card, u.live);
       const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
       for (const t of ["click", "mousedown", "contextmenu", "wheel", "touchmove", "dblclick"]) u.veil.addEventListener(t, stop, { passive: false });
@@ -144,14 +149,15 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       if (!shown.length) return end(null);
       let i = shown.findIndex((s) => s.step.id === cur);
       if (i < 0) { // il bersaglio e' sparito: il prossimo passo mostrabile, altrimenti l'ultimo prima
-        const pos = STEPS.findIndex((s) => s.id === cur);
-        i = shown.findIndex((s) => STEPS.indexOf(s.step) > pos);
+        const pos = steps.findIndex((s) => s.id === cur);
+        i = shown.findIndex((s) => steps.indexOf(s.step) > pos);
         if (i < 0) i = shown.length - 1;
         cur = shown[i].step.id;
       }
       const { step, el } = shown[i], n = shown.length;
       if (shownId !== cur) {
         shownId = cur;
+        if (step.prep) safe(step.prep)(); // porta l'utente dove serve (es. una pagina delle impostazioni); il bersaglio arriva al giro dopo
         ui.title.textContent = step.title;
         ui.text.textContent = step.text(keys());
         ui.count.textContent = t("b.common.stepOf", {n: i + 1, tot: n});
@@ -215,7 +221,9 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
 
     function end(kind) {
       if (!ui) return;
-      if (kind) { const st = { ...read() }; if (kind === "off") st.off = true; else st.done = true; write(st); }
+      if (kind && !custom) { const st = { ...read() }; if (kind === "off") st.off = true; else st.done = true; write(st); }
+      const wasCustom = custom;
+      steps = STEPS; custom = false;
       doc.removeEventListener("keydown", onKey, true);
       win.removeEventListener("resize", schedule);
       win.removeEventListener("scroll", schedule, true);
@@ -224,20 +232,23 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       ui.root.remove(); ui = null; cur = shownId = null;
       if (opener && opener.isConnected !== false && opener.focus) opener.focus();
       opener = null;
-      win.dispatchEvent(new CustomEvent("pozzo:tour-end", { detail: { kind: kind || "stop" } }));
-      if (kind === "off") env.toast?.(t("b.tour.toast.off"));
+      win.dispatchEvent(new CustomEvent("pozzo:tour-end", { detail: { kind: kind || "stop", custom: wasCustom } }));
+      if (kind === "off" && !wasCustom) env.toast?.(t("b.tour.toast.off"));
     }
 
+    /** opts.steps: tutorial con passi propri ({id, title, text(k), sel?, wait?, prep?}); sempre manuale. */
     function start(opts = {}) {
       if (ui) return false;
       try {
-        if (!opts.manual) {
+        const own = Array.isArray(opts.steps) && opts.steps.length > 0;
+        if (!opts.manual && !own) {
           const st = read();
           if (st.done || st.off || doc.querySelector(".onb")) return false;
         }
         if (env.desktop && !env.desktop()) return false;
+        steps = own ? opts.steps : STEPS; custom = own;
         const shown = list();
-        if (!shown.length) return false;
+        if (!shown.length) { steps = STEPS; custom = false; return false; }
         opener = doc.activeElement;
         ui = build();
         cur = shown[0].step.id; shownId = null;
@@ -253,6 +264,7 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       } catch (e) {
         try { console.warn("tour", e); } catch { /* niente console */ }
         if (ui) end(null);
+        steps = STEPS; custom = false;
         return false;
       }
     }

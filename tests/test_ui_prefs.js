@@ -34,7 +34,8 @@ const GOOD = { bg: "#0f1115", "bg-2": "#151821", "bg-3": "#1c2030", panel: "#171
 {
   const { U, root } = world();
   assert.deepEqual([...U.ZOOMS], [90, 95, 100, 105, 110, 115, 120, 125]);
-  assert.deepEqual({ ...U.prefs(null) }, { zoom: 100, density: "comfortable", idle: 3, coverAccent: true });
+  assert.deepEqual({ ...U.prefs(null) }, { zoom: 100, density: "comfortable", detailLayout: "cockpit", idle: 3, coverAccent: true });
+  assert.equal(U.prefs({ detailLayout: "boh" }).detailLayout, "cockpit", "layout sconosciuto: predefinito");
   assert.equal(U.prefs({ zoom: 87 }).zoom, 100);
   assert.equal(U.prefs({ zoom: 130 }).zoom, 100);
   assert.equal(U.prefs({ density: "tiny" }).density, "comfortable");

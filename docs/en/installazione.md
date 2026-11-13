@@ -104,6 +104,16 @@ Updating the portable version **does not delete anything**: `config.toml`, cache
 
 ![Settings › About: installed version, update check, downloaded data, and changelog](../images/impostazioni-info.jpg)
 
+### What's new after an update
+
+The first time you open the app after an update, the **Here's what's new** window appears: the list of new features,
+each with a one-line explanation. Features with a tutorial have a **Show me how** button: the tutorial takes you to the
+right place in the app (for example Settings › Appearance for themes) and highlights, step by step, what to click, like
+the guided tour. When the tutorial ends you're back on the list, with a check mark on the ones you've seen.
+
+The window appears once per version; reopen it any time with **✨ See what's new, with tutorials** in
+**Settings › System**, above the changelog. It doesn't appear on the very first launch (the guided tour does).
+
 ## Running from source
 
 For development or testing the latest changes:

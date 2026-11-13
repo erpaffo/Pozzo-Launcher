@@ -109,6 +109,7 @@ def _asset_version() -> str:
 
     digest = hashlib.sha256()
     assets = [*STATIC.glob("*.css"), *STATIC.glob("*.js")]
+    assets.extend(path for path in STATIC.joinpath("js").rglob("*.js") if path.is_file())
     assets.extend(path for path in STATIC.joinpath("experiences").rglob("*")
                   if path.is_file() and path.suffix in (".css", ".js"))
     assets.extend(path for path in STATIC.joinpath("settings").rglob("*.html") if path.is_file())

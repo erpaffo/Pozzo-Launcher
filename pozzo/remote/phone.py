@@ -53,8 +53,8 @@ ALLOWED = [
 PLAYER_COLORS = ["#4aa3ff", "#ff5f5f", "#3ddc84", "#f5c518"]  # giocatore 1..4 (come i LED dei controller)
 PUBLIC = [("GET", r"/m/?"), ("GET", r"/m/static/[\w.-]+"), ("GET", r"/m/manifest\.webmanifest"), ("POST", r"/m/api/pair"),
           ("GET", r"/m/api/hello"), ("POST", r"/api/sync/pair"), ("GET", r"/m/sw\.js"), ("GET", r"/m/ca\.crt")]
-# un altro PC abbinato per la sincronizzazione (kind "pc") raggiunge solo lo scambio dei dati, nient'altro
-PC_ALLOWED = [("POST", r"/api/sync/exchange")]
+# un altro PC abbinato per la sincronizzazione (kind "pc") raggiunge lo scambio dei dati e i file di salvataggio dei giochi scelti, nient'altro
+PC_ALLOWED = [("POST", r"/api/sync/exchange"), ("POST", r"/api/sync/saves/file")]
 # l'ospite a distanza (kind "guest") ha solo il controller: niente libreria, mouse o scambio dei posti
 GUEST_ALLOWED = [("GET", r"/m/api/me"), ("POST", r"/m/api/logout"), ("GET", r"/api/running"), ("WS", r"/m/ws"),
                  ("POST", r"/g/api/pin")]
@@ -200,6 +200,7 @@ class PhoneHub:
         self.dsu = None
         self.dsu_error = ""
         self.lock = threading.Lock()
+        self.devlock = threading.RLock()  # lista dispositivi: lettura e salvataggio in un colpo solo (revoca, abbinamento, ultimo accesso)
         self.slots: dict[int, dict] = {}  # slot -> {"cid", "device", "pad", "motion", "name", "rumble", "mouse"}
         self.rev = 0  # cambia a ogni collegamento, scollegamento o scambio: i telefoni aggiornano la sala giocatori
         self.mic_busy = False
@@ -221,9 +222,10 @@ class PhoneHub:
                 **(self.cfg.app.get("phone") or {})}
 
     def _save(self, **kw):
-        c = {**self.conf, **kw}
-        self.cfg.app["phone"] = c
-        self.save_settings(self.cfg, app={"phone": c})
+        with self.devlock:  # copia tutta la conf: senza lock un salvataggio qualsiasi riporterebbe indietro i dispositivi
+            c = {**self.conf, **kw}
+            self.cfg.app["phone"] = c
+            self.save_settings(self.cfg, app={"phone": c})
 
     def devices(self) -> list[dict]:
         return [{k: v for k, v in d.items() if k != "token"} for d in self.conf["devices"]]
@@ -242,11 +244,12 @@ class PhoneHub:
         return None
 
     def _touch(self, did: str):
-        devs = self.conf["devices"]
-        for d in devs:
-            if d["id"] == did:
-                d["last"] = time.time()
-        self._save(devices=devs)
+        with self.devlock:
+            devs = self.conf["devices"]
+            for d in devs:
+                if d["id"] == did:
+                    d["last"] = time.time()
+            self._save(devices=devs)
 
     def new_code(self) -> str:
         with self.lock:
@@ -267,7 +270,8 @@ class PhoneHub:
         token = secrets.token_urlsafe(32)
         dev = {"id": secrets.token_hex(6), "name": (name or "Telefono").strip()[:40], "token": _sha(token),
                "created": time.time(), "last": time.time(), "kind": kind}
-        self._save(devices=[*self.conf["devices"], dev])
+        with self.devlock:
+            self._save(devices=[*self.conf["devices"], dev])
         return token
 
     # ------------------------------------------------------------ amico a distanza
@@ -292,7 +296,8 @@ class PhoneHub:
         token = secrets.token_urlsafe(32)
         dev = {"id": secrets.token_hex(6), "name": (name or "Ospite").strip()[:40], "token": _sha(token),
                "created": time.time(), "last": time.time(), "kind": "guest"}
-        self._save(devices=[*self.conf["devices"], dev])
+        with self.devlock:
+            self._save(devices=[*self.conf["devices"], dev])
         return token
 
     def base_url(self) -> str:
@@ -314,7 +319,8 @@ class PhoneHub:
                 "link": self.invite_link()}
 
     def revoke(self, did: str):
-        self._save(devices=[d for d in self.conf["devices"] if d["id"] != did])
+        with self.devlock:
+            self._save(devices=[d for d in self.conf["devices"] if d["id"] != did])
         with self.lock:
             for s, c in list(self.slots.items()):
                 if c["device"] == did:

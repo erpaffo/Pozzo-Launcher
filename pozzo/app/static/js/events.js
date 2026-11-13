@@ -354,7 +354,9 @@ function bind() {
   // la nota si salva quando si esce dal campo (change), senza ridisegnare la scheda
   $("#detail").addEventListener("change", async (e) => {
     const d = S.detail;
-    if (e.target.id !== "d-note" || !d) return;
+    if (!d) return;
+    if (e.target.id === "d-status-select") { setFlag("status", e.target.value); return; }
+    if (e.target.id !== "d-note") return;
     const v = e.target.value.trim();
     try { await api(`/api/game/${d.id}/flag`, { body: { field: "note", value: v } }); } catch (err) { return toast(err.message, true); }
     d.user.note = v;

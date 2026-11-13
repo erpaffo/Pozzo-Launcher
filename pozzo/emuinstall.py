@@ -177,13 +177,15 @@ def rollback(emu_id: str, cfg) -> str:
 
 # Dati dell'utente: voci dentro la cartella dell'emulatore (modalita' portatile) e cartella in %APPDATA%.
 _USER_ENTRIES = {"portable", "portable.txt", "portable.ini", "user", "config", "saves", "sstates", "states",
-                 "memcards", "dev_hdd0", "cache", "shaders", "gameprofiles", "games", "sys", "bis", "profiles"}
+                 "memcards", "dev_hdd0", "cache", "shaders", "gameprofiles", "games", "sys", "bis", "profiles",
+                 "memstick", "savestates", "system", "bios", "inis"}
 APPDATA_DIRS = {"ryujinx": "Ryujinx", "eden": "eden", "eglantine": "eden", "cemu": "Cemu", "dolphin": "Dolphin Emulator",
                 "duckstation": "DuckStation", "pcsx2": "PCSX2", "ppsspp": "PPSSPP", "melonds": "melonDS"}
 # file/cartella che fa leggere i dati accanto all'eseguibile: (nome, e' cartella)
 PORTABLE = {"dolphin": ("portable.txt", False), "duckstation": ("portable.txt", False), "pcsx2": ("portable.ini", False),
             "ryujinx": ("portable", True), "cemu": ("portable", True), "eden": ("user", True), "eglantine": ("user", True),
             "ppsspp": ("memstick", True), "melonds": ("portable.txt", False)}
+_USER_ENTRIES |= {n.lower() for n, _ in PORTABLE.values()}  # i marcatori della modalita' portatile sono dati dell'utente
 
 
 def uninstall(cfg, emu_id: str, keep_data: bool = True) -> None:
@@ -206,9 +208,13 @@ def uninstall(cfg, emu_id: str, keep_data: bool = True) -> None:
         shutil.rmtree(dest, ignore_errors=True)
         if APPDATA_DIRS.get(emu_id):
             appdata = os.environ.get("APPDATA")
-            if appdata:
+            # cartella condivisa con un altro emulatore installato (eden/eglantine): resta
+            shared = any(APPDATA_DIRS.get(o) == APPDATA_DIRS[emu_id] for o in installed(cfg) if o != emu_id)
+            if appdata and not shared:
                 shutil.rmtree(Path(appdata) / APPDATA_DIRS[emu_id], ignore_errors=True)
-    C.save_settings(cfg, emulators={emu_id: None}, app={"emu_installed": {emu_id: None}})  # None = rimuovi
+    # emu_installed si riscrive intero (save_settings non unisce i dict annidati): gli altri emulatori restano
+    rest = {k: v for k, v in (cfg.app.get("emu_installed") or {}).items() if k != emu_id}
+    C.save_settings(cfg, emulators={emu_id: None}, app={"emu_installed": rest or None})  # None = rimuovi
     _vsave(cfg, lambda d: d.setdefault("installed", {}).pop(emu_id, None))
 
 

@@ -141,6 +141,7 @@ ALLOWLIST = {
     ('pozzo/app/static/js/remote.js', 'x.level'): NUM,
     ('pozzo/app/static/js/settings.js', 'badge'): HTML,
     ('pozzo/app/static/js/settings.js', 'bars'): HTML,
+    ('pozzo/app/static/js/settings.js', 'preview'): HTML,  # anteprime dei layout della scheda: markup fisso nel codice
     ('pozzo/app/static/js/settings.js', 'ico[x.level]'): NUM,
     ('pozzo/app/static/js/settings.js', 'l'): NUM,
     ('pozzo/app/static/js/settings.js', 'lbl'): NUM,
