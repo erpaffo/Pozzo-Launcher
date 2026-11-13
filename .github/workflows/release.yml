@@ -27,7 +27,7 @@ jobs:
     outputs:
       sha: ${{ steps.fix.outputs.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Allinea __version__ al tag
         id: fix
@@ -65,11 +65,11 @@ jobs:
           - { os: macos-latest, name: macos-arm64 }
           - { os: ubuntu-22.04, name: linux-x64 }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.sha }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -103,11 +103,11 @@ jobs:
           - { name: macos-arm64, os: macos-latest }
           - { name: linux-x64, os: ubuntu-22.04 }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.sha }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -264,7 +264,7 @@ jobs:
     needs: [version, test, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.version.outputs.sha }}
 
@@ -278,12 +278,12 @@ jobs:
           skip-decompress: true
 
       # manuale in PDF tra i file della release (stesso testo del sito, vedi docs.yml)
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Cache pacchetti TeX e apt
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /var/cache/apt/archives
           key: ${{ runner.os }}-apt-texlive-v1
@@ -330,7 +330,7 @@ jobs:
       - name: Checksum
         run: cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: release/*
           body_path: notes.md
@@ -343,7 +343,7 @@ jobs:
     if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         continue-on-error: true  # nessun asset Windows: niente manifest, lo dice lo step sotto
@@ -402,7 +402,7 @@ jobs:
     if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Firma del manifest
         shell: bash
