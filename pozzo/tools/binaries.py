@@ -36,8 +36,13 @@ def tools_dir(cfg) -> Path:
     return C.settings_path(cfg).parent / "tools"
 
 
+def _win() -> bool:
+    # funzione a parte: i test la simulano senza toccare os.name (pathlib sceglierebbe WindowsPath su macOS/Linux)
+    return os.name == "nt"
+
+
 def _exe(name: str) -> str:
-    return name + (".exe" if os.name == "nt" else "")
+    return name + (".exe" if _win() else "")
 
 
 def path(cfg, name: str) -> Path | None:
@@ -118,7 +123,7 @@ def ensure(cfg, name: str, progress=lambda d: None, cancel: threading.Event | No
     src = SOURCES.get(name)
     if not src:
         raise RuntimeError(f"{name} non e' installato e non posso scaricarlo da qui")
-    if os.name != "nt":
+    if not _win():
         raise RuntimeError(f"{name} non e' installato: installalo col gestore pacchetti del sistema (serve nel PATH)")
     import httpx
     with _LOCK:  # due lavori non scaricano lo stesso programma insieme

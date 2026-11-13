@@ -1,0 +1,6 @@
+{
+ "k.lib.imp.fmtSrm": "Steam ROM Manager (shortcuts.vdf o userConfigurations.json)",
+ "k.lib.imp.fmtRetroarch": "RetroArch (playlist .lpl o cartella playlists)",
+ "k.lib.imp.preview": "Anteprima: {total} giochi letti. Nuovi {new}, gia' presenti {present}, ignorati {ignored}; preferiti da aggiungere {favorites}, tempi da aggiornare {playtime}, raccolte nuove {collections}.",
+ "k.lib.imp.confirm": "Procedere con l'importazione? Non verra' copiato ne' cancellato nulla."
+}

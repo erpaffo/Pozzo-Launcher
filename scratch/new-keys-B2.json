@@ -1,0 +1,21 @@
+{
+ "f.match.button": "Correggi match",
+ "f.match.title": "Scegli a mano i dati giusti di questo gioco",
+ "f.match.loading": "Caricamento…",
+ "f.match.current": "Correzione attiva: {title} (da {source}).",
+ "f.match.undo": "Annulla correzione",
+ "f.match.auto": "Match automatico (riconosciuto per: {by}).",
+ "f.match.help": "Cerca il titolo giusto: sceglierlo sostituisce i dati trovati dal riconoscimento automatico e resta anche dopo le prossime scansioni.",
+ "f.match.query": "Titolo da cercare",
+ "f.match.search": "Cerca",
+ "f.match.title_only": "Usa solo questo titolo",
+ "f.match.title_only_tip": "Salva questo titolo e cerca i dati con quel nome",
+ "f.match.use": "Usa questo",
+ "f.match.searching": "Ricerca nelle fonti…",
+ "f.match.none": "Nessun risultato: prova con un altro titolo.",
+ "f.match.saved": "Correzione salvata: aggiorno la libreria.",
+ "f.match.undone": "Correzione annullata: ricerco i dati.",
+ "s.match.notRom": "La correzione del match vale solo per i giochi da ROM.",
+ "s.match.queryEmpty": "Scrivi un titolo.",
+ "s.match.expired": "I risultati sono scaduti: cerca di nuovo."
+}

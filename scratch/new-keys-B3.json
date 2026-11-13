@@ -1,0 +1,22 @@
+{
+ "j.dat.backup.desc2": "Preferiti, tempi di gioco e diario delle sessioni, collezioni e liste, wishlist, profili di avvio, giochi aggiunti a mano, salvataggi del browser, profili utente, impostazioni (emulatori, cartelle) e temi personali. Metadati e immagini non servono: si riscaricano. Prima di ripristinare vedi cosa verrà sovrascritto.",
+ "j.dat.backup.auto": "Copia automatica ogni settimana (all'avvio)",
+ "j.dat.backup.keep": "Copie da tenere",
+ "j.dat.backup.secrets": "Includi credenziali (chiavi API, token)",
+ "j.dat.backup.secretsHint": "Senza credenziali la copia si può condividere o tenere nel cloud; al ripristino quelle attuali restano al loro posto.",
+ "e.backup.previewTitle": "Anteprima del ripristino di «{name}» ({date}). Verrà fatto questo:",
+ "e.backup.previewOverwrite": "sovrascritto",
+ "e.backup.previewCreate": "creato",
+ "e.backup.previewNoSecrets": "Questa copia non contiene credenziali: quelle attuali restano al loro posto.",
+ "e.backup.previewAsk": "Continuare? I dati attuali vengono prima salvati in una nuova copia, quindi l'operazione si può annullare.",
+ "e.backup.t.games": "Giochi con dati personali",
+ "e.backup.t.sessions": "Sessioni di gioco (diario)",
+ "e.backup.t.collections": "Collezioni",
+ "e.backup.t.wishlist": "Lista dei desideri",
+ "e.backup.t.launchProfiles": "Profili di avvio",
+ "e.backup.t.manual": "Giochi aggiunti a mano",
+ "e.backup.t.webSaves": "Salvataggi del browser",
+ "e.backup.t.screens": "Schermate registrate",
+ "s.backups.confirm_needed": "Conferma il ripristino dopo aver visto l'anteprima",
+ "s.backups.bad_keep": "Il numero di copie da tenere deve essere un intero tra 1 e 50"
+}

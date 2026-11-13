@@ -117,7 +117,7 @@ try:
             assert url.startswith("https://")
             Path(dest).write_bytes(data)
             progress(len(data), len(data))
-        with mock.patch.object(binaries.os, "name", "nt"), mock.patch.object(binaries, "_latest", return_value=asset), \
+        with mock.patch.object(binaries, "_win", return_value=True), mock.patch.object(binaries, "_latest", return_value=asset), \
                 mock.patch.object(binaries.PT, "_download", dl), mock.patch.object(binaries.PT, "_token", return_value=""):
             prog = []
             p = binaries.ensure(cfg, "redumper", prog.append)
