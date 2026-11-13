@@ -317,6 +317,9 @@ class Stage:
             self._spawn(self._run_chunk(chunk))
         while self.inflight:
             await asyncio.gather(*list(self.inflight), return_exceptions=True)
+            # i finiti si tolgono qui, non solo dal done-callback: sotto carico e' capitato che il callback non arrivasse
+            # e il ciclo girava all'infinito su task gia' conclusi (CPU al 100%, scraping che non finisce mai)
+            self.inflight.difference_update([t for t in self.inflight if t.done()])
         self.qout.put_nowait(END)
         self.cache.commit()
         if self.stats:
