@@ -292,17 +292,25 @@ def build_router(ctx) -> APIRouter:
                 if _REMOTE_DOWN.get(host, 0) > time.time():
                     continue
                 try:
-                    r = remote_http.get(candidate)
+                    # a pezzi e con un tetto: un indirizzo (anche scelto dall'utente) puo' rispondere con un file enorme
+                    body, too_big = bytearray(), False
+                    with remote_http.stream("GET", candidate) as r:
+                        if r.status_code == 200:
+                            for chunk in r.iter_bytes(1 << 16):
+                                body += chunk
+                                if len(body) > MAX_UPLOAD:
+                                    too_big = True
+                                    break
                 except httpx.HTTPError as e:
                     if isinstance(e, (httpx.ConnectTimeout, httpx.ConnectError)):
                         _REMOTE_DOWN[host] = time.time() + 300
                     continue
-            ext = sniff(r.content[:16]) if r.status_code == 200 else None
+            ext = sniff(bytes(body[:16])) if r.status_code == 200 and not too_big else None
             if not ext:
                 continue
             folder.mkdir(parents=True, exist_ok=True)
             dest = folder / f"{h}.{ext}"
-            dest.write_bytes(r.content)
+            dest.write_bytes(body)
             if ext in ("png", "jpg", "bmp"):  # non video/animate; se non conviene o fallisce resta l'originale
                 try:
                     from ... import imgopt
