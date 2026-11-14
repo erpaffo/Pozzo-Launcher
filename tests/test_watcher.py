@@ -254,3 +254,29 @@ def test_api_stato_e_interruttore(client):
     assert off["enabled"] is False
     assert client.get("/api/library/watch").json()["enabled"] is False
     assert client.post("/api/app/watch-roms", json={"enabled": True}).json()["enabled"] is True
+
+
+def test_cartelle_console_in_cache(env, monkeypatch):
+    from pozzo.library import watcher as W
+    n = {"walk": 0}
+    real = W.find_platform_dirs
+
+    def counted(cfg):
+        n["walk"] += 1
+        return real(cfg)
+    monkeypatch.setattr(W, "find_platform_dirs", counted)
+    w, calls, clk, _ = mk(env)
+    w.tick()
+    settle(w, clk, 2)
+    assert n["walk"] == 1  # giri ordinari: niente nuova scansione dell'albero
+    (env.roms / "gba" / "nuovo.gba").write_bytes(b"y" * 10)  # ROM in una console gia' nota
+    settle(w, clk, 3)
+    assert calls == [("gba", ["nuovo.gba"], False)] and n["walk"] == 1
+    (env.roms / "psx").mkdir()  # console nuova: cambia il mtime della radice
+    w.tick()
+    assert n["walk"] == 2 and str(env.roms / "psx") in w._folders
+    (env.roms / "altro" / "n64").mkdir(parents=True)  # annidata: la vede la rete di sicurezza
+    w.tick()
+    for _ in range(W.FULL_EVERY):
+        w.tick()
+    assert str(env.roms / "altro" / "n64") in w._folders

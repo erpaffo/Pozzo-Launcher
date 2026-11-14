@@ -22,6 +22,7 @@ from pathlib import Path
 
 from .. import platforms as P
 from .. import switchfiles as SF
+from ..config import rom_roots
 from ..scanner import LIGHT_MAX, SKIP_DIRS, _ignored, find_platform_dirs
 
 DEFAULT_POLL = 15.0       # secondi tra due passaggi
@@ -161,6 +162,8 @@ class RomWatcher:
         self._folders: dict[str, _Folder] = {}
         self._based = False
         self._passes = 0
+        self._dirs: list = []  # cartelle console in cache: il giro completo sveglia dischi e NAS
+        self._dirs_sig = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()  # protegge solo i campi letti da status()
@@ -233,11 +236,11 @@ class RomWatcher:
         try:
             if self.busy():
                 return 0  # scansione/build in corso: lo stato in sospeso resta com'e'
-            dirs = find_platform_dirs(self.cfg_fn())
+            self._passes += 1
+            dirs = self._platform_dirs(self._passes % FULL_EVERY == 0)
         except OSError:
             return 0  # nessuna radice raggiungibile: non e' "tutto cancellato", si riprova
         low = bool(self.low())
-        self._passes += 1
         # shortcut: i mtime delle cartelle bastano a vedere un file nuovo, ma su condivisioni di rete / exFAT non
         # sempre il padre cambia: ogni FULL_EVERY passaggi si rilegge tutto comunque. Da rivedere se serve di piu'.
         full = self._passes % FULL_EVERY == 0
@@ -261,6 +264,17 @@ class RomWatcher:
             self._last_scan = time.time()
             self._pending = [k for k, f in self._folders.items() if f.since is not None]
         return done
+
+    def _platform_dirs(self, full: bool) -> list:
+        """Cartelle console: si rilegge l'albero solo se cambiano radici/mtime/impostazioni o ogni FULL_EVERY passaggi
+        (rete di sicurezza per una console nuova in una sottocartella non riconosciuta, che non cambia il mtime della radice)."""
+        cfg = self.cfg_fn()
+        roots = [r for r in rom_roots(cfg) if r.exists()]
+        sig = (tuple((str(r), r.stat().st_mtime_ns) for r in roots), tuple(sorted(dict(cfg.platform_folders).items())))
+        if full or sig != self._dirs_sig or not roots:  # senza radici find_platform_dirs solleva FileNotFoundError
+            self._dirs = find_platform_dirs(cfg)
+            self._dirs_sig = sig
+        return self._dirs
 
     def _baseline(self, f: _Folder) -> None:
         f.at_ns = time.time_ns()
