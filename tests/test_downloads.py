@@ -839,3 +839,24 @@ async def test_ripresa_non_tiene_aperta_la_risposta_del_controllo(server, tmp):
         job.cancel()
         with pytest.raises(asyncio.CancelledError):
             await job
+
+
+def test_aggiunta_di_piu_link_tutto_o_niente(tmp, monkeypatch):
+    """Un link offline nel lotto non lascia in coda quelli prima: rinviando la lista corretta non si scarica due volte."""
+    from fastapi.testclient import TestClient
+    from pozzo import config
+    from pozzo.app.server import create_app
+    from pozzo.downloads import linkcheck
+    monkeypatch.setattr(linkcheck, "check", lambda u: {"status": "offline" if "/off" in u else "online"})
+    (tmp / "roms").mkdir()
+    (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n[scrape]\nsources = []\n', encoding="utf-8")
+    cfg = config.load(tmp / "config.toml")
+    cfg.app["downloads"] = {"max_active": 0, "dir": str(tmp / "out"), "check_links": True}
+    with TestClient(create_app(cfg)) as c:
+        links = [f"http://127.0.0.1:9/{n}" for n in ("a", "b", "off", "d")]
+        r = c.post("/api/downloads", json={"links": links})
+        assert r.status_code == 400 and "/off" in r.json()["detail"]
+        assert c.get("/api/downloads").json()["tasks"] == []
+        r = c.post("/api/downloads", json={"links": links[:2] + links[3:]})
+        assert r.status_code == 200 and len(r.json()["tasks"]) == 3
+        assert len(c.get("/api/downloads").json()["tasks"]) == 3

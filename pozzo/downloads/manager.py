@@ -572,6 +572,7 @@ class Manager:
     # ------------------------------------------------------------ comandi
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
+        dry, checked = opts.pop("dry_run", False), opts.pop("checked", False)  # lotto di link: prima si valida tutto, poi si aggiunge
         sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None), self.now())  # «Avvia alle», facoltativo
         kind = "steamcmd" if opts.pop("steamcmd", False) else "cli" if CLI.is_cli(source) else "torrent" if TOR.is_torrent(source) else "http"
         if kind == "cli":
@@ -592,8 +593,10 @@ class Manager:
         if "password" in opts and not (isinstance(opts["password"], str) and 0 < len(opts["password"]) <= 128):
             raise ValueError("Password non valida (testo di al massimo 128 caratteri)")
         s, cat = self._raw(), str(opts.pop("category", "") or "").strip()[:64]
-        if s["check_links"] and kind == "http" and self._check(source)["status"] == "offline":
+        if s["check_links"] and not checked and kind == "http" and self._check(source)["status"] == "offline":
             raise ValueError(f"Link offline: {source}")
+        if dry:
+            return None
         dest =Path(save_path or self._cat(cat, s).get("folder") or s["dir"]).expanduser()  # un percorso esplicito vince sulla categoria
         _folder(dest)
         t = DownloadTask(source=source, save_path=str(dest), type=kind, name=opts.pop("name", ""), priority=_prio(opts.pop("priority", 0)),

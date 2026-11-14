@@ -95,17 +95,21 @@ def build_router(ctx) -> APIRouter:
         if not links:
             raise HTTPException(400, I.tr("s.downloads.no_link"))
         out = []
-        for u in links:
-            try:
-                # password dell'archivio (add() ne controlla tipo e lunghezza); sha256/mirrors solo se il chiamante (catalogo, DAT, store) li conosce: add() li valida
-                extra = {k: body[k] for k in ("sha256", "mirrors", "password") if body.get(k)}
-                if len(links) > 1:
-                    extra.pop("sha256", None)  # un hash vale per un file solo
-                out.append(mgr.add(u, body.get("save_path") or "", priority=body.get("priority") or 0,
-                                   category=body.get("category") or "", tags=body.get("tags"), start_at=body.get("start_at"),
-                                   days=body.get("days"), **extra).view())
-            except ValueError as e:
-                raise HTTPException(400, str(e))
+        # password dell'archivio (add() ne controlla tipo e lunghezza); sha256/mirrors solo se il chiamante (catalogo, DAT, store) li conosce: add() li valida
+        extra = {k: body[k] for k in ("sha256", "mirrors", "password") if body.get(k)}
+        many = len(links) > 1
+        if many:
+            extra.pop("sha256", None)  # un hash vale per un file solo
+        opts = dict(priority=body.get("priority") or 0, category=body.get("category") or "", tags=body.get("tags"),
+                    start_at=body.get("start_at"), days=body.get("days"), **extra)
+        try:
+            # tutto o niente: un link sbagliato non lascia in coda quelli prima (la lista corretta si reinvia intera, senza doppioni)
+            for u in links if many else []:
+                mgr.add(u, body.get("save_path") or "", dry_run=True, **opts)
+            for u in links:
+                out.append(mgr.add(u, body.get("save_path") or "", checked=many, **opts).view())
+        except ValueError as e:
+            raise HTTPException(400, str(e))
         return {"ok": True, "tasks": out}
 
     @router.post("/api/downloads/check")
