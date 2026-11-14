@@ -950,7 +950,8 @@ def build(cfg, log=print, progress=None) -> dict:
         db.executemany("INSERT INTO meta VALUES(?,?)", [("built_at", str(time.time())), ("games", str(len(rows)))])
         db.commit()
         db.close()
-        os.replace(tmp, dest)
+        from ..config import _replace
+        _replace(tmp, dest)  # su Windows un lettore in quell'istante fa fallire os.replace: si riprova
         stats = {"games": len(rows), "files": len(games), "collections": len(colls),
                  "groups": len(primary) + sum(e["primary"] for e in pc), "pc": len(pc), "online": len(net),
                  "with_franchise": sum(1 for k in merged if franchises.get(k)), "seconds": round(time.time() - t0, 1)}
