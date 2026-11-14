@@ -11,15 +11,20 @@ Tre modi per averle nell'app (tutte copiate in <cache>/screens, gli originali no
 
 from __future__ import annotations
 
+import ctypes
+import logging
 import os
 import re
 import shutil
 import sqlite3
+import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
 
+log = logging.getLogger(__name__)
 IMG_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 VIDEO_EXT = {".mp4", ".webm", ".mkv"}  # clip: non copiati, si registra il file originale
 SCHEMA = """
@@ -138,8 +143,35 @@ class Shots:
 
 
 # ---------------------------------------------------------------- cattura della finestra del gioco
-def capture_foreground():
-    """Immagine della finestra in primo piano (Windows); altrove tutto lo schermo."""
+def _mac_capture(pid: int | None = None, runner=subprocess.run):
+    """screencapture della finestra del gioco (o di quella in primo piano), altrimenti tutto lo schermo."""
+    from PIL import Image
+
+    from .. import macos
+    wid = macos.window_id_for_pid(pid or macos.frontmost_pid() or 0)
+    fd, tmp = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    try:
+        # -o: niente ombra; -x: niente suono (il nostro lo fa beep())
+        for argv in ([["screencapture", "-x", "-o", "-l", str(wid), tmp]] if wid else []) + [["screencapture", "-x", tmp]]:
+            runner(argv, capture_output=True, timeout=15, check=False)
+            if os.path.getsize(tmp) > 0:
+                with Image.open(tmp) as im:
+                    im.load()
+                    return im.copy()
+        # file vuoto: manca il permesso Registrazione schermo
+        raise OSError("screencapture non ha prodotto l'immagine (permesso Registrazione schermo?)")
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def capture_foreground(pid: int | None = None):
+    """Immagine della finestra in primo piano (Windows) o del gioco (macOS); su Linux tutto lo schermo."""
+    if sys.platform == "darwin":
+        return _mac_capture(pid)
     from PIL import ImageGrab
     if sys.platform == "win32":
         import ctypes
@@ -174,9 +206,15 @@ def beep():
             winsound.MessageBeep(winsound.MB_OK)
         except Exception:
             pass
+    elif sys.platform == "darwin":
+        try:  # in background: non deve rallentare il gioco
+            subprocess.Popen(["afplay", "/System/Library/Sounds/Pop.aiff"],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
 
 
-# ---------------------------------------------------------------- scorciatoia da tastiera (Windows)
+# ---------------------------------------------------------------- scorciatoia da tastiera (Windows, macOS)
 _MODS = {"alt": 0x1, "ctrl": 0x2, "control": 0x2, "shift": 0x4, "win": 0x8}
 
 
@@ -202,20 +240,131 @@ def parse_hotkey(s: str) -> tuple[int, int] | None:
     return mods | 0x4000, vk  # 0x4000 = MOD_NOREPEAT
 
 
+# macOS: codice tasto virtuale Windows -> kVK (tastiera ANSI); Stamp/Pausa/Ins su F13/F15/Help come le tastiere Apple
+_MAC_KEYS = {
+    **dict(zip(b"ASDFHGZXCV", range(10))), **dict(zip(b"BQWERYT", range(11, 18))),
+    ord("1"): 0x12, ord("2"): 0x13, ord("3"): 0x14, ord("4"): 0x15, ord("6"): 0x16, ord("5"): 0x17,
+    ord("9"): 0x19, ord("7"): 0x1A, ord("8"): 0x1C, ord("0"): 0x1D, ord("O"): 0x1F, ord("U"): 0x20,
+    ord("I"): 0x22, ord("P"): 0x23, ord("L"): 0x25, ord("J"): 0x26, ord("K"): 0x28, ord("N"): 0x2D, ord("M"): 0x2E,
+    **dict(zip(range(0x70, 0x84), (0x7A, 0x78, 0x63, 0x76, 0x60, 0x61, 0x62, 0x64, 0x65, 0x6D, 0x67, 0x6F,
+                                   0x69, 0x6B, 0x71, 0x6A, 0x40, 0x4F, 0x50, 0x5A))),  # F1-F20
+    0x2C: 0x69, 0x13: 0x71, 0x2D: 0x72, 0x24: 0x73, 0x23: 0x77,
+}
+# MOD_ALT/CONTROL/SHIFT/WIN -> maschere CGEventFlags (Alt, Ctrl, Shift, Cmd)
+_MAC_MODS = ((0x1, 0x80000), (0x2, 0x40000), (0x4, 0x20000), (0x8, 0x100000))
+_MAC_MOD_MASK = 0x80000 | 0x40000 | 0x20000 | 0x100000
+
+
+def mac_hotkey(combo: str) -> tuple[int, int] | None:
+    """'ctrl+shift+s' -> (kVK, flag dei modificatori) per il tap di macOS."""
+    hk = parse_hotkey(combo)
+    if not hk or hk[1] not in _MAC_KEYS:
+        return None
+    return _MAC_KEYS[hk[1]], sum(f for m, f in _MAC_MODS if hk[0] & m)
+
+
+def mac_match(keycode: int, flags: int, want: tuple[int, int]) -> bool:
+    # modificatori esatti: Ctrl+Shift+S non deve scattare con Cmd+Ctrl+Shift+S
+    return keycode == want[0] and (flags & _MAC_MOD_MASK) == want[1]
+
+
+_TAP_CB = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_void_p)
+_tap_warned = False
+
+
+def _mac_libs():
+    # istanze proprie (non quelle di pozzo.macos): argtypes indipendenti
+    vp, u32 = ctypes.c_void_p, ctypes.c_uint32
+    cg = ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+    cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+    for lib, fn, res, args in (
+            (cg, "CGEventTapCreate", vp, [u32, u32, u32, ctypes.c_uint64, _TAP_CB, vp]),
+            (cg, "CGEventTapEnable", None, [vp, ctypes.c_bool]),
+            (cg, "CGEventGetIntegerValueField", ctypes.c_int64, [vp, u32]),
+            (cg, "CGEventGetFlags", ctypes.c_uint64, [vp]),
+            (cf, "CFMachPortCreateRunLoopSource", vp, [vp, vp, ctypes.c_long]),
+            (cf, "CFRunLoopGetCurrent", vp, []),
+            (cf, "CFRunLoopAddSource", None, [vp, vp, vp]),
+            (cf, "CFRunLoopRun", None, []),
+            (cf, "CFRunLoopStop", None, [vp]),
+            (cf, "CFRelease", None, [vp])):
+        f = getattr(lib, fn)
+        f.restype, f.argtypes = res, args
+    return cg, cf
+
+
 class Hotkey:
-    """Scorciatoia globale (funziona anche con il gioco in primo piano). Solo Windows."""
+    """Scorciatoia globale (funziona anche con il gioco in primo piano). Windows e macOS."""
 
     def __init__(self, combo: str, callback):
         self.combo, self.callback = combo, callback
         self.tid = None
         self.thread = None
+        self._rl = self._tap = self._cb = None
 
     def start(self) -> bool:
+        if sys.platform == "darwin":
+            return self._mac_start()
         if sys.platform != "win32" or not parse_hotkey(self.combo):
             return False
         self.thread = threading.Thread(target=self._loop, daemon=True)
         self.thread.start()
         return True
+
+    # ---- macOS: CGEventTap in sola lettura su un thread con il suo CFRunLoop
+    def _mac_start(self) -> bool:
+        want = mac_hotkey(self.combo)
+        if not want:
+            return False
+        ready, ok = threading.Event(), []
+        self.thread = threading.Thread(target=self._mac_loop, args=(want, ready, ok), daemon=True)
+        self.thread.start()
+        ready.wait(5)
+        return bool(ok)
+
+    def _mac_loop(self, want, ready, ok):
+        global _tap_warned
+        try:
+            cg, cf = _mac_libs()
+
+            def cb(proxy, etype, event, info):
+                if etype in (0xFFFFFFFE, 0xFFFFFFFF):  # tap disattivato dal sistema (timeout/input): riattiva
+                    cg.CGEventTapEnable(self._tap, True)
+                elif etype == 10 and not cg.CGEventGetIntegerValueField(event, 8) \
+                        and mac_match(cg.CGEventGetIntegerValueField(event, 9), cg.CGEventGetFlags(event), want):
+                    # fuori dal tap: una cattura lenta lo farebbe disattivare per timeout
+                    threading.Thread(target=self._fire, daemon=True).start()
+                return event  # 8 = autorepeat (come MOD_NOREPEAT), 9 = keycode
+
+            self._cb = _TAP_CB(cb)  # riferimento tenuto: altrimenti il GC libera la callback
+            # sessione, in testa, sola lettura, solo KeyDown
+            self._tap = cg.CGEventTapCreate(1, 0, 1, 1 << 10, self._cb, None)
+            if not self._tap:
+                if not _tap_warned:
+                    _tap_warned = True
+                    log.warning("scorciatoia globale non disponibile: serve il permesso Monitoraggio input/Accessibilita'")
+                return
+            src = cf.CFMachPortCreateRunLoopSource(None, self._tap, 0)
+            self._rl = cf.CFRunLoopGetCurrent()
+            cf.CFRunLoopAddSource(self._rl, src, ctypes.c_void_p.in_dll(cf, "kCFRunLoopCommonModes"))
+            cg.CGEventTapEnable(self._tap, True)
+            ok.append(True)
+            ready.set()
+            cf.CFRunLoopRun()
+            cg.CGEventTapEnable(self._tap, False)
+            cf.CFRelease(src)
+            cf.CFRelease(self._tap)
+            self._tap = None
+        except Exception:
+            log.debug("tap tastiera macOS", exc_info=True)
+        finally:
+            ready.set()
+
+    def _fire(self):
+        try:
+            self.callback()
+        except Exception:
+            pass
 
     def _loop(self):
         import ctypes
@@ -237,6 +386,14 @@ class Hotkey:
             user32.UnregisterHotKey(None, 1)
 
     def stop(self):
+        if self._rl and sys.platform == "darwin":
+            try:
+                _, cf = _mac_libs()
+                cf.CFRunLoopStop(self._rl)  # il thread disattiva e rilascia il tap uscendo da CFRunLoopRun
+            except Exception:
+                pass
+            self._rl = None
+            return
         if self.tid and sys.platform == "win32":
             import ctypes
             ctypes.windll.user32.PostThreadMessageW(self.tid, 0x0012, 0, 0)  # WM_QUIT

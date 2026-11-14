@@ -69,11 +69,43 @@ class ToastQueue:
 
 
 def _screen() -> tuple[int, int]:
+    if sys.platform == "darwin":
+        from . import macos
+        return macos.screen_size() or (1920, 1080)
     if sys.platform != "win32":
         return 1920, 1080
     import ctypes
     u = ctypes.windll.user32
     return u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+
+
+_mac_warned = False
+
+
+def _mac_call(fn):
+    """Esegue fn sul thread principale di Cocoa (AppKit non e' thread-safe); un errore si registra una volta sola
+    e non blocca mai l'app (pyobjc arriva con il backend Cocoa di pywebview, non e' una nostra dipendenza)."""
+    def run():
+        global _mac_warned
+        try:
+            fn()
+        except Exception as e:
+            if not _mac_warned:
+                _mac_warned = True
+                import logging
+                logging.getLogger(__name__).warning("overlay macOS: %s", e)
+    try:
+        from PyObjCTools import AppHelper
+        AppHelper.callAfter(run)
+    except Exception:
+        run()
+
+
+def _mac_setup(ns, click_through: bool):
+    """Sopra le app a schermo intero e su tutti gli Spazi; l'HUD lascia passare i clic al gioco."""
+    ns.setLevel_(25)  # NSStatusWindowLevel: sopra Dock e finestre normali
+    ns.setCollectionBehavior_(1 | 16 | 256)  # CanJoinAllSpaces | Stationary | FullScreenAuxiliary
+    ns.setIgnoresMouseEvents_(bool(click_through))
 
 
 class Overlay:
@@ -150,6 +182,9 @@ class Overlay:
         return w
 
     def _front(self, w):
+        if sys.platform == "darwin":
+            _mac_call(lambda: w.native.orderFrontRegardless())
+            return
         if sys.platform != "win32":
             return
         try:
@@ -163,6 +198,9 @@ class Overlay:
 
     def _click_through(self, w):
         """WS_EX_TRANSPARENT | LAYERED | NOACTIVATE: l'HUD non intercetta ne' clic ne' fuoco."""
+        if sys.platform == "darwin":
+            _mac_call(lambda: _mac_setup(w.native, True))
+            return
         if sys.platform != "win32":
             return
         try:
@@ -173,6 +211,12 @@ class Overlay:
         except Exception:
             pass
 
+    def _show_passive(self, w):
+        """HUD e toast: su macOS w.show() attiverebbe l'app rubando il fuoco al gioco, quindi solo orderFrontRegardless."""
+        if sys.platform != "darwin":
+            return w.show()
+        _mac_call(lambda: w.native.orderFrontRegardless())
+
     def show_hud(self):
         if not self.url or not settings(self.cfg)["hud"]:
             return
@@ -180,7 +224,7 @@ class Overlay:
             w = self._win("hud")
             w.events.loaded.wait(5)
             self._click_through(w)
-            w.show()
+            self._show_passive(w)
             self.hud_on = True
         except Exception:
             pass
@@ -214,6 +258,8 @@ class Overlay:
             try:
                 w = self._win("overlay")
                 w.events.loaded.wait(5)  # prima apertura: finestra appena creata, senza attesa si vede bianco finche' la pagina non carica
+                if sys.platform == "darwin":  # interattiva: riceve i clic, ma resta sopra il gioco a schermo intero
+                    _mac_call(lambda: _mac_setup(w.native, False))
                 w.show()
                 self._front(w)
                 w.evaluate_js("window.ovRefresh && ovRefresh()")
@@ -264,7 +310,9 @@ class Overlay:
                     w = self._win("toast")
                     w.events.loaded.wait(5)
                     w.evaluate_js(f"window.showToast && showToast({json.dumps(it)})")
-                    w.show()
+                    if sys.platform == "darwin":
+                        _mac_call(lambda: _mac_setup(w.native, True))
+                    self._show_passive(w)
                     time.sleep(TOAST_SECONDS)
                     w.hide()
                 except Exception:

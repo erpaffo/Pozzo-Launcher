@@ -229,6 +229,52 @@ def test_impostazione_secondi_senza_uso():
     print("ok  secondi senza uso dello schermo inferiori: default 30, modificabili e limitati")
 
 
+def test_percorsi_config_per_sistema():
+    """Fuori da Windows la configurazione sta nella cartella utente (macOS: Preferences/Application Support, Linux:
+    ~/.config); su macOS melonDS prende il primo file che esiste. Windows resta su %APPDATA%."""
+    import os
+    real_plat, real_env = D.sys.platform, dict(os.environ)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        h, exe = Path(t), str(Path(t) / "bin" / "emu")
+        os.environ["HOME"] = t
+        os.environ.pop("XDG_CONFIG_HOME", None)
+        os.environ["APPDATA"] = str(h / "AppData")
+        try:
+            D.sys.platform = "darwin"
+            assert D.config_file("melonds", exe) == h / "Library/Preferences/melonDS/melonDS.toml"
+            alt = h / "Library/Application Support/melonDS/melonDS.toml"
+            alt.parent.mkdir(parents=True)
+            alt.write_text("", encoding="utf-8")
+            assert D.config_file("melonds", exe) == alt, "il primo che esiste"
+            assert D.config_file("azahar", exe) == h / "Library/Application Support/Azahar/config/qt-config.ini"
+            assert D.config_file("citra", exe) == h / "Library/Application Support/Citra/config/qt-config.ini"
+            D.sys.platform = "linux"
+            assert D.config_file("melonds", exe) == h / ".config/melonDS/melonDS.toml"
+            assert D.config_file("azahar", exe) == h / ".config/azahar-emu/qt-config.ini"
+            assert D.config_file("lime3ds", exe) == h / ".config/lime3ds-emu/qt-config.ini"
+            assert not D.supported(), "su Linux niente cattura"
+            D.sys.platform = "win32"
+            assert D.config_file("melonds", exe) == h / "AppData/melonDS/melonDS.toml"
+            assert D.config_file("azahar", exe) == h / "AppData/Azahar/config/qt-config.ini"
+            assert D.supported()
+        finally:
+            D.sys.platform = real_plat
+            os.environ.clear()
+            os.environ.update(real_env)
+    print("ok  percorsi della configurazione su macOS, Linux e Windows")
+
+
+def test_tocco_in_coordinate_schermo_mac():
+    """macOS: dal tocco sul telefono al punto sullo schermo, dai bordi della finestra (barra del titolo in alto)."""
+    # finestra 640x508 in (100, 50) con 28 punti di barra del titolo: schermo 640x480 sotto la barra
+    assert D.screen_point(0.0, 0.0, (100, 50, 740, 558), 28) == (100, 78)
+    assert D.screen_point(0.5, 0.5, (100, 50, 740, 558), 28) == (420, 318)
+    assert D.screen_point(1.0, 1.0, (100, 50, 740, 558), 28) == (739, 557)
+    # finestra larga: bande ai lati come screen_rect
+    assert D.screen_point(0.0, 0.0, (0, 0, 1000, 500), 0) == (167, 0)
+    print("ok  tocco del telefono in coordinate dello schermo (macOS)")
+
+
 if __name__ == "__main__":
     test_config_roundtrip()
     test_decision_and_geometry()
@@ -237,4 +283,6 @@ if __name__ == "__main__":
     test_server_cycle_and_gate()
     test_mostra_sul_pc_solo_se_telefono_fermo_o_scollegato()
     test_impostazione_secondi_senza_uso()
+    test_percorsi_config_per_sistema()
+    test_tocco_in_coordinate_schermo_mac()
     print("TUTTI I TEST OK")

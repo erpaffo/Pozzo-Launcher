@@ -1,4 +1,5 @@
-"""Telefono come schermo touch per i giochi a due schermi (DS con melonDS, 3DS con Citra/Azahar/Lime3DS), solo Windows.
+"""Telefono come schermo touch per i giochi a due schermi (DS con melonDS, 3DS con Citra/Azahar/Lime3DS), su Windows
+e macOS (su Linux solo i percorsi della configurazione: la cattura non c'e').
 
 Con il telefono collegato al controller, prima dell'avvio si configura l'emulatore a finestre separate (lo leggono solo
 all'avvio): lo schermo superiore a schermo intero sul PC, quello inferiore in una seconda finestra tenuta dietro, che
@@ -47,7 +48,7 @@ def family(emulator_id: str) -> str | None:
 
 
 def supported() -> bool:
-    return sys.platform == "win32"
+    return sys.platform in ("win32", "darwin")
 
 
 def wanted(platform_id: str, emulator_id: str, enabled: bool, phone_connected: bool) -> bool:
@@ -63,10 +64,34 @@ def config_file(emulator_id: str, exe: str) -> Path:
         raise ValueError(f"emulatore non gestito per il doppio schermo: {emulator_id!r}")
     d = Path(exe).parent
     if fam == "melon":  # portatile se il file e' accanto all'exe (come quello dell'utente)
-        return d / "melonDS.toml" if (d / "melonDS.toml").exists() else Path(os.environ.get("APPDATA", "")) / "melonDS" / "melonDS.toml"
+        if (d / "melonDS.toml").exists():
+            return d / "melonDS.toml"
+        if sys.platform == "win32":
+            return Path(os.environ.get("APPDATA", "")) / "melonDS" / "melonDS.toml"
+        cands = _user_configs("melonDS")
+        return next((p for p in cands if p.exists()), cands[0])
     if (d / "user").is_dir():
         return d / "user" / "config" / "qt-config.ini"
-    return Path(os.environ.get("APPDATA", "")) / APPDATA_NAME.get(eid, "Citra") / "config" / "qt-config.ini"
+    name = APPDATA_NAME.get(eid, "Citra")
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA", "")) / name / "config" / "qt-config.ini"
+    cands = _user_configs(name)
+    return next((p for p in cands if p.exists()), cands[0])
+
+
+def _user_configs(name: str) -> list[Path]:
+    """Dove melonDS (QStandardPaths::AppConfigLocation) e i Citra (cartella dati utente) tengono la configurazione
+    fuori da Windows; il primo che esiste vince, se nessuno esiste si crea il primo."""
+    h = Path.home()
+    if sys.platform == "darwin":
+        if name == "melonDS":  # Qt su macOS mette AppConfigLocation in Preferences; Application Support per sicurezza
+            return [h / "Library" / "Preferences" / "melonDS" / "melonDS.toml",
+                    h / "Library" / "Application Support" / "melonDS" / "melonDS.toml"]
+        return [h / "Library" / "Application Support" / name / "config" / "qt-config.ini"]
+    xdg = Path(os.environ.get("XDG_CONFIG_HOME") or h / ".config")
+    if name == "melonDS":
+        return [xdg / "melonDS" / "melonDS.toml"]
+    return [xdg / f"{name.lower()}-emu" / "qt-config.ini"]
 
 
 def _drop(text: str, section: str, key: str) -> str:
@@ -115,6 +140,14 @@ def restore(state: dict) -> None:
 def client_point(x: float, y: float, w: int, h: int) -> tuple[int, int]:
     """Tocco normalizzato (0..1) sull'immagine del telefono -> punto nell'area client della finestra."""
     return min(w - 1, max(0, round(x * w))), min(h - 1, max(0, round(y * h)))
+
+
+def screen_point(x: float, y: float, bounds: tuple[int, int, int, int], bar: int) -> tuple[int, int]:
+    """macOS: tocco normalizzato -> punto sullo schermo, dai bordi della finestra (barra del titolo compresa in `bar`)."""
+    left, top, right, bottom = bounds
+    ax, ay, ax2, ay2 = screen_rect(right - left, bottom - top, bar)
+    cx, cy = client_point(x, y, ax2 - ax, ay2 - ay)
+    return left + ax + cx, top + ay + cy
 
 
 # ---------------------------------------------------------------- finestre dell'emulatore (Win32)
@@ -203,12 +236,99 @@ def screen_rect(w: int, h: int, bar: int) -> tuple[int, int, int, int]:
     return x, y, x + sw, y + sh
 
 
+# ---------------------------------------------------------------- finestre dell'emulatore (macOS, CoreGraphics)
+
+_CG: dict = {}
+
+
+def _cg():
+    """CoreGraphics/CoreFoundation con le funzioni di cattura tipizzate (istanze proprie: macos.py resta com'e')."""
+    if not _CG:
+        from .. import macos
+        vp, u32, sz = ctypes.c_void_p, ctypes.c_uint32, ctypes.c_size_t
+        cg = ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        for lib, fn, res, args in (
+                (cg, "CGWindowListCreateImage", vp, [macos.CGRect, u32, u32, u32]),
+                (cg, "CGWindowListCopyWindowInfo", vp, [u32, u32]),
+                (cg, "CGRectMakeWithDictionaryRepresentation", ctypes.c_bool, [vp, ctypes.POINTER(macos.CGRect)]),
+                (cg, "CGImageGetWidth", sz, [vp]), (cg, "CGImageGetHeight", sz, [vp]),
+                (cg, "CGImageGetBytesPerRow", sz, [vp]), (cg, "CGImageGetDataProvider", vp, [vp]),
+                (cg, "CGDataProviderCopyData", vp, [vp]), (cg, "CGImageRelease", None, [vp]),
+                (cf, "CFDataGetBytePtr", vp, [vp]), (cf, "CFDataGetLength", ctypes.c_long, [vp]),
+                (cf, "CFRelease", None, [vp]), (cf, "CFArrayGetCount", ctypes.c_long, [vp]),
+                (cf, "CFArrayGetValueAtIndex", vp, [vp, ctypes.c_long]), (cf, "CFDictionaryGetValue", vp, [vp, vp]),
+                (cf, "CFStringCreateWithCString", vp, [vp, ctypes.c_char_p, u32]),
+                (cf, "CFNumberGetValue", ctypes.c_bool, [vp, ctypes.c_int, vp])):
+            f = getattr(lib, fn)
+            f.restype, f.argtypes = res, args
+        _CG.update(cg=cg, cf=cf, rect=macos.CGRect, keys={  # chiavi create una volta e tenute: costanti di processo
+            k: cf.CFStringCreateWithCString(None, k.encode(), 0x08000100)
+            for k in ("kCGWindowOwnerPID", "kCGWindowLayer", "kCGWindowNumber", "kCGWindowBounds")})
+    return _CG
+
+
+def _cg_windows(pids: set[int] | None = None, wid: int = 0) -> list[tuple[int, tuple[int, int, int, int]]]:
+    """Come _windows ma su macOS: finestre normali (layer 0) a schermo dei processi, o la sola finestra `wid`.
+    Bordi in punti, origine in alto a sinistra: le stesse coordinate degli eventi del mouse."""
+    c = _cg()
+    cg, cf, keys = c["cg"], c["cf"], c["keys"]
+    arr = cg.CGWindowListCopyWindowInfo(8, wid) if wid else cg.CGWindowListCopyWindowInfo(1 | 16, 0)
+    if not arr:
+        return []
+
+    def num(d, k):
+        ref, v = cf.CFDictionaryGetValue(d, keys[k]), ctypes.c_int64()
+        return v.value if ref and cf.CFNumberGetValue(ref, 4, ctypes.byref(v)) else None  # kCFNumberSInt64Type
+
+    out = []
+    try:
+        for i in range(cf.CFArrayGetCount(arr)):
+            d = cf.CFArrayGetValueAtIndex(arr, i)
+            if (pids is not None and num(d, "kCGWindowOwnerPID") not in pids) or num(d, "kCGWindowLayer") != 0:
+                continue
+            r, b = c["rect"](), cf.CFDictionaryGetValue(d, keys["kCGWindowBounds"])
+            if b and cg.CGRectMakeWithDictionaryRepresentation(b, ctypes.byref(r)) and (wid or (r.w > 120 and r.h > 90)):
+                x, y = round(r.x), round(r.y)
+                out.append((num(d, "kCGWindowNumber"), (x, y, x + round(r.w), y + round(r.h))))
+    finally:
+        cf.CFRelease(arr)
+    return out
+
+
+def _cg_capture(wid: int):
+    """Immagine (Pillow, RGBA) della sola finestra, anche se coperta; None se non si puo' catturare.
+    CGWindowListCreateImage e' deprecata da macOS 14 ma funziona ancora (ScreenCaptureKit richiederebbe pyobjc).
+    Senza il permesso Registrazione schermo torna NULL o un'immagine vuota (solo sfondo): conta come fallimento."""
+    from PIL import Image
+    c = _cg()
+    cg, cf = c["cg"], c["cf"]
+    null = c["rect"](float("inf"), float("inf"), 0.0, 0.0)  # CGRectNull: i bordi della finestra
+    img = cg.CGWindowListCreateImage(null, 8, wid, 1 | 16)  # IncludingWindow; BoundsIgnoreFraming|NominalResolution
+    if not img:
+        return None
+    try:
+        w, h, stride = cg.CGImageGetWidth(img), cg.CGImageGetHeight(img), cg.CGImageGetBytesPerRow(img)
+        data = cg.CGDataProviderCopyData(cg.CGImageGetDataProvider(img))
+        if not data or w <= 0 or h <= 0:
+            return None
+        try:
+            raw = ctypes.string_at(cf.CFDataGetBytePtr(data), cf.CFDataGetLength(data))
+        finally:
+            cf.CFRelease(data)
+    finally:
+        cg.CGImageRelease(img)
+    out = Image.frombuffer("RGBA", (w, h), raw, "raw", "BGRA", stride, 1)
+    lo, hi = out.convert("L").getextrema()
+    return None if lo == hi else out  # tutta di un colore: senza permesso (o finestra non ancora disegnata)
+
+
 class Session:
     """Lo schermo inferiore di una partita: trovato, catturato, toccato, nascosto o in riquadro."""
 
     def __init__(self, pid: int):
         self.pid, self.hwnd, self.main, self.bar, self.down, self.last = pid, None, None, 0, False, None
-        if supported():
+        if sys.platform == "win32":
             try:
                 ctypes.windll.user32.SetProcessDPIAware()  # coordinate in pixel veri anche con lo zoom di Windows
             except Exception:
@@ -221,7 +341,7 @@ class Session:
             pids = {self.pid, *(c.pid for c in psutil.Process(self.pid).children(recursive=True))}
         except Exception:
             pids = {self.pid}
-        wins = _windows(pids)
+        wins = _windows(pids) if sys.platform == "win32" else _cg_windows(pids)
         if len(wins) < 2:
             return False
         wins.sort(key=lambda w: (w[1][2] - w[1][0]) * (w[1][3] - w[1][1]))
@@ -238,16 +358,25 @@ class Session:
             self.bar = extra if 0 < extra <= 60 else 0
 
     def _client(self) -> tuple[int, int]:
+        if sys.platform == "darwin":  # la finestra intera: in alto la barra del titolo fa da «barra dei menu»
+            l, t, r, b = self._bounds()
+            return r - l, b - t
         from ctypes import wintypes
         r = wintypes.RECT()
         _user32().GetClientRect(self.hwnd, ctypes.byref(r))
         return r.right, r.bottom
+
+    def _bounds(self) -> tuple[int, int, int, int]:
+        wins = _cg_windows(wid=self.hwnd)
+        return wins[0][1] if wins else (0, 0, 0, 0)
 
     def _area(self) -> tuple[int, int, int, int]:
         return screen_rect(*self._client(), self.bar)
 
     def frame(self) -> bytes | None:
         """JPEG dello schermo inferiore (anche se la finestra e' coperta); None se uguale al precedente."""
+        if sys.platform == "darwin":
+            return self._frame_mac()
         from PIL import Image
         u, g = _user32(), _gdi32()
         w, h = self._client()
@@ -277,8 +406,32 @@ class Session:
         img.save(out, "JPEG", quality=80)
         return out.getvalue()
 
+    def _frame_mac(self) -> bytes | None:
+        img = _cg_capture(self.hwnd)
+        if img is None:
+            return None
+        digest = hashlib.blake2b(img.tobytes(), digest_size=16).digest()
+        if digest == self.last:
+            return None
+        self.last = digest
+        img = img.convert("RGB").crop(screen_rect(*img.size, self.bar))  # immagine in punti come i bordi: stessa barra
+        img.thumbnail((MAX_SIDE, MAX_SIDE))
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=80)
+        return out.getvalue()
+
     def touch(self, x: float, y: float, down: bool):
         """Pennino: clic alla sola finestra dell'emulatore (alla finestra figlia sotto il punto, se c'e')."""
+        if sys.platform == "darwin":
+            # shortcut: macOS non ha clic «solo a una finestra»: il cursore si sposta davvero e il clic va a cio'
+            # che sta sopra in quel punto; servono il permesso Accessibilita' e la finestra visibile.
+            from .. import macos
+            px, py = screen_point(x, y, self._bounds(), self.bar)
+            act = "left_down" if down and not self.down else "move" if down else "left_up" if self.down else None
+            if act:
+                macos.post_mouse(px, py, act)
+            self.down = down
+            return
         from ctypes import wintypes
         u = _user32()
         left, top, right, bottom = self._area()
@@ -310,6 +463,8 @@ class Session:
 
     def hide(self):
         """Dietro lo schermo intero: sul PC si vede solo lo schermo superiore. Larga 640 px: immagine nitida sul telefono."""
+        if sys.platform != "win32":  # macOS: si lascia dov'e', i tocchi si mappano dai bordi veri della finestra
+            return
         u = _user32()
         self._measure()
         self._place(HWND_NOTOPMOST, None, None, MAX_SIDE, SWP_NOACTIVATE)
@@ -319,6 +474,8 @@ class Session:
 
     def pip(self):
         """Telefono scollegato: lo schermo inferiore in un riquadro in basso a destra, sopra il gioco, usabile col mouse."""
+        if sys.platform != "win32":
+            return
         from ctypes import wintypes
 
         class MONITORINFO(ctypes.Structure):

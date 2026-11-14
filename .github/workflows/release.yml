@@ -135,7 +135,8 @@ jobs:
           # Verifica che l'eseguibile compilato si avvii e risponda su GET /api/status (su Linux serve Xvfb per la GUI Qt).
           case "$RUNNER_OS" in
             Windows) python packaging/smoke_test.py dist/PozzoLauncher/PozzoLauncher.exe ;;
-            macOS)   python packaging/smoke_test.py dist/PozzoLauncher.app ;;
+            macOS)   python packaging/smoke_test.py dist/PozzoLauncher.app
+                     codesign --verify --deep --strict dist/PozzoLauncher.app ;;  # sigillo valido (aggiornamenti)
             Linux)   xvfb-run -a python packaging/smoke_test.py dist/PozzoLauncher/PozzoLauncher ;;
           esac
 

@@ -4,6 +4,7 @@ sono sostituiti con funzioni finte.
 
 Esegui: python tests/test_emuinstall_extra.py
 """
+import functools
 import io
 import os
 import sys
@@ -18,13 +19,24 @@ from pozzo import emuinstall as EI  # noqa: E402
 from pozzo import emuinstall_extra as X  # noqa: E402
 from pozzo import ports as PT  # noqa: E402
 
-if sys.platform != "win32":  # l'installer degli emulatori è solo Windows x64 (vedi emuinstall.py)
-    if __name__ == "__main__":
-        print("-- saltato: installer degli emulatori solo Windows")
-        sys.exit(0)
-    import pytest
-    # pytestmark e non pytest.skip(allow_module_level): quello esce con codice 5 e run_tests lo conta come errore
-    pytestmark = pytest.mark.skip(reason="installer degli emulatori solo Windows")
+import py7zr  # noqa: E402 - importati col sistema vero: sotto un sys.platform finto sceglierebbero i moduli sbagliati
+try:
+    import psutil  # noqa: E402, F401
+except ImportError:
+    pass
+
+
+def _win(fn):
+    """Il test gira come su Windows (nomi dei file e percorsi), anche su macOS/Linux."""
+    @functools.wraps(fn)
+    def run(*a, **k):
+        saved = (sys.platform, EI.SOURCES)
+        sys.platform, EI.SOURCES = "win32", EI._for_os("win32")
+        try:
+            return fn(*a, **k)
+        finally:
+            sys.platform, EI.SOURCES = saved
+    return run
 
 
 def _zip(files: dict) -> bytes:
@@ -58,8 +70,10 @@ def _finti(urls: list, rete=None):
             raise ConnectionError(rete)
         if url.endswith("_libretro.dll.zip"):
             data = _zip({url.rsplit("/", 1)[-1][:-4]: b"core"})
-        elif "RetroArch" in url:
-            data = _zip({"RetroArch-Win64/retroarch.exe": b"ra"})
+        elif "RetroArch" in url:  # un .7z vero: py7zr (senza 7-Zip installato)
+            with py7zr.SevenZipFile(dest, "w") as z:
+                z.writestr(b"ra", "RetroArch-Win64/retroarch.exe")
+            data = Path(dest).read_bytes()
         else:
             data = _zip({"pcsx2-qt.exe": b"pcsx2"})
         Path(dest).write_bytes(data)
@@ -86,6 +100,7 @@ def test_consigliato_dedicato_e_retroarch(tmp: Path):
     assert r["emulator"] == "retroarch" and r["supported"] is True and "mesen" in r["reason"]
 
 
+@_win
 def test_gia_installato(tmp: Path):
     cfg = _cfg(tmp)
     exe = tmp / "pcsx2" / "pcsx2-qt.exe"
@@ -121,6 +136,7 @@ def test_console_sconosciuta(tmp: Path):
         raise AssertionError("ci si aspetta ValueError")
 
 
+@_win
 def test_installa_emulatore_dedicato_con_progress(tmp: Path):
     cfg = _cfg(tmp)
     urls, fasi = [], []
@@ -135,6 +151,7 @@ def test_installa_emulatore_dedicato_con_progress(tmp: Path):
     assert any(0 < v < 1 for _, v in fasi), "avanzamento del download"
 
 
+@_win
 def test_installa_retroarch_e_core(tmp: Path):
     cfg = _cfg(tmp)
     urls = []
@@ -149,6 +166,7 @@ def test_installa_retroarch_e_core(tmp: Path):
     assert "core installati: mesen" in esito["message"]
 
 
+@_win
 def test_errore_di_rete(tmp: Path):
     cfg = _cfg(tmp)
     ripristina = _con_finti([], rete="rete non raggiungibile")

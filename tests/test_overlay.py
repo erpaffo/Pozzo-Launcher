@@ -88,3 +88,33 @@ def test_emu_route_retroarch(tmp_path):
     c = TestClient(app)
     assert c.get("/api/overlay/state").json()["emu"] == {"id": "retroarch", "ready": False}
     assert c.post("/api/overlay/emu", json={"action": "save"}).status_code == 409  # comandi di rete spenti: nessun invio di nascosto
+
+
+def test_macos_native_window(monkeypatch):
+    calls = []
+
+    class NS:  # finta NSWindow: registra i selettori chiamati
+        def __getattr__(self, name):
+            return lambda *a: calls.append((name, a))
+
+    w = types.SimpleNamespace(native=NS(), show=lambda: calls.append(("show", ())))
+    monkeypatch.setattr(OV, "_mac_call", lambda fn: fn())  # niente run loop di Cocoa nel test
+    ov = OV.Overlay(types.SimpleNamespace(app={}), None)
+    monkeypatch.setattr(OV.sys, "platform", "darwin")
+    ov._click_through(w)
+    ov._show_passive(w)
+    ov._front(w)
+    assert calls == [("setLevel_", (25,)), ("setCollectionBehavior_", (273,)), ("setIgnoresMouseEvents_", (True,)),
+                     ("orderFrontRegardless", ()), ("orderFrontRegardless", ())]  # HUD mostrato senza w.show(): niente furto di fuoco
+    calls.clear()
+    monkeypatch.setattr(OV.sys, "platform", "win32")  # ramo Windows: nessun selettore Cocoa, show() normale
+    ov._click_through(w)
+    ov._front(w)
+    ov._show_passive(w)
+    assert calls == [("show", ())]
+
+
+def test_mac_call_never_raises(monkeypatch):
+    import sys as _s
+    monkeypatch.setitem(_s.modules, "PyObjCTools", None)  # pyobjc assente: esegue subito, l'errore si registra e basta
+    OV._mac_call(lambda: 1 / 0)
