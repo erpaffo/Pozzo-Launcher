@@ -108,6 +108,48 @@ def test_volumi_mancanti_restano_in_attesa(tmp):
     assert not finish.X.missing_volumes(tmp / "dl" / "g.part1.rar")
 
 
+def _volumes(tmp):
+    (tmp / "dl").mkdir(exist_ok=True)
+    for i in (1, 2):
+        (tmp / "dl" / f"g.part{i}.rar").write_bytes(b"x")
+    return tmp / "dl" / "g.part1.rar"
+
+
+def test_volume_aspetta_se_un_altro_task_sta_estraendo(tmp, monkeypatch):
+    """Ricontrollo mentre il task del primo volume estrae: aspetta, non segna la libreria in errore."""
+    ctx, calls, got, cfg = _ctx(tmp)
+    first = _volumes(tmp)
+    monkeypatch.setattr(finish.X, "extract", lambda *a, **k: pytest.fail("lo sta gia' estraendo un altro task"))
+    t = _task(tmp, "g.part2.rar")
+    finish._BUSY.add(str(first))
+    try:
+        finish.run(t, Mgr(), ctx)
+    finally:
+        finish._BUSY.discard(str(first))
+    assert t.options.get("post_wait") and not t.options.get("post_done"), t.options
+    assert t._stage("library")["state"] != "error"
+
+
+def test_volume_gia_estratto_da_un_altro_task_non_si_riestrae(tmp, monkeypatch):
+    """delete_archive spento: i volumi restano, ma l'insieme l'ha gia' estratto l'altro task (niente «Gioco (2)»)."""
+    ctx, calls, got, cfg = _ctx(tmp)
+    first = _volumes(tmp)
+    (tmp / "dl" / "g").mkdir()
+    monkeypatch.setattr(finish.X, "extract", lambda *a, **k: pytest.fail("non deve estrarre di nuovo"))
+    other = _task(tmp, "g.part1.rar", extracted={str(first): str(tmp / "dl" / "g")})
+    t = _task(tmp, "g.part2.rar")
+    mgr = Mgr(delete_archive=False)
+    mgr.tasks = {t.id: t, other.id: other}
+    finish.run(t, mgr, ctx)
+    assert t.options["post_done"] and not calls
+    assert t._stage("library")["state"] == "done" and any("Gestito insieme" in l["msg"] for l in t.log_after(0)[0])
+    (tmp / "dl" / "g").rmdir()  # cartella estratta sparita (tolta a mano): si estrae di nuovo
+    t2 = _task(tmp, "g.part2.rar")
+    mgr.tasks[t2.id] = t2
+    with pytest.raises(BaseException):
+        finish._run(t2, mgr, ctx)
+
+
 def test_password_pacchetto_poi_comuni_mai_nel_log(tmp, monkeypatch):
     ctx, calls, got, cfg = _ctx(tmp)
     z = _zip(tmp)

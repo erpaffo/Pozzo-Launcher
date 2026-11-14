@@ -145,12 +145,23 @@ def _extract_pw(first, dest, pws, t, **kw):
             t.log("Password non valida per questo archivio: provo la successiva")  # mai la password nel log
 
 
+def _by_other(t, mgr) -> bool:
+    """Tutti gli archivi del task gia' estratti da un altro task (volumi dello stesso insieme): con delete_archive spento
+    i volumi restano, e riestrarli metterebbe un doppione («Gioco (2)») in libreria."""
+    others = [x for x in list(getattr(mgr, "tasks", {}).values()) if x is not t and x.options.get("extracted")]
+    if not others:
+        return False
+    firsts = [_first(f) for f in _files(t) if f.is_file() and X.is_archive(f)]
+    return bool(firsts) and all(fs and any(Path(d).is_dir() for x in others if (d := x.options["extracted"].get(str(fs))))
+                                for fs in firsts)
+
+
 def _run(t, mgr, ctx, prev=None) -> None:
     s = mgr.settings()
     steps = t.options.setdefault("steps", {})
     if steps.get("library") == "done":  # chiuso tra l'ultimo passo e post_done: non c'e' altro da fare
         return
-    if prev and not any(f.exists() for f in _files(t)):  # il set l'ha estratto un altro task del gruppo
+    if prev and not any(f.exists() for f in _files(t)) or _by_other(t, mgr):  # il set l'ha estratto un altro task del gruppo
         for sid in ("extract", "library", "data"):
             t.set_stage(sid, "done")
         t.log("Gestito insieme agli altri file del gruppo")
@@ -203,8 +214,8 @@ def _s_extract(t, mgr, ctx, c) -> bool:
             t.log("Archivio scaricato: estrazione automatica disattivata nelle impostazioni")
             break
         with _LOCK:
-            if str(first) in _BUSY:
-                continue
+            if str(first) in _BUSY:  # lo estrae ora un altro task dell'insieme: si ricontrolla dopo (poi _by_other)
+                return _wait(t, mgr, c.prev, f"{first.name} in estrazione da un altro download")
             _BUSY.add(str(first))
             fresh = str(first.parent) not in _SEEN
             _SEEN.add(str(first.parent))
