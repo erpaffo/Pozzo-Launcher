@@ -58,6 +58,7 @@
       { l: "⚙ " + t("b.menu.settings.all"), a: "settings", f: () => openSettings() },
       { l: "⌨ " + t("b.menu.settings.shortcuts"), a: "help", f: () => window.PozzoShortcuts?.openPanel() },
       { l: "🧭 " + t("b.menu.settings.tour"), f: () => window.GS?.tour?.start({ manual: true }) },
+      { l: "📚 " + t("b.guide.menu"), f: () => window.GS?.whatsnew?.guides() },
       "-",
       { l: t("b.menu.settings.folders"), f: () => openSettings("scan") },
       { l: t("b.menu.settings.accounts"), f: () => openSettings("acc") },

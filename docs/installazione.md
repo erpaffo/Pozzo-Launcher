@@ -150,6 +150,16 @@ cosa toccare, come il tour guidato. Finito il tutorial torni all'elenco, con una
 La finestra esce una volta per versione; la riapri quando vuoi con **✨ Rivedi le novità con i tutorial** in
 **Impostazioni › Sistema**, sopra il changelog. Al primo avvio in assoluto non compare (c'è già il tour guidato).
 
+### La libreria dei tutorial
+
+Gli stessi tutorial sono sempre a portata di mano, raggruppati per argomento: **Primi passi**, **Libreria**,
+**Giocare**, **Download**, **Personalizza**, **Dati**. Li apri da **📚 Apri i tutorial** in
+**Impostazioni › Sistema**, dal menu **Impostazioni › Tutorial…** della barra dei menu o dalla palette dei comandi
+(**Ctrl+K**, scrivi «tutorial»). Ogni tutorial ha **Mostra come**: ti porta nel punto giusto e, con le frecce ← e →
+(o i pulsanti Avanti e Indietro, anche con il controller), evidenzia cosa toccare; **Esc** lo interrompe. Alla fine torni
+all'elenco, con una spunta sui tutorial già visti in questa sessione. Aprire la libreria non cambia lo stato delle
+novità. Il tour del primo avvio si rivede da **Impostazioni › Tour guidato**.
+
 ## Avvio dai sorgenti
 
 Per sviluppare o provare le ultime modifiche:

@@ -73,6 +73,7 @@
     const settings = (typeof SETTINGS_CATS !== "undefined" ? SETTINGS_CATS : []).map(([id, label]) => ({ label, hint: t("b.common.settings"), run: () => openSettings(id) }));
     const actions = (SC()?.REGISTRY || []).filter((en) => (en.scope === "desktop" || en.scope === "both") && en.id !== "palette")
       .map((en) => ({ label: en.label, hint: SC().keyLabel(en.id), run: () => SC().run(en.id) }));
+    actions.unshift({ label: t("b.guide.palette"), hint: t("b.guide.title"), run: () => window.GS?.whatsnew?.guides() });
     const filters = (st?.savedF || []).map((x) => ({ label: x.name, hint: t("a.nav.savedFilters"), run: () => { closeOverlays(); if (typeof runSavedFilter === "function") runSavedFilter(x.id); } }));
     return { games, consoles, filters, settings, actions };
   }

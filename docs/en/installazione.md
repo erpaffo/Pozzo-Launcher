@@ -129,6 +129,16 @@ the guided tour. When the tutorial ends you're back on the list, with a check ma
 The window appears once per version; reopen it any time with **✨ See what's new, with tutorials** in
 **Settings › System**, above the changelog. It doesn't appear on the very first launch (the guided tour does).
 
+### The tutorial library
+
+The same tutorials are always at hand, grouped by topic: **Getting started**, **Library**, **Playing**, **Downloads**,
+**Customize**, **Data**. Open them from **📚 Open the tutorials** in **Settings › System**, from the
+**Settings › Tutorials…** item of the menu bar, or from the command palette (**Ctrl+K**, type "tutorial"). Each
+tutorial has **Show me how**: it takes you to the right place and, with the ← and → keys (or the Next and Back buttons),
+highlights what to click; **Esc** stops it. At the end you're back on the list, with a check mark
+on the tutorials you've seen in this session. Opening the library doesn't change the what's-new state. The first-run tour
+can be replayed from **Settings › Guided tour**.
+
 ## Running from source
 
 For development or testing the latest changes:

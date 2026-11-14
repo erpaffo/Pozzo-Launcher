@@ -1,7 +1,8 @@
 "use strict";
 /* Pozzo Launcher - novita' dopo un aggiornamento: una finestra con le funzioni aggiunte e, accanto a ciascuna,
  * «Mostra come» che avvia un tutorial con lo stesso aspetto del tour (GS.tour.start({steps})).
- * window.GS.whatsnew = {open(), check()}.
+ * window.GS.whatsnew = {open(), check(), guides()}. guides() apre la stessa finestra come libreria di tutorial (SECTIONS: per argomento,
+ * testi b.guide.*), sempre raggiungibile (Impostazioni › Sistema, palette, menu Impostazioni) e senza toccare lo stato «visto».
  * Elenco curato in NEWS (per versione, testi in i18n: b.news.<id>.title/.text, passi b.news.<id>.s<n>.title/.text).
  * Una versione senza voci curate ripiega sulle voci «### Aggiunto» del changelog (solo italiano, senza tutorial).
  * Stato in localStorage "gs.whatsnew" ({seen: "x.y.z"}): la finestra esce una volta per aggiornamento. Al primo avvio
@@ -60,16 +61,18 @@
     return out.filter((g) => g.items.length).sort((a, b) => cmp(b.version, a.version));
   }
 
-  const api = { KEY, BASE, cmp, loadSeen, saveSeen, since, pending, fromChangelog };
-  if (typeof window === "undefined") { module.exports = api; return; }
-
   // --- tutorial: passi come il tour (sel = bersagli alternativi, wait = aspetta che compaia, prep = porta li') ---
   const go = (tab) => () => { if (typeof openSettings === "function") openSettings(tab); };
   const home = () => { const p = document.getElementById("settings-page"); if (p && !p.hidden && typeof closeSettings === "function") closeSettings(); };
-  const step = (id, n, extra = {}) => ({
-    id: `${id}-${n}`, get title() { return t(`b.news.${id}.s${n}.title`); }, text: (k) => t(`b.news.${id}.s${n}.text`, k), ...extra,
+  const view = (type) => () => { home(); if (typeof setView === "function") setView({ type }); };
+  // pre = prefisso delle chiavi i18n: b.news (novita') o b.guide (libreria); i passi si possono riusare tra i due
+  const step = (id, n, extra = {}, pre = "b.news") => ({
+    id: `${id}-${n}`, get title() { return t(`${pre}.${id}.s${n}.title`); }, text: (k) => t(`${pre}.${id}.s${n}.text`, k), ...extra,
   });
-  const DL_NAV = ['.nav-item[data-view="downloads"]', '#menubar button[data-view="downloads"]'];
+  const DL_NAV = ['.nav-item[data-view="downloads"]', '#menubar button[data-view="downloads"]', '#experience-nav button[data-view="downloads"]'];
+  const TILE = [".tile[data-id]", ".gs-dashboard__tile"];
+  const gs = (id, n, extra) => step(id, n, extra, "b.guide");
+  const guide = (id, icon, steps) => ({ id, p: "b.guide", icon, steps });
 
   const NEWS = {
     "0.18.0": [
@@ -121,6 +124,97 @@
     ],
   };
 
+  // --- libreria dei tutorial: sezioni per argomento, testi in b.guide.<id>.* (titoli di sezione b.guide.sec.<id>) ---
+  const G = {
+    roms: guide("roms", "📁", [
+      gs("roms", 1, { sel: ["#roms-change"], wait: true, prep: go("libreria") }),
+      gs("roms", 2, { sel: ["#scan-start"], wait: true }),
+      gs("roms", 3, { sel: ["#scan-btn"], prep: home }),
+    ]),
+    addgame: guide("addgame", "🧩", [gs("addgame", 1, { sel: ['.mb-top[data-m="File"]'], prep: home })]),
+    stores: guide("stores", "🛒", [
+      gs("stores", 1, { sel: ["#acc-table"], wait: true, prep: go("store") }),
+      gs("stores", 2, { sel: ["#acc-refresh"], wait: true }),
+    ]),
+    search: guide("search", "🔍", [
+      gs("search", 1, { sel: ["#search"], prep: home }),
+      gs("search", 2),
+    ]),
+    filters: guide("filters", "🧪", [
+      gs("filters", 1, { sel: ["#disc-genre", "#disc-preset"], prep: home }),
+      step("savedFilters", 1, { sel: ["#sf-new"] }),
+    ]),
+    collections: guide("collections", "🗃️", [
+      gs("collections", 1, { sel: ["#coll-new"], prep: home }),
+      gs("collections", 2, { sel: TILE }),
+    ]),
+    emulator: guide("emulator", "🕹️", [
+      gs("emulator", 1, { sel: ["#emu-inst"], wait: true, prep: go("emulatori") }),
+      gs("emulator", 2, { sel: TILE, prep: home }),
+    ]),
+    saves: guide("saves", "💾", [
+      gs("saves", 1, { sel: TILE, prep: home }),
+      gs("saves", 2),
+      gs("saves", 3, { sel: ["#save-dir"], wait: true, prep: go("dati") }),
+    ]),
+    overlay: guide("overlay", "🎯", [
+      gs("overlay", 1, { sel: ["#sh-set"], wait: true, prep: view("shots") }),
+      gs("overlay", 2),
+    ]),
+    bigpicture: guide("bigpicture", "🎮", [
+      gs("bigpicture", 1, { sel: ["#bp-btn"], prep: home }),
+      gs("bigpicture", 2, { sel: ["#bp-start"], wait: true, prep: go("generale") }),
+    ]),
+    phone: guide("phone", "📱", [
+      gs("phone", 1, { sel: ["#ph-on"], wait: true, prep: go("controller") }),
+      gs("phone", 2, { sel: ["#ph-box"], wait: true }),
+    ]),
+    dlAdd: guide("dlAdd", "⬇️", [
+      gs("dlAdd", 1, { sel: DL_NAV, prep: home }),
+      gs("dlAdd", 2, { sel: ["#dl-add"], wait: true, prep: view("downloads") }),
+    ]),
+    dlLimits: guide("dlLimits", "🚦", [
+      gs("dlLimits", 1, { sel: ["#dls-down"], wait: true, prep: go("download") }),
+      gs("dlLimits", 2, { sel: ["#dls-alt-on"], wait: true }),
+      step("downloads", 2, { sel: ["#dls-cats"], wait: true }),
+    ]),
+    dlRss: guide("dlRss", "📰", [
+      step("downloads", 3, { sel: ["#dls-rss"], wait: true, prep: go("download") }),
+      gs("dlRss", 2, { sel: ["#dls-rss-add"], wait: true }),
+    ]),
+    dlWatch: guide("dlWatch", "👁️", [gs("dlWatch", 1, { sel: ["#dls-watch"], wait: true, prep: go("download") })]),
+    dlVpn: guide("dlVpn", "🛡️", [gs("dlVpn", 1, { sel: ["#dls-iface"], wait: true, prep: go("download") })]),
+    dlCnl: guide("dlCnl", "🔌", [
+      gs("dlCnl", 1, { sel: ["#dls-cnl"], wait: true, prep: go("download") }),
+      gs("dlCnl", 2, { sel: DL_NAV, prep: home }),
+    ]),
+    dlDebrid: guide("dlDebrid", "🚀", [gs("dlDebrid", 1, { sel: ["#dls-debrid"], wait: true, prep: go("download") })]),
+    dlDisk: guide("dlDisk", "💽", [
+      gs("dlDisk", 1, { sel: ["#dls-incomplete"], wait: true, prep: go("download") }),
+      gs("dlDisk", 2, { sel: DL_NAV, prep: home }),
+    ]),
+    extensions: guide("extensions", "🧰", [gs("extensions", 1, { sel: ["#plugin-list"], wait: true, prep: go("estensioni") })]),
+    shortcuts: guide("shortcuts", "⌨️", [gs("shortcuts", 1, { sel: ['.mb-top[data-m="Impostazioni"]'], prep: home })]),
+    sync: guide("sync", "🔄", [
+      gs("sync", 1, { sel: ["#sync-folder"], wait: true, prep: go("dati") }),
+      gs("sync", 2, { sel: ["#sync-code"], wait: true }),
+      gs("sync", 3, { sel: ["#sync-now"], wait: true }),
+    ]),
+  };
+  // le voci gia' presenti nelle novita' (stesso oggetto: la spunta «fatto» vale per entrambe)
+  const old = (id) => NEWS["0.18.0"].concat(NEWS["0.17.6"]).find((x) => x.id === id);
+  const SECTIONS = [
+    { id: "first", items: [G.roms, G.addgame, G.stores] },
+    { id: "library", items: [G.search, G.filters, G.collections, old("matchFix"), old("webimages"), old("importers")] },
+    { id: "play", items: [G.emulator, G.saves, G.overlay, G.bigpicture, G.phone] },
+    { id: "downloads", items: [G.dlAdd, G.dlLimits, G.dlRss, G.dlWatch, G.dlVpn, G.dlCnl, G.dlDebrid, G.dlDisk, old("clipboard"), old("multipart")] },
+    { id: "custom", items: [old("themes"), old("detailLayout"), G.extensions, G.shortcuts] },
+    { id: "data", items: [old("backup"), G.sync] },
+  ];
+
+  const api = { KEY, BASE, cmp, loadSeen, saveSeen, since, pending, fromChangelog, NEWS, SECTIONS };
+  if (typeof window === "undefined") { module.exports = api; return; }
+
   // --- interfaccia ---
   const CSS = `.gs-news{border:0;padding:0;background:transparent;color:var(--text,#e7e9ee);width:min(640px,calc(100vw - 32px));max-width:none;max-height:calc(100vh - 32px);overflow:visible}
 .gs-news::backdrop{background:rgba(5,7,12,.62);backdrop-filter:blur(6px)}
@@ -161,13 +255,13 @@ html[data-motion="off"] .gs-news-card,html[data-motion="reduced"] .gs-news-card{
   try { store = window.localStorage; } catch { /* storage bloccato: la finestra esce a ogni avvio dopo un aggiornamento */ }
   const mem = { getItem: () => null, setItem() {} };
   const S = store || mem;
-  let dlg = null, groups = [], current = "", reopen = false;
+  let dlg = null, groups = [], current = "", reopen = false, lib = false; // lib: la finestra e' la libreria dei tutorial
   const done = new Set(); // tutorial gia' visti in questa sessione (spunta accanto al pulsante)
   const BLOCK = ".pal-overlay,#pp,.onb,#sc-dlg,#bp-help,#splash:not([hidden]),#setup:not([hidden]),#lightbox:not([hidden]),.gs-tour,dialog[open]";
   const visible = (el) => el.getClientRects().length > 0;
   const blocked = () => [...document.querySelectorAll(BLOCK)].some(visible);
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-  const label = (it, k) => it[k] ?? t(`b.news.${it.id}.${k}`);
+  const label = (it, k) => it[k] ?? t(`${it.p || "b.news"}.${it.id}.${k}`);
 
   function css() {
     if (document.getElementById("gs-news-css")) return;
@@ -188,12 +282,12 @@ html[data-motion="off"] .gs-news-card,html[data-motion="reduced"] .gs-news-card{
     const card = mk("div", "gs-news-card");
     const head = mk("div", "gs-news-head");
     const badge = mk("span", "gs-news-badge", `✨ ${t("b.news.badge", { v: current })}`);
-    const h = mk("h2", "", t("b.news.title")); h.id = "gs-news-title";
+    const h = mk("h2", "", t(lib ? "b.guide.title" : "b.news.title")); h.id = "gs-news-title";
     const x = mk("button", "gs-news-x", "×"); x.type = "button"; x.setAttribute("aria-label", t("b.news.close")); x.onclick = close;
-    head.append(badge, h, mk("p", "", t("b.news.subtitle")), x);
+    head.append(...(lib ? [] : [badge]), h, mk("p", "", t(lib ? "b.guide.subtitle" : "b.news.subtitle")), x);
     const list = mk("div", "gs-news-list");
     for (const g of groups) {
-      if (groups.length > 1) list.append(mk("div", "gs-news-ver", t("b.news.version", { v: g.version })));
+      if (groups.length > 1) list.append(mk("div", "gs-news-ver", lib ? t(`b.guide.sec.${g.id}`) : t("b.news.version", { v: g.version })));
       for (const it of g.items) {
         const row = mk("div", "gs-news-item" + (done.has(it.id) ? " done" : ""));
         const txt = mk("div");
@@ -211,13 +305,13 @@ html[data-motion="off"] .gs-news-card,html[data-motion="reduced"] .gs-news-card{
       }
     }
     const foot = mk("div", "gs-news-foot");
-    const log = mk("button", "gs-news-log", t("b.news.changelog")); log.type = "button";
-    log.onclick = () => { close(); if (typeof openSettings === "function") openSettings("sistema"); };
+    const log = mk("button", "gs-news-log", t(lib ? "b.guide.news" : "b.news.changelog")); log.type = "button";
+    log.onclick = () => { close(); if (lib) setTimeout(open, 50); else if (typeof openSettings === "function") openSettings("sistema"); };
     const ok = mk("button", "btn primary", t("b.news.ok")); ok.type = "button"; ok.onclick = close;
     foot.append(log, ok);
     card.append(head, list, foot);
     d.append(card);
-    d.addEventListener("close", () => { saveSeen(S, current); d.remove(); if (dlg === d) dlg = null; }); // anche Esc: vista
+    d.addEventListener("close", () => { if (!lib) saveSeen(S, current); d.remove(); if (dlg === d) dlg = null; }); // anche Esc: vista
     d.addEventListener("click", (e) => { if (e.target === d) close(); }); // clic sul velo
     return d;
   }
@@ -251,6 +345,7 @@ html[data-motion="off"] .gs-news-card,html[data-motion="reduced"] .gs-news-card{
     try { a = await about(); } catch { return; }
     current = a.version || "";
     if (!current) return;
+    lib = false;
     const from = since(S, current);
     if (cmp(current, from) <= 0) { saveSeen(S, current); return; }
     const curated = pending(NEWS, from, current);
@@ -267,17 +362,26 @@ html[data-motion="off"] .gs-news-card,html[data-motion="reduced"] .gs-news-card{
     setTimeout(wait, 2500);
   }
 
+  /** Libreria dei tutorial: tutte le sezioni, in ogni momento. */
+  function guides() {
+    if (dlg) return;
+    lib = true;
+    groups = SECTIONS;
+    show();
+  }
+
   /** A richiesta (Impostazioni › Sistema): le novita' curate della versione installata, o le ultime presenti. */
   async function open() {
     if (dlg) return;
+    lib = false;
     if (!current) { try { current = (await about()).version || ""; } catch { return; } }
     const vs = Object.keys(NEWS).filter((v) => cmp(v, current) <= 0).sort((a, b) => cmp(b, a));
     groups = vs.length ? [{ version: vs[0], items: NEWS[vs[0]] }] : [];
     show();
   }
 
-  document.addEventListener("click", (e) => { if (e.target.closest?.("#about-news-open")) open(); });
+  document.addEventListener("click", (e) => { if (e.target.closest?.("#about-news-open")) open(); else if (e.target.closest?.("#about-guides-open")) guides(); });
   window.GS = window.GS || {};
-  window.GS.whatsnew = { open, check, NEWS };
+  window.GS.whatsnew = { open, check, guides, NEWS };
   check();
 })();
