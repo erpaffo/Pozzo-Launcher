@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime as dt
 import ipaddress
+import os
 import socket
 import threading
 from pathlib import Path
@@ -66,6 +67,14 @@ def lan_ips() -> list[str]:
     return ips
 
 
+def _private(path: Path):
+    """Chiave leggibile solo dall'utente: con ca.key chiunque sul PC potrebbe firmare certificati fidati dal telefono."""
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass  # Windows: i permessi POSIX non ci sono, la cartella dati e' gia' privata
+
+
 def ca_path(folder: Path) -> Path:
     """Percorso del certificato della CA da installare sul telefono (lo crea se manca)."""
     ensure(folder)
@@ -85,6 +94,7 @@ def _ca(folder: Path):
         try:
             cert = x509.load_pem_x509_certificate(crt.read_bytes())
             if cert.not_valid_after_utc > now + dt.timedelta(days=365):
+                _private(key)  # chiavi create da versioni precedenti con i permessi predefiniti
                 return cert, serialization.load_pem_private_key(key.read_bytes(), None)  # chiave della CA senza passphrase
         except Exception:  # file rovinato o chiave illeggibile: si rifa' tutto, il telefono va reinstallato
             pass
@@ -104,6 +114,7 @@ def _ca(folder: Path):
             .sign(pk, hashes.SHA256()))
     key.write_bytes(pk.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                      serialization.NoEncryption()))
+    _private(key)
     crt.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     return cert, pk
 
@@ -140,6 +151,7 @@ def _ensure(folder: Path) -> tuple[Path, Path, Path]:
             ski = ca_cert.extensions.get_extension_for_class(x509.SubjectKeyIdentifier).value.digest
             signed_by_us = cert.issuer == ca_cert.subject and aki == ski
             if signed_by_us and set(ips) <= have and cert.not_valid_after_utc > now + dt.timedelta(days=30):
+                _private(key)
                 return crt, key, ca_crt
         except Exception:
             pass
@@ -173,5 +185,6 @@ def _ensure(folder: Path) -> tuple[Path, Path, Path]:
             .sign(ca_key, hashes.SHA256()))
     key.write_bytes(pk.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                      serialization.NoEncryption()))
+    _private(key)
     crt.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
     return crt, key, ca_crt
