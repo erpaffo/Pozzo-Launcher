@@ -31,7 +31,8 @@ def where(exc: BaseException) -> str:
 
 def explain(exc: BaseException) -> tuple[int, str]:
     """(codice HTTP, testo per la persona). La causa tecnica e' sempre in coda, tra parentesi."""
-    tech = f"{type(exc).__name__}: {exc}"[:MAX]
+    from .telemetry import mask_secrets  # la risposta JSON finisce anche nella segnalazione da incollare
+    tech = mask_secrets(f"{type(exc).__name__}: {exc}")[:MAX]
     low = str(exc).lower()
     if isinstance(exc, sqlite3.OperationalError):
         if "locked" in low or "busy" in low:

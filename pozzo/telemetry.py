@@ -22,12 +22,24 @@ def set_path(path: str | os.PathLike | None) -> None:
     _path = Path(path) if path else None
 
 
+# parametri delle URL con chiavi o password usati da sources/, stores/, achievements e retroachievements ("y" e' la
+# chiave di RetroAchievements, "code" il codice OAuth di GOG/Epic): un errore httpx riporta l'URL intero
+_SECRET = re.compile(r"(?i)([?&](?:key|apikey|api_key|token|access_token|refresh_token|client_secret|devpassword|"
+                     r"sspassword|password|y|code)=)[^&\s\"'#]+")
+
+
+def mask_secrets(text: str) -> str:
+    """Toglie i valori segreti dai parametri delle URL (?key=..., &token=...)."""
+    return _SECRET.sub(r"\1***", text)
+
+
 def mask(text: str) -> str:
-    """Sostituisce la cartella utente (C:\\Users\\nome, /home/nome, /Users/nome) con ~."""
-    return _USER.sub("~", text)
+    """Sostituisce la cartella utente (C:\\Users\\nome, /home/nome, /Users/nome) con ~ e toglie i segreti delle URL."""
+    return mask_secrets(_USER.sub("~", text))
 
 
 def log_error(module: str, message: str, traceback_str: str = "") -> dict:
+    message, traceback_str = mask_secrets(message), mask_secrets(traceback_str)
     entry = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "module": module, "message": message, "traceback": traceback_str}
     with _lock:
         _buf.append(entry)

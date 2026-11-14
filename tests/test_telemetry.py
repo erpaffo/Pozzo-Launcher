@@ -41,6 +41,23 @@ def test_mask():
     assert T.mask("nessun percorso") == "nessun percorso"
 
 
+def test_mask_segreti_nelle_url():
+    """Un errore httpx porta l'URL intero: le chiavi delle API non devono finire in errors.log ne' nella segnalazione."""
+    url = ("https://api.rawg.io/api/games?key=SEGRETO1&search=zelda https://x/?apikey=SEGRETO2&a=1 "
+           "?api_key=SEGRETO3 &token=SEGRETO4 &access_token=SEGRETO5 &refresh_token=SEGRETO6 "
+           "&client_secret=SEGRETO7 &devpassword=SEGRETO8 &sspassword=SEGRETO9 ?y=SEGRETO10 &code=SEGRETO11 "
+           "&Key=SEGRETO12")
+    out = T.mask(url)
+    assert "SEGRETO" not in out and "search=zelda" in out and "a=1" in out, out
+    assert T.mask_secrets("?keyword=mario&monkey=1") == "?keyword=mario&monkey=1"  # nomi simili restano
+    T.set_path(None)
+    e = T.log_error("api", "ConnectError: https://x/?key=SEGRETO", "File x, url https://x/?token=SEGRETO")
+    assert "SEGRETO" not in e["message"] + e["traceback"]
+    from pozzo import errors as ERR
+    import httpx
+    assert "SEGRETO" not in ERR.explain(httpx.ConnectError("fail https://a/?apikey=SEGRETO"))[1]
+
+
 def test_log_file_clear_export(tmp: Path):
     log = tmp / "sub" / "errors.log"
     T.set_path(log)
