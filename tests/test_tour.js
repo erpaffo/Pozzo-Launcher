@@ -66,30 +66,37 @@ const nextBtn = (w) => w.card().children.find((c) => c.className === "gs-tour-ro
   const full = T.resolve(T.STEPS, (s) => (ALL[s] ? { getBoundingClientRect: () => ALL[s] } : null), { w: 1200, h: 800 }, A);
   assert.equal(full.length, T.STEPS.length);
   const part = T.resolve(T.STEPS, (s) => (s === "#sort" || s === "#search" ? { getBoundingClientRect: () => ALL[s] } : s === "#bp-btn" ? { getBoundingClientRect: () => box(5000, 0, 10, 10) } : null), { w: 1200, h: 800 }, A);
-  assert.deepEqual(part.map((p) => p.step.id), ["welcome", "search", "sort", "end"]);
+  // i passi con prep (impostazioni, temi, profilo) restano finche' prep non porta sulla loro schermata
+  assert.deepEqual(part.map((p) => p.step.id), ["welcome", "search", "sort", "settings", "themes", "profile", "end"]);
   // un selettore alternativo prende il posto del primo
   const alt = T.resolve(T.STEPS, (s) => (s === ".gs-dashboard__tile" ? { getBoundingClientRect: () => box(10, 10, 50, 50) } : null), { w: 800, h: 600 }, A);
   assert.ok(alt.some((p) => p.step.id === "game"));
-  assert.equal(T.resolve(T.STEPS, () => { throw new Error("x"); }, { w: 1, h: 1 }, A).length, 2);
+  // selettori che lanciano: restano solo i passi centrati (benvenuto, fine) e quelli con prep ancora da eseguire
+  assert.deepEqual(T.resolve(T.STEPS, () => { throw new Error("x"); }, { w: 1, h: 1 }, A).map((p) => p.step.id),
+    ["welcome", "settings", "themes", "profile", "end"]);
 }
 
 // 2) avvio, conteggio, avanti/indietro/fine
 {
-  const w = world({ sels: { "#search": ALL["#search"], "#sort": ALL["#sort"] } });
+  // con i bersagli dei passi con prep (impostazioni, elenco dei temi, profilo): welcome, search, sort, settings, themes, profile, end
+  const w = world({ sels: { "#search": ALL["#search"], "#sort": ALL["#sort"], "#settings-btn": ALL["#settings-btn"],
+    "#theme-list": box(300, 120, 600, 400), "#mb-profile": ALL["#mb-profile"] } });
   assert.equal(w.tour.start(), true);
   assert.equal(w.tour.isActive(), true);
   assert.equal(w.doc.activeElement, nextBtn(w));
-  assert.equal(where(w), "Passo 1 di 4");           // welcome, search, sort, end
+  assert.equal(where(w), "Passo 1 di 7");
   assert.equal(w.card().attrs.role, "dialog");
   assert.equal(w.card().attrs["aria-modal"], "true");
-  assert.ok(w.root().find("gs-tour-live").textContent.startsWith("Passo 1 di 4"));
+  assert.ok(w.root().find("gs-tour-live").textContent.startsWith("Passo 1 di 7"));
   assert.equal(w.btn("btn").disabled, true);        // Indietro al primo passo
-  nextBtn(w).click(); assert.equal(where(w), "Passo 2 di 4");
+  nextBtn(w).click(); assert.equal(where(w), "Passo 2 di 7");
   assert.equal(w.card().attrs["data-side"], "bottom");
   assert.equal(w.root().find("gs-tour-ring").hidden, false);
-  w.key("ArrowLeft"); assert.equal(where(w), "Passo 1 di 4");
+  w.key("ArrowLeft"); assert.equal(where(w), "Passo 1 di 7");
   w.key("ArrowRight"); w.doc.activeElement = null; w.key("Enter"); w.key("ArrowRight");
-  assert.equal(where(w), "Passo 4 di 4");
+  assert.equal(where(w), "Passo 4 di 7");
+  w.key("ArrowRight"); w.key("ArrowRight"); w.key("ArrowRight");
+  assert.equal(where(w), "Passo 7 di 7");
   assert.equal(nextBtn(w).textContent, "Fine");
   assert.equal(w.root().find("gs-tour-ring").hidden, true);
   assert.equal(w.card().attrs["data-side"], "center");
@@ -171,9 +178,10 @@ const nextBtn = (w) => w.card().children.find((c) => c.className === "gs-tour-ro
   assert.match(w.root().find("gs-tour-live").textContent, /Passo 3 di 11|Ordina/);
   w.win.innerWidth = 300; w.win.innerHeight = 400; w.wl.scroll.forEach((f) => f());
   assert.equal(w.tour.isActive(), true);
-  w.doc.targets = {}; w.wl.resize.forEach((f) => f());  // restano solo benvenuto e fine
+  w.doc.targets = {}; w.wl.resize.forEach((f) => f());  // restano benvenuto, fine e i passi con prep non ancora eseguita
   assert.equal(w.tour.isActive(), true);
-  assert.equal(w.card().find("gs-tour-meta").children[0].textContent.endsWith("di 2"), true);
+  const tot = +w.card().find("gs-tour-meta").children[0].textContent.split(" di ")[1];
+  assert.ok(tot >= 2 && tot <= 5, tot);  // benvenuto e fine, piu' i passi con prep che possono ancora portare alla loro schermata
 }
 
 // 7) senza localStorage: funziona e ricorda in memoria

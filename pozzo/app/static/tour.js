@@ -42,6 +42,12 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
   .gs-tour-dots i{background:GrayText}.gs-tour-dots i.on{background:Highlight}}`;
 
   // sel = selettori alternativi (il primo visibile vince; nessun sel = scheda centrata); k = tasti letti da shortcuts.js
+  // il passo dei temi apre davvero Impostazioni › Aspetto; quelli intorno tornano alla libreria (anche con «Indietro»)
+  const aspetto = () => { if (typeof openSettings === "function") openSettings("aspetto"); };
+  const home = () => {
+    const p = typeof document !== "undefined" && document.getElementById("settings-page"); // nei test con node non c'e'
+    if (p && !p.hidden && typeof closeSettings === "function") closeSettings();
+  };
   const STEPS = [
     { id: "welcome", get title() { return t("b.tour.welcome.title"); },
       text: () => t("b.tour.welcome.text") },
@@ -49,17 +55,17 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       text: () => t("b.tour.views.text") },
     { id: "search", sel: ["#search"], get title() { return t("b.tour.search.title"); },
       text: (k) => t("b.tour.search.text", {cerca: k.search, palette: k.palette}) },
-    { id: "sort", sel: ["#sort"], get title() { return t("b.tour.sort.title"); },
+    { id: "sort", sel: [".tools .tb-group:has(#disc-genre)", "#sort"], get title() { return t("b.tour.sort.title"); },
       text: () => t("b.tour.sort.text") },
     { id: "game", sel: [".tile[data-id]", ".gs-dashboard__tile"], get title() { return t("b.tour.game.title"); },
       text: () => t("b.tour.game.text") },
-    { id: "top", sel: ["#bp-btn"], get title() { return t("b.tour.top.title"); },
+    { id: "top", sel: [".tb-actions", "#bp-btn"], get title() { return t("b.tour.top.title"); },
       text: () => t("b.tour.top.text") },
-    { id: "settings", sel: ["#settings-btn"], get title() { return t("b.common.settings"); },
+    { id: "settings", sel: ["#settings-btn"], prep: home, get title() { return t("b.common.settings"); },
       text: () => t("b.tour.settings.text") },
-    { id: "themes", sel: ["#settings-btn"], get title() { return t("b.tour.themes.title"); },
+    { id: "themes", sel: ["#theme-list"], wait: true, prep: aspetto, get title() { return t("b.tour.themes.title"); },
       text: () => t("b.tour.themes.text") },
-    { id: "profile", sel: ["#mb-profile", "#profile-btn"], get title() { return t("b.tour.profile.title"); },
+    { id: "profile", sel: ["#mb-profile", "#profile-btn"], prep: home, get title() { return t("b.tour.profile.title"); },
       text: () => t("b.tour.profile.text") },
     { id: "keys", sel: ['.mb-top[data-m="Impostazioni"]'], get title() { return t("b.tour.keys.title"); },
       text: (k) => t("b.tour.keys.text", {aiuto: k.help}) },
