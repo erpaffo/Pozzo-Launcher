@@ -4047,5 +4047,9 @@
  "p.missing.dualscreen": "Tela dupla DS/3DS no celular",
  "p.missing.dolphin": "Instalação automática do Dolphin (sem build para Linux: use Flatpak ou o gerenciador de pacotes)",
  "p.missing.xdotool": "Mouse/teclado pelo celular e janela ativa exigem xdotool (só X11, não Wayland)",
- "p.missing.notifysend": "As notificações exigem notify-send"
+ "p.missing.notifysend": "As notificações exigem notify-send",
+ "s.downloads.duplicate": "Já está na lista de downloads",
+ "d.dup.ask": "Já está na lista ({n}):\n{list}\n\nAdicionar mesmo assim?",
+ "d.dup.skipped": "{n} já na lista, não adicionados",
+ "k.m.dl_dup": "Já está na fila do PC"
 }

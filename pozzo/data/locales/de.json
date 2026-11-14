@@ -4047,5 +4047,9 @@
  "p.missing.dualscreen": "DS/3DS-Doppelbildschirm auf dem Handy",
  "p.missing.dolphin": "Automatische Dolphin-Installation (kein Linux-Build: Flatpak oder Paketmanager nutzen)",
  "p.missing.xdotool": "Handy als Maus/Tastatur und aktives Fenster brauchen xdotool (nur X11, nicht Wayland)",
- "p.missing.notifysend": "Benachrichtigungen benötigen notify-send"
+ "p.missing.notifysend": "Benachrichtigungen benötigen notify-send",
+ "s.downloads.duplicate": "Bereits in der Download-Liste",
+ "d.dup.ask": "Bereits in der Liste ({n}):\n{list}\n\nTrotzdem hinzufügen?",
+ "d.dup.skipped": "{n} bereits in der Liste, nicht hinzugefügt",
+ "k.m.dl_dup": "Bereits in der Warteschlange des PCs"
 }

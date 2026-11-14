@@ -128,6 +128,7 @@ The queue gathers all active, paused, or completed downloads in a centered, resp
   - Active download slots relative to maximum concurrent limit (configurable in *Settings › Downloads*);
   - **Slow Mode** indicator (bandwidth throttle activated manually or via scheduled time windows);
   - **🎮 Game Mode** indicator: when you launch a game, the launcher detects active gameplay and acts according to the *While gaming* section in *Settings › Downloads*: by default downloads keep running as usual; *Limit bandwidth* caps download speed at the *Bandwidth left to the game* value; *Pause torrents* pauses torrents (and HTTP downloads too, with *Also pause HTTP downloads*). When the game closes, only downloads stopped by this mode resume.
+- **No duplicates**: if the link, magnet or `.torrent` file you add is already in the list (even completed or paused) it is not added a second time: the launcher tells you and asks whether to add it anyway. A magnet and the `.torrent` of the same torrent count as the same download; a download that ended in error does not count and can be added again. When you paste several links at once, the ones already listed are skipped and the others are added. Automatic adds (RSS, phone, the game page's "Download" button) skip duplicates without asking.
 - **Context menu and quick actions**: Right-click a row (or press keyboard `Menu` key) to adjust download priority, move to top/bottom of queue, pause or resume, force recheck, open containing directory, or copy source link.
 
 ### Real-Time Details and Event Log

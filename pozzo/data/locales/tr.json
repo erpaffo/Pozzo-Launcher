@@ -4047,5 +4047,9 @@
  "p.missing.dualscreen": "Telefonda DS/3DS çift ekran",
  "p.missing.dolphin": "Dolphin otomatik kurulumu (Linux sürümü yok: Flatpak veya paket yöneticisini kullan)",
  "p.missing.xdotool": "Telefondan fare/klavye ve etkin pencere için xdotool gerekir (yalnızca X11, Wayland değil)",
- "p.missing.notifysend": "Bildirimler için notify-send gerekir"
+ "p.missing.notifysend": "Bildirimler için notify-send gerekir",
+ "s.downloads.duplicate": "İndirme listesinde zaten var",
+ "d.dup.ask": "Listede zaten var ({n}):\n{list}\n\nYine de eklensin mi?",
+ "d.dup.skipped": "{n} listede zaten var, eklenmedi",
+ "k.m.dl_dup": "PC kuyruğunda zaten var"
 }

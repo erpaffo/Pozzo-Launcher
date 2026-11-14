@@ -4047,5 +4047,9 @@
  "p.missing.dualscreen": "Doble pantalla DS/3DS en el móvil",
  "p.missing.dolphin": "Instalación automática de Dolphin (sin build para Linux: usa Flatpak o el gestor de paquetes)",
  "p.missing.xdotool": "Ratón/teclado desde el móvil y ventana activa requieren xdotool (solo X11, no Wayland)",
- "p.missing.notifysend": "Las notificaciones requieren notify-send"
+ "p.missing.notifysend": "Las notificaciones requieren notify-send",
+ "s.downloads.duplicate": "Ya está en la lista de descargas",
+ "d.dup.ask": "Ya está en la lista ({n}):\n{list}\n\n¿Añadir de todos modos?",
+ "d.dup.skipped": "{n} ya en la lista, no añadidos",
+ "k.m.dl_dup": "Ya está en la cola del PC"
 }

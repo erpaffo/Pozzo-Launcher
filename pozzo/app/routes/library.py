@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, Response
 
 from ... import config as C, i18n as I, ownership as OW, platforms as P, profilecfg as PC, storelinks as SL, stores as STORES, webplay
 from ...downloads.engines import torrent as TOR
+from ...downloads.manager import Duplicate
 from ...downloads.engines.http import safe_name as _safe_name
 from ...library import automation as A, launcher as L
 from ..icons import CREDIT
@@ -330,7 +331,8 @@ def build_router(ctx) -> APIRouter:
             elif not t or t.status == "completed":
                 dest = Path(mgr.settings()["dir"]) / re.sub(r'[<>:"/\\|?*]', "_", g.get("platform_name") or "Giochi")
                 try:
-                    t = mgr.add(single or mag, str(dest), name=file, wanted=g.get("file_name") or file, category="game", game_id=gid)
+                    # un completato dello stesso gioco si riscarica a posta (il file puo' non esserci piu'): niente controllo doppioni
+                    t = mgr.add(single or mag, str(dest), name=file, wanted=g.get("file_name") or file, category="game", game_id=gid, force=True)
                 except ValueError as e:
                     raise HTTPException(400, str(e))
             return {"ok": True, "single": True, "file": file, "internal": True, "dest": t.save_path, "task_id": t.id}
@@ -438,7 +440,7 @@ def build_router(ctx) -> APIRouter:
             except (L.LaunchError, OSError) as e:
                 raise HTTPException(409, str(e))
             return {"ok": True, "tasks": [], "failed": []}
-        tasks, failed = [], []
+        tasks, failed, dup = [], [], False
         # più file (le parti di un archivio) in una cartella sola: l'estrazione parte quando ci sono tutte
         folder = str(Path(mgr.settings()["dir"]).expanduser() / _safe_name(g["title"])) if len(urls) > 1 else ""
         extra = {k: body[k] for k in ("sha256", "mirrors") if body.get(k)}
@@ -447,10 +449,12 @@ def build_router(ctx) -> APIRouter:
         for u in urls:
             try:
                 tasks.append(mgr.add(u, save_path=folder, category=g.get("platform") or "", game_id=gid, **extra).view())
+            except Duplicate:  # gia' in lista (il log lo scrive add): non e' un link sbagliato
+                dup = True
             except ValueError as e:
                 failed.append({"link": u, "error": str(e)})
         if not tasks:
-            raise HTTPException(409, failed[0]["error"] if failed else I.tr("s.library.noLinkAdded"))
+            raise HTTPException(409, failed[0]["error"] if failed else I.tr("s.downloads.duplicate") if dup else I.tr("s.library.noLinkAdded"))
         return {"ok": True, "tasks": tasks, "failed": failed}
 
     @router.post("/api/game/{gid}/play")

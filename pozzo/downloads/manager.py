@@ -7,7 +7,9 @@ e manda l'evento `downloads` (la UI lo legge dallo stream SSE).
 from __future__ import annotations
 
 import asyncio
+import base64
 import errno
+import functools
 import logging
 import math
 import os
@@ -72,6 +74,32 @@ DISK_FULL = "Disco pieno"  # motivo della pausa di un task fermato da un errore 
 log = logging.getLogger("pozzo.downloads")
 CAT_ACTIONS = ("pause", "remove")  # a limite di condivisione raggiunto: torrent fermo (il task resta) o tolto dalla lista (i file restano)
 SAVE_EVERY = 10 # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
+
+
+class Duplicate(ValueError):
+    """La sorgente e' gia' in lista: non e' un link sbagliato, la UI propone «aggiungi comunque»."""
+
+
+@functools.lru_cache(maxsize=1024)
+def source_key(source: str) -> str:
+    """Identita' di una sorgente per i doppioni: info-hash (magnet o .torrent locale, quindi i due coincidono) oppure il
+    link senza maiuscole nell'host e senza #frammento. shortcut: porta di default e / finale contano come diverse."""
+    s = source.strip()
+    if s.lower().startswith("magnet:") and (m := re.search(r"xt=urn:btih:([0-9a-z]+)", s, re.I)):
+        h = m[1]
+        if len(h) == 32:  # base32 al posto dell'esadecimale
+            try:
+                h = base64.b32decode(h.upper()).hex()
+            except ValueError:
+                pass
+        return "ih:" + h.lower()
+    if TOR.lt and TOR.is_torrent(s) and not s.lower().startswith(SCHEMES):
+        try:
+            return "ih:" + str(TOR.lt.torrent_info(Path(s).expanduser().read_bytes()).info_hashes().v1)
+        except (OSError, RuntimeError):
+            pass
+    u = urlsplit(s)
+    return f"{u.scheme.lower()}://{u.netloc.lower()}{u.path}{'?' + u.query if u.query else ''}" if u.scheme in ("http", "https") else s
 
 
 def default_dir() -> Path:
@@ -575,6 +603,7 @@ class Manager:
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
         dry, checked = opts.pop("dry_run", False), opts.pop("checked", False)  # lotto di link: prima si valida tutto, poi si aggiunge
+        force = opts.pop("force", False)  # «aggiungi comunque» anche se la sorgente e' gia' in lista
         sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None), self.now())  # «Avvia alle», facoltativo
         kind = "steamcmd" if opts.pop("steamcmd", False) else "cli" if CLI.is_cli(source) else "torrent" if TOR.is_torrent(source) else "http"
         if kind == "cli":
@@ -597,6 +626,13 @@ class Manager:
         s, cat = self._raw(), str(opts.pop("category", "") or "").strip()[:64]
         if s["check_links"] and not checked and kind == "http" and self._check(source)["status"] == "offline":
             raise ValueError(f"Link offline: {source}")
+        if kind in ("http", "torrent") and not force:
+            key = source_key(source)
+            with self.lock:  # in errore si puo' riaggiungere; un completato conta: il file c'e' gia'
+                same = next((o for o in self.tasks.values() if o.type == kind and o.status != ERROR and source_key(o.source) == key), None)
+            if same:
+                log.info("Già in lista, non aggiunto: %s", TASK.redact(source))
+                raise Duplicate(f"Già in lista: {same.name or source}")
         if dry:
             return None
         dest =Path(save_path or self._cat(cat, s).get("folder") or s["dir"]).expanduser()  # un percorso esplicito vince sulla categoria
@@ -1074,6 +1110,8 @@ class Manager:
                         self.add(link, category=cat)
                         n += 1
                         break
+                    except Duplicate:
+                        break  # l'item e' gia' in lista (add() ha scritto il log): i suoi altri link sono la stessa uscita
                     except ValueError as e:
                         log.warning("RSS %s: %s non accodato: %s", urlsplit(url).hostname, item["title"][:80], e)
         except Exception as e:  # noqa: BLE001 - feed irraggiungibile o rotto: si riprova al prossimo giro

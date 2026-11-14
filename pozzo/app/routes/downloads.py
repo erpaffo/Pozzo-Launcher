@@ -16,7 +16,7 @@ from ...cache import Cache
 from ...downloads import bandwidth, debrid, finish, hosts, install, linkcheck, multiup, resolvers
 from ...downloads.engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from ...downloads.extract import queue_forecast
-from ...downloads.manager import Manager
+from ...downloads.manager import Duplicate, Manager
 from ..apiv1 import sse
 from ... import i18n as I
 
@@ -101,16 +101,23 @@ def build_router(ctx) -> APIRouter:
         if many:
             extra.pop("sha256", None)  # un hash vale per un file solo
         opts = dict(priority=body.get("priority") or 0, category=body.get("category") or "", tags=body.get("tags"),
-                    start_at=body.get("start_at"), days=body.get("days"), **extra)
+                    start_at=body.get("start_at"), days=body.get("days"), force=body.get("force") is True, **extra)
+        skipped = []  # gia' in lista: non si aggiungono, la UI propone «aggiungi comunque» (force)
         try:
             # tutto o niente: un link sbagliato non lascia in coda quelli prima (la lista corretta si reinvia intera, senza doppioni)
             for u in links if many else []:
-                mgr.add(u, body.get("save_path") or "", dry_run=True, **opts)
+                try:
+                    mgr.add(u, body.get("save_path") or "", dry_run=True, **opts)
+                except Duplicate:
+                    pass  # un doppione non rende sbagliato il lotto: si salta nel giro vero
             for u in links:
-                out.append(mgr.add(u, body.get("save_path") or "", checked=many, **opts).view())
+                try:
+                    out.append(mgr.add(u, body.get("save_path") or "", checked=many, **opts).view())
+                except Duplicate:
+                    skipped.append(u)
         except ValueError as e:
             raise HTTPException(400, str(e))
-        return {"ok": True, "tasks": out}
+        return {"ok": True, "tasks": out, "skipped": skipped}
 
     @router.post("/api/downloads/check")
     def api_downloads_check(body: dict = Body(...)):
@@ -258,7 +265,7 @@ def build_router(ctx) -> APIRouter:
 
     @router.post("/api/downloads/torrent-file")
     async def api_downloads_torrent_file(file: UploadFile = File(...), save_path: str = Form(""),
-                                         start_at: str = Form(""), days: str = Form("")):
+                                         start_at: str = Form(""), days: str = Form(""), force: str = Form("")):
         data = await file.read(10 * 1024 * 1024 + 1)
         if len(data) > 10 * 1024 * 1024:
             raise HTTPException(400, I.tr("s.downloads.torrent_too_big"))
@@ -274,7 +281,10 @@ def build_router(ctx) -> APIRouter:
         dest.write_bytes(data)
         try:
             return {"ok": True, "tasks": [mgr.add(str(dest), save_path, start_at=start_at,
-                                                days=_days(days)).view()]}
+                                                days=_days(days), force=force == "1").view()], "skipped": []}
+        except Duplicate:  # stesso info-hash gia' in lista: la copia caricata non serve
+            dest.unlink(missing_ok=True)
+            return {"ok": True, "tasks": [], "skipped": [file.filename or "torrent"]}
         except ValueError as e:
             dest.unlink(missing_ok=True)
             raise HTTPException(400, str(e))

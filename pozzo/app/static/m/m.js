@@ -1083,7 +1083,8 @@ async function sendLinks() {
     const r = await api("/m/api/downloads", { body: { links } });
     const n = r?.tasks?.length ?? links.length;  // risposta di POST /api/downloads: {ok, tasks}
     $("#paste-links").value = "";
-    toast(t(n === 1 ? "k.m.dl_one" : "k.m.dl_many", {n}));
+    if (!n && r?.skipped?.length) toast(t("k.m.dl_dup"), true);  // il PC li ha già in lista: dal telefono non si forza
+    else toast(t(n === 1 ? "k.m.dl_one" : "k.m.dl_many", {n}));
   } catch (e) { toast(e.message, true); }
   $("#paste-go").disabled = false;
 }

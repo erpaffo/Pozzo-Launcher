@@ -208,7 +208,7 @@ def test_magnet_con_metadati_rispettano_i_posti(tmp, monkeypatch):
     import asyncio
     active, peak = set(), [0]
 
-    async def fake(task, eng, client, on_complete=lambda: None, gate=None):
+    async def fake(task, eng, client, on_complete=lambda: None, gate=None, space=None):
         task.options["metadata"] = False
         await asyncio.sleep(0.05)
         if gate:
@@ -263,7 +263,7 @@ def test_condivisione_dopo_la_fine_non_occupa_posti(swarm, tmp):
     assert _wait(lambda: t.status == T.COMPLETED), (t.status, t.error)
     assert t.options["seeding"] is True and t.id in m._torrent.handles and t.finished
     assert "ratio" in t.view()["options"]
-    u = m.add(swarm.magnet)  # l'unico posto e' libero: chi condivide non lo occupa
+    u = m.add(swarm.magnet, force=True)  # l'unico posto e' libero: chi condivide non lo occupa (stesso torrent apposta)
     assert _wait(lambda: u.status == T.RUNNING)
     m.pause(t.id)  # ferma la condivisione, resta completato
     assert _wait(lambda: t.id not in m._torrent.handles and "seeding" not in t.options)

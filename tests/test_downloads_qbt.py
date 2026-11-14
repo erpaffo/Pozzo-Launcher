@@ -155,7 +155,7 @@ def test_azione_a_limite_raggiunto(tmp, monkeypatch, action):
     m = _mgr(tmp, categories=[{"name": "k", "seed_ratio": 1, "action": action}])
     t = m.add(MAGNET, category="k")
 
-    async def fake(task, eng, client, done, gate=None):  # il motore: ha condiviso fino al limite
+    async def fake(task, eng, client, done, gate=None, space=None):  # il motore: ha condiviso fino al limite
         task.options.update(seeding=True, seed_reached=True)
         task.status = T.COMPLETED
 

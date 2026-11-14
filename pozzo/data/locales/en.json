@@ -4047,5 +4047,9 @@
  "p.missing.dualscreen": "DS/3DS dual screen on the phone",
  "p.missing.dolphin": "Automatic Dolphin install (no Linux build: use Flatpak or the package manager)",
  "p.missing.xdotool": "Phone mouse/keyboard and active-window tracking require xdotool (X11 only, not Wayland)",
- "p.missing.notifysend": "Notifications require notify-send"
+ "p.missing.notifysend": "Notifications require notify-send",
+ "s.downloads.duplicate": "Already in the download list",
+ "d.dup.ask": "Already in the list ({n}):\n{list}\n\nAdd anyway?",
+ "d.dup.skipped": "{n} already in the list, not added",
+ "k.m.dl_dup": "Already in the PC queue"
 }

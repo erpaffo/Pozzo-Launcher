@@ -1307,23 +1307,37 @@ async function dlSubmit() {
   const go = $("#dl-add-go");
   go.disabled = true;
   const added = [];
-  try {
-    if (links.length) {
-      added.push(...((await api("/api/downloads", { body: { links, save_path, start_at, password, category, tags } })).tasks || []));
+  let dupLinks = [], dupFile = false; // già in lista: il server non li aggiunge, qui si chiede se aggiungerli comunque
+  const send = async (ls, f, force) => {
+    if (ls.length) {
+      const r = await api("/api/downloads", { body: { links: ls, save_path, start_at, password, category, tags, force } });
+      added.push(...(r.tasks || []));
+      dupLinks = r.skipped || [];
       $("#dl-links").value = ""; // se poi fallisce il .torrent, i link non si rimandano due volte
     }
-    if (file) {
+    if (f) {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", f);
       if (save_path) fd.append("save_path", save_path);
       if (start_at) fd.append("start_at", start_at);
+      if (force) fd.append("force", "1");
       const r = await fetch("/api/downloads/torrent-file", { method: "POST", body: fd });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.detail || r.statusText);
       added.push(...(j.tasks || (j.task ? [j.task] : [])));
+      dupFile = !!(j.skipped || []).length;
+    }
+  };
+  try {
+    await send(links, file, false);
+    const dups = [...dupLinks, ...(dupFile ? [file.name] : [])];
+    if (dups.length && confirm(t("d.dup.ask", { n: dups.length, list: dups.map((u) => (u.length > 80 ? u.slice(0, 77) + "…" : u)).join("\n") }))) {
+      await send(dupLinks, dupFile ? file : null, true);
+      dupLinks = [], dupFile = false;
     }
     $("#dl-add-dlg").close();
-    toast(added.length === 1 ? t("d.added.one") : t("d.added.many", { n: added.length }));
+    const left = dupLinks.length + (dupFile ? 1 : 0), msg = added.length === 1 ? t("d.added.one") : added.length ? t("d.added.many", { n: added.length }) : "";
+    toast([msg, left ? t("d.dup.skipped", { n: left }) : ""].filter(Boolean).join(" · "));
   } catch (e) {
     const off = /^Link offline:\s*(.*)$/i.exec(e.message); // messaggio del server (check_links): tradotto qui
     toast(off ? tr("d.add.offline", "Link offline, non aggiunto: {link}", { link: off[1] }) : e.message, true);
