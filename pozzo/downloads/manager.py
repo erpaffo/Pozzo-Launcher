@@ -57,12 +57,13 @@ DEFAULTS = {"dir": "", "max_active": 3, "segments": 4, "limit_down": 0, "limit_u
             "rss": [],  # [{url, interval_min, filters: [{regex, category}]}]
             "check_links": False,  # prima di accodare un link http(s): se risulta offline, add() lo rifiuta
             "host_limits": {},  # {"dominio": N}: massimo N download HTTP insieme da quel dominio (e sottodomini)
+            "clicknload": False,  # server Click'n'Load su 127.0.0.1:9666 (i link restano in attesa di conferma)
             "interface": "",  # interfaccia di rete (nome, es. la VPN) da cui escono HTTP e torrent; vuota = qualunque
             "rules": []}  # [{match: regex su nome/gioco, platform: id console, subfolder: str}], la prima che combacia vale  # estrazioni/inserimenti in libreria insieme (letto all'avvio)
 INTS = {"max_active": (1, 10), "segments": (1, 8), "limit_down": (0, 10_000_000), "limit_up": (0, 10_000_000),
         "port": (0, 65535), "max_active_http": (0, 10), "max_active_torrent": (0, 10), "seed_minutes": (0, 100_000),
         "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000), "game_limit_kbps": (0, 10_000_000), "post_active": (1, 4)}
-BOOLS = ("alt_enabled", "check_links", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
+BOOLS = ("alt_enabled", "check_links", "clicknload", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
 SCHEMES = ("http://", "https://")
 SWEEP_EVERY = 30  # s: ogni tanto si rifanno le viste di tutti, anche dei task fermi
 TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")

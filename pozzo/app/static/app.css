@@ -2382,9 +2382,10 @@ p.bad { color: var(--bad); }
 .dl-chk { padding: 4px 0; overflow-wrap: anywhere; }
 .dl-chk[data-st="online"] b { color: var(--good); } .dl-chk[data-st="offline"] b { color: var(--bad); }
 .dl-chk-url { display: block; }
-#dl-clip-banner { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+#dl-clip-banner, #dl-cnl-banner { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; gap: 8px; align-items: center; padding: 8px 12px;
   background: var(--panel, #1b1f2a); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
-#dl-clip-banner[hidden] { display: none; }
+#dl-cnl-banner { bottom: 72px; max-width: calc(100vw - 32px); } /* sopra quello degli appunti se ci sono tutti e due */
+#dl-clip-banner[hidden], #dl-cnl-banner[hidden] { display: none; }
 
 /* «Completa i mancanti dal web» (dialogo immagini del gioco) */
 .md-fill { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }

@@ -23,6 +23,9 @@
 <label class="chk"><input type="checkbox" id="dls-showbrowser"> <span data-i18n="j.dl.showbrowser">Mostra il browser mentre risolve i link (per vedere la pagina e superare i controlli anti-bot a mano)</span></label>
 <label class="chk"><input type="checkbox" id="dls-check"> <span data-i18n="j.dl.check">Controlla i link prima di accodare (un link offline non viene aggiunto)</span></label>
 <label class="chk"><input type="checkbox" id="dls-clip"> <span data-i18n="j.dl.clip">Monitora gli appunti: proponi i link da scaricare che copi</span></label>
+<label class="chk"><input type="checkbox" id="dls-cnl" aria-describedby="dls-cnl-err dls-cnl-desc"> <span data-i18n="j.dl.cnl">Click'n'Load: ricevi i link dalle pagine con il pulsante «Click'n'Load» (porta 9666)</span></label>
+<p class="small bad" id="dls-cnl-err" role="status"></p>
+<p class="muted small" id="dls-cnl-desc" data-i18n="j.dl.cnl.desc">Qualunque pagina aperta nel browser può mandare link a questa porta: per questo non partono mai da soli, li rivedi e li aggiungi tu. Ascolta solo su questo PC (127.0.0.1).</p>
 
 <h3 data-i18n="j.dl.speed.title">Velocità</h3>
 <p class="muted small" data-i18n="j.dl.speed.desc">Limiti in KB/s per tutti i download insieme: 0 = nessun limite.</p>

@@ -173,6 +173,16 @@ In **Settings › Downloads › Network** you can choose the network interface d
 - **What does not go through the interface**: DNS lookups (they go to the system's DNS server: with a VPN it is usually the VPN's), the hidden browser that opens the pages of some file hosts and shorteners (it does not open while the interface is missing), SteamCMD and the store clients. If you need those to use the VPN too, use the VPN's own kill switch.
 - On macOS and Linux the system picks the route from its routing table: packets still carry the VPN address, and with the VPN down they do not leave.
 
+### Click'n'Load
+
+Some pages have a **Click'n'Load** button that sends links to a download manager listening on the PC (like JDownloader). To use it, turn on **Settings › Downloads › Click'n'Load** (off by default): the launcher listens on `127.0.0.1:9666`, only on this PC, and only while the option is on.
+
+- Any page open in the browser can send links to that port: that is how the protocol works. That is why received links **never start by themselves**. A notice "Click'n'Load: N links from *site*" appears at the bottom right (hover it to see the full page address): **Review and add** opens the "Add download" window with the links and password already filled in, and you decide whether to add them; ✕ discards them.
+- Only `http`, `https` and magnet links are accepted, at most 50 per submission, with the same checks as the clipboard (no home network addresses). Waiting links stay in memory only (at most 20 submissions) and disappear when you turn the option off or close the launcher.
+- Pages that encrypt their links (Click'n'Load 2) send the key inside a piece of JavaScript: the launcher does not run it, it only reads the key in the usual `return '…'` form; any other form is refused.
+- If the port is already used by another program (usually JDownloader running), the settings say so and Click'n'Load stays off.
+- DLC, CCF and RSDF containers are not supported: DLC needs keys from a JDownloader service that are not public.
+
 ### Automatic Extraction and Folder Sorting
 
 When a download finishes:

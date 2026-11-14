@@ -4062,5 +4062,12 @@
  "j.dl.iface.gone": "indisponible pour le moment",
  "j.dl.iface.down": "⚠ « {name} » n'est pas disponible : les téléchargements HTTP et torrent restent arrêtés jusqu'à son retour.",
  "d.iface.name": "Interface réseau absente",
- "d.iface.tt": "L'interface réseau choisie pour les téléchargements (VPN) n'est pas disponible : les téléchargements sont en pause et reprennent seuls à son retour"
+ "d.iface.tt": "L'interface réseau choisie pour les téléchargements (VPN) n'est pas disponible : les téléchargements sont en pause et reprennent seuls à son retour",
+ "j.dl.cnl": "Click'n'Load : recevoir les liens des pages avec un bouton « Click'n'Load » (port 9666)",
+ "j.dl.cnl.desc": "N'importe quelle page ouverte dans le navigateur peut envoyer des liens à ce port : c'est pourquoi ils ne démarrent jamais seuls, vous les vérifiez et les ajoutez vous-même. N'écoute que sur ce PC (127.0.0.1).",
+ "j.dl.cnl.busy": "Le port {port} est déjà utilisé par un autre programme (JDownloader est-il ouvert ?) : Click'n'Load n'est pas actif.",
+ "d.cnl.found": "Click'n'Load : {n} liens de {site}",
+ "d.cnl.more": "{n} autres en attente",
+ "d.cnl.review": "Vérifier et ajouter",
+ "d.cnl.discard": "Ignorer les liens Click'n'Load"
 }

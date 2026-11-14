@@ -4062,5 +4062,12 @@
  "j.dl.iface.gone": "şu anda kullanılamıyor",
  "j.dl.iface.down": "⚠ “{name}” kullanılamıyor: HTTP ve torrent indirmeleri o geri gelene kadar durur.",
  "d.iface.name": "Ağ arayüzü yok",
- "d.iface.tt": "İndirmeler için seçilen ağ arayüzü (VPN) kullanılamıyor: indirmeler duraklatıldı ve arayüz geri geldiğinde kendiliğinden devam eder"
+ "d.iface.tt": "İndirmeler için seçilen ağ arayüzü (VPN) kullanılamıyor: indirmeler duraklatıldı ve arayüz geri geldiğinde kendiliğinden devam eder",
+ "j.dl.cnl": "Click'n'Load: “Click'n'Load” düğmesi olan sayfalardan bağlantıları al (port 9666)",
+ "j.dl.cnl.desc": "Tarayıcıda açık herhangi bir sayfa bu porta bağlantı gönderebilir: bu yüzden asla kendiliğinden başlamazlar, onları sen gözden geçirip eklersin. Yalnızca bu bilgisayarda dinler (127.0.0.1).",
+ "j.dl.cnl.busy": "{port} portu zaten başka bir program tarafından kullanılıyor (JDownloader açık mı?): Click'n'Load etkin değil.",
+ "d.cnl.found": "Click'n'Load: {site} sitesinden {n} bağlantı",
+ "d.cnl.more": "{n} tane daha bekliyor",
+ "d.cnl.review": "Gözden geçir ve ekle",
+ "d.cnl.discard": "Click'n'Load bağlantılarını at"
 }

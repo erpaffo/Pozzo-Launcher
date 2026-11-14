@@ -172,6 +172,16 @@ In **Impostazioni › Download › Rete** puoi scegliere l'interfaccia di rete d
 - **Cosa non passa dall'interfaccia**: le richieste DNS (vanno al server DNS del sistema: con la VPN di solito è quello della VPN), il browser nascosto che apre le pagine di alcuni siti di hosting e degli accorciatori (con l'interfaccia assente non si apre), SteamCMD e i client degli store. Se ti serve che anche questi passino dalla VPN, usa il kill switch della VPN stessa.
 - Su macOS e Linux il sistema sceglie la strada in base alla tabella di instradamento: i pacchetti escono comunque con l'indirizzo della VPN, e con la VPN spenta non partono.
 
+### Click'n'Load
+
+Alcune pagine hanno un pulsante **Click'n'Load** che manda i link a un download manager in ascolto sul PC (come JDownloader). Per usarlo attiva **Impostazioni › Download › Click'n'Load** (spento di default): il launcher ascolta su `127.0.0.1:9666`, solo su questo PC, e solo finché l'opzione è attiva.
+
+- Qualunque pagina aperta nel browser può mandare link a quella porta: è così che funziona il protocollo. Per questo i link ricevuti **non partono mai da soli**. In basso a destra compare un avviso «Click'n'Load: N link da *sito*» (passa il mouse per vedere la pagina completa): **Rivedi e aggiungi** apre la finestra «Aggiungi download» con i link e la password già scritti, e scegli tu se aggiungerli; ✕ li scarta.
+- Si accettano solo link `http`, `https` e magnet, al massimo 50 per invio, con gli stessi controlli degli appunti (niente indirizzi della rete di casa). I link in attesa restano solo in memoria (al massimo 20 invii) e spariscono quando spegni l'opzione o chiudi il launcher.
+- Le pagine che cifrano i link (Click'n'Load 2) mandano la chiave dentro un pezzo di JavaScript: il launcher non lo esegue, ne legge solo la chiave nella forma solita `return '…'`; ogni altra forma viene rifiutata.
+- Se la porta è già usata da un altro programma (di solito JDownloader aperto), le impostazioni lo segnalano e Click'n'Load resta spento.
+- I contenitori DLC, CCF e RSDF non sono supportati: DLC richiede chiavi di un servizio di JDownloader non pubbliche.
+
 ### Estrazione automatica e smistamento nelle cartelle
 
 Quando un download viene completato:

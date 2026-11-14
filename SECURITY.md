@@ -19,6 +19,7 @@ Pozzo Launcher runs on your PC with your permissions. The exposed parts, and the
 
 - **Phone server** (HTTPS on the home network): pairing with a code, access without pairing, what a paired phone or a guest can do.
 - **App server** (`127.0.0.1` only): requests from other sites open in the browser (CSRF, DNS rebinding).
+- **Click'n'Load listener** (`127.0.0.1:9666`, off by default): any page open in the browser can send it links. Links must never reach the downloads without the user's confirmation, the page's `jk` JavaScript is never run, and the listener must expose nothing of the app beyond its four routes.
 - **Extensions store**: an extension with a `backend.py` runs code. The store installs only files listed in the official index and with the correct sha256; a way around this check is a vulnerability.
 - **Automatic update**: download and replacement of the executable.
 - **Personal data**: source keys, store accounts and the library must not leave the PC (see [PRIVACY.md](PRIVACY.md)).

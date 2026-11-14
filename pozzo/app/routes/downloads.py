@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from ... import storelinks as SL
 from .. import browserdl
 from ...cache import Cache
-from ...downloads import bandwidth, debrid, finish, hosts, iface, install, linkcheck, multiup, resolvers
+from ...downloads import bandwidth, clicknload, debrid, finish, hosts, iface, install, linkcheck, multiup, resolvers
 from ...downloads.engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from ...downloads.extract import queue_forecast
 from ...downloads.manager import Duplicate, Manager
@@ -68,6 +68,15 @@ def build_router(ctx) -> APIRouter:
     mgr.start()
     # alla chiusura: file .part chiusi e stato salvato prima dell'uscita immediata (os._exit non svuota i buffer)
     ctx.app.router.add_event_handler("shutdown", mgr.stop)
+    # Click'n'Load: server a parte solo se attivo; i link arrivano qui e aspettano la conferma della persona
+    # l'evento porta solo il numero (i flussi /api/v1/events lo vedono): i link li legge la finestra con GET
+    cnl = clicknload.ClickNLoad(on_change=lambda: ctx.events and ctx.events.emit("clicknload", {"n": len(cnl.pending())}))
+    cnl.apply(mgr.settings()["clicknload"])
+    ctx.app.state.clicknload = cnl  # per i test
+    ctx.app.router.add_event_handler("shutdown", lambda: cnl.apply(False))
+
+    def _settings(s: dict) -> dict:
+        return {**s, "clicknload_error": cnl.error}  # porta occupata (JDownloader aperto?): la UI lo dice
 
     @router.post("/api/links/mirrors")
     def api_links_mirrors(body: dict = Body(...)):
@@ -87,7 +96,7 @@ def build_router(ctx) -> APIRouter:
 
     @router.get("/api/downloads")
     def api_downloads():
-        return {"tasks": mgr.list(), "settings": mgr.settings()}
+        return {"tasks": mgr.list(), "settings": _settings(mgr.settings())}
 
     @router.post("/api/downloads")
     def api_downloads_add(body: dict = Body(...)):
@@ -329,9 +338,24 @@ def build_router(ctx) -> APIRouter:
     def api_downloads_settings(body: dict = Body(...)):
         """Aggiornamento parziale; le chiavi debrid entrano ma non escono mai (solo key_set)."""
         try:
-            return mgr.update_settings(body)
+            s = mgr.update_settings(body)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        cnl.apply(s["clicknload"])
+        return _settings(s)
+
+    @router.get("/api/downloads/clicknload")
+    def api_downloads_cnl():
+        """Link arrivati da Click'n'Load in attesa: la persona li rivede e li aggiunge dal dialog, mai in automatico."""
+        return {"pending": cnl.pending()}
+
+    @router.post("/api/downloads/clicknload/{pid}/take")
+    def api_downloads_cnl_take(pid: int):
+        """Toglie il gruppo dall'attesa (per riempire il dialog di aggiunta, o per scartarlo) e lo restituisce."""
+        p = cnl.take(pid)
+        if not p:
+            raise HTTPException(404, I.tr("s.downloads.not_found"))
+        return p
 
     @router.get("/api/events")  # il flusso di ogni finestra (EventSource non manda il token di /api/v1/events)
     @router.get("/api/downloads/events")

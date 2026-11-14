@@ -1429,6 +1429,40 @@ function dlClipBanner(links) {
   };
 }
 
+/* Click'n'Load: i link mandati dalle pagine aspettano nel server; entrano solo dal dialog di aggiunta, confermati da chi usa l'app */
+async function dlCnlCheck() {
+  let list = [];
+  try { list = (await api("/api/downloads/clicknload")).pending || []; } catch { return; }
+  let b = $("#dl-cnl-banner");
+  if (!list.length) { if (b) b.hidden = true; return; }
+  if (!b) {
+    b = document.createElement("div");
+    b.id = "dl-cnl-banner";
+    b.setAttribute("role", "status");
+    document.body.append(b);
+  }
+  const p = list[0], no = esc(t("d.cnl.discard"));
+  b.innerHTML = `<span>${esc(t("d.cnl.found", { n: p.links.length, site: p.site || "?" }))}${list.length > 1 ? " · " + esc(t("d.cnl.more", { n: list.length - 1 })) : ""}</span>
+    <button class="btn primary" type="button" data-a="add">${esc(t("d.cnl.review"))}</button>
+    <button class="btn" type="button" data-a="no" aria-label="${no}" title="${no}">✕</button>`;
+  b.title = p.source || ""; // la pagina di provenienza intera: chi decide sa da dove arrivano
+  b.hidden = false;
+  b.onclick = async (e) => {
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (!a) return;
+    b.hidden = true;
+    try {
+      const got = await api(`/api/downloads/clicknload/${p.id}/take`, { body: {} });
+      if (a === "add") {
+        dlOpenAdd();
+        dlAppendLinks(got.links || []);
+        if (got.passwords?.length) $("#dl-pass").value = got.passwords[0];
+      }
+    } catch (err) { toast(err.message, true); }
+    dlCnlCheck();
+  };
+}
+
 /* ---- impostazioni › Download: ogni campo salva da solo (corpo parziale), il server risponde con i valori riportati nei limiti */
 const DLS_FIELDS = [
   ["#dls-dir", "dir", "str"], ["#dls-max", "max_active", "int"], ["#dls-max-http", "max_active_http", "int"],
@@ -1441,7 +1475,7 @@ const DLS_FIELDS = [
   ["#dls-game-mode", "game_mode", "str"], ["#dls-game-limit", "game_limit_kbps", "int"],
   ["#dls-game-http", "game_pause_http", "bool"], ["#s2-fmt", "switch2_format", "str"],
   ["#dls-incomplete", "incomplete_dir", "str"], ["#dls-watch", "watch_dir", "str"], ["#dls-seed-action", "seed_action", "str"],
-  ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"], ["#dls-iface", "interface", "str"],
+  ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"], ["#dls-iface", "interface", "str"], ["#dls-cnl", "clicknload", "bool"],
 ];
 
 function dlsRead(el, kind) {
@@ -1473,6 +1507,7 @@ function dlsFill(s) {
   });
   $("#dls-ipf-err").textContent = s.ip_filter_error || "";
   $("#dls-iface-state").textContent = s.iface_down ? t("j.dl.iface.down", { name: s.interface }) : "";
+  $("#dls-cnl-err").textContent = s.clicknload_error === "busy" ? t("j.dl.cnl.busy", { port: 9666 }) : "";
   dlsListsFill(s);
   dlsAltState();
 }
@@ -1719,6 +1754,7 @@ function dlStream() {
       dlApply(d.tasks || []);
     } catch { /* fotogramma non valido */ }
   });
+  es.addEventListener("clicknload", dlCnlCheck);
   es.addEventListener("open", () => {
     if (poll) { clearInterval(poll); poll = null; dlLoad().catch(() => {}); }
   });
@@ -1747,6 +1783,7 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", dlClipCheck);
   $("#dl-dest-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#dl-dest").value = p; };
   dlLoad().catch(() => { /* server senza coda download: il contatore resta vuoto */ });
+  dlCnlCheck();
   if (window.EventSource) {
     dlStream();
     // il server scarta gli eventi di una finestra che non li legge (coda piena, finestra in secondo piano): tornando visibile si rilegge
