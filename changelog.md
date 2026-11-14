@@ -1,5 +1,18 @@
 # Changelog
 
+## Non rilasciato
+
+### Aggiunto
+
+- **Tutorial**: una raccolta di 30 tutorial passo passo divisi per argomento (primi passi, libreria, giocare, download, personalizza, dati), sempre raggiungibile da Impostazioni › Sistema, dal menu Impostazioni e dalla palette dei comandi.
+- **Novità della 0.19.0** con il loro tutorial: doppioni nei download, cartella sorvegliata, interfaccia di rete (VPN), Click'n'Load, spazio su disco dei torrent, file saltati nel ripristino dei salvataggi.
+- **Suggerimenti**: 46 consigli nuovi (61 in tutto) su libreria, scheda del gioco, download, gioco in corso e impostazioni. In Impostazioni › Generale › Suggerimenti si possono spegnere, mettere in pausa per 1 o 7 giorni o rivedere da capo, e si vede quanti ne restano.
+
+### Corretto
+
+- **Tour e tutorial**: l'evidenza non finisce più su un punto a caso dell'interfaccia quando un passo cambia schermata, su elementi nascosti o fuori vista; il passo «Temi e aspetto» apre davvero Impostazioni › Aspetto.
+- **Download**: alla chiusura il gestore dei download si ferma davvero; una magnet appena partita non fa più superare il numero massimo di download contemporanei; su Windows il disco pieno dei torrent viene riconosciuto in tutti i casi.
+
 ## 0.19.0 (2026-11-14)
 ### Aggiunto
 
