@@ -403,12 +403,30 @@ def _game_dir(cfg, key: str, title: str | None = None) -> Path | None:
     return backup_root(cfg) / idx["dir"]
 
 
+_MAPS: dict[str, tuple[tuple, object]] = {}  # mapping.yaml gia' letti: (mtime, size) -> contenuto
+
+
 def _mapping(d: Path | None, name: str = "") -> dict:
+    """mapping.yaml del gioco. Una chiamata di backup/restore lo rilegge piu' volte e PyYAML e' lento: si riusa il
+    risultato finche' il file non cambia (mtime+size) e si usa il loader in C quando c'e'."""
+    import copy
+
     import yaml
-    try:
-        m = yaml.safe_load((d / "mapping.yaml").read_text(encoding="utf-8")) if d else None
-    except (OSError, yaml.YAMLError):
-        m = None
+    m = None
+    if d:
+        try:
+            p = d / "mapping.yaml"
+            st = p.stat()
+            sig, hit = (st.st_mtime_ns, st.st_size), _MAPS.get(str(p))
+            if hit and hit[0] == sig:
+                m = copy.deepcopy(hit[1])
+            else:
+                m = yaml.load(p.read_text(encoding="utf-8"), getattr(yaml, "CSafeLoader", yaml.SafeLoader))
+                if len(_MAPS) > 16:
+                    _MAPS.clear()
+                _MAPS[str(p)] = (sig, copy.deepcopy(m))
+        except (OSError, yaml.YAMLError):
+            m = None
     m = m if isinstance(m, dict) else {}
     m.setdefault("name", name)
     m["drives"] = m.get("drives") or {}
@@ -422,6 +440,7 @@ def _write_mapping(d: Path, m: dict):
     tmp = d / "mapping.yaml.part"
     tmp.write_text(yaml.safe_dump(m, sort_keys=False, allow_unicode=True), encoding="utf-8")
     tmp.replace(d / "mapping.yaml")
+    _MAPS.pop(str(d / "mapping.yaml"), None)
 
 
 def _os() -> str:
@@ -439,7 +458,7 @@ def _store(cfg, key: str, title: str, files: dict[str, tuple[Path | None, bytes 
     name, n = f"backup-{stamp}.zip", 1
     while name in names or (d / name).exists():  # due copie nello stesso secondo
         name, n = f"backup-{stamp}-{n}.zip", n + 1
-    meta = {}
+    meta, stats = {}, {}
     d.mkdir(parents=True, exist_ok=True)
     tmp = d / (name + ".part")
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
@@ -449,6 +468,9 @@ def _store(cfg, key: str, title: str, files: dict[str, tuple[Path | None, bytes 
             folder = "drive-" + escape_name(drive.replace(":", "")) if drive else "drive-0"
             m["drives"].setdefault(folder, drive)
             if data is None:
+                st = src.stat()  # prima di leggere: se il file cambia durante la copia, la volta dopo non combacia
+                if st.st_mtime_ns < (when - 2) * 1e9:  # mtime troppo recente = non fidabile (granularita' del clock)
+                    stats[k] = [st.st_size, st.st_mtime_ns]
                 z.write(src, _entry(m["drives"], k))
                 meta[k] = {"hash": _sha1(src), "size": src.stat().st_size}
             else:
@@ -459,7 +481,7 @@ def _store(cfg, key: str, title: str, files: dict[str, tuple[Path | None, bytes 
                          "files": meta, "registry": {"hash": None}, "children": []})
     _write_mapping(d, m)
     idx = _index(cfg, key)
-    idx.setdefault("backups", {})[name] = {"reason": reason, "dirs": dirs}
+    idx.setdefault("backups", {})[name] = {"reason": reason, "dirs": dirs, "stat": stats}
     _write_index(cfg, key, idx)
     keep = int((getattr(cfg, "app", None) or {}).get("save_keep") or KEEP)
     for old in [b for b in list_backups(cfg, key) if not b["pinned"] and b["name"] != protect][keep:]:
@@ -556,8 +578,14 @@ def backup(cfg, key: str, title: str, paths: list[Path], reason: str = "manuale"
     if last:
         prev = next((b for b in _mapping(d)["backups"] if b["name"] == last[0]["name"]), {})
         pf = {k: v or {} for k, v in (prev.get("files") or {}).items()}
-        if set(pf) == set(files) and all(pf[k].get("size") == f.stat().st_size and pf[k].get("hash") == _sha1(f)
-                                         for k, (f, _) in files.items()):
+        # (size, mtime) registrati da questo PC all'ultima copia: se combaciano il file non si rilegge. Mancano per le
+        # copie di altri PC/Ludusavi e i file ripristinati hanno mtime nuovo: li' si calcola l'hash.
+        seen = ((_index(cfg, key).get("backups") or {}).get(last[0]["name"]) or {}).get("stat") or {}
+
+        def same(k, f):
+            st = f.stat()
+            return pf[k].get("size") == st.st_size and (seen.get(k) == [st.st_size, st.st_mtime_ns] or pf[k].get("hash") == _sha1(f))
+        if set(pf) == set(files) and all(same(k, f) for k, (f, _) in files.items()):
             return _mark(cfg, key, d / last[0]["name"], reason)
     return _mark(cfg, key, _store(cfg, key, name or title, files, reason, dirs, protect=protect), reason)
 
