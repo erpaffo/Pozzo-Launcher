@@ -105,7 +105,7 @@ Vuoi sfidare un amico a distanza ai classici arcade/console su RetroArch o avvia
 | **TV** | Interfaccia a schermo intero nativa per controller e schermi 4K | [Big Picture](bigpicture.md) |
 | **Personalizzazione** | 4 temi di colore, 6 profili di esperienza desktop e store di estensioni/plugin | [Temi e plugin](ESTENSIONI.md) |
 | **Più PC e Famiglia** | Sincronizzazione dati tra due PC in LAN/cartella condivisa e profili utente separati | [Dati e manutenzione](manutenzione.md#sincronizzazione-tra-pc), [Profili](libreria.md#profili-utente) |
-| **Integrazioni** | Presenza su Discord (anche netplay 1 di 2), avvisi di Windows, esportazione libreria web | [Giocare](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Avvisi](extra.md#avvisi-di-windows) |
+| **Integrazioni** | Presenza su Discord (anche netplay 1 di 2), notifiche di sistema, esportazione libreria web | [Giocare](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Avvisi](extra.md#avvisi-di-sistema) |
 | **Assistenza & FAQ** | Risoluzione problemi passo-passo, autodiagnostica Salute, domande frequenti | [Centro Assistenza e FAQ](assistenza.md) |
 
 ---

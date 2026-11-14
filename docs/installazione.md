@@ -60,6 +60,19 @@ Al primo avvio compare la **configurazione guidata**, in cinque passi:
 
 La configurazione guidata si può riaprire in qualsiasi momento da **Impostazioni › Nuovi giochi**.
 
+## macOS: permessi
+
+Su macOS alcune funzioni chiedono un permesso di sistema. Senza il permesso l'app funziona lo stesso: non va solo la funzione che lo usa. Si concedono in **Impostazioni di Sistema › Privacy e sicurezza**, attivando **Pozzo Launcher** nella sezione giusta:
+
+- **Accessibilità**: telefono come mouse e tastiera, overlay, secondo schermo dei giochi DS e 3DS. Se manca, **Impostazioni** lo segnala con un avviso.
+- **Monitoraggio input**: tasto screenshot e scorciatoie globali di gioco.
+- **Registrazione schermo**: cattura della finestra di gioco per lo screenshot e per il secondo schermo DS e 3DS.
+- **Automazione**: il sistema la chiede la prima volta che Pozzo usa il Finder (cestino) o Eventi di sistema (per esempio sospensione e spegnimento a tempo).
+
+Dopo aver concesso Registrazione schermo o Monitoraggio input, riavvia Pozzo: macOS applica il permesso solo al nuovo avvio. Con un'app non firmata può capitare che un aggiornamento faccia perdere i permessi: riattivali nelle stesse impostazioni.
+
+Su Linux non ci sono permessi da concedere. Il telefono come mouse e tastiera richiede `xdotool`.
+
 ## Dove stanno i dati
 
 Configurazione, cache, libreria e dati personali stanno nella cartella dell'utente:

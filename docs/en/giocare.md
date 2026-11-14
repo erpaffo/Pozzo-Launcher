@@ -12,7 +12,7 @@ automatically. The version is pulled from each project's GitHub releases; RetroA
 official websites. Emulators are placed in the folder specified below (otherwise in `Emulatori`, alongside settings).
 **↻ Update** installs the new version over the old one: configuration and data inside the emulator folder are
 preserved. **⬇ Download Cores** grabs RetroArch cores missing for consoles in the library from the libretro
-buildbot. Ryujinx and Eden do not publish on GitHub: they must be installed manually. Windows only.
+buildbot. Ryujinx and Eden do not publish on GitHub: they must be installed manually. On macOS and Linux, installation uses each emulator's own packages (.dmg or .app on macOS, AppImage on Linux). Dolphin has no Linux build, Xenia is Windows only, and Cemu on Mac is the Intel build (runs via Rosetta).
 
 Emulators belong to their respective developers: Pozzo downloads the builds they publish without modifying them, and every row links
 to the original project.
@@ -150,12 +150,12 @@ foreground, using XInput (Xbox) controllers. Can be disabled with `[app] exit_co
 
 On Windows, games started directly by Pozzo are tracked with a **Job Object**: the session ends when the last child
 process closes too, so playtime is correct even with executables that relaunch another one, and **Close game**
-terminates every process of the game.
+terminates every process of the game. On macOS and Linux there is no Job Object: the whole process tree is still closed.
 
 **Pause** freezes the running game (like Nyrna) and frees CPU and GPU even for games without their own pause. Use
 **Ctrl+Shift+P** (configurable in the screenshot settings), **Select + L1** on the controller, or the **Pause** button
 in the game bar, in Big Picture and from the phone. Paused time does not count as playtime, and the game always
-resumes at the end of the session. Pause and Job Object are Windows only.
+resumes at the end of the session. On macOS and Linux, pause freezes the game's processes with SIGSTOP and resumes them with SIGCONT; the Job Object remains Windows only.
 
 ### Splash Screen on Launch
 
@@ -231,7 +231,7 @@ with title, console, and session time. All that is required is the **Application
 It uses Discord's **local channel** (`named pipe`): no data leaves your PC, no servers, no secret keys. Images
 cannot be displayed because Discord only accepts assets uploaded directly to the developer application and not external web URLs.
 
-![Settings › Integrations: Windows notifications and Discord Rich Presence](../images/impostazioni-integrazioni.jpg)
+![Settings › Integrations: system notifications and Discord Rich Presence](../images/impostazioni-integrazioni.jpg)
 
 <a id="partita-con-un-amico"></a>
 ## Play with a Friend
@@ -393,7 +393,7 @@ in the **📷 Screenshots** view and can also be triggered from your phone.
 
 ### In-game overlay
 
-During a session (Windows) **Ctrl+Shift+O** or **Select + R3** on the controller open an overlay on top of the game with
+During a session **Ctrl+Shift+O** or **Select + R3** on the controller open an overlay on top of the game with
 the session timer, screenshot, pause, "Close game", achievements, notes from the Diary extension (if installed) and music
 controls. Close it with the same key, **Esc** or **B**; focus returns to the game. Change the shortcut in the screenshot
 settings. The overlay works with windowed and borderless-fullscreen games: **it cannot be drawn over exclusive fullscreen games**.

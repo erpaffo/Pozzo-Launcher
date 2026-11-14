@@ -176,15 +176,17 @@ The **Twitch and YouTube** extension (installed from the extensions Store, see [
 which you can watch in the card. Keys go in **Settings › Streaming**: Twitch Client ID and Client Secret (a free app on
 dev.twitch.tv) and, optionally, a YouTube Data API key. Without keys, links to the Twitch and YouTube search remain.
 
-## Windows Notifications
+## System Notifications
 
-With **Settings › 🧩 Integrations › 🔔 Windows Notifications** enabled (on by default), Pozzo Launcher delivers native Windows
-toast notifications — preserved in Action Center — when:
+With **Settings › 🧩 Integrations › 🔔 System Notifications** enabled (on by default), Pozzo Launcher delivers native system
+notifications — kept in the notification center — when:
 
 - a wishlisted game drops below your target price;
 - a new free game becomes available (Steam, Epic, Prime Gaming, online stores);
 - an installed PC port receives an update;
 - a background scan or update concludes (new games, store catalogs, box art, durations, local databases…).
+
+On Linux, `notify-send` is required (on Debian and Ubuntu it is in the `libnotify-bin` package). The tray icon remains Windows only.
 
 Free games and port updates are polled quietly in the background every 6 and 12 hours without requiring open
 tabs. The same alert is never duplicated for the same deal or release.

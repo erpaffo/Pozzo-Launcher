@@ -21,7 +21,7 @@ Everything is configured in **Settings › 📱 Phone and streaming**.
    mode and your **library remains browsable even when Wi-Fi drops** (including box art); commands that modify
    anything (launching, favorites, controller) require an active connection.
 
-Windows might ask you to allow the app on private networks: answer Yes.
+Your firewall may ask you to allow the app on the network: answer Yes.
 
 ![Settings › Phone and streaming: activation, PC certificate, pairing QR code, and paired phones](../images/impostazioni-telefono.jpg)
 
@@ -100,8 +100,8 @@ to the controller.
 
 ## The Phone as a Controller
 
-The on-screen controller becomes a **virtual Xbox controller** on the PC: requires the **ViGEmBus** driver. Up to 4
-phones = 4 players.
+The on-screen controller becomes a **virtual Xbox controller** on the PC: requires the **ViGEmBus** driver (Windows only). Up to 4
+phones = 4 players. On macOS and Linux the phone controls mouse and keyboard, but there is no virtual pad (on macOS it needs the Accessibility permission, see [macOS: permissions](installazione.md#macos-permissions)).
 
 The **🏠** button at the top closes the controller and returns to Home, even when holding the phone vertically; long titles
 are shortened so the top action bar does not overflow the screen.
@@ -182,7 +182,7 @@ Original configuration files are backed up first; **Revert** restores emulator s
 
 For DS and 3DS games, a connected phone acts as the **bottom screen**: it displays the bottom touchscreen output and
 transmits touches to the PC, while the PC displays the top screen in fullscreen. Supported with melonDS, Citra, Azahar,
-and Lime3DS (Windows only). The phone must be connected **before** launching the game: this allows the app to configure
+and Lime3DS (Windows and macOS, not Linux; on macOS it needs permissions, see [macOS: permissions](installazione.md#macos-permissions)). The phone must be connected **before** launching the game: this allows the app to configure
 the emulator into separate windows, and restore the original configuration when gameplay ends.
 
 - In **portrait mode**, the touchscreen sits at the top with D-pad and buttons below; in **landscape mode**, the touchscreen
@@ -209,14 +209,14 @@ of your session: streaming shuts down automatically when you finish playing.
 ### Sunshine Always Ready
 
 If Sunshine is stopped or set to manual startup, Moonlight cannot find your PC. **▶ Start Sunshine** launches it and
-configures it to start with Windows, requiring only a single administrator prompt. The settings tab notifies you if it is set
+configures it to start with the system: on Windows with a single administrator prompt; on macOS with `brew services` (Sunshine installed with Homebrew), on Linux with `systemctl --user`. The settings tab notifies you if it is set
 to manual startup, and the **Health** page reports when it is offline.
 
 ### Optimize Streaming
 
 **⚡ Optimize streaming** inspects:
 
-- Sunshine process status and Windows startup configuration;
+- Sunshine process status and startup configuration;
 - NVIDIA encoder preset, two-pass mode, and error correction;
 - Whether the PC is connected via Ethernet cable or Wi-Fi.
 

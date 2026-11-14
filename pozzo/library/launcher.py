@@ -1137,7 +1137,8 @@ class Launcher:
         threading.Thread(target=self._run, args=(key, platform, path, pl, fast), daemon=True).start()
 
     # ------------------------------------------------------------ giochi PC (store e manuali)
-    LAUNCHER_EXES = {"explorer.exe", "battle.net launcher.exe", "battle.net.exe", "riotclientservices.exe"}
+    # "open" (macOS) avvia il gioco sotto launchd ed esce subito: si segue la cartella come per i launcher
+    LAUNCHER_EXES = {"explorer.exe", "battle.net launcher.exe", "battle.net.exe", "riotclientservices.exe", "open"}
 
     def launch_pc(self, key: str, title: str, launch: dict, install_dir: str, store: str, store_id: str = "", fast: bool = False):
         if fast:  # controllo subito (prima della copia): la rotta risponde con l'errore

@@ -109,7 +109,7 @@ args = ["-L", "{core}", "{rom}", "-f"]
 | `save_backups` | Automatic game save backups (default `true`) |
 | `skip_duplicates` | Show only a single version per game (default `true`) |
 | `port` | Local server port (default 8765) |
-| `notify` | Windows notifications for prices, free games, updated ports, and completed jobs (default `true` on Windows) |
+| `notify` | System notifications for prices, free games, updated ports, and completed jobs (default `true` where available: Windows, macOS, Linux with `notify-send`) |
 | `after_jobs` | Action upon completion of long tasks: `none`, `sleep`, or `shutdown` (default `none`) |
 
 ### Environment Variables
@@ -140,7 +140,7 @@ Written by the app; can be edited manually when the app is closed. Most useful s
 | `app.sync` | Synchronization: shared folder (`folder`), what to sync (`what`: `personal` or `all`), paired PCs, and this PC's identity |
 | `app.phone` | Phone: `touchscreen` (secondary screen in DS and 3DS games), `screen_idle` (idle seconds before touch screen reverts to PC), `mouse`, `mic_device`, `public_url` (tunnel address for guests), `video_addr` (address for Moonlight), `pad` (appearance, sensitivity, and button layouts, shared across all phones) |
 | `app.discord` | Discord Rich Presence: `enabled`, `client_id`, `show_time` |
-| `app.notify` | Windows notifications (`false` to disable; active by default on Windows) |
+| `app.notify` | System notifications (`false` to disable; active by default where available) |
 | `app.merge_stores`, `app.store_order` | Merging the same game across stores (default `true`) and the preferred store order, e.g. `["steam", "gog", "epic"]` |
 | `app.video_snap`, `app.video_max_mb` | Video snaps (off by default) and the per-clip cap in MB (default 30) |
 | `app.libshare` | Shared library: shared consoles and games, invites and internet access (managed from Settings › Controller) |

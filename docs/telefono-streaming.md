@@ -21,7 +21,7 @@ Tutto si configura in **Impostazioni › 📱 Telefono e streaming**.
    schermo e la **libreria resta consultabile anche quando il Wi-Fi va e viene** (copertine comprese); i comandi che
    modificano qualcosa (avvio, preferiti, controller) richiedono la connessione.
 
-Windows può chiedere di consentire l'app sulle reti private: rispondi Sì.
+Il firewall del sistema può chiedere di consentire l'app sulle reti: rispondi Sì.
 
 ![Impostazioni › Telefono e streaming: attivazione, certificato del PC, QR di abbinamento e telefoni abbinati](images/impostazioni-telefono.jpg)
 
@@ -100,8 +100,8 @@ digitato): le impostazioni e i file del PC restano fuori portata. L'**ospite a d
 
 ## Il telefono come controller
 
-Il controller sullo schermo diventa un **controller Xbox virtuale** sul PC: serve il driver **ViGEmBus**. Fino a 4
-telefoni = 4 giocatori.
+Il controller sullo schermo diventa un **controller Xbox virtuale** sul PC: serve il driver **ViGEmBus** (solo Windows). Fino a 4
+telefoni = 4 giocatori. Su macOS e Linux il telefono controlla mouse e tastiera, ma non c'è un pad virtuale (su macOS serve il permesso Accessibilità, vedi [macOS: permessi](installazione.md#macos-permessi)).
 
 Il pulsante **🏠** in alto chiude il controller e torna alla Home, anche col telefono in verticale; i titoli lunghi si
 accorciano, così la barra dei comandi non esce dallo schermo.
@@ -183,7 +183,7 @@ I file originali vengono copiati prima; **Annulla** rimette le impostazioni dell
 
 Nei giochi DS e 3DS il telefono collegato fa da **schermo inferiore**: mostra quello che il gioco disegna in basso e
 manda i tocchi al PC, che tiene lo schermo superiore a schermo intero. Funziona con melonDS, Citra, Azahar e Lime3DS
-(solo su Windows) e il telefono deve essere collegato **prima** di avviare il gioco: è lì che l'app prepara
+(su Windows e macOS, non su Linux; su macOS servono i permessi, vedi [macOS: permessi](installazione.md#macos-permessi)) e il telefono deve essere collegato **prima** di avviare il gioco: è lì che l'app prepara
 l'emulatore a finestre separate, e a fine partita rimette la configurazione com'era.
 
 - Col telefono in **verticale** lo schermo touch sta in alto e croce e tasti in basso; in **orizzontale** lo schermo
@@ -211,14 +211,14 @@ giochi: lo streaming si chiude da solo a fine partita.
 ### Sunshine sempre pronto
 
 Se Sunshine è fermo o impostato su avvio manuale, Moonlight non trova il PC. **▶ Avvia Sunshine** lo avvia e lo
-imposta per partire con Windows, con una sola richiesta dei permessi di amministratore. La scheda avvisa se è in
+imposta per partire con il sistema: su Windows con una sola richiesta dei permessi di amministratore; su macOS con `brew services` (Sunshine installato con Homebrew), su Linux con `systemctl --user`. La scheda avvisa se è in
 avvio manuale e la pagina **Salute** segnala quando è fermo.
 
 ### Ottimizza lo streaming
 
 **⚡ Ottimizza lo streaming** controlla:
 
-- Sunshine avviato e configurato per partire con Windows;
+- Sunshine avviato e configurato per partire con il sistema;
 - il preset dell'encoder NVIDIA, il two-pass e la correzione degli errori;
 - se il PC è collegato via cavo o in Wi-Fi.
 

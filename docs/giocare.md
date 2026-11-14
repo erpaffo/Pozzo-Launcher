@@ -12,7 +12,7 @@ sola. La versione viene dalle release GitHub di ogni progetto; RetroArch, Dolphi
 ufficiale. Gli emulatori vanno nella cartella indicata sotto (altrimenti in `Emulatori`, accanto alle impostazioni).
 **↻ Aggiorna** installa la versione nuova sopra quella vecchia: configurazione e dati nella cartella dell'emulatore
 restano. **⬇ Scarica i core** prende dal buildbot di libretro i core di RetroArch che mancano alle console della
-libreria. Ryujinx ed Eden non pubblicano su GitHub: si installano a mano. Solo Windows.
+libreria. Ryujinx ed Eden non pubblicano su GitHub: si installano a mano. Su macOS e Linux l'installazione usa i pacchetti di ogni emulatore (.dmg o .app su macOS, AppImage su Linux). Dolphin non ha una build Linux, Xenia è solo Windows, Cemu su Mac è la versione Intel (gira con Rosetta).
 
 Gli emulatori sono dei loro sviluppatori: Pozzo scarica le build che pubblicano, senza modificarle, e ogni riga porta
 al progetto originale.
@@ -149,12 +149,12 @@ Durante la partita la barra **In esecuzione** mostra il gioco in corso e permett
 
 Su Windows i giochi avviati direttamente da Pozzo sono tracciati con un **Job Object**: la partita finisce quando
 si chiude anche l'ultimo processo figlio, quindi il tempo di gioco è corretto anche con gli eseguibili che ne
-rilanciano un altro, e **Chiudi gioco** termina tutti i processi del gioco.
+rilanciano un altro, e **Chiudi gioco** termina tutti i processi del gioco. Su macOS e Linux non c'è il Job Object: si chiude comunque l'intero albero dei processi.
 
 La **Pausa** congela il gioco in corso (come Nyrna) e libera CPU e GPU anche nei giochi senza pausa propria. Si attiva
 con **Ctrl+Shift+P** (cambiabile nelle impostazioni delle schermate), con **Select + L1** sul controller o dal pulsante
 **Pausa** nella barra del gioco, in Big Picture e dal telefono. Il tempo in pausa non conta nel tempo di gioco e a
-fine sessione il gioco riprende sempre. Pausa e Job Object sono solo per Windows.
+fine sessione il gioco riprende sempre. Su macOS e Linux la pausa ferma i processi del gioco con SIGSTOP e li riprende con SIGCONT; il Job Object resta solo su Windows.
 
 ### Splash all'avvio
 
@@ -230,7 +230,7 @@ con titolo, console e tempo di sessione. Serve solo l'**ID applicazione** — gr
 Usa il **canale locale** di Discord (`named pipe`): nessun dato esce dal PC, nessun server, nessuna chiave. Le immagini
 non si possono mostrare, perché Discord accetta solo asset caricati sull'applicazione e non indirizzi web.
 
-![Impostazioni › Integrazioni: avvisi di Windows e presenza su Discord](images/impostazioni-integrazioni.jpg)
+![Impostazioni › Integrazioni: notifiche di sistema e presenza su Discord](images/impostazioni-integrazioni.jpg)
 
 ## Partita con un amico
 
@@ -391,7 +391,7 @@ nella vista **📷 Schermate** e si possono fare anche dal telefono.
 
 ### Overlay in gioco
 
-Durante una partita (Windows) **Ctrl+Shift+O** o **Select + R3** sul controller aprono un overlay sopra il gioco con il
+Durante una partita **Ctrl+Shift+O** o **Select + R3** sul controller aprono un overlay sopra il gioco con il
 tempo di sessione, la schermata, la pausa, «Chiudi gioco», gli obiettivi, gli appunti dell'estensione Diario (se
 installata) e i comandi della musica. Si chiude con lo stesso tasto, con **Esc** o con **B**, e il fuoco torna al gioco.
 La scorciatoia si cambia nelle impostazioni delle schermate. L'overlay funziona con i giochi in finestra e a schermo intero

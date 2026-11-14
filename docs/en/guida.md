@@ -105,7 +105,7 @@ Want to challenge a friend remotely to arcade/console classics on RetroArch or h
 | **TV** | Native full-screen interface built for controllers and 4K displays | [Big Picture](bigpicture.md) |
 | **Customization** | 4 color themes, 6 desktop experience profiles, and extension/plugin store | [Themes and plugins](ESTENSIONI.md) |
 | **Multi-PC & Family** | Data sync between two PCs via LAN/shared folder and separated user profiles | [Data and maintenance](manutenzione.md#sincronizzazione-tra-pc), [Profiles](libreria.md#profili-utente) |
-| **Integrations** | Discord Rich Presence (including 1 of 2 netplay), Windows notifications, web library export | [Gaming](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Notifications](extra.md#avvisi-di-windows) |
+| **Integrations** | Discord Rich Presence (including 1 of 2 netplay), system notifications, web library export | [Gaming](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Notifications](extra.md#system-notifications) |
 | **Help & FAQ** | Step-by-step troubleshooting, Health self-diagnostics, frequently asked questions | [Help Center and FAQ](assistenza.md) |
 
 ---

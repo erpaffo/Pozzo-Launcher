@@ -51,6 +51,19 @@ On first launch, the **setup wizard** appears in five steps:
 The setup wizard can be reopened at any time from **Settings › New games**.
 
 <a id="dove-stanno-i-dati"></a>
+## macOS: permissions
+
+On macOS some features ask for a system permission. Without it the app still works: only the feature that needs it does not. Grant them in **System Settings › Privacy & Security**, enabling **Pozzo Launcher** in the right section:
+
+- **Accessibility**: phone as mouse and keyboard, overlay, DS and 3DS second screen. If it is missing, **Settings** shows a notice.
+- **Input Monitoring**: screenshot key and global in-game shortcuts.
+- **Screen Recording**: capturing the game window for screenshots and for the DS and 3DS second screen.
+- **Automation**: the system asks the first time Pozzo uses Finder (trash) or System Events (for example sleep and shutdown timers).
+
+After granting Screen Recording or Input Monitoring, restart Pozzo: macOS applies the permission only on the next launch. With an unsigned app, an update may remove the permissions: turn them back on in the same settings.
+
+On Linux there are no permissions to grant. Phone as mouse and keyboard requires `xdotool`.
+
 ## Where data is stored
 
 Configuration, cache, library, and personal data reside in the user folder:

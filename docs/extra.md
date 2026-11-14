@@ -178,15 +178,17 @@ aggiunge nel dettaglio di ogni gioco la sezione **📺 Dirette e video**: le dir
 Client Secret di Twitch (un'app gratuita su dev.twitch.tv) e, facoltativa, una chiave YouTube Data API. Senza chiavi
 restano i collegamenti alla ricerca su Twitch e YouTube.
 
-## Avvisi di Windows
+## Avvisi di sistema
 
-Con **Impostazioni › 🧩 Integrazioni › 🔔 Notifiche di Windows** attive (lo sono di base) Pozzo Launcher avvisa con una
-notifica di Windows — che resta nel centro notifiche — quando:
+Con **Impostazioni › 🧩 Integrazioni › 🔔 Notifiche di sistema** attive (lo sono di base) Pozzo Launcher avvisa con una
+notifica di sistema — che resta nel centro notifiche — quando:
 
 - un gioco della lista desideri scende sotto la soglia di prezzo;
 - esce un gioco gratis nuovo (Steam, Epic, Prime, store online);
 - un port PC installato ha un aggiornamento;
 - finisce una ricerca o un aggiornamento (nuovi giochi, store, copertine, durate, database locali…).
+
+Su Linux servono `notify-send` (su Debian e Ubuntu è nel pacchetto `libnotify-bin`). L'icona nell'area di notifica resta solo su Windows.
 
 I giochi gratis e gli aggiornamenti dei port si controllano in sottofondo ogni 6 e 12 ore, senza dover aprire quelle
 pagine. Lo stesso avviso non viene ripetuto per la stessa offerta o la stessa versione.

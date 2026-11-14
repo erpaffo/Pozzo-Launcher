@@ -157,7 +157,12 @@ def window_id_for_pid(pid: int) -> int | None:
         keys = {k: cf.CFStringCreateWithCString(None, k.encode(), 0x08000100)  # UTF8
                 for k in ("kCGWindowOwnerPID", "kCGWindowLayer", "kCGWindowNumber", "kCGWindowBounds")}
         arr = cg.CGWindowListCopyWindowInfo(1 | 16, 0)  # OnScreenOnly | ExcludeDesktopElements
-        if not arr:
+        if not arr or not all(keys.values()):
+            for k in keys.values():
+                if k:  # CFRelease(NULL) fa crashare il processo
+                    cf.CFRelease(k)
+            if arr:
+                cf.CFRelease(arr)
             return None
 
         def num(d, k):

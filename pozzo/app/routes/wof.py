@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import i18n as I
+from ... import i18n as I, ports as PT
 from ...cache import Cache
 from ...library import wof as W
 from ...library.sizes import dir_size
@@ -44,6 +45,8 @@ def build_router(ctx) -> APIRouter:
         d = folder_of(gid)
         if jobs.get(gid) and jobs[gid].status == "running":
             raise HTTPException(409, I.tr("s.wof.busy"))
+        if sys.platform == "darwin" and PT._running(d):  # macOS riscrive la cartella: salvataggi scritti ora andrebbero persi
+            raise HTTPException(409, I.tr("s.wof.closeFirst"))
         undo = body.get("action") == "uncompress"
         algo = body.get("algo") or W.DEFAULT_ALGO
         if not undo and algo not in W.ALGOS:

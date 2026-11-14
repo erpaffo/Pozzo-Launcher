@@ -7,7 +7,7 @@
 web
 
 ## Users
-Giocatori che tengono in un'unica libreria le ROM di ogni console e i giochi PC dei loro store. Giocano dal desktop, da Big Picture con il controller, dal telefono o in streaming. Per l'overlay di gioco (pywebview su Windows) non c'è una situazione prioritaria: deve funzionare allo stesso modo con tastiera/mouse a scrivania e con il pad dal divano.
+Giocatori che tengono in un'unica libreria le ROM di ogni console e i giochi PC dei loro store. Giocano dal desktop, da Big Picture con il controller, dal telefono o in streaming. Per l'overlay di gioco (pywebview su Windows, macOS e Linux) non c'è una situazione prioritaria: deve funzionare allo stesso modo con tastiera/mouse a scrivania e con il pad dal divano.
 
 ## Product Purpose
 Pozzo Launcher raccoglie ROM e giochi PC, scarica da solo copertine, descrizioni, voti e tempi di gioco, e permette di giocare da qualsiasi dispositivo. L'overlay si apre durante il gioco (hotkey, di default ctrl+shift+o, oppure Select+R3) e offre tempo di sessione, screenshot, pausa, chiusura del gioco, tasti media, obiettivi e ultime note del diario. Successo: azioni rapide senza uscire dal gioco.
@@ -16,7 +16,7 @@ Pozzo Launcher raccoglie ROM e giochi PC, scarica da solo copertine, descrizioni
 Per l'overlay: funziona con ROM ed emulatori oltre che con i giochi PC (salva/carica stato, cambio disco, tempo e diario per qualsiasi sistema), cosa che gli overlay degli store e delle schede video non coprono. Decisione confermata dall'utente.
 
 ## Operating Context
-App desktop Windows con interfaccia web servita localmente (FastAPI + pywebview). L'overlay è una finestra trasparente sopra al gioco, con un toast separato per gli obiettivi. Non funziona con il fullscreen esclusivo. Navigazione con tastiera e controller (croce, A conferma, B chiude).
+App desktop per Windows, macOS e Linux con interfaccia web servita localmente (FastAPI + pywebview). Restano solo Windows: controller virtuale ViGEm, Magpie, app Xbox, Amazon Games, remap HidHide/XInput, installer setup.exe, automazioni di risoluzione e HDR, icona nell'area di notifica. L'overlay è una finestra trasparente sopra al gioco, con un toast separato per gli obiettivi. Non funziona con il fullscreen esclusivo. Navigazione con tastiera e controller (croce, A conferma, B chiude).
 
 ## Capabilities and Constraints
 - Solo locale, nessun account o servizio cloud obbligatorio (vedi PRIVACY.md).

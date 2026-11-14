@@ -37,9 +37,10 @@ notes, play time and favorites stay where they are. Then it asks whether to move
 
 The old file is **never permanently deleted**:
 
-- on Windows fixed drives it goes to the Recycle Bin;
-- on network drives, USB sticks, Linux and macOS it is moved to a **`.pozzo-trash`** folder at the root of the same
-  disk. It takes no extra space, but it does not empty itself: when you are sure, delete it by hand.
+- on Windows fixed drives, on macOS (Finder Trash) and on Linux with `gio` it goes to the Trash/Recycle Bin;
+- on Windows network drives and USB sticks it is moved to a **`.pozzo-trash`** folder at the root of the same disk;
+  on macOS and Linux, if the Trash does not respond, to **`~/.pozzo-trash`**. It does not empty itself: when you are
+  sure, delete it by hand.
 
 If the produced file does not exist or is empty, the original is left untouched.
 

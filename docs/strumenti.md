@@ -38,9 +38,10 @@ Cestino**.
 
 Il vecchio file **non viene mai cancellato in modo definitivo**:
 
-- sui dischi fissi di Windows va nel Cestino;
-- sui dischi di rete, sulle chiavette USB e su Linux e macOS viene spostato in una cartella **`.pozzo-trash`** alla
-  radice dello stesso disco. Non occupa spazio in più, ma non si svuota da sola: quando sei sicuro, cancellala a mano.
+- sui dischi fissi di Windows, su macOS (Cestino del Finder) e su Linux con `gio` va nel Cestino;
+- sui dischi di rete e sulle chiavette USB di Windows viene spostato in una cartella **`.pozzo-trash`** alla radice
+  dello stesso disco; su macOS e Linux, se il Cestino non risponde, in **`~/.pozzo-trash`**. Non si svuota da sola:
+  quando sei sicuro, cancellala a mano.
 
 Se il file prodotto non esiste o è vuoto, l'originale non viene toccato.
 
