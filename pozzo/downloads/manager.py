@@ -546,6 +546,12 @@ class Manager:
         if self._loop and self._wake:
             self._loop.call_soon_threadsafe(self._wake.set)
 
+    def save(self, t: DownloadTask):
+        """Salva su disco solo se il task esiste ancora: un thread post-download non lo fa risorgere dopo la cancellazione."""
+        with self.lock:
+            if t.id in self.tasks:
+                self.store.save([t])
+
     def stop(self):
         """Ferma i download in corso conservandone lo stato: alla prossima apertura ripartono."""
         self._stopping = True

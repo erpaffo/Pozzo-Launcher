@@ -238,5 +238,5 @@ def finish(t, mgr, ctx) -> None:
     finally:
         t.phase = ""
         t.options["post_done"] = True
-        mgr.store.save([t])
+        mgr.save(t)
         mgr._poke()

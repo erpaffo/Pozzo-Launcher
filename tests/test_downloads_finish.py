@@ -22,6 +22,9 @@ class Mgr:
         self.store = SimpleNamespace(save=lambda tasks: None)
         self.lock = threading.Lock()
 
+    def save(self, t):
+        self.store.save([t])
+
     def settings(self):
         return self._s
 

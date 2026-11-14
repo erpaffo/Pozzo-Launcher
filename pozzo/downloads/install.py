@@ -95,7 +95,7 @@ def _run(t, mgr, ctx, setup: Path) -> None:
         t.set_stage("library", "error")
         t.log(f"Installazione non riuscita: {type(e).__name__}: {e}", "error")
     finally:
-        mgr.store.save([t])
+        mgr.save(t)
         mgr._poke()
 
 

@@ -799,3 +799,15 @@ async def test_segmento_fallito_ferma_gli_altri(server, tmp, monkeypatch):
         assert t2.options["segs"] == segs and H._coherent(segs, len(DATA))
         data = Path(t2.options["part"]).read_bytes()
         assert all(data[s[0]:s[2]] == DATA[s[0]:s[2]] for s in segs)
+
+
+def test_salvataggio_dopo_la_cancellazione_non_resuscita_il_task(tmp):
+    """Il thread post-download salva ancora mentre l'utente cancella: la riga non deve tornare al riavvio."""
+    m = _mgr(tmp)
+    t = _task("http://x/a", tmp)
+    m.tasks[t.id] = t
+    m.save(t)
+    assert [x.id for x in m.store.load()] == [t.id]
+    m.cancel(t.id)
+    m.save(t)  # estrazione che finisce dopo la cancellazione
+    assert m.store.load() == []

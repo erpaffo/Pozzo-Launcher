@@ -38,7 +38,7 @@ def register_step(name: str, fn, dopo: str | None = None) -> None:
 
 def _step(t, mgr, name: str, state: str) -> None:
     t.options.setdefault("steps", {})[name] = state
-    mgr.store.save([t])  # subito su disco: e' cio' che si rilegge al prossimo avvio
+    mgr.save(t)  # subito su disco: e' cio' che si rilegge al prossimo avvio
 
 
 def _files(t) -> list[Path]:
@@ -97,7 +97,7 @@ def run(t, mgr, ctx) -> None:
         if not t.options.get("post_wait"):  # in attesa: la fase resta come messaggio e post_done lo mette chi finisce
             t.phase = ""
             t.options["post_done"] = True
-        mgr.store.save([t])
+        mgr.save(t)
         mgr._poke()
 
 
@@ -245,7 +245,7 @@ def _s_extract(t, mgr, ctx, c) -> bool:
                 out = _extract_pw(first, first.parent, pws, t, on_progress=progress)
                 record_extract(sum(v.stat().st_size for v in group if v.exists()), time.time() - t1)
                 extracted[str(first)] = str(out[0])
-                mgr.store.save([t])
+                mgr.save(t)
             t.set_stage("extract", "done")
             found = X.find_games(out[0], exts) if exts else []
             c.games += found
@@ -377,7 +377,7 @@ def _s_library(t, mgr, ctx, c) -> bool:
     if res.get("files"):
         t.options["placed"] = str(res["files"][0])
         with mgr.lock:
-            mgr.store.save([t])
+            mgr.save(t)
     if res.get("pending"):
         t.options["pending_files"] = res.get("files") or []
         t.set_stage("library", "active", note="In attesa della scansione")
