@@ -11,8 +11,14 @@ from fastapi.testclient import TestClient  # noqa: E402
 from pozzo import config, platformcaps  # noqa: E402
 from pozzo.app.server import create_app  # noqa: E402
 
+from unittest import mock  # noqa: E402
+
 assert platformcaps.missing("win32") == []
-dar, lin = platformcaps.missing("darwin"), platformcaps.missing("linux")
+with mock.patch.object(platformcaps.shutil, "which", return_value=None):  # nessun programma esterno installato
+    dar, lin = platformcaps.missing("darwin"), platformcaps.missing("linux")
+with mock.patch.object(platformcaps.shutil, "which", return_value="/usr/bin/x"):  # installati: voci sparite
+    pieno = platformcaps.missing("linux")
+assert "p.missing.xdotool" not in pieno and "p.missing.notifysend" not in pieno and "p.missing.dolphin" in pieno
 for l in (dar, lin):
     assert "p.missing.vigem" in l and "p.missing.xenia" in l
 assert "p.missing.powerplan" in dar and "p.missing.xdotool" not in dar

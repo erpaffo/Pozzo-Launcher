@@ -106,7 +106,7 @@ def test_nomi_emulatore_misti_e_casi_limite():
         # config non scrivibile (cartella inesistente e permessi negati): errore chiaro, non un crash silenzioso
         assert D.config_file("melonds", str(exe)) == toml
         azahar = D.config_file("Azahar", str(d / "azahar" / "azahar.exe"))
-        assert azahar.name == "qt-config.ini" and "Azahar" in str(azahar), azahar
+        assert azahar.name == "qt-config.ini" and "azahar" in str(azahar).lower(), azahar  # Linux: azahar-emu
     print("ok  nomi emulatore con maiuscole/spazi e casi limite")
 
 

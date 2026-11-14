@@ -423,13 +423,13 @@ def check_updates(cfg) -> list[dict]:
 def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
     """Installa (o aggiorna) un emulatore all'ultima versione e lo imposta; ritorna il percorso dell'eseguibile."""
     src = SOURCES.get(emu)
-    if not src:
-        raise ValueError(f"emulatore sconosciuto: {emu}")
     prev = installed(cfg).get(emu) or {}
     cur = cfg.emulators.get(emu)
-    if not prev and cur and Path(cur).is_file():  # gia' presente (anche installato altrove): non scaricare
+    if not prev and cur and Path(cur).is_file():  # gia' presente (anche installato altrove, o senza build per questo OS)
         say(f"{emu} e' gia' installato: {cur}")
         return cur
+    if not src:
+        raise ValueError(f"emulatore sconosciuto: {emu}")
     say(f"Cerco l'ultima versione di {emu} ({src['repo']})…")
     tag, asset = _latest(cfg, src)
     if prev.get("version") == tag:
