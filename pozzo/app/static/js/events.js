@@ -486,6 +486,7 @@ function bind() {
     try { const r = await api("/api/api-token", { body: {} }); $("#api-token").value = r.token; toast(t("g.ev.token.created")); }
     catch (e) { toast(e.message, true); }
   };
+  platformNotice();
   checkUpdate(false, false); // subito all'avvio, in parallelo al caricamento dei giochi (la risposta resta in cache 2 ore)
   setInterval(() => checkUpdate(false, false), 30 * 60000); // app lasciata aperta per giorni
   document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(false, false); });

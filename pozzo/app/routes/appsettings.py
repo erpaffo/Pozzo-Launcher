@@ -303,6 +303,11 @@ def build_router(ctx) -> APIRouter:
             ax = macos.ax_trusted()
         return {"platform": sys.platform, "accessibility": ax}
 
+    @router.get("/api/platform/missing")
+    def api_platform_missing():
+        from ... import platformcaps
+        return {"platform": sys.platform, "missing": platformcaps.missing()}
+
     @router.post("/api/app/notify")
     def api_notify_set(body: dict = Body(...)):
         on = bool(body.get("enabled"))

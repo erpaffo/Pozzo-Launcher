@@ -53,6 +53,8 @@ The setup wizard can be reopened at any time from **Settings › New games**.
 <a id="dove-stanno-i-dati"></a>
 ## macOS: permissions
 
+The Windows features that are not available on macOS and Linux are listed in **Settings › Info › Differences from Windows**.
+
 On macOS some features ask for a system permission. Without it the app still works: only the feature that needs it does not. Grant them in **System Settings › Privacy & Security**, enabling **Pozzo Launcher** in the right section:
 
 - **Accessibility**: phone as mouse and keyboard, overlay, DS and 3DS second screen. If it is missing, **Settings** shows a notice.

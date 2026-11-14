@@ -807,7 +807,32 @@ async function clearCacheSource(source) {
   } catch (e) { toast(e.message, true); }
 }
 
+async function loadPlatformMissing() {
+  try {
+    const r = await api("/api/platform/missing");
+    $("#plat-missing").hidden = !r.missing.length;
+    $("#plat-missing-list").innerHTML = r.missing.map((k) => `<li>${esc(t(k))}</li>`).join("");
+    return r.missing.length;
+  } catch (e) { return 0; }
+}
+
+// Una tantum al primo avvio fuori da Windows: toast cliccabile verso Impostazioni → Info
+async function platformNotice() {
+  try { if (localStorage.getItem("pozzo.platformNoticeSeen")) return; } catch (e) { return; }
+  if (!(await loadPlatformMissing())) return;
+  toast(t("p.missing.notice"));
+  const el = $("#toast");
+  el.style.cursor = "pointer";
+  // il #toast e' condiviso: il clic va tolto alla chiusura, o i toast successivi aprirebbero le impostazioni
+  const done = () => { el.onclick = null; el.style.cursor = ""; el.hidden = true; };
+  el.onclick = () => { done(); openSettings("sistema"); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(done, 12000);  // messaggio lungo da leggere: resta piu' dei 3,5 s normali
+  try { localStorage.setItem("pozzo.platformNoticeSeen", "1"); } catch (e) {}
+}
+
 async function loadAbout() {
+  loadPlatformMissing();
   try {
     const a = await api("/api/about");
     $("#about-ver").textContent = a.version;

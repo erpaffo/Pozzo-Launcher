@@ -62,6 +62,8 @@ La configurazione guidata si può riaprire in qualsiasi momento da **Impostazion
 
 ## macOS: permessi
 
+Le funzioni della versione Windows non disponibili su macOS e Linux sono elencate in **Impostazioni › Info › Differenze rispetto a Windows**.
+
 Su macOS alcune funzioni chiedono un permesso di sistema. Senza il permesso l'app funziona lo stesso: non va solo la funzione che lo usa. Si concedono in **Impostazioni di Sistema › Privacy e sicurezza**, attivando **Pozzo Launcher** nella sezione giusta:
 
 - **Accessibilità**: telefono come mouse e tastiera, overlay, secondo schermo dei giochi DS e 3DS. Se manca, **Impostazioni** lo segnala con un avviso.
