@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Conversión desconocida",
  "j.dl.incomplete": "Carpeta de descargas incompletas (opcional)",
  "j.dl.incomplete.desc": "Vacía = se descarga directamente en la carpeta final. Si la defines, al terminar la descarga los archivos se mueven a la carpeta de destino.",
+ "j.dl.watch": "Carpeta vigilada para archivos .torrent (opcional)",
+ "j.dl.watch.desc": "Vacía = desactivada. Los archivos .torrent que aparecen en la carpeta se añaden a las descargas y se renombran a .added.",
  "j.dl.seedaction": "Al llegar al límite de compartición",
  "j.dl.seedaction.pause": "Pausar el torrent",
  "j.dl.seedaction.remove": "Quitar el torrent de la lista (los archivos se quedan)",

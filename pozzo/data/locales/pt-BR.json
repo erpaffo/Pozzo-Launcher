@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Conversão desconhecida",
  "j.dl.incomplete": "Pasta dos downloads incompletos (opcional)",
  "j.dl.incomplete.desc": "Vazia = baixa direto na pasta final. Se definida, ao terminar o download os arquivos são movidos para a pasta de destino.",
+ "j.dl.watch": "Pasta monitorada para arquivos .torrent (opcional)",
+ "j.dl.watch.desc": "Vazia = desligada. Os arquivos .torrent que aparecem na pasta são adicionados aos downloads e renomeados para .added.",
  "j.dl.seedaction": "Ao atingir o limite de compartilhamento",
  "j.dl.seedaction.pause": "Pausar o torrent",
  "j.dl.seedaction.remove": "Tirar o torrent da lista (os arquivos ficam)",

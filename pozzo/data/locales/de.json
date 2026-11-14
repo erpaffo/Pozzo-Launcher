@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Unbekannte Konvertierung",
  "j.dl.incomplete": "Ordner für unvollständige Downloads (optional)",
  "j.dl.incomplete.desc": "Leer = es wird direkt in den Zielordner geladen. Wenn gesetzt, werden die Dateien nach dem Download in den Zielordner verschoben.",
+ "j.dl.watch": "Überwachter Ordner für .torrent-Dateien (optional)",
+ "j.dl.watch.desc": "Leer = aus. .torrent-Dateien, die im Ordner erscheinen, werden zu den Downloads hinzugefügt und in .added umbenannt.",
  "j.dl.seedaction": "Beim Erreichen des Seeding-Limits",
  "j.dl.seedaction.pause": "Torrent pausieren",
  "j.dl.seedaction.remove": "Torrent aus der Liste entfernen (Dateien bleiben)",

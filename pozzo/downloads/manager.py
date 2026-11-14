@@ -51,6 +51,7 @@ DEFAULTS = {"dir": "", "max_active": 3, "segments": 4, "limit_down": 0, "limit_u
             "passwords": [],  # password comuni degli archivi, provate in ordine dopo quella del pacchetto
             "categories": [],  # [{name, folder, seed_ratio, seed_minutes, action}]: cartella e limiti prevalgono sui globali
             "incomplete_dir": "",  # vuota = si scarica gia' nella cartella finale
+            "watch_dir": "",  # cartella sorvegliata: ogni .torrent che compare viene aggiunto (vuota = spenta)
             "seed_action": "pause",  # azione al limite di condivisione se la categoria non ne ha una
             "ip_filter_path": "",  # file PeerGuardian (.dat/.p2p) o elenco di CIDR
             "rss": [],  # [{url, interval_min, filters: [{regex, category}]}]
@@ -74,6 +75,8 @@ POST_TRIES = 3  # riprese del post-download dopo una chiusura a meta': oltre, e'
 DISK_FULL = "Disco pieno"  # motivo della pausa di un task fermato da un errore di scrittura (ENOSPC)
 log = logging.getLogger("pozzo.downloads")
 CAT_ACTIONS = ("pause", "remove")  # a limite di condivisione raggiunto: torrent fermo (il task resta) o tolto dalla lista (i file restano)
+WATCH_EVERY = 10  # s tra due controlli della cartella sorvegliata
+WATCH_QUIET = 3  # s: un .torrent modificato da meno si sta ancora copiando
 SAVE_EVERY = 10 # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
 
 
@@ -354,6 +357,9 @@ class Manager:
         self._rss_at: dict[str, float] = {}  # url del feed -> ultimo controllo (monotonic)
         self._rss_run: set[str] = set()  # feed con un controllo in corso
         self._link_host: dict[str, str] = {}  # task id -> host del link risolto (per host_limits)
+        self._watch_at = 0.0  # ultimo controllo della cartella sorvegliata (monotonic)
+        self._watch_run = False  # controllo in corso (thread dl-watch): una cartella di rete lenta non ne accumula
+        self._watch_bad: dict[str, str] = {}  # percorso -> motivo gia' scritto nel log (una riga sola, non una per giro)
         self._space_busy = False  # lettura dello spazio libero dei dischi in corso (thread dl-space)
         self._check = linkcheck.check  # i test lo sostituiscono: nessuna rete
         self._stopping = False  # stop() in corso: chi condivide resta segnato, per ripartire al prossimo avvio
@@ -383,7 +389,7 @@ class Manager:
         """Aggiornamento parziale: valori controllati e riportati nei limiti; ValueError se non validi."""
         with self.lock:
             cur, new = self._raw(), dict(self.cfg.app.get("downloads") or {})
-            for k in ("dir", "incomplete_dir"):
+            for k in ("dir", "incomplete_dir", "watch_dir"):
                 if k in body:
                     new[k] = _folder(body[k])
             if "categories" in body:
@@ -962,6 +968,7 @@ class Manager:
         self._auto_resume()
         s = self._raw()
         self._rss_tick(s)
+        self._watch_tick(s)
         self._game_tick(s)
         down, up = self._limits(s)
         if self._torrent:
@@ -1121,6 +1128,63 @@ class Manager:
             self._rss_at[url] = time.monotonic()
             self._rss_run.discard(url)
         return n
+
+    def _watch_tick(self, s: dict):
+        """Cartella sorvegliata in un thread: su un disco di rete spento il listing blocca solo lui, non il ciclo."""
+        if not s["watch_dir"] or self._watch_run or time.monotonic() - self._watch_at < WATCH_EVERY:
+            return
+        self._watch_run, self._watch_at = True, time.monotonic()
+
+        def work():
+            try:
+                self.watch_check(s["watch_dir"])
+            finally:
+                self._watch_run = False
+        threading.Thread(target=work, daemon=True, name="dl-watch").start()
+
+    def watch_check(self, folder: str) -> int:
+        """Aggiunge i .torrent completi della cartella e li rinomina in .added (anche a mano, nei test). Ritorna quanti."""
+        n = 0
+        if not self._torrent:
+            return n
+        try:
+            files = sorted(p for p in Path(folder).expanduser().iterdir() if p.suffix.lower() == ".torrent")
+        except OSError as e:  # cartella sparita o disco di rete spento: si riprova al giro dopo
+            self._watch_note(folder, f"Cartella sorvegliata non leggibile: {e}")
+            return n
+        for p in files:
+            try:
+                if time.time() - p.stat().st_mtime < WATCH_QUIET or not p.is_file() or self._watch_bad.get(str(p)) == "added":
+                    continue
+                data = p.read_bytes()
+                TOR.lt.torrent_info(data)  # copia ancora a meta': non si legge, si riprova
+            except (OSError, RuntimeError) as e:
+                self._watch_note(str(p), f"Torrent sorvegliato non leggibile: {p.name}: {e}")
+                continue
+            # il task tiene il percorso: si aggiunge una copia, cosi' il rename non gli toglie il file (come l'upload dalla UI)
+            copy = self.uploads / f"{os.urandom(4).hex()}-{HTTP.safe_name(p.stem)}.torrent"
+            try:
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                copy.write_bytes(data)
+                self.add(str(copy))
+                n += 1
+            except Duplicate:  # add() ha scritto il log: la copia non serve
+                copy.unlink(missing_ok=True)
+            except (OSError, ValueError) as e:
+                copy.unlink(missing_ok=True)
+                self._watch_note(str(p), f"Torrent sorvegliato non aggiunto: {p.name}: {e}")
+                continue
+            try:
+                os.replace(p, p.with_name(p.name + ".added"))
+            except OSError as e:  # cartella di sola lettura: senza questo lo riaggiungerebbe a ogni giro
+                self._watch_bad[str(p)] = "added"
+                log.warning("Torrent sorvegliato non rinominato: %s: %s", p.name, e)
+        return n
+
+    def _watch_note(self, key: str, msg: str):
+        if self._watch_bad.get(key) != msg:
+            self._watch_bad[key] = msg
+            log.warning("%s", msg)
 
     def _net_resume(self):
         """Task caduti per rete assente: ogni 30 s, se internet c'e' di nuovo, tornano in coda (al massimo NET_TRIES volte)."""

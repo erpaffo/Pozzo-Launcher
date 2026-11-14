@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Conversione sconosciuta",
  "j.dl.incomplete": "Cartella dei download incompleti (facoltativa)",
  "j.dl.incomplete.desc": "Vuota = si scarica direttamente nella cartella finale. Se la imposti, a download finito i file vengono spostati nella cartella di destinazione.",
+ "j.dl.watch": "Cartella sorvegliata per i .torrent (facoltativa)",
+ "j.dl.watch.desc": "Vuota = spenta. I file .torrent che compaiono nella cartella vengono aggiunti ai download e rinominati in .added.",
  "j.dl.seedaction": "Al limite di condivisione",
  "j.dl.seedaction.pause": "Metti in pausa il torrent",
  "j.dl.seedaction.remove": "Togli il torrent dall'elenco (i file restano)",

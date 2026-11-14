@@ -1437,7 +1437,7 @@ const DLS_FIELDS = [
   ["#dls-ratio", "seed_ratio", "num"], ["#dls-seed-min", "seed_minutes", "int"], ["#dls-trackers", "trackers", "lines"],
   ["#dls-game-mode", "game_mode", "str"], ["#dls-game-limit", "game_limit_kbps", "int"],
   ["#dls-game-http", "game_pause_http", "bool"], ["#s2-fmt", "switch2_format", "str"],
-  ["#dls-incomplete", "incomplete_dir", "str"], ["#dls-seed-action", "seed_action", "str"],
+  ["#dls-incomplete", "incomplete_dir", "str"], ["#dls-watch", "watch_dir", "str"], ["#dls-seed-action", "seed_action", "str"],
   ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"],
 ];
 
@@ -1542,7 +1542,7 @@ function dlsBind() {
       finally { b.disabled = false; }
     };
   }
-  for (const [btn, input, kind] of [["#dls-dir-pick", dir, "folder"], ["#dls-incomplete-pick", $("#dls-incomplete"), "folder"], ["#dls-ipf-pick", $("#dls-ipf"), "file"]]) {
+  for (const [btn, input, kind] of [["#dls-dir-pick", dir, "folder"], ["#dls-incomplete-pick", $("#dls-incomplete"), "folder"], ["#dls-watch-pick", $("#dls-watch"), "folder"], ["#dls-ipf-pick", $("#dls-ipf"), "file"]]) {
     $(btn).onclick = async () => {
       const p = await pickPath(kind);
       if (!p) return;

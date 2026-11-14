@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Unknown conversion",
  "j.dl.incomplete": "Incomplete downloads folder (optional)",
  "j.dl.incomplete.desc": "Empty = download straight into the final folder. If set, files are moved to the destination folder when the download finishes.",
+ "j.dl.watch": "Watched folder for .torrent files (optional)",
+ "j.dl.watch.desc": "Empty = off. .torrent files that appear in the folder are added to the downloads and renamed to .added.",
  "j.dl.seedaction": "At the sharing limit",
  "j.dl.seedaction.pause": "Pause the torrent",
  "j.dl.seedaction.remove": "Remove the torrent from the list (files stay)",

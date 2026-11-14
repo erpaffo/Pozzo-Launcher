@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Conversion inconnue",
  "j.dl.incomplete": "Dossier des téléchargements incomplets (facultatif)",
  "j.dl.incomplete.desc": "Vide = on télécharge directement dans le dossier final. Si renseigné, les fichiers sont déplacés vers le dossier de destination à la fin du téléchargement.",
+ "j.dl.watch": "Dossier surveillé pour les fichiers .torrent (facultatif)",
+ "j.dl.watch.desc": "Vide = désactivé. Les fichiers .torrent qui apparaissent dans le dossier sont ajoutés aux téléchargements et renommés en .added.",
  "j.dl.seedaction": "À la limite de partage",
  "j.dl.seedaction.pause": "Mettre le torrent en pause",
  "j.dl.seedaction.remove": "Retirer le torrent de la liste (les fichiers restent)",

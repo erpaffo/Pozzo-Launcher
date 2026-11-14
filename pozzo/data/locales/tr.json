@@ -3800,6 +3800,8 @@
  "s.switch2.noJob": "Bilinmeyen dönüştürme",
  "j.dl.incomplete": "Tamamlanmamış indirmeler klasörü (isteğe bağlı)",
  "j.dl.incomplete.desc": "Boş = doğrudan son klasöre indirilir. Ayarlanırsa indirme bitince dosyalar hedef klasöre taşınır.",
+ "j.dl.watch": "İzlenen .torrent klasörü (isteğe bağlı)",
+ "j.dl.watch.desc": "Boş = kapalı. Klasörde beliren .torrent dosyaları indirmelere eklenir ve .added olarak yeniden adlandırılır.",
  "j.dl.seedaction": "Paylaşım sınırına ulaşınca",
  "j.dl.seedaction.pause": "Torrent'i duraklat",
  "j.dl.seedaction.remove": "Torrent'i listeden kaldır (dosyalar kalır)",
