@@ -264,7 +264,14 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
     sync_done()
     # il primo flusso riusa la risposta del controllo solo se parte dall'inizio (download nuovo)
     reuse = first if segs[0][2] == 0 else None
-    await asyncio.gather(worker(0, reuse), *(worker(i) for i in range(1, len(segs))))
+    workers = [asyncio.ensure_future(worker(0, reuse)), *(asyncio.ensure_future(worker(i)) for i in range(1, len(segs)))]
+    try:
+        await asyncio.gather(*workers)
+    finally:
+        # un segmento fallito non lascia gli altri a scrivere sul .part fuori dai limiti e a spostare i cursori salvati
+        for w in workers:
+            w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
     sync_done()
     want = (task.options.get("sha256") or "").lower()
     if want:  # nessun hash dichiarato = nessun blocco

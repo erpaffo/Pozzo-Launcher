@@ -43,6 +43,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
+        rng = re.match(r"bytes=(\d+)-", self.headers.get("Range", ""))
+        if self.path.startswith("/badseg") and rng and 0 < int(rng.group(1)) < len(body) // 3:  # solo il 2° segmento
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if self.path.startswith("/evil"):
             name = "..%2F..%2Fevil.bin"
         start, end = 0, len(body) - 1
@@ -759,3 +765,37 @@ def test_errore_imprevisto_del_motore_libera_il_posto(tmp, monkeypatch, exc):
     asyncio.run(m._job(t, 0))
     assert t.status == T.ERROR and type(exc).__name__ in t.error, t.error
     assert t.id not in m._jobs and not m._dl_ids
+
+
+def _workers():
+    return [x for x in asyncio.all_tasks() if "worker" in getattr(x.get_coro(), "__qualname__", "")]
+
+
+async def test_segmento_fallito_ferma_gli_altri(server, tmp, monkeypatch):
+    """Un segmento che fallisce ferma anche gli altri: niente flussi rimasti a scrivere sul .part o a spostare i cursori."""
+    monkeypatch.setattr(H, "MIN_SEGMENT", 1024 * 1024)  # 4 segmenti: il 2° fallisce, 3° e 4° hanno un flusso proprio
+    t = _task(server + "/badseg", tmp)
+    b = H.Bucket()
+    b.rate = 512 * 1024
+    async with httpx.AsyncClient() as c:
+        with pytest.raises(httpx.HTTPStatusError):
+            await H.run(t, c, b, 4, lambda u: u)
+        assert len(t.options["segs"]) == 4
+        assert not _workers(), "flussi ancora vivi"
+        segs = [list(s) for s in t.options["segs"]]
+        await asyncio.sleep(1)
+        assert t.options["segs"] == segs, "cursori spostati dopo l'errore"
+        # pausa dall'esterno: si ferma tutto e i cursori restano quelli dei byte scritti
+        t2 = _task(server + "/a", tmp / "p")
+        job = asyncio.ensure_future(H.run(t2, c, b, 4, lambda u: u))
+        while t2.done < 512 * 1024:
+            await asyncio.sleep(0.05)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+        assert not _workers()
+        segs = [list(s) for s in t2.options["segs"]]
+        await asyncio.sleep(0.5)
+        assert t2.options["segs"] == segs and H._coherent(segs, len(DATA))
+        data = Path(t2.options["part"]).read_bytes()
+        assert all(data[s[0]:s[2]] == DATA[s[0]:s[2]] for s in segs)
