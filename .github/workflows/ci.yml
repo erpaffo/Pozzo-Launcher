@@ -55,10 +55,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
 
-  # Lint e sicurezza: informativo, mai bloccante finché le violazioni esistenti non sono ripulite.
+  # Lint e sicurezza: pip-audit blocca; ruff e bandit restano informativi finché le violazioni esistenti non sono
+  # ripulite. Il job non deve avere continue-on-error, altrimenti anche pip-audit non fa fallire il workflow.
   lint:
     runs-on: ubuntu-22.04
-    continue-on-error: true
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -82,7 +82,6 @@ jobs:
         run: bandit -ll -r pozzo -x pozzo/vendor
 
       - name: pip-audit (vulnerabilità nelle dipendenze)
-        continue-on-error: true
         run: pip-audit -r requirements.txt
 
   # Notturno/manuale, mai bloccante per push e PR: emulatore vero + ROM libera (tests/smoke).
