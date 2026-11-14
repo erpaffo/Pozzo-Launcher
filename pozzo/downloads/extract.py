@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -529,14 +530,44 @@ def _existing(path) -> str:
     return str(q)
 
 
-def queue_forecast(tasks) -> dict:
+_FREE: dict[str, tuple[float, int]] = {}  # disco -> (quando, byte liberi)
+FREE_TTL = 10  # secondi: un disco di rete spento costa il timeout SMB a ogni lettura, non a ogni task per giro
+
+
+def free_space(path, cached: bool = False) -> int | None:
+    """Byte liberi sul disco di `path`, letti al massimo ogni FREE_TTL s. cached=True non tocca mai il disco (None se
+    non e' ancora stato letto): per chi tiene un lock o gira sul ciclo dei download."""
+    drv, now = drive_of(path), time.monotonic()
+    hit = _FREE.get(drv)
+    if cached or (hit and now - hit[0] < FREE_TTL):
+        return hit[1] if hit else None
+    try:
+        free = shutil.disk_usage(_existing(path)).free
+    except OSError:  # disco non montato o sparito: non si puo' dire che c'e' spazio
+        free = 0
+    _FREE[drv] = (time.monotonic(), free)
+    return free
+
+
+def free_stale(path) -> bool:
+    hit = _FREE.get(drive_of(path))
+    return not hit or time.monotonic() - hit[0] >= FREE_TTL
+
+
+def free_forget(path) -> None:
+    """Disco appena risultato pieno: il valore in cache non vale piu' (si rilegge prima di ripartire)."""
+    _FREE.pop(drive_of(path), None)
+
+
+def queue_forecast(tasks, cached: bool = False) -> dict:
     """Spazio libero per disco di destinazione: dopo i download non finiti, poi dopo le estrazioni stimate.
-    Ritorna {"drives": [{drive, free_now, after_queue, after_extract, ok, unknown}]} in byte."""
+    Ritorna {"drives": [{drive, free_now, after_queue, after_extract, ok, unknown}]} in byte. cached: vedi free_space
+    (un disco mai letto non compare)."""
     drives: dict[str, dict] = {}
     for t in tasks:
         if t.status not in (QUEUED, RUNNING, PAUSED):
             continue
-        d = drives.setdefault(drive_of(t.save_path), {"path": _existing(t.save_path), "queue": 0, "extract": 0, "unknown": 0})
+        d = drives.setdefault(drive_of(t.save_path), {"path": t.save_path, "queue": 0, "extract": 0, "unknown": 0})
         if not t.size:
             d["unknown"] += 1  # dimensione ancora ignota (link non risolto): conta zero
         d["queue"] += max(t.size - t.done, 0) if t.size else 0
@@ -545,10 +576,8 @@ def queue_forecast(tasks) -> dict:
             d["extract"] += t.size
     out = []
     for drive, d in drives.items():
-        try:
-            free = shutil.disk_usage(d["path"]).free
-        except OSError:  # disco non montato o sparito: non si puo' dire che c'e' spazio
-            free = 0
+        if (free := free_space(d["path"], cached)) is None:
+            continue
         after_queue = free - d["queue"]
         after_extract = after_queue - d["extract"]
         out.append({"drive": drive, "free_now": free, "after_queue": after_queue, "after_extract": after_extract,

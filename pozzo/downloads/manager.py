@@ -31,7 +31,7 @@ except ImportError:  # modulo non ancora presente: niente statistiche di banda
     def _record_bw(host: str, nbytes: int) -> None:
         pass
 from .debrid import SERVICES
-from .extract import drive_of, queue_forecast
+from .extract import drive_of, free_forget, free_space, free_stale, queue_forecast
 from .engines import cli as CLI, http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from .store import Store
 from .task import ACTIVE, COMPLETED, ERROR, PAUSED, QUEUED, RUNNING, DownloadTask, mb
@@ -323,6 +323,7 @@ class Manager:
         self._rss_at: dict[str, float] = {}  # url del feed -> ultimo controllo (monotonic)
         self._rss_run: set[str] = set()  # feed con un controllo in corso
         self._link_host: dict[str, str] = {}  # task id -> host del link risolto (per host_limits)
+        self._space_busy = False  # lettura dello spazio libero dei dischi in corso (thread dl-space)
         self._check = linkcheck.check  # i test lo sostituiscono: nessuna rete
         self._stopping = False  # stop() in corso: chi condivide resta segnato, per ripartire al prossimo avvio
 
@@ -909,6 +910,7 @@ class Manager:
             for x in [x for x in list(self.tasks.values()) if x.options.get("post_wait") and x.id not in self._posting]:
                 self._post(x)  # ricontrollo: i volumi/il gruppo ora ci sono?
         self._net_resume()
+        self._space_refresh()
         self._auto_resume()
         s = self._raw()
         self._rss_tick(s)
@@ -968,6 +970,8 @@ class Manager:
                 if len(busy) >= int(s["max_active"]):
                     break
                 gap = self._space_gap(t)
+                if gap is None:  # spazio del disco non ancora letto (thread dl-space): al prossimo giro
+                    continue
                 if gap:  # resta in coda: il posto e' di chi sta dopo, se e' piu' piccolo
                     if not t.phase.startswith(SPACE_PHASE):  # una riga sola, non una per tick
                         t.log(f"In attesa: spazio insufficiente (mancano {gap / 2**30:.1f} GB)", "warn")
@@ -1105,7 +1109,7 @@ class Manager:
                     del t.options["retry_at"]
                     t.log("Riprovo a risolvere il link")
                 # dimensione ignota = spazio non stimabile: ripartirebbe a ogni giro, lo riprende l'utente
-                elif t.status == PAUSED and t.options.get("disk_full") and t.size and not self._space_gap(t):
+                elif t.status == PAUSED and t.options.get("disk_full") and t.size and self._space_gap(t) == 0:
                     del t.options["disk_full"]
                     t.phase = ""
                     t.log("C'è di nuovo spazio sul disco: riprendo")
@@ -1221,13 +1225,35 @@ class Manager:
             except RuntimeError:  # appena tolto dalla sessione (il job lo sta chiudendo)
                 pass
 
-    def _space_gap(self, t: DownloadTask) -> int:
-        """Byte che mancano per far partire `t` insieme ai task in corso sullo stesso disco (0 = bastano).
-        La coda in attesa non conta: un task piu' piccolo puo' partire lo stesso."""
+    def _space_gap(self, t: DownloadTask) -> int | None:
+        """Byte che mancano per far partire `t` insieme ai task in corso sullo stesso disco (0 = bastano, None = spazio
+        non ancora letto). La coda in attesa non conta: un task piu' piccolo puo' partire lo stesso. Solo lo spazio
+        in cache: lo legge _space_refresh, fuori dal lock."""
         run = [o for o in self.tasks.values() if o.status == RUNNING]
         drv = drive_of(t.save_path)
-        d = next(x for x in queue_forecast([*run, t])["drives"] if x["drive"] == drv)
-        return 0 if d["ok"] else -d["after_extract"]
+        d = next((x for x in queue_forecast([*run, t], cached=True)["drives"] if x["drive"] == drv), None)
+        return None if d is None else 0 if d["ok"] else -d["after_extract"]
+
+    def _space_refresh(self):
+        """Spazio libero dei dischi della coda letto in un thread (uno alla volta, ogni FREE_TTL s per disco): un disco
+        di rete spento blocca per il timeout SMB solo questo thread, non il ciclo dei download ne' chi aspetta il lock."""
+        if self._space_busy:
+            return
+        paths = {drive_of(t.save_path): t.save_path for t in list(self.tasks.values())
+                 if t.status == QUEUED or (t.status == PAUSED and t.options.get("disk_full"))}
+        todo = [p for p in paths.values() if free_stale(p)]
+        if not todo:
+            return
+        self._space_busy = True
+
+        def work():
+            try:
+                for p in todo:
+                    free_space(p)
+            finally:
+                self._space_busy = False
+                self._poke()
+        threading.Thread(target=work, daemon=True, name="dl-space").start()
 
     def _resolve(self, t: DownloadTask, url: str) -> str:
         """Gira in un thread. `tok` identifica questa risoluzione: se nel frattempo il task e' stato fermato o e' scaduto
@@ -1319,6 +1345,7 @@ class Manager:
             if isinstance(e, OSError) and e.errno == errno.ENOSPC and t.type == "http":
                 # disco pieno a meta': niente errore, il .part e i segmenti restano e _auto_resume lo riprende
                 end = (PAUSED, f"{DISK_FULL}: libera spazio su {drive_of(t.save_path)}, il download riprende da solo")
+                free_forget(t.save_path)  # lo spazio in cache diceva che bastava: senza, ripartirebbe subito
                 self._log(t, end[1], "warn")
             else:
                 code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else 0
