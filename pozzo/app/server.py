@@ -104,7 +104,22 @@ CSP_REPORT_ONLY = "script-src 'self'; object-src 'none'; base-uri 'self'"
 THUMB_WIDTHS = (200, 300, 450, 700, 1280)
 
 
+_ASSET_V: list[str] = []
+
+
 def _asset_version() -> str:
+    """Hash per rompere la cache del browser. Nel build congelato i file non cambiano finche' il processo vive: una
+    volta sola. Da sorgenti si ricalcola a ogni pagina (shortcut: ~100 file letti, solo in sviluppo, dove i file
+    cambiano; se pesa, chiave = mtime piu' recente dell'albero static)."""
+    if C.FROZEN and _ASSET_V:
+        return _ASSET_V[0]
+    v = _hash_assets()
+    if C.FROZEN:
+        _ASSET_V[:] = [v]
+    return v
+
+
+def _hash_assets() -> str:
     from .. import __version__
 
     digest = hashlib.sha256()
