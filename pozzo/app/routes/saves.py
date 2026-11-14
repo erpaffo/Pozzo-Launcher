@@ -27,7 +27,7 @@ def build_router(ctx) -> APIRouter:
         (shared), e le cartelle dove cercarli se non ce ne sono (roots). all = quelli da copiare, manuali compresi."""
         manual = SV.resolved_manual(cfg, g["key"])
         # nome del gioco nella cartella delle copie (come in Ludusavi); per le console con la console, contro gli omonimi
-        r = {"emulator": "", "paths": [], "shared": [], "roots": [],
+        r = {"emulator": "", "paths": [], "shared": [], "roots": [], "targets": [],
              "name": g["title"] if g.get("store") else f"{g['title']} ({P.PLATFORMS[g['platform']].name if g['platform'] in P.PLATFORMS else g['platform']})"}
         if g.get("store") == "ports":  # port PC: con portable.txt i salvataggi stanno nella sua cartella
             m = PT.all_installed(cfg).get(g["key"].split(":", 1)[1])
@@ -43,7 +43,9 @@ def build_router(ctx) -> APIRouter:
                 if g["store"] == "steam":
                     from ...stores.steam import Steam
                     root = str(Steam(cfg, None, None, print).path() or "")
-                r.update(name=name, emulator="Ludusavi", paths=LM.save_paths(man, name, g["store"], sid, g.get("install_dir") or "", root))
+                args = (man, name, g["store"], sid, g.get("install_dir") or "", root)
+                # targets: dove i salvataggi andrebbero anche se non esistono ancora (ripristino su un PC nuovo)
+                r.update(name=name, emulator="Ludusavi", paths=LM.save_paths(*args), targets=LM.save_paths(*args, existing=False))
         else:
             p = P.PLATFORMS.get(g["platform"])
             try:
@@ -66,6 +68,7 @@ def build_router(ctx) -> APIRouter:
                 r.update(emulator=pl["emulator"], paths=found, shared=shared,
                          roots=SV.data_roots(pl["emulator"], pl.get("exe")) + ([Path(pl["exe"]).parent] if pl.get("exe") else []))
         r["all"] = SV._uniq(r["paths"] + r["shared"] + manual)
+        r["targets"] = SV._uniq(r["all"] + r["roots"] + r["targets"])  # il ripristino scrive solo qui dentro
         return r
 
     def _size(paths: list[Path]) -> int:
@@ -96,14 +99,15 @@ def build_router(ctx) -> APIRouter:
         if launcher.running().get("status") in ("starting", "extracting", "running"):
             raise HTTPException(409, I.tr("s.saves.closeFirst"))  # l'emulatore li riscriverebbe
         try:
-            return SV.restore(cfg, g["key"], body.get("name") or "")
+            return SV.restore(cfg, g["key"], body.get("name") or "", roots=_saves_of(g)["targets"])
         except (FileNotFoundError, ValueError) as e:
             raise HTTPException(400, str(e))
 
     @router.get("/api/game/{gid}/saves/diff")
     def api_saves_diff(gid: int, name: str):
         try:
-            return SV.diff(cfg, lib.get(gid)["key"], name)
+            g = lib.get(gid)
+            return SV.diff(cfg, g["key"], name, roots=_saves_of(g)["targets"])
         except (FileNotFoundError, ValueError) as e:
             raise HTTPException(400, str(e))
 

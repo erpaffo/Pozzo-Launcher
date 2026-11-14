@@ -327,7 +327,9 @@ exceed 1 GB; beyond that, manual only to avoid filling the disk silently), plus:
 - **↶ Undo Last Session**, which reverts saves to their pre-session state;
 - **Restore** to any version: it backs up current saves first, so you can always revert; restoration replaces
   files from the backup without deleting newer files created since. While a game is running, restoring is locked
-  to prevent the emulator from overwriting its files;
+  to prevent the emulator from overwriting its files. Restoring writes only inside the game's save folders (the ones
+  found, the Ludusavi manifest ones, the emulator's or those added by hand): a backup file pointing elsewhere, or an
+  executable, is skipped;
 - **★** pins a version (never deleted automatically), **✎** adds a note (e.g. "before boss"),
   **Compare** shows which files would change compared to current saves.
 

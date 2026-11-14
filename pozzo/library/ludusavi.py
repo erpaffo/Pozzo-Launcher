@@ -125,8 +125,9 @@ def _known_dirs() -> dict[str, str]:
 
 
 def save_paths(man: dict, name: str, store: str = "", gid: str = "", install_dir: str = "",
-               store_root: str = "") -> list[Path]:
-    """File e cartelle di salvataggio del gioco che esistono su questo PC."""
+               store_root: str = "", existing: bool = True) -> list[Path]:
+    """File e cartelle di salvataggio del gioco che esistono su questo PC. existing=False: la parte fissa di ogni
+    percorso (prima dei caratteri jolly), anche se non esiste ancora: dove un ripristino su un PC nuovo puo' scrivere."""
     vals = {k: glob.escape(v) for k, v in _known_dirs().items() if v}
     if install_dir:
         vals["<base>"] = glob.escape(install_dir)
@@ -142,7 +143,17 @@ def save_paths(man: dict, name: str, store: str = "", gid: str = "", install_dir
         pat = re.sub(r"<\w+>", lambda m: vals.get(m.group(0), "\0"), raw)
         if "\0" in pat:  # segnaposto che qui non si puo' risolvere (es. <xdgData>, <root> sconosciuto)
             continue
+        if not existing:
+            fixed = []
+            for part in Path(pat).parts:
+                if re.search(r"[*?[]", re.sub(r"\[[*?[]\]", "", part)):  # jolly vero, non un carattere escapato
+                    break
+                fixed.append(re.sub(r"\[([*?[])\]", r"\1", part))
+            out += [Path(*fixed)] if fixed else []
+            continue
         out += [Path(p) for p in glob.glob(pat, recursive=True)]
     res = {os.path.normcase(str(p.resolve())): p for p in out}
+    if not existing:
+        return list(res.values())
     dirs = [k for k, p in res.items() if p.is_dir()]
     return [p for k, p in res.items() if not any(k.startswith(d + os.sep) for d in dirs)]  # niente doppioni dentro una cartella trovata

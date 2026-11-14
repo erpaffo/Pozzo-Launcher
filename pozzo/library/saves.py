@@ -337,7 +337,10 @@ def set_paths(cfg, key: str, paths: list[str]) -> list[str]:
 # di Ludusavi non si mostrano). Quello che Ludusavi non conosce (motivo della copia, cartelle copiate intere per il
 # rollback esatto, punto «prima della partita») sta nell'index.json del gioco, fuori dalla cartella delle copie.
 _INVALID = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
-_RISKY = {".exe", ".dll", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".lnk", ".scr", ".com", ".msi", ".reg"}  # mai ripristinati
+# mai ripristinati: eseguibili e script di Windows, macOS e Linux (anche quelli che partono da soli all'accesso)
+_RISKY = {".exe", ".dll", ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".hta",
+          ".lnk", ".url", ".scr", ".com", ".pif", ".cpl", ".msc", ".msi", ".msp", ".reg", ".inf", ".scf", ".jar",
+          ".appref-ms", ".application", ".sys", ".desktop", ".sh", ".command", ".so", ".dylib"}
 _DRIVE = re.compile(r"^([A-Za-z]:)/")
 _OLD = re.compile(r"^\d{8}-\d{6}-.+\.zip$")  # copie del formato precedente (zip con manifest.json)
 
@@ -584,15 +587,45 @@ def _open(cfg, key: str, name: str) -> tuple[Path, dict]:
     return d, b
 
 
-def _members(d: Path, b: dict, drives: dict):
-    """(funzione che legge il file della copia, percorso di destinazione, {hash, size}). I tipi eseguibili si saltano:
-    mapping.yaml puo' arrivare da fuori (Ludusavi, altro PC) e indicare qualunque percorso."""
+def _risky(p: Path) -> bool:
+    # Windows toglie punti e spazi finali ("evil.bat." = evil.bat) e "x.bat::$DATA" scrive x.bat
+    name = p.name.split(":", 1)[0].rstrip(". ")
+    return ":" in p.name or Path(name).suffix.lower() in _RISKY
+
+
+def _allowed(cfg, key: str, name: str, roots) -> list[str]:
+    """Cartelle dove il ripristino puo' scrivere: radici del gioco date dal chiamante, cartelle copiate intere
+    (registrate dall'app nell'indice, fuori dalla cartella delle copie) e percorsi manuali. Mai disco o cartelle
+    generiche (home, AppData, Documenti...)."""
+    rec = ((_index(cfg, key).get("backups") or {}).get(name) or {}).get("dirs") or []
+    wide = {os.path.normcase(str(p)) for p in _protected(cfg)}
+    out = []
+    for r in [*(roots or []), *rec, *(_expand(x) for x in manual_paths(cfg, key))]:
+        r = Path(r).resolve()
+        k = os.path.normcase(str(r))
+        if r != Path(r.anchor) and k not in wide:
+            out.append(k)
+    return out
+
+
+def _within(dest: Path, allowed: list[str]) -> bool:
+    k = os.path.normcase(str(dest.resolve()))
+    return any(k == a or k.startswith(a.rstrip(os.sep) + os.sep) for a in allowed)
+
+
+def _members(d: Path, b: dict, drives: dict, allowed: list[str], skipped: list[str]):
+    """(funzione che legge il file della copia, percorso di destinazione, {hash, size}). mapping.yaml puo' arrivare
+    da fuori (Ludusavi, altro PC) e indicare qualunque percorso: i tipi eseguibili si saltano, i percorsi fuori dalle
+    cartelle del gioco finiscono in skipped."""
     zf = zipfile.ZipFile(d / b["name"]) if b["name"].endswith(".zip") else None
     base = d if b["name"] == "." else d / b["name"]
     try:
         for k, meta in (b.get("files") or {}).items():
             dest = Path(k)
-            if not dest.is_absolute() or dest.suffix.lower() in _RISKY or ".." in dest.parts:
+            if not dest.is_absolute() or _risky(dest) or ".." in dest.parts:
+                continue
+            if not _within(dest, allowed):
+                skipped.append(str(dest))
                 continue
             e = _entry(drives, k)
             yield (lambda e=e: zf.read(e)) if zf else (lambda e=e: (base / e).read_bytes()), dest, meta or {}
@@ -606,11 +639,12 @@ def _extra(dirs: list[str], inside: set[str]) -> list[Path]:
     return [f for x in dirs for f in Path(x).rglob("*") if f.is_file() and os.path.normcase(str(f.resolve())) not in inside]
 
 
-def diff(cfg, key: str, name: str) -> dict:
-    """Cosa cambierebbe ripristinando la copia: file diversi, mancanti sul disco, e in piu' (che verrebbero tolti)."""
+def diff(cfg, key: str, name: str, roots: list[Path] | None = None) -> dict:
+    """Cosa cambierebbe ripristinando la copia: file diversi, mancanti sul disco, in piu' (che verrebbero tolti) e
+    fuori dalle cartelle del gioco (che non verrebbero scritti)."""
     d, b = _open(cfg, key, name)
-    changed, missing, same, inside = [], [], 0, set()
-    for _, dest, meta in _members(d, b, _mapping(d)["drives"]):
+    changed, missing, same, inside, skipped = [], [], 0, set(), []
+    for _, dest, meta in _members(d, b, _mapping(d)["drives"], _allowed(cfg, key, name, roots), skipped):
         inside.add(os.path.normcase(str(dest.resolve())))
         if not dest.is_file():
             missing.append(str(dest))
@@ -619,16 +653,19 @@ def diff(cfg, key: str, name: str) -> dict:
         else:
             same += 1
     dirs = ((_index(cfg, key).get("backups") or {}).get(name) or {}).get("dirs") or []
-    return {"changed": changed, "missing": missing, "extra": [str(f) for f in _extra(dirs, inside)], "same": same}
+    return {"changed": changed, "missing": missing, "extra": [str(f) for f in _extra(dirs, inside)], "same": same,
+            "skipped": skipped}
 
 
-def restore(cfg, key: str, name: str) -> dict:
+def restore(cfg, key: str, name: str, roots: list[Path] | None = None) -> dict:
     """Riporta i salvataggi alla copia scelta, nei percorsi originali. Nelle cartelle copiate intere si tolgono anche
-    i file creati dopo, cosi' il rollback e' esatto. Prima salva una copia dei salvataggi attuali (annullabile)."""
+    i file creati dopo, cosi' il rollback e' esatto. Prima salva una copia dei salvataggi attuali (annullabile).
+    roots = cartelle dei salvataggi del gioco su questo PC (anche se vuote): fuori da quelle non si scrive."""
     d, b = _open(cfg, key, name)
     m = _mapping(d)
     dirs = [x for x in ((_index(cfg, key).get("backups") or {}).get(name) or {}).get("dirs") or [] if Path(x).is_dir()]
-    data = [(dest, read()) for read, dest, _ in _members(d, b, m["drives"])]  # tutto in memoria prima di toccare il disco (i salvataggi sono piccoli)
+    skipped: list[str] = []
+    data = [(dest, read()) for read, dest, _ in _members(d, b, m["drives"], _allowed(cfg, key, name, roots), skipped)]  # tutto in memoria prima di toccare il disco (i salvataggi sono piccoli)
     cur_files = [dest for dest, _ in data if dest.is_file()
                  and not any(Path(x).resolve() in dest.resolve().parents for x in dirs)]
     safety = backup(cfg, key, m["name"], [Path(x) for x in dirs] + cur_files, "prima-del-ripristino", protect=name)
@@ -642,7 +679,7 @@ def restore(cfg, key: str, name: str) -> dict:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(content)
         written += 1
-    return {"written": written, "removed": removed, "safety_copy": safety.name if safety else None}
+    return {"written": written, "removed": removed, "safety_copy": safety.name if safety else None, "skipped": skipped}
 
 
 def delete(cfg, key: str, name: str):

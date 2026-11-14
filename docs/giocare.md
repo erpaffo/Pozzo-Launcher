@@ -325,7 +325,9 @@ Nel dettaglio, **💾 Salvataggi** tiene una **versione prima e una dopo ogni pa
 - **↶ Annulla l'ultima partita**, che riporta i salvataggi a com'erano prima dell'ultima partita;
 - **Ripristina** su una versione qualsiasi: prima copia i salvataggi attuali, quindi si può tornare indietro; il
   ripristino riscrive i file della copia ma non cancella quelli creati dopo. A gioco aperto il ripristino è bloccato,
-  perché l'emulatore riscriverebbe i suoi file;
+  perché l'emulatore riscriverebbe i suoi file. Il ripristino scrive solo nelle cartelle dei salvataggi del gioco
+  (quelle trovate, quelle del manifest di Ludusavi, quelle dell'emulatore o aggiunte a mano): un file della copia
+  che punta altrove, o un eseguibile, viene saltato;
 - **★** fissa una versione (non viene mai cancellata), **✎** le aggiunge una nota (per esempio «prima del boss»),
   **Confronta** dice quali file cambierebbero rispetto ai salvataggi attuali.
 

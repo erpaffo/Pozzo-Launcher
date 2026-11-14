@@ -735,7 +735,7 @@ def test_game_saves():
             assert z.read(SV._entry({}, SV._mkey(ed / "slot1.bin"))) == b"v2-rovinato"  # la copia di sicurezza ha i dati di prima
         rb = SV.backup(cfg, "gba/y", "Pokemon", rfiles)
         (ra / "saves" / "Pokemon Rosso.srm").write_bytes(b"xx")
-        SV.restore(cfg, "gba/y", rb.name)
+        SV.restore(cfg, "gba/y", rb.name, roots=[ra])  # file singoli: la cartella dell'emulatore come radice
         assert (ra / "saves" / "Pokemon Rosso.srm").read_bytes() == b"s1"
         # mapping.yaml manomesso (arriva anche da Ludusavi o da un altro PC): niente eseguibili, percorsi relativi o nomi con ".."
         import yaml
@@ -864,7 +864,7 @@ def test_saves_versions():
         (gd / "mapping.yaml").write_text(yaml.safe_dump(m), encoding="utf-8")
         lud = [b for b in SV.list_backups(cfg, "pc/g") if b["name"] == "."]
         assert lud and lud[0]["reason"] == "ludusavi" and lud[0]["time"] == 946782245, lud
-        SV.restore(cfg, "pc/g", ".")
+        SV.restore(cfg, "pc/g", ".", roots=[sav])  # copia di Ludusavi: nessuna cartella registrata dall'app
         assert (sav / "slot1").read_bytes() == b"da-ludusavi"
 
         # copie del formato precedente (zip con manifest.json): convertite alla prima lettura, fissate e note comprese
