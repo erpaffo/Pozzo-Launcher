@@ -1288,10 +1288,17 @@ class Manager:
         """Byte che mancano per far partire `t` insieme ai task in corso sullo stesso disco (0 = bastano, None = spazio
         non ancora letto). La coda in attesa non conta: un task piu' piccolo puo' partire lo stesso. Solo lo spazio
         in cache: lo legge _space_refresh, fuori dal lock."""
-        run = [o for o in self.tasks.values() if o.status == RUNNING]
+        run = [o for o in self.tasks.values() if o.status == RUNNING and o is not t]  # t gia' in corso (torrent coi metadati) non conta due volte
         drv = drive_of(t.save_path)
         d = next((x for x in queue_forecast([*run, t], cached=True)["drives"] if x["drive"] == drv), None)
         return None if d is None else 0 if d["ok"] else -d["after_extract"]
+
+    async def _torrent_gap(self, t: DownloadTask) -> int:
+        """Byte che mancano al torrent in corso (dimensione dei file scelti, nota solo coi metadati): il motore lo chiama
+        una volta e, se manca spazio, mette il task in pausa «Disco pieno» come per l'HTTP."""
+        await asyncio.to_thread(free_space, t.save_path)  # lettura fresca, fuori dal ciclo
+        with self.lock:
+            return self._space_gap(t) or 0
 
     def _space_refresh(self):
         """Spazio libero dei dischi della coda letto in un thread (uno alla volta, ogni FREE_TTL s per disco): un disco
@@ -1384,7 +1391,8 @@ class Manager:
             elif t.type == "cli":
                 await CLI.run(t, self.cfg)
             elif t.type == "torrent":
-                await TOR.run(t, self._torrent, self._client, lambda: self._completed(t), gate=lambda: self._gate(t))
+                await TOR.run(t, self._torrent, self._client, lambda: self._completed(t), gate=lambda: self._gate(t),
+                               space=lambda: self._torrent_gap(t))
             else:
                 await HTTP.run(t, self._client, self._buckets.setdefault(t.id, HTTP.Bucket()), segments,
                                lambda u: self._resolve(t, u), gate=lambda: self._gate(t))
@@ -1401,8 +1409,8 @@ class Manager:
             notes = self._res.get(t.id, (0, []))[1]
             if t.phase and notes:  # fallito prima del download: porta con se' perche' i risolutori non hanno risolto
                 end = (ERROR, f"{end[1]} ({'; '.join(notes)})")
-            if isinstance(e, OSError) and e.errno == errno.ENOSPC and t.type == "http":
-                # disco pieno a meta': niente errore, il .part e i segmenti restano e _auto_resume lo riprende
+            if isinstance(e, OSError) and e.errno == errno.ENOSPC and t.type in ("http", "torrent"):
+                # disco pieno a meta': niente errore, il .part (o i file del torrent) restano e _auto_resume lo riprende
                 end = (PAUSED, f"{DISK_FULL}: libera spazio su {drive_of(t.save_path)}, il download riprende da solo")
                 free_forget(t.save_path)  # lo spazio in cache diceva che bastava: senza, ripartirebbe subito
                 self._log(t, end[1], "warn")

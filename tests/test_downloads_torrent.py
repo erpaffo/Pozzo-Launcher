@@ -441,3 +441,62 @@ def test_vecchio_elenco_dei_tracker_morti_buttato_una_volta(swarm, tmp):
     assert "dead_trackers" not in t.options
     assert _wait(lambda: t.status == T.COMPLETED), (t.status, t.error)
     m.stop()
+
+
+# ------------------------------------------------------------ disco pieno
+def test_errore_disco_pieno_di_libtorrent():
+    import errno
+    for cat in (lt.generic_category(), lt.system_category()):
+        assert TOR.disk_full(lt.error_code(errno.ENOSPC, cat))  # file_error_alert / torrent_status.errc su macOS e Linux
+    assert not TOR.disk_full(lt.error_code(errno.EACCES, lt.system_category()))  # altri errori di scrittura: restano errori
+    assert not TOR.disk_full(lt.error_code(errno.ENOSPC, lt.libtorrent_category()))  # stesso numero, altra categoria
+
+
+def _poco_spazio(monkeypatch, free):
+    """Disco finto: free[0] byte liberi, riletti subito (niente attese di cache)."""
+    import shutil
+    from pozzo.downloads import extract as X
+    X._FREE.clear()
+    monkeypatch.setattr(X, "FREE_TTL", 0.2)
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: SimpleNamespace(free=free[0]))
+
+
+@pytest.mark.parametrize("how", ["magnet", "torrent"])
+def test_senza_spazio_dopo_i_metadati_si_ferma_e_riprende_da_solo(swarm, tmp, monkeypatch, how):
+    """Un magnet ha dimensione ignota al controllo di coda: lo spazio si controlla coi metadati (il .torrent subito)."""
+    free = [50_000]  # meno dei ~213 KB del set
+    _poco_spazio(monkeypatch, free)
+    m = _mgr(tmp)
+    m.start()
+    t = m.add(swarm.magnet if how == "magnet" else str(swarm.torrent), connect=[swarm.peer])
+    assert _wait(lambda: t.status == T.PAUSED, 60), (t.status, t.error)
+    assert t.error.startswith("Disco pieno") and t.phase == "Disco pieno" and t.options["disk_full"]
+    assert t.size == sum(map(len, swarm.data.values())) and m._batch == [0, 0]  # nessun fallimento
+    assert _wait(lambda: not m._torrent.handles) and m._torrent.resume_file(t.id).exists()  # metadati su disco per riprendere
+    time.sleep(1.5)
+    assert t.status == T.PAUSED  # ancora pieno: resta fermo
+    free[0] = 10**9
+    assert _wait(lambda: t.status == T.COMPLETED), (t.status, t.error)
+    for n, b in swarm.data.items():
+        assert (tmp / "out" / "set" / n).read_bytes() == b
+    assert "disk_full" not in t.options
+    m.stop()
+
+
+def test_disco_pieno_durante_il_torrent_mette_in_pausa(tmp, monkeypatch):
+    """libtorrent ferma il torrent con un errore ENOSPC (torrent_status.errc): pausa «Disco pieno», non errore."""
+    import errno
+    calls = []
+
+    async def run(task, *a, **k):
+        calls.append(1)
+        task.size = 10
+        raise OSError(errno.ENOSPC, "No space left on device")  # come lo alza TOR.run da s.errc
+    monkeypatch.setattr("pozzo.downloads.manager.TOR.run", run)
+    m = _mgr(tmp)
+    m.start()
+    t = m.add("magnet:?xt=urn:btih:" + "c" * 40)
+    assert _wait(lambda: t.status == T.PAUSED, 30), (t.status, t.error)
+    assert t.error.startswith("Disco pieno") and t.options["disk_full"] and m._batch == [0, 0]
+    m.cancel(t.id)  # senza, il ciclo lo riprenderebbe (size 10 sta nel disco) mentre la cartella di prova sparisce
+    m.stop()

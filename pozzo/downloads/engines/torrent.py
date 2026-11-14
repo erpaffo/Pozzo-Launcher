@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import ipaddress
 import logging
+import os
 import re
 import socket
 import time
@@ -133,6 +135,12 @@ def _permanent(a) -> bool:
     DNS che non risponde passano: quei tracker li riprova libtorrent con la sua attesa crescente."""
     cat, code = a.error.category().name(), a.error.value()
     return (cat == "http" and code in (404, 410)) or (cat == "libtorrent" and code == 24)  # 24: unsupported URL protocol
+
+
+def disk_full(ec) -> bool:
+    """L'errore di libtorrent (torrent_status.errc / file_error_alert.error) e' «disco pieno»: ENOSPC su macOS e Linux,
+    ERROR_DISK_FULL / ERROR_HANDLE_DISK_FULL su Windows (categoria system in entrambi i casi)."""
+    return ec.category().name() in ("system", "generic") and ec.value() in ((112, 39) if os.name == "nt" else (errno.ENOSPC,))
 
 
 class Engine:
@@ -373,10 +381,11 @@ def _ratio(s) -> float:
     return round(s.all_time_upload / max(s.total_wanted_done, 1), 3)
 
 
-async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) -> None:
+async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None, space=None) -> None:
     """Scarica i file scelti di `task`, poi condivide finche' non arriva a eng.seed (rapporto o minuti; chiama on_complete
     alla fine dello scaricamento) e toglie il torrent dalla sessione. Lo stato sta in task.options. `gate`: attesa di un
-    posto nella coda quando i metadati arrivano dopo l'attesa (nell'attesa il manager non conta il magnet tra i posti)."""
+    posto nella coda quando i metadati arrivano dopo l'attesa (nell'attesa il manager non conta il magnet tra i posti).
+    `space`: async fn() -> byte che mancano sul disco per i file scelti (0 = bastano), chiamata una volta coi metadati."""
     dest = Path(task.save_path).resolve()
     dest.mkdir(parents=True, exist_ok=True)
     resumed = eng.resume_file(task.id).exists()
@@ -419,6 +428,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
         task.log("Ricontrollo dei file su disco")
     ready, last_save, start, seeding = False, time.monotonic(), time.monotonic(), 0.0
     state, peers, meta, mile, idle_since, waited = None, False, False, None, None, False
+    spaced = False  # controllo dello spazio fatto (una volta per avvio)
     fcache = None  # (priorita', quando, indici dei file voluti, byte voluti, finito) dell'ultimo elenco file costruito
     try:
         while True:
@@ -428,7 +438,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
                 h.set_flags(flag) if on else h.unset_flags(flag)
             s = h.status()
             if s.errc.value():
-                raise OSError(s.errc.message())
+                raise OSError(errno.ENOSPC, s.errc.message()) if disk_full(s.errc) else OSError(s.errc.message())
             st = str(s.state).rsplit(".", 1)[-1]
             if st != state:
                 state = st
@@ -490,6 +500,11 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
                 task.done = sum(prog[i] for i in wanted)
                 if not task.size:
                     raise ValueError("Nessun file selezionato")
+                if space and not spaced:  # la dimensione si sa solo ora (magnet): come per l'HTTP, senza spazio si ferma in attesa
+                    spaced = True
+                    if gap := await space():
+                        await eng.save(task.id)  # i metadati restano: alla ripresa un magnet non li riscarica
+                        raise OSError(errno.ENOSPC, f"mancano {gap / 2**30:.1f} GB")
                 m = task.done * 10 // task.size
                 if mile is None or m < mile:
                     mile = m  # prima lettura (o ricontrollo): da qui in avanti si registra

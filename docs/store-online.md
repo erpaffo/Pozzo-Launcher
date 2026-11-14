@@ -150,6 +150,7 @@ Facendo doppio clic su un download (oppure aprendo il pannello inferiore ridimen
 - I collegamenti magnet e i file `.torrent` vengono gestiti nativamente.
 - Include supporto per tracker UDP e TCP, DHT (Distributed Hash Table), PEX (Peer Exchange), LSD (Local Peer Discovery) e inoltro automatico delle porte UPnP sul router.
 - Puoi impostare una porta fissa o lasciare che il launcher scelga una porta casuale stabile. La sessione salva su disco lo stato dei peer per riprendere subito la ricerca all'avvio.
+- **Spazio sul disco**: per un magnet la dimensione si conosce solo quando arrivano i metadati; a quel punto (per un `.torrent`, subito) il launcher controlla che i file scelti entrino nel disco, come per i download HTTP. Se non c'è spazio, o se il disco si riempie durante il download, il torrent va in pausa con «Disco pieno» (non in errore) e riprende da solo appena liberi spazio.
 - Supporto al **download sequenziale**, utile per ordinare i pezzi del file ed eseguire controlli di integrità immediati.
 
 ### Servizi Debrid (Multi-host)

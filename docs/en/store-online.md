@@ -151,6 +151,7 @@ Double-clicking a download (or opening the resizable bottom pane) reveals three 
 - Magnet links and `.torrent` files are handled natively.
 - Supports UDP and TCP trackers, DHT (Distributed Hash Table), PEX (Peer Exchange), LSD (Local Peer Discovery), and automatic UPnP router port forwarding.
 - Configure a fixed port or allow the launcher to select a stable random port. Peer sessions persist to disk to resume swarms immediately upon startup.
+- **Disk space**: a magnet's size is only known once the metadata arrives; at that point (immediately for a `.torrent`) the launcher checks that the selected files fit on the disk, as for HTTP downloads. If there is not enough room, or the disk fills up during the download, the torrent pauses with a "Disco pieno" (disk full) message (not in error) and resumes by itself as soon as you free up space.
 - Supports **sequential downloading**, useful for organizing file segments and performing prompt integrity checks.
 
 ### Debrid Services (Multi-host)
