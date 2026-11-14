@@ -33,7 +33,9 @@ if sys.platform != "win32":
     w.POLL = 0.02
     w.pid_source = lambda: next(seq, 10)
     w.start()
-    time.sleep(0.4)
+    end = time.time() + 5  # sotto carico (CI) 0,4 s fissi non bastavano ai 5 campioni: si aspetta l'esito, con un tetto
+    while len(ev) < 3 and time.time() < end:
+        time.sleep(0.02)
     w.stop()
     assert ev == ["game_foreground", "game_background", "game_foreground"], ev
 print("ok")
