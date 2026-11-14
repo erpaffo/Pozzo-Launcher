@@ -101,7 +101,44 @@ def test_pubkey_e_installer_senza_manifest(tmp_path):
     assert downloads == []  # e nemmeno scaricato
 
 
+def test_download_senza_digest_o_diverso(tmp_path):
+    """Cio' che si scarica viene eseguito o estratto: senza impronta (o con impronta diversa) si ferma."""
+    calls = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def iter_bytes(self, n):
+            yield b"contenuto"
+
+    @contextlib.contextmanager
+    def _stream(*a, **kw):
+        calls.append(a)
+        yield _Resp()
+
+    url = "https://github.com/erpaffo/PozzoLauncher/releases/download/v1/x.exe"
+    with _patched(httpx=type("H", (), {"stream": staticmethod(_stream), "Timeout": updates.httpx.Timeout})):
+        for digest in (None, "", "md5:abc"):
+            try:
+                updates._download(url, tmp_path / "a", digest=digest)
+                raise AssertionError(f"digest {digest!r} accettato")
+            except RuntimeError:
+                pass
+        assert calls == []  # rifiutato prima di scaricare
+        try:
+            updates._download(url, tmp_path / "b", digest="sha256:" + "0" * 64)
+            raise AssertionError("checksum diverso accettato")
+        except RuntimeError:
+            pass
+        assert not (tmp_path / "b").exists()  # il file danneggiato non resta in giro
+        import hashlib
+        updates._download(url, tmp_path / "c", digest="sha256:" + hashlib.sha256(b"contenuto").hexdigest())
+        assert (tmp_path / "c").read_bytes() == b"contenuto"
+
+
 with tempfile.TemporaryDirectory() as d:
     test_pubkey_e_release_senza_manifest_zip(Path(d))
     test_pubkey_e_installer_senza_manifest(Path(d))
+    test_download_senza_digest_o_diverso(Path(d))
 print("ok")

@@ -1,7 +1,7 @@
 """Crea gli asset per l'aggiornamento differenziale a partire dai pacchetti portatili.
 
 shortcut: un asset per file supera il limite di 1000 asset per release di GitHub con i pacchetti PyInstaller,
-quindi release.yml NON lo usa e l'updater ripiega sull'archivio completo; da riattivare con un contenitore unico
+quindi release.yml pubblica solo il manifest (--solo-manifest) e l'updater usa l'archivio completo; da riattivare con un contenitore unico
 (es. archivio per file letto con richieste Range) prima di metterlo nel workflow.
 """
 
@@ -92,7 +92,7 @@ def _tar_files(archive: tarfile.TarFile):
             raise ValueError(f"Tipo di file non supportato nel pacchetto: {info.name}")
 
 
-def create(release: Path, version: str) -> Path:
+def create(release: Path, version: str, payloads: bool = True) -> Path:
     if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z.+-]*", version):
         raise ValueError(f"Versione non valida: {version}")
     manifest = {"version": version, "file": []}
@@ -116,7 +116,8 @@ def create(release: Path, version: str) -> Path:
             if path in seen:
                 raise ValueError(f"Percorso duplicato: {path}")
             seen.add(path)
-            (release / _asset_name(version, path)).write_bytes(_payload(path, data, mode, link))
+            if payloads:
+                (release / _asset_name(version, path)).write_bytes(_payload(path, data, mode, link))
             manifest["file"].append({"path": path, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)})
     if not manifest["file"]:
         raise ValueError("Nessun pacchetto portatile trovato")
@@ -128,5 +129,6 @@ def create(release: Path, version: str) -> Path:
 if __name__ == "__main__":
     import sys
 
-    version = sys.argv[1].removeprefix("v")
-    print(create(Path(sys.argv[2]), version))
+    # --solo-manifest: niente asset per file (release.yml), il manifest firmato verifica il pacchetto completo
+    args = [a for a in sys.argv[1:] if a != "--solo-manifest"]
+    print(create(Path(args[1]), args[0].removeprefix("v"), payloads="--solo-manifest" not in sys.argv))

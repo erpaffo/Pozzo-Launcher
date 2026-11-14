@@ -327,6 +327,12 @@ jobs:
             echo "Release pubblicata senza:$missing" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # manifest dei file dei pacchetti portatili (senza asset per file): l'updater verifica con questo il
+      # pacchetto completo estratto, e sign-manifest lo firma. Se fallisce si pubblica senza, come prima.
+      - name: Manifest aggiornamento
+        continue-on-error: true
+        run: python tools/release_manifest.py "$GITHUB_REF_NAME" release --solo-manifest
+
       # impronte SHA-256 di tutti i file: chi scarica puo' verificare che siano integri (gli eseguibili non sono firmati)
       - name: Checksum
         run: cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt

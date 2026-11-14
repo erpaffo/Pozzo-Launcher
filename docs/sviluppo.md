@@ -21,10 +21,12 @@ pyinstaller packaging/pozzo.spec --noconfirm     # risultato in dist/PozzoLaunch
 
 ### Aggiornamenti dell'app installata
 
-GitHub Releases offre URL di download per asset interi, non per singoli file dentro uno ZIP. Per questo il workflow
-mantiene gli archivi completi come fallback e pubblica anche un manifest (`version`, `file` con `path`, `sha256` e
-`size`) e un piccolo asset tar per ogni file dei pacchetti portatili. Gli asset hanno nomi derivati dal percorso
-relativo, così l'updater può scaricare solo quelli cambiati senza richieste Range o servizi aggiuntivi.
+GitHub Releases offre URL di download per asset interi, non per singoli file dentro uno ZIP. Il workflow pubblica
+gli archivi completi e un manifest (`version`, `file` con `path`, `sha256` e `size`) dei file dei pacchetti portatili;
+dopo aver estratto l'archivio completo l'updater controlla ogni file contro il manifest. Ogni file scaricato deve
+avere l'impronta SHA-256 che GitHub calcola per l'asset (`digest`): se manca o non corrisponde l'aggiornamento si ferma.
+`tools/release_manifest.py` sa creare anche un piccolo asset tar per ogni file (aggiornamento differenziale), ma
+`release.yml` non li pubblica (`--solo-manifest`): sarebbero piu' dei 1000 asset ammessi per release.
 
 Il differenziale si applica solo se il manifest installato e quello della release sono validi e tutti gli hash
 corrispondono; rimozioni, file cambiati e verifiche avvengono in una cartella di staging sullo stesso volume.

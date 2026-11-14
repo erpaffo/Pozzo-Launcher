@@ -482,6 +482,10 @@ def _download(url: str, dest: Path, *, digest: str | None = None, total: int | N
               accumulate: bool = False):
     if not url.startswith("https://github.com/"):
         raise RuntimeError("Indirizzo di download inatteso: " + url[:120])
+    # cio' che si scarica viene eseguito o estratto come app: senza impronta di GitHub non si procede
+    # (l'API la fornisce per ogni asset, anche delle release vecchie)
+    if not (digest or "").startswith("sha256:"):
+        raise RuntimeError("Impronta SHA-256 del file assente nella release: scarica la nuova versione a mano")
     if not accumulate:
         STATE.update(done=0, total=total or 0)
     h = hashlib.sha256()
@@ -492,7 +496,8 @@ def _download(url: str, dest: Path, *, digest: str | None = None, total: int | N
             file.write(chunk)
             h.update(chunk)
             STATE["done"] += len(chunk)
-    if digest and digest != "sha256:" + h.hexdigest():
+    if digest != "sha256:" + h.hexdigest():
+        dest.unlink(missing_ok=True)
         raise RuntimeError("File scaricato danneggiato (checksum diverso): riprova")
 
 

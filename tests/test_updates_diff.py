@@ -138,3 +138,10 @@ def test_release_manifest_and_file_assets_are_built_from_portable_archive(tmp_pa
         assert (release / asset_name).is_file()
         assert entries[remote_path]["sha256"] == hashlib.sha256(data).hexdigest()
         assert entries[remote_path]["size"] == len(data)
+
+    # release.yml: solo il manifest (gli asset per file supererebbero il limite di GitHub), stesso contenuto
+    for asset in release.glob("*-file-*"):
+        asset.unlink()
+    only = create(release, "0.12.1", payloads=False)
+    assert json.loads(only.read_text(encoding="utf-8")) == manifest
+    assert not list(release.glob("*-file-*"))
