@@ -792,6 +792,9 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                         hwnd = win.native.Handle.ToInt64()
                         ctypes.windll.user32.ShowWindow(hwnd, 9)
                         ctypes.windll.user32.SetForegroundWindow(hwnd)
+                    elif sys.platform == "darwin":
+                        from .. import macos
+                        macos.osascript(f'tell application "System Events" to set frontmost of (first process whose unix id is {os.getpid()}) to true')
                 except Exception:
                     pass
                 return True

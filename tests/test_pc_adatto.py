@@ -37,3 +37,21 @@ def test_steam_parse():
     assert pa.verdict_steam({"min": html, "rec": ""}, HW(1, 3, 16))["verdict"] == "insufficiente"
     assert pa.verdict_steam({"min": html, "rec": ""}, HW(4, 4, 16))["verdict"] == "ok"
     assert pa.verdict_steam({"min": "boh", "rec": ""}, HW(4, 4, 16))["verdict"] == "sconosciuto"
+
+
+def test_detect_linux_mac(monkeypatch=None):
+    import json as _j, sys as _s
+    old = (pa._run, pa.sys.platform)
+    out = {("sysctl", "-n", "hw.memsize"): str(16 * 2**30), ("sysctl", "-n", "machdep.cpu.brand_string"): "Apple M4",
+           ("system_profiler", "SPDisplaysDataType", "-json"): _j.dumps({"SPDisplaysDataType": [{"sppci_model": "Apple M4"}]}),
+           ("nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"): "NVIDIA GeForce RTX 3060, 12288 MiB"}
+    pa._run = lambda *c: out.get(c, "")
+    try:
+        pa.sys.platform = "darwin"
+        h = pa.detect()
+        assert h["ram_gb"] == 16 and h["gpu"] == {"name": "Apple M4", "vram_gb": 8.0} and h["cpu"]["name"] == "Apple M4"
+        pa.sys.platform = "linux"
+        h = pa.detect()
+        assert h["gpu"] == {"name": "NVIDIA GeForce RTX 3060", "vram_gb": 12.0}
+    finally:
+        pa._run, pa.sys.platform = old

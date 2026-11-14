@@ -373,9 +373,9 @@
       "min_app": "0.7.1",
       "base": "pc-adatto/",
       "files": {
-        "backend.py": "020e3f9485cafe86ea6ac20f1dbca43b8babbffbb6e3bb61861accbc505a2fd4",
+        "backend.py": "f5b5209cdbba31d9afcd075bcaeb60b4011bf7d1aa1e38d9801e90f03ed0f507",
         "frontend.js": "98e97c6ab0b51e9acbe5bc2c24d210796ebd88b4f02e2c47fcad1df8fc74e5e7",
-        "plugin.toml": "5d82bc1cbacfa5ec9a98e24bba17e2b83e36103d39b4c9fbc138acd98a9f84d5",
+        "plugin.toml": "aab3b2a1879188e464d045884565a45c9ba17a7a5ab4d2cb7c5eef9e8269ca5c",
         "screenshot.png": "2d0bd7d2a400eb8168136036b433216ae70c48dbad4473773350c03d8db9710f",
         "style.css": "185185d14bbe12192f5b8bfb8934ec6a8716241a98f41d04fa4fd0915d7cb55c"
       },

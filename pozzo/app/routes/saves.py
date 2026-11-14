@@ -191,6 +191,7 @@ def build_router(ctx) -> APIRouter:
                 roots += [Path.home() / "Saved Games", SV._docs(), *(Path(x) for x in env if x)]
                 if env[1]:
                     roots.append(Path(env[1]).parent / "LocalLow")
+                roots += [r for r in SV.user_roots() if r not in roots]  # macOS/Linux: Library, XDG
             found = SV.changed_since(roots, t0, exclude=[Path(cfg.cache), SV.backup_root(cfg)])
             if found:
                 SV.suggest(cfg, st["key"], found)

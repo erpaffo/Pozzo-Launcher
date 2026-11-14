@@ -7,8 +7,12 @@ si installano con gli installer offline); con Galaxy apre direttamente il gioco 
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import sqlite3
+import sys
 import time
+from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
 from .. import noclient as NC
@@ -22,6 +26,9 @@ REDIRECT = "https://embed.gog.com/on_login_success?origin=client"
 LOGIN_URL = (f"https://auth.gog.com/auth?client_id={CLIENT_ID}&redirect_uri={quote(REDIRECT, safe='')}"
              "&response_type=code&layout=client2")
 REG = r"SOFTWARE\WOW6432Node\GOG.com\Games"
+MAC = sys.platform == "darwin"
+MAC_GALAXY = Path("/Applications/GOG Galaxy.app")
+MAC_DB = Path("/Users/Shared/GOG.com/Galaxy/Storage/galaxy-2.0.db")
 
 
 class Gog(StoreProvider):
@@ -31,6 +38,8 @@ class Gog(StoreProvider):
     login_url = LOGIN_URL
 
     def galaxy(self) -> str | None:
+        if MAC:
+            return str(MAC_GALAXY) if MAC_GALAXY.exists() else None
         return reg_get("HKLM", r"SOFTWARE\WOW6432Node\GOG.com\GalaxyClient\paths", "client")
 
     def official(self) -> bool:
@@ -38,7 +47,8 @@ class Gog(StoreProvider):
         return bool(self.galaxy())
 
     def detected(self) -> bool:
-        return bool(reg_subkeys("HKLM", REG)) or bool(self.galaxy()) or bool(PC.get(self.cfg, "gog"))
+        return (bool(reg_subkeys("HKLM", REG)) or bool(self.galaxy()) or bool(PC.get(self.cfg, "gog"))
+                or (MAC and bool(self._mac_installed())))
 
     def account(self) -> dict:
         a = PC.get(self.cfg, "gog", {})
@@ -76,8 +86,39 @@ class Gog(StoreProvider):
         PC.set(self.cfg, "gog", a)
         return name
 
+    @staticmethod
+    def _mac_installed() -> dict[str, tuple[str, str]]:
+        """id -> (titolo, cartella/app): dal db di Galaxy e dai .app standalone con goggame-<id>.info."""
+        found: dict[str, tuple[str, str]] = {}
+        try:
+            if MAC_DB.exists():
+                with sqlite3.connect(f"file:{MAC_DB}?mode=ro", uri=True) as db:
+                    for pid, path, title in db.execute(
+                            "SELECT i.productId, i.installationPath, l.title FROM InstalledBaseProducts i "
+                            "LEFT JOIN LimitedDetails l ON l.productId = i.productId"):
+                        if title and path and os.path.exists(path):
+                            found[str(pid)] = (title, path)
+        except sqlite3.Error:
+            pass
+        for info in Path("/Applications").glob("*.app/Contents/Resources/goggame-*.info"):
+            try:
+                d = json.loads(info.read_text(encoding="utf-8-sig"))
+            except (OSError, ValueError):
+                continue
+            gid = str(d.get("gameId") or info.stem.split("-", 1)[1])
+            if d.get("name"):
+                found.setdefault(gid, (d["name"], str(info.parents[2])))
+        return found
+
     def installed(self) -> dict[str, StoreGame]:
         out = {}
+        for gid, (name, path) in self._mac_installed().items() if MAC else ():
+            app = path if path.endswith(".app") else next(iter(sorted(Path(path).glob("*.app"))), None)
+            launch = ({"type": "exe", "target": "/usr/bin/open", "args": [str(app)]} if app
+                      else {"type": "uri", "target": f"goggalaxy://openGameView/{gid}"})
+            out[gid] = StoreGame(store=self.id, id=gid, title=name, installed=True, install_dir=path,
+                                 launch=launch, install_uri=self._install_uri(gid, ""),
+                                 page="https://www.gog.com/account")
         for gid in reg_subkeys("HKLM", REG):
             v = reg_get("HKLM", REG + "\\" + gid) or {}
             name = v.get("gameName") or v.get("GAMENAME")

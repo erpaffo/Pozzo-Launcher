@@ -1,4 +1,4 @@
-"""Microfono del telefono -> uscita audio del PC (solo Windows, waveOut di winmm).
+"""Microfono del telefono -> uscita audio del PC (Windows: waveOut di winmm; altrove: ffplay/paplay/aplay).
 
 Per SingStar in PCSX2 il suono va mandato in un cavo audio virtuale (es. VB-Cable: si suona su «CABLE Input» e
 PCSX2 registra da «CABLE Output»). Il telefono manda PCM 16 bit mono a 16 kHz in pacchetti brevi; se la coda
@@ -8,8 +8,11 @@ supera MAX_QUEUE_MS (rete lenta) i pacchetti si scartano: meglio un buco che un 
 from __future__ import annotations
 
 import ctypes
+import shutil
+import subprocess
 import sys
 import threading
+from pathlib import Path
 from ctypes import wintypes
 
 RATE = 16000
@@ -43,10 +46,26 @@ WHDR_DONE = 1
 WAVE_MAPPER = 0xFFFFFFFF
 
 
+DEFAULT = "default"
+
+
+def _player_cmd() -> list[str] | None:
+    """Comando che legge PCM s16le mono da stdin (fuori da Windows): ffplay, poi paplay/aplay su Linux."""
+    ff = shutil.which("ffplay") or ("/opt/homebrew/bin/ffplay" if Path("/opt/homebrew/bin/ffplay").exists() else None)
+    if ff:
+        return [ff, "-nodisp", "-autoexit", "-loglevel", "quiet", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "-"]
+    if sys.platform.startswith("linux"):
+        if shutil.which("paplay"):
+            return ["paplay", "--raw", "--format=s16le", f"--rate={RATE}", "--channels=1"]
+        if shutil.which("aplay"):
+            return ["aplay", "-q", "-f", "S16_LE", "-r", str(RATE), "-c", "1"]
+    return None
+
+
 def devices() -> list[str]:
     """Uscite audio del PC (i nomi di Windows sono tagliati a 31 caratteri)."""
     if sys.platform != "win32":
-        return []
+        return [DEFAULT] if _player_cmd() else []
     w = ctypes.windll.winmm
     out = []
     for i in range(w.waveOutGetNumDevs()):
@@ -58,6 +77,8 @@ def devices() -> list[str]:
 
 def pick(names: list[str], wanted: str = "") -> int | None:
     """Indice dell'uscita: quella scelta, altrimenti un cavo virtuale conosciuto; None se non c'e'."""
+    if names == [DEFAULT]:
+        return 0
     for key in ([wanted] if wanted else []) + list(PREFERRED):
         for i, n in enumerate(names):
             if key.lower() in n.lower():
@@ -69,6 +90,9 @@ class Player:
     """Riproduce PCM 16 bit mono su un'uscita audio con una coda breve."""
 
     def __init__(self, device: int | None):
+        if sys.platform != "win32":
+            self._init_posix()
+            return
         self.w = ctypes.windll.winmm
         self.h = wintypes.HANDLE()
         fmt = WAVEFORMATEX(1, 1, RATE, RATE * 2, 2, 16, 0)
@@ -78,6 +102,15 @@ class Player:
             raise OSError(f"Uscita audio non apribile (codice {err})")
         self.pending: list[tuple[WAVEHDR, ctypes.Array]] = []
         self.lock = threading.Lock()
+
+    def _init_posix(self):
+        cmd = _player_cmd()
+        if not cmd:
+            raise OSError("Nessun lettore audio (ffplay, paplay, aplay)")
+        self.w = None
+        self.lock = threading.Lock()
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.pending = []
 
     def queued_ms(self) -> int:
         return sum(h.dwBufferLength for h, _ in self.pending) * 1000 // (RATE * 2)
@@ -95,6 +128,17 @@ class Player:
         """False se il pacchetto e' stato scartato (coda troppo lunga)."""
         if not pcm or len(pcm) % 2:
             return False
+        if self.w is None:  # la pipe fa da coda: se il lettore non tiene il passo si scarta (write bloccante evitata)
+            with self.lock:
+                try:
+                    import select
+                    if self.proc.poll() is not None or not select.select([], [self.proc.stdin], [], 0)[1]:
+                        return False
+                    self.proc.stdin.write(pcm)
+                    self.proc.stdin.flush()
+                    return True
+                except (OSError, ValueError):
+                    return False
         with self.lock:
             self._reap()
             if self.queued_ms() > MAX_QUEUE_MS:
@@ -107,6 +151,14 @@ class Player:
             return True
 
     def close(self):
+        if self.w is None:
+            with self.lock:
+                try:
+                    self.proc.stdin.close()
+                except OSError:
+                    pass
+                self.proc.terminate()
+            return
         with self.lock:
             self.w.waveOutReset(self.h)
             self._reap()

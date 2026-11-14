@@ -441,6 +441,12 @@ async function openProfile(d) {
   }
   $("#pf-au-res").value = au.res || ""; $("#pf-au-power").value = au.power || "";
   $("#pf-au-kill").value = (au.kill || []).join(", "); $("#pf-au-hdr").checked = !!au.hdr; $("#pf-au-archive").checked = !!au.archive;
+  // risoluzione, HDR e remap del pad esistono solo su Windows: fuori da li' i campi sono bloccati
+  for (const id of ["res", "hdr", "pad", "padmap", "padturbo", "paddz", "padswap", "padinv"]) {
+    const el = $(`#pf-au-${id}`);
+    el.disabled = !/Win/.test(navigator.platform);
+    el.closest("label").title = el.disabled ? t("a.prof.autoWinOnly") : "";
+  }
   const pd = au.pad || {};
   $("#pf-au-pad").checked = !!pd.enabled; $("#pf-au-padmap").value = Object.entries(pd.map || {}).map(([k, v]) => `${k}=${v}`).join(", ");
   $("#pf-au-padturbo").value = Object.entries(pd.turbo || {}).map(([k, v]) => `${k}:${v}`).join(", "); $("#pf-au-paddz").value = pd.deadzone || 0;

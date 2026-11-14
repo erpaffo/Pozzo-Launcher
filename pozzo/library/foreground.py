@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 import threading
 
 SPLASH_TIMEOUT = 60.0  # secondi: lo splash sparisce comunque
-SPLASH_TIMEOUT_NOHOOK = 8.0  # shortcut: fuori da Windows non c'e' l'hook sul primo piano, lo splash dura poco
+SPLASH_TIMEOUT_NOHOOK = 8.0  # shortcut: fuori da Windows non c'e' l'hook sul primo piano (solo polling), lo splash dura poco
 
 
 def is_game_pid(fg_pid: int, pids) -> bool:
@@ -27,11 +29,14 @@ class Watcher:
     """SetWinEventHook(EVENT_SYSTEM_FOREGROUND) in un thread con il suo ciclo di messaggi. `pids()` da' i PID della
     sessione; emette game_foreground / game_background solo quando lo stato cambia."""
 
+    POLL = 1.0
+
     def __init__(self, pids, emit):
         self.pids, self.emit = pids, emit
         self.fg: bool | None = None
         self._tid = 0
         self._th: threading.Thread | None = None
+        self._stop = threading.Event()
 
     def on_foreground(self, fg_pid: int):
         try:
@@ -43,12 +48,37 @@ class Watcher:
             self.emit("game_foreground" if now else "game_background", {"pid": fg_pid})
 
     def start(self):
-        if sys.platform != "win32" or self._th:
+        if self._th:
             return
-        self._th = threading.Thread(target=self._loop, daemon=True)
+        if sys.platform == "win32":
+            target = self._loop
+        elif sys.platform == "darwin" or shutil.which("xdotool"):
+            target = self._poll  # niente hook: si legge il primo piano ogni secondo
+        else:
+            return
+        self._stop.clear()
+        self._th = threading.Thread(target=target, daemon=True)
         self._th.start()
 
+    def _poll(self):
+        while not self._stop.wait(self.POLL):
+            try:
+                pid = self.pid_source()
+            except Exception:
+                continue
+            if pid:
+                self.on_foreground(pid)
+
+    @staticmethod
+    def pid_source() -> int | None:
+        if sys.platform == "darwin":
+            from .. import macos
+            return macos.frontmost_pid()
+        out = subprocess.run(["xdotool", "getactivewindow", "getwindowpid"], capture_output=True, text=True, timeout=2).stdout
+        return int(out) if out.strip().isdigit() else None
+
     def stop(self):
+        self._stop.set()
         if self._tid:
             import ctypes
             ctypes.windll.user32.PostThreadMessageW(self._tid, 0x12, 0, 0)  # WM_QUIT

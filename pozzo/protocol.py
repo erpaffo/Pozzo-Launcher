@@ -1,6 +1,9 @@
 """Protocollo pozzo://: registrazione schema in Windows e inoltro del codice party."""
 import json
+import shutil
+import subprocess
 import sys
+from pathlib import Path
 import urllib.parse
 import urllib.request
 
@@ -16,13 +19,35 @@ def command_for_current() -> str:
 
 
 def _allowed(_force: bool) -> bool:
-    # Fuori da Windows e sotto pytest non si tocca il registro.
-    return _force or (sys.platform == "win32" and "pytest" not in sys.modules)
+    # Sotto pytest non si tocca ne' il registro ne' la home, salvo _force.
+    return _force or (sys.platform in ("win32", "linux") and "pytest" not in sys.modules)
+
+
+def _desktop_file() -> Path:
+    return Path.home() / ".local" / "share" / "applications" / "pozzo-url.desktop"
+
+
+def _register_linux() -> bool:
+    exe = command_for_current().replace('"%1"', "%u")
+    f = _desktop_file()
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("[Desktop Entry]\nType=Application\nName=Pozzo Launcher\n"
+                     f"Exec={exe}\nNoDisplay=true\nTerminal=false\nMimeType=x-scheme-handler/pozzo;\n", encoding="utf-8")
+        if shutil.which("xdg-mime"):
+            subprocess.run(["xdg-mime", "default", f.name, "x-scheme-handler/pozzo"], timeout=10, check=False)
+        return True
+    except Exception:
+        return False
 
 
 def register(_force: bool = False) -> bool:
+    if sys.platform == "darwin":
+        return True  # statico: lo schema sta nell'Info.plist del .app (packaging/pozzo.spec)
     if not _allowed(_force):
         return False
+    if sys.platform.startswith("linux"):
+        return _register_linux()
     try:
         import winreg
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, _KEY) as k:
@@ -54,8 +79,16 @@ def _rm_tree(wr, path: str) -> None:
 
 
 def unregister(_force: bool = False) -> bool:
+    if sys.platform == "darwin":
+        return False  # non si puo' togliere senza modificare il .app
     if not _allowed(_force):
         return False
+    if sys.platform.startswith("linux"):
+        try:
+            _desktop_file().unlink(missing_ok=True)
+            return True
+        except Exception:
+            return False
     try:
         import winreg
         _rm_tree(winreg, _KEY)

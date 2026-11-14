@@ -66,6 +66,7 @@ def test_command_per_sorgente_e_frozen(monkeypatch):
 
 
 def test_register_scrive_chiavi_corrette(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
     wr, keys = _fake_winreg()
     monkeypatch.setitem(sys.modules, "winreg", wr)
     assert P.register(_force=True) is True
@@ -74,6 +75,7 @@ def test_register_scrive_chiavi_corrette(monkeypatch):
 
 
 def test_unregister_rimuove_la_chiave(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
     wr, keys = _fake_winreg()
     monkeypatch.setitem(sys.modules, "winreg", wr)
     assert P.register(_force=True) is True
@@ -82,6 +84,7 @@ def test_unregister_rimuove_la_chiave(monkeypatch):
 
 
 def test_unregister_senza_chiave_e_ok(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
     wr, keys = _fake_winreg()
     monkeypatch.setitem(sys.modules, "winreg", wr)
     assert P.unregister(_force=True) is True
@@ -95,6 +98,27 @@ def test_fuori_windows_o_sotto_pytest_non_scrive(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
     assert P.register() is False and P.unregister() is False  # pytest in sys.modules
     assert keys == {}
+
+
+def test_darwin_statico(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    assert P.register() is True and P.unregister() is False
+    assert not list(tmp_path.iterdir())  # niente scritto
+
+
+def test_linux_scrive_desktop_e_xdg_mime(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    calls = []
+    monkeypatch.setattr(P.shutil, "which", lambda n: "/usr/bin/" + n)
+    monkeypatch.setattr(P.subprocess, "run", lambda *a, **k: calls.append(a[0]))
+    assert P.register(_force=True) is True
+    t = (tmp_path / ".local/share/applications/pozzo-url.desktop").read_text(encoding="utf-8")
+    assert "MimeType=x-scheme-handler/pozzo;" in t and t.count("%u") == 1 and "%1" not in t
+    assert calls == [["xdg-mime", "default", "pozzo-url.desktop", "x-scheme-handler/pozzo"]]
+    assert P.unregister(_force=True) is True
+    assert not (tmp_path / ".local/share/applications/pozzo-url.desktop").exists()
 
 
 def test_parse_url():

@@ -8,6 +8,8 @@ perde in silenzio: un lavoro non deve mai fallire per colpa di una notifica.
 from __future__ import annotations
 
 import queue
+import shutil
+import subprocess
 import sys
 import threading
 
@@ -29,9 +31,29 @@ _tray: dict = {}  # icona sempre visibile: {"icon": percorso .ico, "on_open", "o
 _stop, _gone = threading.Event(), threading.Event()  # remove(): l'icona va tolta prima di uscire, o resta un fantasma
 
 
+def available() -> bool:
+    """Windows (fumetto), macOS (osascript) o Linux con notify-send."""
+    return sys.platform in ("win32", "darwin") or bool(shutil.which("notify-send"))
+
+
 def enabled(cfg) -> bool:
-    """Impostazione dell'app (Impostazioni â€º Integrazioni); di base attive solo su Windows."""
-    return sys.platform == "win32" and cfg.app.get("notify") is not False
+    """Impostazione dell'app (Impostazioni, Integrazioni)."""
+    return available() and cfg.app.get("notify") is not False
+
+
+def _send_native(title: str, body: str, runner=subprocess.run) -> bool:
+    """macOS/Linux: niente thread ne' icona, un comando di sistema e basta."""
+    try:
+        if sys.platform == "darwin":
+            from . import macos
+            q = lambda t: t.replace("\\", "\\\\").replace('"', '\\"')  # AppleScript: solo \ e " vanno protetti
+            return macos.osascript(f'display notification "{q(body)}" with title "{q(title)}"', runner=runner) is not None
+        exe = shutil.which("notify-send")
+        if not exe:
+            return False
+        return runner([exe, "--", title, body], capture_output=True, timeout=5, check=False).returncode == 0
+    except Exception:
+        return False
 
 
 def send(cfg_or_title, title: str = "", body: str = "", action=None) -> bool:
@@ -42,6 +64,8 @@ def send(cfg_or_title, title: str = "", body: str = "", action=None) -> bool:
         return False
     if not title:
         return False
+    if sys.platform != "win32":
+        return _send_native(title[:64], body[:256])
     try:
         _ensure_thread().put((title[:64], body[:256], action))
         return True

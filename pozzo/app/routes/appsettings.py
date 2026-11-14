@@ -27,6 +27,7 @@ DEFAULT_EXP_PROFILES = (
     {"id": "console-tv", "nome": "Console TV", "experience": "console", "theme": "default", "animations": "reduced"},
     {"id": "leggero", "nome": "Leggero", "experience": "catalog", "theme": "default", "animations": "off"},
 )
+AX_SETTINGS_URL = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"  # unico link non web ammesso
 EXP_PROFILE_ANIMATIONS = frozenset(("normal", "reduced", "off"))
 EXP_PROFILE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,39}\Z")
 WEBHOOK_EVENTS = ("gioco_avviato", "gioco_chiuso", "download_finito", "prezzo_sceso")
@@ -285,9 +286,22 @@ def build_router(ctx) -> APIRouter:
         cfg.app.update(conf)
         return api_merge_get()
 
+    def _notify_available():
+        from ... import notify
+        return notify.available()
+
     @router.get("/api/app/notify")
     def api_notify_get():
-        return {"enabled": cfg.app.get("notify") is not False, "available": sys.platform == "win32"}
+        return {"enabled": cfg.app.get("notify") is not False, "available": _notify_available()}
+
+    @router.get("/api/platform/permissions")
+    def api_platform_permissions():
+        """macOS: l'Accessibilita' serve a mouse/tastiera dal telefono, hotkey globali e focus finestra."""
+        ax = None
+        if sys.platform == "darwin":
+            from ... import macos
+            ax = macos.ax_trusted()
+        return {"platform": sys.platform, "accessibility": ax}
 
     @router.post("/api/app/notify")
     def api_notify_set(body: dict = Body(...)):
@@ -511,7 +525,7 @@ def build_router(ctx) -> APIRouter:
         """Apre un link web nel browser predefinito (solo http/https)."""
         import webbrowser
         url_ = str(body.get("url") or "")
-        if not url_.startswith(("https://", "http://")):
+        if url_ != AX_SETTINGS_URL and not url_.startswith(("https://", "http://")):
             raise HTTPException(400, I.tr("s.appsettings.onlyWebLinks"))
         webbrowser.open(url_)
         return {"ok": True}

@@ -15,7 +15,7 @@ features = [
   "Pannello a tendina espandibile con le specifiche dettagliate del tuo computer",
   "Nessun impatto sulle prestazioni grazie alla cache in memoria delle verifiche"
 ]
-permissions = ["rete:store.steampowered.com", "libreria:lettura", "avvio"]  # avvio: PowerShell per leggere CPU/GPU/RAM
+permissions = ["rete:store.steampowered.com", "libreria:lettura", "avvio"]  # avvio: PowerShell (Windows), sysctl/system_profiler (macOS), lspci/nvidia-smi (Linux) per leggere CPU/GPU/RAM
 api = 1
 min_app = "0.7.1"
 load = "lazy"

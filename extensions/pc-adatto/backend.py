@@ -13,6 +13,7 @@ import platform
 import re
 import sqlite3
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -36,7 +37,55 @@ def _ps(cmd: str):
         return None
 
 
+def _run(*cmd: str) -> str:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout.strip()
+    except Exception:
+        return ""
+
+
+def _detect_mac() -> dict:
+    ram = int(_run("sysctl", "-n", "hw.memsize") or 0)
+    name = _run("sysctl", "-n", "machdep.cpu.brand_string")
+    g = {}
+    try:
+        g = (json.loads(_run("system_profiler", "SPDisplaysDataType", "-json")).get("SPDisplaysDataType") or [{}])[0]
+    except ValueError:
+        pass
+    m = re.search(r"([\d.]+)\s*(GB|MB)", str(g.get("spdisplays_vram") or g.get("spdisplays_vram_shared") or ""))
+    # Apple Silicon: memoria unificata senza VRAM dedicata, stimo meta' della RAM per la GPU
+    vram = float(m[1]) / (1 if m[2] == "GB" else 1024) if m else round(ram / 2**30 / 2, 1)
+    return {"cpu": {"name": name or platform.processor(), "cores": int(_run("sysctl", "-n", "hw.physicalcpu") or 0) or (os.cpu_count() or 1),
+                    "threads": os.cpu_count() or 1, "mhz": 0},
+            "ram_gb": round(ram / 2**30, 1), "gpu": {"name": g.get("sppci_model") or "", "vram_gb": vram}}
+
+
+def _detect_linux() -> dict:
+    def read(p):
+        try:
+            return Path(p).read_text(errors="ignore")
+        except OSError:
+            return ""
+    m = re.search(r"MemTotal:\s+(\d+)", read("/proc/meminfo"))
+    cpu = re.search(r"model name\s*:\s*(.+)", read("/proc/cpuinfo"))
+    gpu, vram = "", 0.0
+    nv = _run("nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader").splitlines()
+    if nv and (p := nv[0].split(",")) and len(p) == 2:
+        gpu = p[0].strip()
+        vram = round(float(re.sub(r"[^\d.]", "", p[1]) or 0) / 1024, 1)  # MiB
+    else:
+        v = re.search(r'^\S+ "VGA[^"]*" "[^"]*" "([^"]*)"', _run("lspci", "-mm"), re.M)
+        gpu = v[1] if v else ""
+    return {"cpu": {"name": (cpu[1] if cpu else platform.processor() or platform.machine()).strip(),
+                    "cores": os.cpu_count() or 1, "threads": os.cpu_count() or 1, "mhz": 0},
+            "ram_gb": round(int(m[1]) / 2**20, 1) if m else 0, "gpu": {"name": gpu, "vram_gb": vram}}
+
+
 def detect() -> dict:
+    if sys.platform == "darwin":
+        return _detect_mac()
+    if sys.platform.startswith("linux"):
+        return _detect_linux()
     cpu = (_ps("Get-CimInstance Win32_Processor | Select Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed") or [{}])[0]
     gpus = _ps("Get-CimInstance Win32_VideoController | Select Name,AdapterRAM") or []
     ram = (_ps("Get-CimInstance Win32_ComputerSystem | Select TotalPhysicalMemory") or [{}])[0]

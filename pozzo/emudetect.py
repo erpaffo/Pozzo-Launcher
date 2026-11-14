@@ -39,6 +39,11 @@ def _roots() -> list[tuple[Path, str, int]]:
     except OSError:
         pass
     out.append((scoop / "shims", "scoop", 1))
+    if sys.platform == "darwin":
+        out += [(Path("/Applications"), "applications", 1), (home / "Applications", "applications", 1)]
+    elif sys.platform != "win32":
+        out += [(home / "Applications", "applications", 1), (home / ".local" / "bin", "bin", 1),
+                (Path("/usr/local/bin"), "bin", 1), (Path("/usr/bin"), "bin", 1)]
     return out
 
 

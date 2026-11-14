@@ -14,6 +14,7 @@ Sunshine (Desktop, Steam Big Picture, ...) non vengono toccate.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -40,10 +41,63 @@ def install_dir() -> Path | None:
     return None
 
 
+def _run(cmd: list[str]) -> subprocess.CompletedProcess | None:
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _brew() -> str | None:
+    b = shutil.which("brew") or "/opt/homebrew/bin/brew"
+    return b if Path(b).exists() else None
+
+
+def _brew_info(b: str) -> dict | None:
+    r = _run([b, "services", "info", "sunshine", "--json"])
+    if not r or r.returncode != 0:
+        return None
+    try:
+        info = json.loads(r.stdout)
+        return (info[0] if isinstance(info, list) else info) or None
+    except (ValueError, IndexError):
+        return None
+
+
+def _posix_state() -> tuple[str, str]:
+    """(stato, avvio) di Sunshine fuori da Windows, con gli stessi valori di service_state()/start_mode()."""
+    if sys.platform == "darwin":
+        b = _brew()
+        info = _brew_info(b) if b else None
+        if info:
+            return ("running" if info.get("running") else "stopped"), ("auto" if info.get("loaded") else "manual")
+        if Path("/Applications/Sunshine.app").exists():  # .app: nessun servizio, si apre a mano
+            r = _run(["pgrep", "-x", "sunshine"])
+            return ("running" if r and r.returncode == 0 else "stopped"), "manual"
+        return "", ""
+    if not shutil.which("systemctl"):
+        return "", ""
+    act = _run(["systemctl", "--user", "is-active", "sunshine"])
+    if not act or act.stdout.strip() in ("", "unknown"):
+        return "", ""
+    en = _run(["systemctl", "--user", "is-enabled", "sunshine"])
+    return ("running" if act.stdout.strip() == "active" else "stopped"), \
+        ("auto" if en and en.stdout.strip() == "enabled" else "manual")
+
+
+def _posix_start() -> bool:
+    if sys.platform == "darwin":
+        b = _brew()
+        r = _run([b, "services", "start", "sunshine"]) if b and _brew_info(b) else _run(["open", "-a", "Sunshine"])
+    else:
+        r = _run(["systemctl", "--user", "enable", "--now", "sunshine"]) if shutil.which("systemctl") else None
+    return bool(r and r.returncode == 0)
+
+
 def service_state() -> str:
-    """'running', 'stopped' o '' (servizio non installato / non Windows)."""
+    """'running', 'stopped' o '' (servizio non installato / non rilevabile)."""
     if sys.platform != "win32":
-        return ""
+        return _posix_state()[0]
     try:
         out = subprocess.run(["sc", "query", "SunshineService"], capture_output=True, text=True, timeout=10,
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
@@ -55,7 +109,7 @@ def service_state() -> str:
 def start_mode() -> str:
     """'auto' (parte con Windows), 'manual', 'disabled' o '' se non si sa."""
     if sys.platform != "win32":
-        return ""
+        return _posix_state()[1]
     try:
         out = subprocess.run(["sc", "qc", "SunshineService"], capture_output=True, text=True, timeout=10,
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
@@ -69,7 +123,7 @@ def start_service() -> bool:
     amministratore. Con l'avvio manuale lo streaming smette di funzionare dopo ogni riavvio (o dopo «Esci»
     dall'icona di Sunshine) e Moonlight non trova piu' il PC."""
     if sys.platform != "win32":
-        return False
+        return _posix_start()
     import ctypes
     args = "/c sc config SunshineService start= auto & sc start SunshineService"
     r = ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", args, None, 0)

@@ -608,6 +608,14 @@ async function loadNotify() {
     const rss = $("#resume-session-start");
     if (rss) rss.checked = store.get("resumeSession", true);
     $("#nt-state").textContent = n.available ? "" : t("e.notify.windowsOnly");
+    const perm = await api("/api/platform/permissions");
+    if (perm.platform === "darwin" && perm.accessibility === false && !$("#ax-notice")) {
+      const p = document.createElement("p");
+      p.id = "ax-notice"; p.className = "muted small";
+      p.innerHTML = `${esc(t("e.perm.axNotice"))} <button class="btn" type="button">${esc(t("e.perm.axOpen"))}</button>`;
+      p.querySelector("button").onclick = () => api("/api/open", { body: { url: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" } }).catch((err) => toast(err.message, true));
+      $("#nt-state").after(p);
+    }
   } catch (e) { toast(e.message, true); }
 }
 

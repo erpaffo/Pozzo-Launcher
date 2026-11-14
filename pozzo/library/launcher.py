@@ -155,6 +155,36 @@ KNOWN_EXES = {
 }
 
 
+def app_binary(app: Path) -> Path | None:
+    """Binario dentro un bundle macOS: Contents/MacOS/<CFBundleExecutable>, o l'unico file di Contents/MacOS."""
+    try:
+        import plistlib
+        with open(app / "Contents" / "Info.plist", "rb") as f:
+            exe = plistlib.load(f).get("CFBundleExecutable")
+        if exe and (app / "Contents" / "MacOS" / exe).is_file():
+            return app / "Contents" / "MacOS" / exe
+    except Exception:
+        pass
+    try:
+        files = [x for x in (app / "Contents" / "MacOS").iterdir() if x.is_file()]
+    except OSError:
+        return None
+    return files[0] if len(files) == 1 else None
+
+
+def match_app(app: Path) -> tuple[str, Path] | None:
+    """(emulatore, binario) se il bundle .app e' un emulatore noto; confronta nome del binario e del bundle, senza .exe."""
+    import fnmatch
+    b = app_binary(app)
+    if not b:
+        return None
+    names = {b.name.lower(), app.stem.lower()}
+    for emu, pats in KNOWN_EXES.items():
+        if any(fnmatch.fnmatch(n, p[:-4] if p.endswith(".exe") else p) for p in pats for n in names):
+            return emu, b
+    return None
+
+
 def detect_emulators(folder: Path, max_depth: int = 4) -> dict[str, str]:
     """Cerca gli eseguibili noti in una cartella (es. C:/Emulatori). Ritorna {emulatore: percorso}."""
     import fnmatch
@@ -169,7 +199,11 @@ def detect_emulators(folder: Path, max_depth: int = 4) -> dict[str, str]:
         except OSError:
             return
         for e in entries:
-            if e.is_file():
+            if sys.platform == "darwin" and e.suffix.lower() == ".app" and e.is_dir():
+                m = match_app(e)
+                if m and m[0] not in found:
+                    found[m[0]] = str(m[1])
+            elif e.is_file():
                 n = e.name.lower()
                 for emu, pats in KNOWN_EXES.items():
                     if emu not in found and any(fnmatch.fnmatch(n, p) for p in pats):
@@ -599,6 +633,22 @@ def _suspend(pid: int, on: bool) -> bool:
 
 def _focus_pids(pids):
     """Porta in primo piano la finestra visibile piu' grande dei processi indicati."""
+    if sys.platform == "darwin":
+        from .. import macos
+        for pid in sorted(pids):  # senza permesso Automazione osascript fallisce: silenzioso
+            if macos.osascript(f'tell application "System Events" to set frontmost of (first process whose unix id is {int(pid)}) to true') is not None:
+                return
+        return
+    if sys.platform.startswith("linux"):
+        for pid in sorted(pids):
+            for cmd in (["xdotool", "search", "--pid", str(pid), "windowactivate"],):
+                if shutil.which(cmd[0]):
+                    try:
+                        if subprocess.run(cmd, capture_output=True, timeout=3, check=False).returncode == 0:
+                            return
+                    except Exception:
+                        pass
+        return
     if sys.platform != "win32":
         return
     import ctypes
@@ -652,7 +702,18 @@ def close_launcher(name: str):
 
 def hide_launcher_windows(name: str, seconds: float = 40):
     """Riduce a icona le finestre del launcher (Steam, Battle.net...) comparse per avviare il gioco, cosi' non
-    coprono il gioco: il launcher resta attivo, in sottofondo. Solo Windows; non tocca un launcher gia' aperto."""
+    coprono il gioco: il launcher resta attivo, in sottofondo. Windows e macOS; non tocca un launcher gia' aperto."""
+    if sys.platform == "darwin":
+        from .. import macos
+        end = time.time() + seconds
+        while time.time() < end:
+            try:
+                for p in _procs_named(name):
+                    macos.osascript(f'tell application "System Events" to set visible of (first process whose unix id is {int(p.pid)}) to false')
+            except Exception:  # solo estetica
+                return
+            time.sleep(0.5)
+        return
     if sys.platform != "win32":
         return
     import ctypes

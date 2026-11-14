@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -24,7 +25,8 @@ GLOBAL_EVENTS = {"game_started": "game_started", "game_stopped": "game_stopped",
 WAIT_MAX = 120  # secondi massimi di attesa di uno script con «aspetta che finisca», poi viene chiuso
 # mai chiusi dall'elenco «chiudi processi»: sistema, shell e Pozzo stesso
 PROTECTED = {"system", "smss.exe", "csrss.exe", "wininit.exe", "winlogon.exe", "services.exe", "lsass.exe", "svchost.exe",
-             "explorer.exe", "dwm.exe", "fontdrvhost.exe", "python.exe", "pythonw.exe", "pozzo.exe"}
+             "explorer.exe", "dwm.exe", "fontdrvhost.exe", "python.exe", "pythonw.exe", "pozzo.exe",
+             "launchd", "finder", "dock", "windowserver", "loginwindow", "systemd", "init", "python", "python3", "pozzo"}
 _NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
@@ -43,12 +45,15 @@ def clean(body: dict) -> dict:
             raise ValueError("res")
         out["res"] = res
     if power := str(b.get("power") or "").strip():
-        if not re.fullmatch(r"[0-9a-fA-F-]{36}", power):
+        # fuori da Windows non ci sono GUID: i profili di powerprofilesctl (solo Linux)
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}" if sys.platform == "win32" else r"performance|balanced|power-saver", power):
             raise ValueError("power")
         out["power"] = power
     kill = [n.strip().strip('"') for n in re.split(r"[,;\n]", str(b.get("kill") or "")) if n.strip()]
     if kill:
-        out["kill"] = [n for n in kill if re.fullmatch(r"[\w .()+-]+\.exe", n, re.I)]
+        # fuori da Windows i processi non hanno il suffisso .exe
+        ext = r"\.exe" if sys.platform == "win32" else r"(\.exe)?"
+        out["kill"] = [n for n in kill if re.fullmatch(rf"[\w .()+-]+{ext}", n, re.I)]
     if b.get("hdr"):
         out["hdr"] = True
     if b.get("archive"):  # archivio estratto in temp a ogni avvio (vedi archiverun)
@@ -174,6 +179,17 @@ def set_plan(guid: str):
     subprocess.run(["powercfg", "/setactive", guid], check=True, capture_output=True, creationflags=_NOWIN)
 
 
+def active_profile() -> str | None:
+    """Linux: profilo energetico corrente di power-profiles-daemon, None se non c'e'."""
+    if not shutil.which("powerprofilesctl"):
+        return None
+    return subprocess.run(["powerprofilesctl", "get"], capture_output=True, text=True).stdout.strip() or None
+
+
+def set_profile(name: str):
+    subprocess.run(["powerprofilesctl", "set", name], check=True, capture_output=True)
+
+
 def toggle_hdr():
     from ..remote import keyboard
     keyboard.press("hdr")  # Win+Alt+B
@@ -210,11 +226,10 @@ class Session:
         if c.get("before_cmd"):
             if err := run(c["before_cmd"], c.get("before_cwd"), self.env_fn("before"), c.get("before_wait", True)):
                 self._err("Script «prima dell'avvio» non riuscito", err)
-        if sys.platform != "win32":
-            return
-        steps = [("chiusura processi", lambda: c.get("kill") and kill_processes(c["kill"])),
-                 ("risoluzione", self._res), ("piano energetico", self._power), ("HDR", self._hdr),
-                 ("remap del pad", self._pad)]
+        steps = [("chiusura processi", lambda: c.get("kill") and kill_processes(c["kill"])), ("piano energetico", self._power)]
+        if sys.platform == "win32":  # risoluzione, HDR e pad virtuale (ViGEm) esistono solo li'
+            steps[1:1] = [("risoluzione", self._res)]
+            steps += [("HDR", self._hdr), ("remap del pad", self._pad)]
         for name, fn in steps:
             try:
                 fn()
@@ -229,6 +244,14 @@ class Session:
             self.undo.append(lambda: restore_display(saved))  # solo se il cambio e' riuscito
 
     def _power(self):
+        if sys.platform != "win32":  # macOS: pmset e' di sistema e vuole sudo, quindi nessuna azione
+            name = self.conf.get("power")
+            prev = active_profile() if name else None
+            if prev:
+                set_profile(name)
+                if prev != name:
+                    self.undo.append(lambda: set_profile(prev))
+            return
         if guid := self.conf.get("power"):
             prev = active_plan()
             set_plan(guid)

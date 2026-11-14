@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 from pathlib import Path
 
 from ..downloads import extract as X
@@ -34,7 +35,13 @@ def temp_root(cfg) -> Path:
     if custom:
         return Path(custom)
     base = os.environ.get("LOCALAPPDATA")
-    return Path(base) / "Pozzo" / "run" if base else Path(cfg.cache) / "run"
+    if base:
+        return Path(base) / "Pozzo" / "run"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Caches" / "Pozzo" / "run"
+    if os.name != "nt":
+        return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "Pozzo" / "run"
+    return Path(cfg.cache) / "run"
 
 
 def _safe(key: str) -> str:

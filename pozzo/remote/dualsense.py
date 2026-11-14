@@ -159,10 +159,45 @@ def available() -> bool:
     return sys.platform == "win32"
 
 
+SYSFS = "/sys/class/power_supply"
+
+
+def _battery_posix() -> dict:
+    """Solo batteria fuori da Windows: ioreg (macOS) o sysfs ps-controller-battery-* (Linux, driver hid-playstation)."""
+    if sys.platform == "darwin":
+        import plistlib
+        import subprocess
+        try:
+            out = subprocess.run(["ioreg", "-r", "-c", "AppleDeviceManagementHIDEventService", "-a"],
+                                 capture_output=True, timeout=10).stdout
+            items = plistlib.loads(out) if out.strip() else []
+        except (OSError, subprocess.SubprocessError, ValueError):
+            return {"present": False}
+        for it in items:
+            prod = str(it.get("Product", ""))
+            if "DualSense" in prod or "Wireless Controller" in prod:
+                pct = it.get("BatteryPercent")
+                if not isinstance(pct, int):
+                    return {"present": True, "name": None}
+                return {"present": True, "name": "DualShock 4" if "Wireless Controller" in prod and "DualSense" not in prod
+                        else "DualSense", "percent": min(pct, 100), "charging": False, "full": pct >= 100}
+        return {"present": False}
+    from pathlib import Path
+    for d in sorted(Path(SYSFS).glob("ps-controller-battery-*")):
+        try:
+            pct = int((d / "capacity").read_text())
+            st = (d / "status").read_text().strip() if (d / "status").exists() else ""
+        except (OSError, ValueError):
+            continue
+        return {"present": True, "name": "DualSense", "percent": min(pct, 100),
+                "charging": st == "Charging", "full": st == "Full"}
+    return {"present": False}
+
+
 def read_battery() -> dict:
     """{'present', 'name', 'percent', 'charging', 'full'}; present=False senza pad Sony (o fuori da Windows)."""
     if not available():
-        return {"present": False}
+        return _battery_posix()
     import ctypes
     try:
         pads, k32, hid = _hid_paths(), _k32(), ctypes.WinDLL("hid")

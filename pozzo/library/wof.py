@@ -7,6 +7,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -22,10 +24,45 @@ _FILE_LINE = re.compile(r"\[[^\]]+\]\s*$")  # `compact /i` stampa una riga per f
 
 
 def supported() -> bool:
-    return sys.platform == "win32"
+    return sys.platform in ("win32", "darwin")  # mac: compressione trasparente APFS/HFS+ via ditto
+
+
+def mac_compressed(folder) -> bool:
+    """True se almeno un file ha il flag UF_COMPRESSED (stesso significato di `ls -lO`)."""
+    for r, _, files in os.walk(folder):
+        for f in files:
+            try:
+                if os.lstat(os.path.join(r, f)).st_flags & stat.UF_COMPRESSED:
+                    return True
+            except OSError:
+                pass
+    return False
+
+
+def mac_rewrite(folder, uncompress: bool = False):
+    """Ricopia la cartella con ditto in una temporanea e scambia: in caso di errore l'originale resta intatto."""
+    src = os.path.abspath(folder)
+    tmp, bak = src + ".pozzo-new", src + ".pozzo-old"
+    for p in (tmp, bak):
+        if os.path.lexists(p):
+            raise OSError(f"esiste gia': {p}")
+    try:
+        subprocess.run(["ditto", "--nopreserveHFSCompression" if uncompress else "--hfsCompression", src, tmp],
+                       check=True, capture_output=True)
+        os.rename(src, bak)
+        try:
+            os.rename(tmp, src)
+        except OSError:
+            os.rename(bak, src)
+            raise
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    shutil.rmtree(bak, ignore_errors=True)
 
 
 def build_cmd(algo: str = DEFAULT_ALGO, uncompress: bool = False) -> list[str]:
+    # su mac `cmd` serve solo a distinguere comprimi/decomprimi (vedi Job._run)
     """Argomenti di compact.exe; si esegue con cwd = cartella del gioco (/s = sottocartelle comprese)."""
     if uncompress:
         return ["compact", "/u", "/s", "/i", "/exe"]
@@ -104,6 +141,11 @@ class Job:
     def _run(self):
         try:
             self.total = count_files(self.folder)
+            if sys.platform == "darwin":
+                mac_rewrite(self.folder, "/u" in self.cmd)
+                self.done = self.total
+                self.status = "done"
+                return
             self._proc = subprocess.Popen(self.cmd, cwd=self.folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                           text=True, encoding="oem", errors="replace",
                                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

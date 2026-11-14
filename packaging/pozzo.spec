@@ -50,6 +50,8 @@ a_cli = analysis("entry_cli.py")
 
 exe_app = EXE(PYZ(a_app.pure), a_app.scripts, [], exclude_binaries=True, name="PozzoLauncher",  # noqa: F821
               console=False, icon=icon, upx=False)
+# shortcut: su macOS pozzo:// apre l'app ma l'URL non arriva (argv_emulation blocca il loop di pywebview);
+# servirebbe un handler Apple Event application:openURLs
 exe_cli = EXE(PYZ(a_cli.pure), a_cli.scripts, [], exclude_binaries=True, name="pozzo-cli",  # noqa: F821
               console=True, icon=icon, upx=False)
 
@@ -59,4 +61,6 @@ coll = COLLECT(exe_app, a_app.binaries, a_app.datas, exe_cli, a_cli.binaries, a_
 if sys.platform == "darwin":
     app = BUNDLE(coll, name="PozzoLauncher.app", icon=icon_icns, bundle_identifier="io.github.pozzo",  # noqa: F821
                  version=__version__, info_plist={"NSHighResolutionCapable": True, "LSMinimumSystemVersion": "11.0",
-                                                   "CFBundleDisplayName": "Pozzo Launcher"})
+                                                   "CFBundleDisplayName": "Pozzo Launcher",
+                                                   "CFBundleURLTypes": [{"CFBundleURLName": "io.github.pozzo",
+                                                                         "CFBundleURLSchemes": ["pozzo"]}]})

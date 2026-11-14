@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -50,9 +51,9 @@ def make_icon(image: Path, out: Path) -> Path | None:
 
 def create(title: str, base_cmd: str, workdir: str, key: str, icon: str | None) -> Path:
     """Crea (o sostituisce) il collegamento sul desktop e ne restituisce il percorso."""
-    if sys.platform != "win32":
-        raise RuntimeError("I collegamenti sul desktop si creano solo su Windows")
     target, args = split_cmd(base_cmd)
+    if sys.platform != "win32":
+        return _create_posix(title, target, args, workdir, key, icon)
     lnk = desktop_dir() / f"{file_name(title)}.lnk"
     # valori passati come variabili d'ambiente: nessun titolo o percorso finisce dentro il codice PowerShell
     env = {**os.environ, "GS_LNK": str(lnk), "GS_TARGET": target, "GS_ARGS": f'{args} play --key "{key}"'.strip(),
@@ -65,3 +66,25 @@ def create(title: str, base_cmd: str, workdir: str, key: str, icon: str | None) 
     if r.returncode or not lnk.exists():
         raise RuntimeError(f"Collegamento non creato: {(r.stderr or r.stdout).strip()[:300]}")
     return lnk
+
+
+def _create_posix(title: str, target: str, args: str, workdir: str, key: str, icon: str | None) -> Path:
+    """macOS: script .command (il Finder lo apre in Terminale); Linux: voce .desktop. Stesso comando di Windows."""
+    cmd = " ".join(p for p in (shlex.quote(target), args, "play --key", shlex.quote(key)) if p)
+    d = desktop_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "darwin":
+        out = d / f"{file_name(title)}.command"
+        out.write_text(f"#!/bin/sh\ncd {shlex.quote(workdir)} || exit 1\nexec {cmd}\n", encoding="utf-8")
+    else:
+        out = d / f"{file_name(title)}.desktop"
+        # in Exec il comando e' un solo argomento tra virgolette: \ " ` $ si proteggono, % si raddoppia (codici di campo)
+        ex = "".join("\\" + c if c in '\\"`$' else "%%" if c == "%" else c for c in cmd)
+        name = " ".join(title.split())
+        lines = ["[Desktop Entry]", "Type=Application", f"Name={name}", f"Comment=Gioca a {name} con PozzoLauncher",
+                 f'Exec=sh -c "{ex}"', f"Path={workdir}", "Terminal=false"]
+        if icon and not icon.lower().endswith(".ico"):  # .ico e' un formato solo Windows
+            lines.append(f"Icon={icon}")
+        out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    out.chmod(0o755)
+    return out

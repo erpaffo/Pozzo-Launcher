@@ -61,6 +61,17 @@ def _appdata(*parts) -> Path | None:
     return Path(v).joinpath(*parts) if v else None
 
 
+def user_roots() -> list[Path]:
+    """Radici dove i giochi PC scrivono i salvataggi fuori da Windows (su Windows ci pensano APPDATA e co.)."""
+    h = Path.home()
+    if sys.platform == "darwin":
+        return [h / "Library" / x for x in ("Application Support", "Preferences", "Containers")] + [h / "Documents"]
+    if os.name == "nt":
+        return []
+    return [Path(os.environ.get("XDG_DATA_HOME") or h / ".local" / "share"),
+            Path(os.environ.get("XDG_CONFIG_HOME") or h / ".config"), h / "Documents"]
+
+
 def _docs(*parts) -> Path:
     from ..remote.emusetup import documents_dir
     return documents_dir().joinpath(*parts)
@@ -271,7 +282,7 @@ def _protected(cfg) -> list[Path]:
                                        "SystemRoot", "ProgramData")]
     local = os.environ.get("LOCALAPPDATA")
     out = [Path.home(), _docs(), Path.home() / "Saved Games", Path(cfg.cache), Path(__file__).resolve().parents[2],
-           *(Path(x) for x in env if x), *([Path(local).parent / "LocalLow"] if local else [])]
+           *(Path(x) for x in env if x), *user_roots(), *([Path(local).parent / "LocalLow"] if local else [])]
     return [p.resolve() for p in out]
 
 

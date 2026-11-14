@@ -1,5 +1,6 @@
 """Dump di un disco dell'utente da lettore ottico con redumper (superg/redumper). Output: immagine .cue/.bin."""
 import glob
+import plistlib
 import re
 import shutil
 import subprocess
@@ -11,6 +12,26 @@ from ..jobs import Tool, register
 
 DEFAULT_SIZE = 8_500_000_000  # DVD a doppio strato: se non leggiamo la capacita' meglio sovrastimare
 _PCT = re.compile(r"(\d{1,3})\s*%")
+
+
+def _diskutil(*args) -> dict:
+    try:
+        r = subprocess.run(["diskutil", *args], capture_output=True, timeout=20)
+        return plistlib.loads(r.stdout) if r.returncode == 0 else {}
+    except Exception:
+        return {}
+
+
+def _mac_drives() -> list[dict]:
+    """Lettori ottici esterni: id = /dev/rdiskN (il dispositivo grezzo che serve a redumper), info da diskutil."""
+    out = []
+    for disk in _diskutil("list", "-plist", "external", "physical").get("WholeDisks", []):
+        info = _diskutil("info", "-plist", disk)
+        if info.get("OpticalDeviceType") or info.get("OpticalMediaType") or info.get("OpticalDrive"):
+            vol = info.get("VolumeName") or ""
+            out.append({"id": f"/dev/r{disk}", "label": f"/dev/r{disk} ({vol})" if vol else f"/dev/r{disk}",
+                        "_size": int(info.get("TotalSize") or 0)})
+    return out
 
 
 def drives() -> list[dict]:
@@ -33,11 +54,13 @@ def drives() -> list[dict]:
             return out
         except Exception:
             return []
+    if sys.platform == "darwin":
+        return [{k: v for k, v in d.items() if k != "_size"} for d in _mac_drives()]
     return [{"id": d, "label": d} for d in sorted(glob.glob("/dev/sr*"))]
 
 
 def _volume(drive: str) -> str:
-    if sys.platform == "win32":
+    if sys.platform in ("win32", "darwin"):
         for d in drives():
             if d["id"] == drive and "(" in d["label"]:
                 return d["label"].split("(", 1)[1].rstrip(")")
@@ -58,6 +81,10 @@ def _estimate(src: Path, o: dict) -> int:
             total = shutil.disk_usage(d + "\\").total
             if total > 0:
                 return int(total * 1.2)  # il dump grezzo (settori da 2352 byte) e' piu' grande del filesystem
+        if sys.platform == "darwin":
+            total = next((x["_size"] for x in _mac_drives() if x["id"] == d), 0)
+            if total > 0:
+                return int(total * 1.2)
     except OSError:
         pass
     return DEFAULT_SIZE

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 from .base import StoreGame, StoreProvider, reg_get, reg_subkeys
@@ -47,7 +48,10 @@ META = {
     "gryphon": (["Strategia"], "2023", "Gioco di strategia a squadre con le unità di Warcraft."),
 }
 UNINSTALL = r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
-CONFIG = Path(os.path.expandvars(r"%APPDATA%\Battle.net\Battle.net.config"))
+MAC = sys.platform == "darwin"
+MAC_APP = Path("/Applications/Battle.net.app")
+CONFIG = (Path.home() / "Library/Application Support/Battle.net/Battle.net.config" if MAC
+          else Path(os.path.expandvars(r"%APPDATA%\Battle.net\Battle.net.config")))
 
 
 class BattleNet(StoreProvider):
@@ -56,6 +60,8 @@ class BattleNet(StoreProvider):
     owned_note = "Blizzard non permette di leggere la libreria: tra i non installati ci sono i giochi gratuiti e quelli usati in passato"
 
     def client_exe(self) -> str | None:
+        if MAC:
+            return str(MAC_APP) if MAC_APP.exists() else None
         for sub in reg_subkeys("HKLM", UNINSTALL):
             v = reg_get("HKLM", UNINSTALL + "\\" + sub) or {}
             if v.get("DisplayName") == "Battle.net" and v.get("InstallLocation"):
@@ -74,8 +80,12 @@ class BattleNet(StoreProvider):
     def _game(self, uid: str, installed: bool, install_dir: str = "") -> StoreGame:
         code, title, _ = PRODUCTS[uid]
         exe = self.client_exe()
-        launch = ({"type": "exe", "target": exe, "args": [f"--exec=launch {code}"], "cwd": str(Path(exe).parent)}
-                  if exe and installed else {"type": "uri", "target": f"battlenet://{code}"})
+        if MAC:  # il client e' un .app: si apre con open -a, altrimenti l'URI battlenet://
+            launch = ({"type": "exe", "target": "/usr/bin/open", "args": ["-a", exe, "--args", f"--exec=launch {code}"]}
+                      if exe and installed else {"type": "uri", "target": f"battlenet://{code}"})
+        else:
+            launch = ({"type": "exe", "target": exe, "args": [f"--exec=launch {code}"], "cwd": str(Path(exe).parent)}
+                      if exe and installed else {"type": "uri", "target": f"battlenet://{code}"})
         genres, year, desc = META[uid]
         return StoreGame(store=self.id, id=uid, title=title, installed=installed, install_dir=install_dir,
                          genres=genres, release_date=year, description=desc, developer="Blizzard Entertainment",
@@ -83,6 +93,12 @@ class BattleNet(StoreProvider):
 
     async def fetch(self) -> list[StoreGame]:
         games: dict[str, StoreGame] = {}
+        if MAC:  # la config non ha i percorsi: cerco l'app del gioco in /Applications
+            for uid, (_, title, _) in PRODUCTS.items():
+                for d in (Path("/Applications") / f"{title}.app", Path("/Applications") / title):
+                    if d.exists():
+                        games[uid] = self._game(uid, True, str(d))
+                        break
         for sub in reg_subkeys("HKLM", UNINSTALL):
             v = reg_get("HKLM", UNINSTALL + "\\" + sub) or {}
             if "Blizzard" not in str(v.get("Publisher", "")):
