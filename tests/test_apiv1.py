@@ -177,6 +177,26 @@ def test_guard(cfg):
     print("ok  LocalGuard: token su /api/v1, status libero, /api intatto")
 
 
+def test_stream_dell_interfaccia(cfg):
+    """Le finestre aprono EventSource senza token: il loro flusso non sta sotto /api/v1 (che resta per i programmi esterni)."""
+    import re
+    static = Path(__file__).resolve().parent.parent / "pozzo" / "app" / "static"
+    urls = {u for f in static.rglob("*.js") if not f.name.endswith(".min.js")
+            for u in re.findall(r'new EventSource\("([^"]+)"\)', f.read_text(encoding="utf-8"))}
+    assert urls == {"/api/events"}, urls
+    inner = create_app(cfg)
+    with TestClient(LocalGuard(inner, 8765), base_url=BASE) as c:
+        assert c.get("/api/v1/events").status_code == 401  # come la chiede la finestra: senza token
+        with c.stream("GET", "/api/events") as r:
+            assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
+            lines = r.iter_lines()
+            assert next(lines) == ": connesso"
+            inner.state.events.emit("downloads", {"tasks": []})
+            assert next(l for l in lines if l) == "event: downloads"
+            inner.state.events.close()  # fine del flusso, come alla chiusura dell'app
+    print("ok  flusso dell'interfaccia senza token, /api/v1/events sempre protetto")
+
+
 def test_sse():
     """Gli eventi arrivano come fotogrammi SSE e chi ascolta non blocca l'app."""
     import asyncio
@@ -197,6 +217,15 @@ def test_sse():
         gen = sse(ev, heartbeat=0.2)
         await anext(gen)
         assert await anext(gen) == ": ping\n\n"
+        await gen.aclose()
+
+        # evento da un altro thread (download, scansione): il flusso fermo si sveglia subito, senza aspettare il battito
+        import threading
+        gen = sse(ev, heartbeat=60)
+        await anext(gen)
+        threading.Timer(0.2, lambda: ev.emit("downloads", {"tasks": []})).start()
+        t0 = time.time()
+        assert "event: downloads" in await asyncio.wait_for(anext(gen), 5) and time.time() - t0 < 2
         await gen.aclose()
 
         # chiusura dell'app: il flusso finisce subito, anche con la coda piena (niente attesa del heartbeat)
@@ -244,6 +273,7 @@ def main():
         cfg = tmp_cfg(tmp, rom)
         test_token(tmp, cfg)
         test_guard(cfg)
+        test_stream_dell_interfaccia(cfg)
         test_v1(tmp, cfg)
         test_sse()
     print("TUTTI I TEST OK")

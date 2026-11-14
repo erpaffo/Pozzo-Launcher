@@ -29,31 +29,28 @@ _IDEM: dict[str, tuple[float, int, dict]] = {}
 _IDEM_TTL = 300.0
 
 
-SSE_POLL = 0.1  # ogni quanto un flusso fermo riguarda la sua coda
-
-
 async def sse(events, heartbeat: float = 15.0):
     """Fotogrammi SSE dagli eventi del server (`game_started`, `library_built`, ...). Un commento `: ping`
     ogni `heartbeat` secondi tiene viva la connessione attraverso i proxy.
     Asincrono: un generatore normale terrebbe fermo un thread del pool (40 in tutto, gli stessi delle altre
     richieste) per ogni flusso aperto, e ancora per un `heartbeat` dopo la disconnessione.
-    shortcut: la coda si guarda ogni SSE_POLL secondi (eventi in ritardo fino a 0,1 s); se servisse meno, Events
-    dovrebbe svegliare il loop con call_soon_threadsafe."""
+    Il flusso dorme finche' Events non lo sveglia (`q.wake`, dal thread che pubblica): ogni finestra ne tiene uno
+    aperto, e guardare la coda a intervalli fissi costerebbe CPU anche a programma fermo."""
     q = events.subscribe()
+    loop, wake = asyncio.get_running_loop(), asyncio.Event()
+    q.wake = lambda: loop.call_soon_threadsafe(wake.set)
     try:
         yield ": connesso\n\n"
-        idle = 0.0
         while True:
+            wake.clear()  # prima di guardare la coda: un evento che arriva dopo la sveglia di nuovo
             try:
                 item = q.get_nowait()
             except queue.Empty:
-                await asyncio.sleep(SSE_POLL)
-                idle += SSE_POLL
-                if idle >= heartbeat:
-                    idle = 0.0
+                try:
+                    await asyncio.wait_for(wake.wait(), heartbeat)
+                except TimeoutError:
                     yield ": ping\n\n"
                 continue
-            idle = 0.0
             if item is None:  # Events.close(): l'app si sta chiudendo
                 return
             data = json.dumps(item.get("data") or {}, ensure_ascii=False, default=str)

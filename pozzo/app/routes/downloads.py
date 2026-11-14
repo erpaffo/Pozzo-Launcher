@@ -314,6 +314,7 @@ def build_router(ctx) -> APIRouter:
         except ValueError as e:
             raise HTTPException(400, str(e))
 
+    @router.get("/api/events")  # il flusso di ogni finestra (EventSource non manda il token di /api/v1/events)
     @router.get("/api/downloads/events")
     def api_downloads_events():
         """SSE: l'evento `downloads` porta i task cambiati (altri eventi dell'app passano sullo stesso flusso)."""

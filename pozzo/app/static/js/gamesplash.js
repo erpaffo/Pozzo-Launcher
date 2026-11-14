@@ -52,7 +52,7 @@
     window.dispatchEvent(new CustomEvent("pz-rest", { detail: { on } })); // chi ha timer propri (attract...) si ferma qui
   }
 
-  const es = window.gsEventSource || new EventSource("/api/v1/events");
+  const es = window.gsEventSource || new EventSource("/api/events");
   window.gsEventSource = es;
   const on = (name, fn) => es.addEventListener(name, (e) => { let d = {}; try { d = JSON.parse(e.data) || {}; } catch {} fn(d); });
   on("game_splash", show);

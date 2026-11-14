@@ -752,7 +752,7 @@ function bind() {
   window.addEventListener("wishlist_news", (e) => onWishlistAlert(e.detail));
   if (typeof window !== "undefined" && window.EventSource) {
     try {
-      const es = window.gsEventSource || new EventSource("/api/v1/events");
+      const es = window.gsEventSource || new EventSource("/api/events");
       window.gsEventSource = es;
       es.addEventListener("wishlist_alerts", (e) => {
         try { onWishlistAlert(JSON.parse(e.data)); } catch {}

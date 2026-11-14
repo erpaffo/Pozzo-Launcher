@@ -131,6 +131,15 @@ class Events:
                     q.put_nowait(None)
                 except (queue.Empty, queue.Full):
                     pass
+            self._wake(q)
+
+    @staticmethod
+    def _wake(q: queue.Queue):
+        """Sveglia il flusso SSE che legge `q` (apiv1.sse mette `q.wake`): dorme invece di guardare la coda."""
+        try:
+            getattr(q, "wake", lambda: None)()
+        except RuntimeError:  # loop gia' chiuso (app che si spegne): nessuno da svegliare
+            pass
 
     def emit(self, name: str, data: dict | None = None):
         payload = data or {}
@@ -145,7 +154,8 @@ class Events:
             try:
                 q.put_nowait({"event": name, "data": payload})
             except queue.Full:
-                pass
+                continue
+            self._wake(q)
 
 
 # ---------------------------------------------------------------- temi

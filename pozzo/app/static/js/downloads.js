@@ -1674,7 +1674,7 @@ async function dlsListsBind() {
  *  interrogare e si rilegge tutto: nel buco possono essersi perse delle notifiche. */
 function dlStream() {
   let poll = null;
-  const es = window.gsEventSource || new EventSource("/api/v1/events");
+  const es = window.gsEventSource || new EventSource("/api/events");
   window.gsEventSource = es;
   es.addEventListener("downloads", (e) => {
     try {
@@ -1692,7 +1692,7 @@ function dlStream() {
     if (es.readyState === EventSource.CLOSED && !dlStream.retry) {
       dlStream.retry = setTimeout(() => {
         dlStream.retry = null;
-        const e2 = new EventSource("/api/v1/events");
+        const e2 = new EventSource("/api/events");
         e2.addEventListener("downloads", (e) => { try { const d = JSON.parse(e.data); if (d.settings) DL.settings = d.settings; dlApply(d.tasks || []); } catch { /* fotogramma non valido */ } });
         e2.addEventListener("open", () => { if (poll) { clearInterval(poll); poll = null; dlLoad().catch(() => {}); } });
       }, 10000);
@@ -1711,6 +1711,9 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", dlClipCheck);
   $("#dl-dest-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#dl-dest").value = p; };
   dlLoad().catch(() => { /* server senza coda download: il contatore resta vuoto */ });
-  if (window.EventSource) dlStream();
-  else setInterval(() => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); }, 2000);
+  if (window.EventSource) {
+    dlStream();
+    // il server scarta gli eventi di una finestra che non li legge (coda piena, finestra in secondo piano): tornando visibile si rilegge
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); });
+  } else setInterval(() => { if (document.visibilityState === "visible") dlLoad().catch(() => {}); }, 2000);
 }
