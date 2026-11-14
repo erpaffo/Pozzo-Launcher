@@ -17,6 +17,7 @@ class Store:
         self.db.execute("CREATE TABLE IF NOT EXISTS downloads(id TEXT PRIMARY KEY, data TEXT)")
         self.db.execute("CREATE TABLE IF NOT EXISTS rss_seen(feed TEXT, item TEXT, ts REAL, PRIMARY KEY(feed, item))")
         self.lock = threading.Lock()
+        self.touched: set[str] = set()  # id salvati dall'ultima lettura: il ciclo ne rifa la vista (chi e' fermo non cambia)
 
     def rss_seen(self, feed: str, ids: list[str]) -> set[str]:
         """Quali `ids` del feed sono gia' stati visti (per non accodarli due volte)."""
@@ -30,8 +31,14 @@ class Store:
             self.db.execute("DELETE FROM rss_seen WHERE feed=? AND item NOT IN "
                             "(SELECT item FROM rss_seen WHERE feed=? ORDER BY ts DESC LIMIT ?)", (feed, feed, keep))
 
+    def take_touched(self) -> set[str]:
+        with self.lock:
+            out, self.touched = self.touched, set()
+        return out
+
     def save(self, tasks: list[DownloadTask]):
         with self.lock, self.db:
+            self.touched.update(t.id for t in tasks)
             self.db.executemany("INSERT OR REPLACE INTO downloads VALUES(?,?)",
                                 [(t.id, json.dumps({**d, "logs": d["logs"][-LOG_SAVED:]}, ensure_ascii=False)) for t in tasks for d in (t.data(),)])
 

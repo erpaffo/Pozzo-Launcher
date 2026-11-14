@@ -60,6 +60,7 @@ INTS = {"max_active": (1, 10), "segments": (1, 8), "limit_down": (0, 10_000_000)
         "alt_limit_down": (0, 10_000_000), "alt_limit_up": (0, 10_000_000), "game_limit_kbps": (0, 10_000_000), "post_active": (1, 4)}
 BOOLS = ("alt_enabled", "check_links", "clipboard", "auto_extract", "delete_archive", "show_browser", "game_pause_http")
 SCHEMES = ("http://", "https://")
+SWEEP_EVERY = 30  # s: ogni tanto si rifanno le viste di tutti, anche dei task fermi
 TRACKER_SCHEMES = ("udp://", "http://", "https://", "wss://")
 GAME_MODES = ("off", "limit", "pause")  # mentre giochi: niente, solo un limite di banda, torrent in pausa
 RESOLVERS_MAX = 3  # task HTTP che risolvono il link insieme (non occupano posti: senza tetto partirebbero tutti)
@@ -302,6 +303,7 @@ class Manager:
         self._ready = threading.Event()
         self._last: dict[str, tuple] = {}  # task id -> (done, tempo) per la velocita'
         self._res: dict[str, tuple] = {}  # task id -> (token, note) della risoluzione del link in corso
+        self._sweep_at = 0.0  # ultimo giro completo delle viste nel ciclo
         self._sent: dict[str, dict] = {}  # task id -> ultima vista mandata alla UI
         self._alt_sent: bool | None = None  # modalita' lenta all'ultimo evento: se cambia (orario) l'evento porta le impostazioni
         self._game = {"on": False, "paused": []}  # partita in corso e i task fermati da lei (da riprendere alla fine)
@@ -1008,7 +1010,14 @@ class Manager:
                     self._jobs[t.id] = asyncio.ensure_future(self._job(t, 0))
             self._share(down)
             changed, views = [], []
+            hot, sweep = self.store.take_touched(), now - self._sweep_at >= SWEEP_EVERY
+            if sweep:
+                self._sweep_at = now
             for t in self.tasks.values():  # solo le viste cambiate: niente elenco file ogni secondo per nulla
+                # chi e' fermo (completato, in pausa, errore) cambia solo se qualcuno lo salva: la vista si rifa allora,
+                # piu' un giro completo ogni SWEEP_EVERY s per le modifiche senza salvataggio
+                if not (sweep or t.id in hot or t.id not in self._sent or t.status == RUNNING or t.id in self._jobs or t.id in self._posting):
+                    continue
                 v = t.view()
                 if v != self._sent.get(t.id):
                     self._sent[t.id] = v

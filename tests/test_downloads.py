@@ -860,3 +860,31 @@ def test_aggiunta_di_piu_link_tutto_o_niente(tmp, monkeypatch):
         r = c.post("/api/downloads", json={"links": links[:2] + links[3:]})
         assert r.status_code == 200 and len(r.json()["tasks"]) == 3
         assert len(c.get("/api/downloads").json()["tasks"]) == 3
+
+
+def test_tick_non_rifa_la_vista_dei_task_fermi(tmp, monkeypatch):
+    """Con centinaia di download completati il ciclo non rifa 300 viste al secondo: solo chi scarica, chi e' toccato, e il giro lento."""
+    sent = []
+    cfg = SimpleNamespace(cache=tmp / "cache", app={"downloads": {"dir": str(tmp / "out"), "max_active": 0}})
+    m = Manager(cfg, events=SimpleNamespace(emit=lambda n, d: sent.append([v["id"] for v in d["tasks"]])))
+    done = [T.DownloadTask(source=f"http://x/{i}", save_path=str(tmp), name=f"g{i}.zip", status=T.COMPLETED, options={"post_done": True}) for i in range(300)]
+    m.tasks = {t.id: t for t in done}
+    calls = []
+    orig = T.DownloadTask.view
+    monkeypatch.setattr(T.DownloadTask, "view", lambda self: calls.append(self.id) or orig(self))
+    m._tick()
+    assert len(calls) == 300 and len(sent.pop()) == 300  # primo giro: la UI li vede tutti
+    m._tick()  # il salvataggio del primo giro li segna come toccati: una volta sola
+    calls.clear()
+    sent.clear()
+    for _ in range(5):
+        m._tick()
+    assert not calls and not sent
+    m.set_category(done[0].id, "x")  # un comando dell'utente salva: la vista si rifa e arriva alla UI
+    m._tick()
+    assert calls == [done[0].id] and sent == [[done[0].id]]
+    calls.clear()
+    m._sweep_at -= M.SWEEP_EVERY  # giro lento: rete di sicurezza per le modifiche senza salvataggio
+    done[1].name = "nuovo.zip"
+    m._tick()
+    assert len(calls) == 300 and sent[-1] == [done[1].id]

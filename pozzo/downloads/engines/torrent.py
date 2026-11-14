@@ -20,6 +20,7 @@ except ImportError:  # senza libtorrent i torrent non entrano in coda (e il dett
 log = logging.getLogger("pozzo.downloads.torrent")
 POLL = 0.5
 RESUME_EVERY = 30
+FILES_EVERY = 3  # s: ogni quanto si rifa l'elenco file della vista (avanzamento per file)
 META_TIMEOUT = 240  # secondi: un magnet senza peer non tiene occupato un posto della coda per sempre
 STALL_AFTER = 60  # secondi senza seed e senza dati prima di dichiarare il download «in stallo»
 PRIORITIES = (0, 1, 4, 7)  # salta, normale, alta, massima
@@ -418,6 +419,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
         task.log("Ricontrollo dei file su disco")
     ready, last_save, start, seeding = False, time.monotonic(), time.monotonic(), 0.0
     state, peers, meta, mile, idle_since, waited = None, False, False, None, None, False
+    fcache = None  # (priorita', quando, indici dei file voluti, byte voluti, finito) dell'ultimo elenco file costruito
     try:
         while True:
             eng._pump()
@@ -473,12 +475,19 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
                     ready = True
                 prio = [int(task.options["priorities"].get(str(i), 0)) for i in range(fs.num_files())]
                 prog = h.file_progress()
-                files = [{"index": i, "name": fs.file_path(i), "size": fs.file_size(i), "priority": prio[i],
-                          "progress": prog[i] / fs.file_size(i) if fs.file_size(i) else 1.0}
-                         for i in range(fs.num_files()) if not fs.file_flags(i) & lt.file_storage.flag_pad_file]
-                task.options["files"] = files
-                task.size = sum(f["size"] for f in files if f["priority"])
-                task.done = sum(prog[f["index"]] for f in files if f["priority"])
+                # l'elenco file (con l'avanzamento di ognuno) si rifa ogni FILES_EVERY s, subito se cambiano le priorita' e
+                # una volta a fine scarico: a ogni giro, con migliaia di file, era lavoro e dati per nulla. done/size restano esatti
+                if fcache and fcache[0] == prio and time.monotonic() - fcache[1] < FILES_EVERY and \
+                        (fcache[4] or sum(prog[i] for i in fcache[2]) < fcache[3]):
+                    wanted, task.size = fcache[2], fcache[3]
+                else:
+                    files = [{"index": i, "name": fs.file_path(i), "size": fs.file_size(i), "priority": prio[i],
+                              "progress": prog[i] / fs.file_size(i) if fs.file_size(i) else 1.0}
+                             for i in range(fs.num_files()) if not fs.file_flags(i) & lt.file_storage.flag_pad_file]
+                    task.options["files"] = files
+                    wanted, task.size = [f["index"] for f in files if f["priority"]], sum(f["size"] for f in files if f["priority"])
+                    fcache = (prio, time.monotonic(), wanted, task.size, sum(prog[i] for i in wanted) >= task.size)
+                task.done = sum(prog[i] for i in wanted)
                 if not task.size:
                     raise ValueError("Nessun file selezionato")
                 m = task.done * 10 // task.size
