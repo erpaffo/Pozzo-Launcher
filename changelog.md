@@ -35,6 +35,10 @@
 - **Avvio dei giochi più rapido**: il backup dei salvataggi non rilegge i file invariati.
 - **Accessibilità**: movimento ridotto rispettato in Big Picture e sul telefono; la scheda gioco in finestra tiene il focus dentro il pannello.
 
+### Rimosso
+
+- **Lingue**: tolto il turco. Chi lo aveva scelto vede l'app in inglese e può sceglierne un'altra in Impostazioni.
+
 ## 0.18.1 (2026-11-14)
 ### Corretto
 
