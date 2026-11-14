@@ -17,7 +17,7 @@ import shutil
 import socket
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -109,11 +109,12 @@ def alt_active(s: dict, now: datetime | None = None) -> bool:
 _TIME = re.compile(r"(\d{1,2}):(\d{2})")
 
 
-def _norm_schedule(start_at, days=None) -> dict:
+def _norm_schedule(start_at, days=None, now: datetime | None = None) -> dict:
     """Pianificazione di un singolo download: {} se non c'e', altrimenti {"start_at": ..., "days": [...]}.
 
-    `start_at` = "HH:MM" (ogni giorno, o solo nei giorni di `days`, 0 = lunedi'), oppure data e ora ISO
-    "YYYY-MM-DD HH:MM" per un avvio una volta sola. ValueError con il motivo se non e' valida."""
+    `start_at` = "HH:MM" nei giorni di `days` (0 = lunedi'); senza giorni diventa la prossima volta che e' quell'ora
+    (oggi se non e' ancora passata, se no domani), come data e ora. Oppure data e ora ISO "YYYY-MM-DD HH:MM" per un
+    avvio una volta sola. ValueError con il motivo se non e' valida."""
     txt = str(start_at or "").strip()
     if not txt:
         return {}
@@ -126,6 +127,10 @@ def _norm_schedule(start_at, days=None) -> dict:
             if not isinstance(days, (list, tuple)) or any(type(x) is not int or not 0 <= x <= 6 for x in days):
                 raise ValueError("days: giorni da 0 (lunedi') a 6")
             out["days"] = sorted(set(days))
+        if not out.get("days"):  # «alle 01:00» chiesto alle 21: stanotte, non subito (_due con HH:MM partirebbe gia')
+            now = (now or datetime.now()).replace(second=0, microsecond=0)
+            when = now.replace(hour=int(m[1]), minute=int(m[2]))
+            return {"start_at": (when if when >= now else when + timedelta(days=1)).strftime("%Y-%m-%d %H:%M")}
         return out
     try:
         when = datetime.fromisoformat(txt)
@@ -560,7 +565,7 @@ class Manager:
     # ------------------------------------------------------------ comandi
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
-        sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None))  # «Avvia alle», facoltativo
+        sched = _norm_schedule(opts.pop("start_at", None), opts.pop("days", None), self.now())  # «Avvia alle», facoltativo
         kind = "steamcmd" if opts.pop("steamcmd", False) else "cli" if CLI.is_cli(source) else "torrent" if TOR.is_torrent(source) else "http"
         if kind == "cli":
             if not {"store", "game_id"} <= opts.keys():
@@ -784,7 +789,7 @@ class Manager:
 
     def set_schedule(self, tid: str, start_at, days=None):
         """«Avvia alle»: il task resta in coda e parte da solo (stringa vuota = pianificazione cancellata)."""
-        sched = _norm_schedule(start_at, days)
+        sched = _norm_schedule(start_at, days, self.now())
         with self.lock:
             t = self._get(tid)
             t.options.pop("start_at", None)

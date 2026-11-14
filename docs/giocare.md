@@ -309,8 +309,8 @@ KB/s, l'upload resta com'è) o **Metti in pausa i torrent** (con l'opzione accan
 Alla chiusura del gioco riprendono **solo** i download fermati da questa funzione: quelli messi in pausa a mano restano
 fermi. Il launcher sa da solo quando giochi, anche con un gioco PC avviato da Steam o Epic.
 
-Un singolo download può partire a un'ora precisa: nel menu **⋯** della riga, **⏰ Avvia alle…** chiede l'ora (`23:30`).
-Il download resta in coda — la riga mostra ⏰ con l'orario — e parte da solo, anche dopo un riavvio dell'app; la stessa
+Un singolo download può partire a un'ora precisa: nel menu **⋯** della riga, **⏰ Avvia alle…** chiede l'ora (`23:30`);
+se oggi quell'ora è già passata, vale per domani. Il download resta in coda — la riga mostra ⏰ con giorno e ora — e parte da solo, anche dopo un riavvio dell'app; la stessa
 voce diventa **⏰ Annulla pianificazione** per toglierla. C'è lo stesso campo facoltativo nel dialog **＋ Aggiungi**.
 
 ## Salvataggi

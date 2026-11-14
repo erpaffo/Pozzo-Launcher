@@ -311,8 +311,8 @@ upload untouched), or **Pause torrents** (an accompanying option also pauses HTT
 When the game closes, **only** downloads paused by this feature are resumed: downloads paused manually remain
 paused. The launcher automatically detects when you are playing, even with PC games started via Steam or Epic.
 
-An individual download can also be scheduled for a specific time: in the row's **⋯** menu, **⏰ Start at…** prompts for the time (`23:30`).
-The download remains queued — showing ⏰ with the time — and begins automatically, even across app restarts; the same
+An individual download can also be scheduled for a specific time: in the row's **⋯** menu, **⏰ Start at…** prompts for the time (`23:30`);
+if that time has already passed today, it means tomorrow. The download remains queued — showing ⏰ with the date and time — and begins automatically, even across app restarts; the same
 menu item becomes **⏰ Cancel Schedule** to remove it. The same optional field exists in the **＋ Add** dialog.
 
 <a id="salvataggi"></a>

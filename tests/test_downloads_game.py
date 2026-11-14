@@ -106,10 +106,11 @@ async def test_task_pianificato_non_parte_prima_dellorario(tmp):
         return None
 
     m._job = fake_job
+    m.now = lambda: datetime(2026, 3, 2, 21, 0)
     t = m.add("http://x/a", start_at="23:00")
-    assert t.status == T.QUEUED and t.options == {"start_at": "23:00"}
+    assert t.status == T.QUEUED and t.options == {"start_at": "2026-03-02 23:00"}  # la prossima volta che sono le 23
     # la pianificazione e' su disco: un riavvio la ritrova
-    assert [x.options.get("start_at") for x in _reload(m) if x.id == t.id] == ["23:00"]
+    assert [x.options.get("start_at") for x in _reload(m) if x.id == t.id] == ["2026-03-02 23:00"]
     m.now = lambda: datetime(2026, 3, 2, 22, 59)
     m._tick()
     assert t.status == T.QUEUED  # manca un minuto
@@ -134,8 +135,9 @@ def test_pianificazione_invalida_rifiutata(tmp):
     m.set_schedule(t.id, "12:00", [1, 1, 2])
     assert t.options == {"start_at": "12:00", "days": [1, 2]}
     t.status = T.PAUSED
+    m.now = lambda: MON
     m.set_schedule(t.id, "12:00")  # una pianificazione riporta in coda un download fermo
-    assert t.status == T.QUEUED and t.options == {"start_at": "12:00"}
+    assert t.status == T.QUEUED and t.options == {"start_at": "2026-03-03 12:00"}  # alle 23 di lunedi': martedi'
     m.set_schedule(t.id, "")
     assert "start_at" not in t.options and "days" not in t.options
 
@@ -147,6 +149,19 @@ def test_due_rispetta_orario_giorni_e_data():
     assert not M._due({"start_at": "23:00", "days": [1]}, MON)
     assert not M._due({"start_at": "2026-03-02 23:30"}, MON)  # data e ora una volta sola
     assert M._due({"start_at": "2026-03-02 22:00"}, MON)
+
+
+def test_orario_senza_giorni_aspetta_la_prossima_volta(tmp):
+    """«Avvia alle 01:00» chiesto alle 21: parte stanotte, non subito."""
+    m = _mgr(tmp, max_active=0)
+    m.now = lambda: datetime(2026, 3, 2, 21, 0)
+    t = m.add("http://x/a", start_at="01:00")
+    assert t.options == {"start_at": "2026-03-03 01:00"}
+    assert not M._due(t.options, m.now()) and not M._due(t.options, datetime(2026, 3, 3, 0, 59))
+    assert M._due(t.options, datetime(2026, 3, 3, 1, 0))
+    assert m.add("http://x/b", start_at="21:00").options == {"start_at": "2026-03-02 21:00"}  # adesso: oggi
+    assert m.add("http://x/c", start_at="22:30", days=[]).options == {"start_at": "2026-03-02 22:30"}
+    assert m.add("http://x/d", start_at="01:00", days=[1]).options == {"start_at": "01:00", "days": [1]}  # ricorrente
 
 
 def test_rotte_pianificazione_e_modalita_partita(tmp):
