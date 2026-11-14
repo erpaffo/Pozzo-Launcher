@@ -83,6 +83,19 @@ SUFFIX = {"setup": "-windows-x64-setup.exe", "win": "-windows-x64.zip", "mac": "
           "linux": "-linux-x64.tar.gz", "deb": "_amd64.deb"}
 STATE = {"status": "idle", "phase": "", "done": 0, "total": 0, "kind": None}
 MANIFEST = ".pozzo-release-manifest.json"
+
+
+def _manifest_path(root: Path) -> Path:
+    # su macOS un file non sigillato nel .app invalida la firma ("danneggiata"): il manifest sta accanto
+    return root.parent / f".{root.name}.manifest.json" if sys.platform == "darwin" else root / MANIFEST
+
+
+def _write_manifest(stage: Path, target: Path, new: dict):
+    # su macOS lo stage viene rinominato in target: il manifest va gia' accanto al bundle finale
+    _manifest_path(target if sys.platform == "darwin" else stage).write_text(json.dumps(
+        {"version": new["version"], "file": list(new["file"].values())},
+        ensure_ascii=False, separators=(",", ":")
+    ) + "\n", encoding="utf-8")
 PLATFORM = {"win": "windows-x64", "mac": "macos-arm64", "linux": "linux-x64"}
 _WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
@@ -145,6 +158,11 @@ def swap_script(tmp: Path, src: Path, dst: Path, pid: int) -> list[str]:
                      f'start "" "{dst / "PozzoLauncher.exe"}"\r\n', encoding="utf-8")
         return ["cmd", "/c", str(s)]
     run = f"open {shlex.quote(str(dst))}" if sys.platform == "darwin" else f"{shlex.quote(str(dst / 'PozzoLauncher'))} &"
+    if sys.platform == "darwin":
+        # il bundle e' stato riscritto: via il vecchio manifest e nuovo sigillo ad-hoc, senza bloccare l'avvio
+        q = shlex.quote(str(dst))
+        run = (f"rm -f {shlex.quote(str(dst / MANIFEST))}\nxattr -cr {q} 2>/dev/null || true\n"
+               f"codesign --force --deep -s - {q} 2>/dev/null || true\n{run}")
     s = tmp / "update.sh"
     s.write_text(f"#!/bin/sh\nwhile kill -0 {pid} 2>/dev/null; do sleep 1; done\n"
                  f"mv {shlex.quote(str(dst))} {shlex.quote(str(backup))} || exit 1\n"
@@ -448,10 +466,7 @@ def _stage_full(installed: Path, stage: Path, package: Path, kind: str, old: dic
         _overlay(unpacked, stage, stage)
         if new:
             _verify_files(stage, _platform_files(new, platform))
-            (stage / MANIFEST).write_text(json.dumps(
-                {"version": new["version"], "file": list(new["file"].values())},
-                ensure_ascii=False, separators=(",", ":")
-            ) + "\n", encoding="utf-8")
+            _write_manifest(stage, installed, new)
     except Exception:
         _remove(stage)
         raise
@@ -557,7 +572,9 @@ def install(cache, quit) -> None:
                 manifest_file = _verified_manifest(work, manifest_asset, assets)
                 remote = _manifest(json.loads(manifest_file.read_text(encoding="utf-8")), release_version)
                 _platform_files(remote, platform)
-            local_path = target / MANIFEST
+            local_path = _manifest_path(target)
+            if not local_path.is_file():
+                local_path = target / MANIFEST  # installazioni con il manifest ancora nel bundle
             if local_path.is_file():
                 local = _manifest(json.loads(local_path.read_text(encoding="utf-8")), __version__)
                 _platform_files(local, platform)
@@ -609,10 +626,7 @@ def install(cache, quit) -> None:
             _download(a["url"], file, digest=a.get("digest"), total=a["size"])
             _stage_full(target, stage, file, kind, local, remote, platform)
         else:
-            (stage / MANIFEST).write_text(json.dumps(
-                {"version": remote["version"], "file": list(remote["file"].values())},
-                ensure_ascii=False, separators=(",", ":")
-            ) + "\n", encoding="utf-8")
+            _write_manifest(stage, target, remote)
 
         STATE["phase"] = "Installazione atomica"
         command = swap_script(work, stage, target, os.getpid())

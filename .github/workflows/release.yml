@@ -185,7 +185,7 @@ jobs:
           mkdir -p release
           case "$RUNNER_OS" in
             Windows) FILE="release/${OUT}.zip";    7z a -tzip "$FILE" ./dist/PozzoLauncher >/dev/null ;;
-            macOS)   FILE="release/${OUT}.zip";    ditto -c -k --keepParent dist/PozzoLauncher.app "$FILE" ;;
+            macOS)   FILE="release/${OUT}.zip";    codesign --force --deep -s - dist/PozzoLauncher.app; ditto -c -k --keepParent dist/PozzoLauncher.app "$FILE" ;;
             Linux)   FILE="release/${OUT}.tar.gz"; tar -czf "$FILE" -C dist PozzoLauncher ;;
           esac
           echo "file=$FILE" >> "$GITHUB_OUTPUT"

@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import sys
 import tarfile
 import zipfile
 from pozzo import updates
@@ -112,7 +113,8 @@ def test_bad_delta_hash_falls_back_to_complete_staging(tmp_path):
     assert isinstance(error, ValueError)
     assert (stage / "game.bin").read_bytes() == b"new"
     assert not (stage / "obsolete.bin").exists()
-    assert (stage / updates.MANIFEST).is_file()
+    # su macOS il manifest sta accanto al bundle finale, non nello stage
+    assert updates._manifest_path(installed if sys.platform == "darwin" else stage).is_file()
     assert (installed / "game.bin").read_bytes() == b"old"
 
 
