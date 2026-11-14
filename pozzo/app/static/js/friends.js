@@ -197,7 +197,7 @@ const Friends = (() => {
   async function addFriendByCode(rawInput) {
     const me = getMyProfile();
     const clean = String(rawInput || "").trim();
-    if (!clean) throw new Error("Inserisci un codice amico o un nome utente");
+    if (!clean) throw new Error(tr("fr.errEmpty"));
 
     const code = clean.startsWith("#") ? clean.toUpperCase() : ("#PZ-" + clean).toUpperCase();
 
@@ -212,15 +212,15 @@ const Friends = (() => {
       }
     });
 
-    if (!searchRes.ok) throw new Error("Errore durante la ricerca dell'amico");
+    if (!searchRes.ok) throw new Error(tr("fr.errSearch"));
     const found = await searchRes.json();
     if (!Array.isArray(found) || !found.length) {
-      throw new Error(`Nessun giocatore trovato con il codice o nome "${clean}"`);
+      throw new Error(tr("fr.errNotFound", { name: clean }));
     }
 
     const target = found[0];
     if (target.id === me.id) {
-      throw new Error("Non puoi aggiungere te stesso come amico!");
+      throw new Error(tr("fr.errSelf"));
     }
 
     // Inserisci l'amicizia
@@ -240,7 +240,7 @@ const Friends = (() => {
     });
 
     if (!addRes.ok && addRes.status !== 409) {
-      throw new Error("Impossibile salvare l'amicizia in questo momento");
+      throw new Error(tr("fr.errSave"));
     }
 
     await fetchFriendsList();
@@ -496,7 +496,7 @@ const Friends = (() => {
   async function openPop() {
     const btn = $("#mb-friends");
     if (!btn) return;
-    document.body.insertAdjacentHTML("beforeend", `<div id="fr-pop" role="dialog" aria-label="Amici"></div>`);
+    document.body.insertAdjacentHTML("beforeend", `<div id="fr-pop" role="dialog" aria-label="${tr("fr.title")}"></div>`);
     const r = btn.getBoundingClientRect();
     const el = $("#fr-pop");
     el.style.top = `${Math.round(r.bottom + 4)}px`;
@@ -513,7 +513,7 @@ const Friends = (() => {
   function avatar(p, online) {
     const hue = [...String(p.id || "")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
     const ini = (String(p.username || "?").trim()[0] || "?").toUpperCase();
-    const dot = online === undefined ? "" : `<i class="fr-dot${online ? " on" : ""}"></i><span class="sr-only">${online ? "in linea" : "offline"}</span>`;
+    const dot = online === undefined ? "" : `<i class="fr-dot${online ? " on" : ""}"></i><span class="sr-only">${online ? tr("fr.srOnline") : tr("h.common.offline")}</span>`;
     return `<span class="fr-av" style="--h:${hue}">${escapeHtml(ini)}${dot}</span>`;
   }
 
@@ -547,30 +547,30 @@ const Friends = (() => {
       ${list.length ? list.map((f) => renderFriendRow(f, isOn)).join("") : `<div class="fr-empty">${empty}</div>`}`;
 
     pop.innerHTML = `
-      <div class="fr-head"><b>Amici</b><button type="button" class="fr-x" id="fr-close" aria-label="Chiudi" title="Chiudi">${I("close")}</button></div>
+      <div class="fr-head"><b>${tr("fr.title")}</b><button type="button" class="fr-x" id="fr-close" aria-label="${tr("a.common.close")}" title="${tr("a.common.close")}">${I("close")}</button></div>
       <div class="fr-body">
         <div class="fr-me">
           ${avatar(me, true)}
           <div class="fr-who">
             ${editingName
-              ? `<input id="fr-name-input" class="field" maxlength="24" value="${escapeHtml(me.username)}" aria-label="Il tuo nome visibile agli amici" autocomplete="off">`
+              ? `<input id="fr-name-input" class="field" maxlength="24" value="${escapeHtml(me.username)}" aria-label="${tr("fr.yourName")}" autocomplete="off">`
               : `<strong>${escapeHtml(me.username)}</strong>`}
             <span class="fr-code">${escapeHtml(me.friend_code)}</span>
           </div>
-          <button class="fr-ib" type="button" id="copy-my-code-btn" title="Copia il tuo codice amico" aria-label="Copia codice amico">${I("copy")}</button>
-          <button class="fr-ib" type="button" id="edit-my-name-btn" title="${editingName ? "Salva nome" : "Modifica nome"}" aria-label="${editingName ? "Salva nome" : "Modifica nome"}">${I(editingName ? "check" : "edit")}</button>
+          <button class="fr-ib" type="button" id="copy-my-code-btn" title="${tr("fr.copyCode")}" aria-label="${tr("fr.copyCodeAria")}">${I("copy")}</button>
+          <button class="fr-ib" type="button" id="edit-my-name-btn" title="${editingName ? tr("fr.saveName") : tr("fr.editName")}" aria-label="${editingName ? tr("fr.saveName") : tr("fr.editName")}">${I(editingName ? "check" : "edit")}</button>
         </div>
         <div class="fr-add">
-          <input type="text" id="add-friend-input" class="field" placeholder="Aggiungi con codice (#PZ-1234) o nome" autocomplete="off" aria-label="Codice amico o nome">
-          <button class="btn primary" type="button" id="add-friend-btn" aria-label="Aggiungi amico">+</button>
+          <input type="text" id="add-friend-input" class="field" placeholder="${tr("fr.addPh")}" autocomplete="off" aria-label="${tr("fr.addInputAria")}">
+          <button class="btn primary" type="button" id="add-friend-btn" aria-label="${tr("fr.addAria")}">+</button>
         </div>
         <div id="add-friend-msg" class="fr-msg" role="status"></div>
-        <label class="fr-share"><input type="checkbox" id="fr-share"${shareOn() ? " checked" : ""}> Mostra agli amici a cosa sto giocando</label>
+        <label class="fr-share"><input type="checkbox" id="fr-share"${shareOn() ? " checked" : ""}> ${tr("fr.shareGame")}</label>
         <label class="fr-share"><input type="checkbox" id="fr-share-time"${shareTimeOn() ? " checked" : ""}> ${tr("fr.shareTime", 0, "Condividi il tempo di gioco")}</label>
         <label class="fr-share"><input type="checkbox" id="fr-share-ach"${shareAchOn() ? " checked" : ""}> ${tr("fr.shareAch", 0, "Condividi gli obiettivi")}</label>
         <div class="fr-priv">${tr("fr.privacy")}</div>
-        ${section("In linea", online, true, "Nessun amico in linea")}
-        ${section("Offline", offline, false, "Nessun amico offline")}
+        ${section(tr("fr.secOnline"), online, true, tr("fr.noOnline"))}
+        ${section(tr("d.check.offline"), offline, false, tr("fr.noOffline"))}
         <div class="fr-sec">${tr("fr.activity")}</div>
         ${activityHtml(jget(LOG_KEY, []).slice(0, 10), true)}
       </div>`;
@@ -588,7 +588,7 @@ const Friends = (() => {
     $("#copy-my-code-btn").onclick = async () => {
       try {
         await navigator.clipboard.writeText(me.friend_code);
-        if (typeof window.toast === "function") window.toast("Codice amico copiato ✓");
+        if (typeof window.toast === "function") window.toast(tr("fr.copied"));
       } catch {
         if (typeof window.toast === "function") window.toast(me.friend_code);
       }
@@ -623,16 +623,16 @@ const Friends = (() => {
       const msg = $("#add-friend-msg");
       if (!inp || !inp.value.trim()) return;
       msg.className = "fr-msg";
-      msg.textContent = "Ricerca in corso…";
+      msg.textContent = tr("g.ev.scrape.running");
       try {
         const added = await addFriendByCode(inp.value.trim());
         // addFriendByCode ridisegna il pannello: il messaggio va scritto sul nuovo elemento
         const m2 = $("#add-friend-msg");
-        if (m2) { m2.className = "fr-msg ok"; m2.textContent = `✓ ${added.username} aggiunto`; }
-        if (typeof window.toast === "function") window.toast(`Amico ${added.username} aggiunto!`);
+        if (m2) { m2.className = "fr-msg ok"; m2.textContent = tr("fr.added", { name: added.username }); }
+        if (typeof window.toast === "function") window.toast(tr("fr.addedToast", { name: added.username }));
       } catch (err) {
         msg.className = "fr-msg bad";
-        msg.textContent = err.message || "Errore durante l'aggiunta";
+        msg.textContent = err.message || tr("fr.errAdd");
       }
     };
     $("#fr-share").onchange = (e) => { setShare(e.target.checked); trackPresence(); };
@@ -687,7 +687,7 @@ const Friends = (() => {
     const max = Math.max(1, ...rows.map((r) => Math.max(r.mine, r.theirs)));
     const bar = (m) => `<i class="fr-bar" style="width:${Math.round((m / max) * 100)}%"></i>`;
     pop.innerHTML = `
-      <div class="fr-head"><button type="button" class="fr-x" id="fr-back" aria-label="${tr("fr.back", 0, "Indietro")}" title="${tr("fr.back", 0, "Indietro")}">&larr;</button><b>${escapeHtml(f.username)}</b><button type="button" class="fr-x" id="fr-close" aria-label="Chiudi" title="Chiudi">${I("close")}</button></div>
+      <div class="fr-head"><button type="button" class="fr-x" id="fr-back" aria-label="${tr("fr.back", 0, "Indietro")}" title="${tr("fr.back", 0, "Indietro")}">&larr;</button><b>${escapeHtml(f.username)}</b><button type="button" class="fr-x" id="fr-close" aria-label="${tr("a.common.close")}" title="${tr("a.common.close")}">${I("close")}</button></div>
       <div class="fr-body">
         <div class="fr-sec">${tr("fr.common")}</div>
         ${sum ? `<div class="fr-sub">${tr("fr.updated", { date: new Date(sum.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) })}</div>` : ""}
@@ -710,11 +710,11 @@ const Friends = (() => {
       <div class="fr-row${isOnline ? "" : " off"}">
         ${avatar(f, isOnline)}
         <div class="fr-who" data-friend-detail="${escapeHtml(f.id)}" role="button" tabindex="0" title="${tr("fr.compare", 0, "Confronta")}" style="cursor:pointer">
-          <strong>${escapeHtml(f.username || "Giocatore")}</strong>
-          <span class="fr-sub${game ? " game" : ""}">${game ? `🎮 ${escapeHtml(game)}` : isOnline ? "Nel menu" : escapeHtml(f.friend_code || "Offline")}</span>
+          <strong>${escapeHtml(f.username || tr("fr.player"))}</strong>
+          <span class="fr-sub${game ? " game" : ""}">${game ? `🎮 ${escapeHtml(game)}` : isOnline ? tr("fr.inMenu") : escapeHtml(f.friend_code || tr("d.check.offline"))}</span>
         </div>
-        ${party ? `<button class="btn primary small fr-join" type="button" data-join-party="${escapeHtml(party)}">${I("play")} Unisciti</button>` : ""}
-        <button class="fr-ib${confirming ? " danger" : ""}" type="button" data-remove-friendship="${f.friendshipId}" title="Rimuovi amico" aria-label="Rimuovi ${escapeHtml(f.username || "amico")}">${confirming ? "Rimuovere?" : I("close")}</button>
+        ${party ? `<button class="btn primary small fr-join" type="button" data-join-party="${escapeHtml(party)}">${I("play")} ${tr("fr.join")}</button>` : ""}
+        <button class="fr-ib${confirming ? " danger" : ""}" type="button" data-remove-friendship="${escapeHtml(f.friendshipId)}" title="${tr("fr.removeFriend")}" aria-label="${tr("f.coll.remove_aria", { name: escapeHtml(f.username || tr("fr.friendDefault")) })}">${confirming ? tr("fr.confirmRemove") : I("close")}</button>
       </div>`;
   }
 

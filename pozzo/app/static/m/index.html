@@ -84,37 +84,37 @@
     </section>
 
     <section id="v-media" class="view" hidden>
-      <h2 class="sec">🎬 Media</h2>
-      <p id="mr-none" class="muted">Nessun video in riproduzione</p>
+      <h2 class="sec">🎬 <span data-i18n="g.dash.label.media">Media</span></h2>
+      <p id="mr-none" class="muted" data-i18n="k.m.mr.none">Nessun video in riproduzione</p>
       <div id="mr-box" hidden>
         <b id="mr-title"></b>
         <p class="muted small" id="mr-sub"></p>
-        <input type="range" id="mr-seek" min="0" max="1" step="1" value="0" aria-label="Posizione">
+        <input type="range" id="mr-seek" min="0" max="1" step="1" value="0" aria-label="Posizione" data-i18n-aria="k.m.mr.seek">
         <p class="muted small mr-time"><span id="mr-pos">0:00</span><span id="mr-dur">0:00</span></p>
         <div class="mr-row">
-          <button class="btn" data-mr="prev" id="mr-prev" aria-label="Precedente">⏮</button>
-          <button class="btn" data-mr="jump" data-arg="-10" aria-label="Indietro di 10 secondi">⟲ 10 s</button>
-          <button class="btn primary" data-mr="toggle" id="mr-toggle" aria-label="Play o pausa">▶</button>
-          <button class="btn" data-mr="jump" data-arg="10" aria-label="Avanti di 10 secondi">10 s ⟳</button>
-          <button class="btn" data-mr="next" id="mr-next" aria-label="Successivo">⏭</button>
+          <button class="btn" data-mr="prev" id="mr-prev" aria-label="Precedente" data-i18n-aria="k.m.key.prev">⏮</button>
+          <button class="btn" data-mr="jump" data-arg="-10" aria-label="Indietro di 10 secondi" data-i18n-aria="k.m.mr.back10">⟲ 10 s</button>
+          <button class="btn primary" data-mr="toggle" id="mr-toggle" aria-label="Play o pausa" data-i18n-aria="k.m.mr.toggle">▶</button>
+          <button class="btn" data-mr="jump" data-arg="10" aria-label="Avanti di 10 secondi" data-i18n-aria="k.m.mr.fwd10">10 s ⟳</button>
+          <button class="btn" data-mr="next" id="mr-next" aria-label="Successivo" data-i18n-aria="k.m.key.next">⏭</button>
         </div>
         <div class="mr-row">
-          <button class="btn" data-mr="mute" id="mr-mute" aria-label="Muto">🔊</button>
-          <input type="range" id="mr-vol" min="0" max="100" step="1" value="100" aria-label="Volume">
+          <button class="btn" data-mr="mute" id="mr-mute" aria-label="Muto" data-i18n-aria="k.m.key.mute">🔊</button>
+          <input type="range" id="mr-vol" min="0" max="100" step="1" value="100" aria-label="Volume" data-i18n-aria="k.m.mr.vol">
         </div>
         <div class="mr-row">
-          <button class="btn" data-mr="fullscreen">⛶ Schermo intero</button>
-          <button class="btn" data-mr="skip" id="mr-skip" hidden>Salta intro</button>
-          <button class="btn" data-mr="close">Chiudi</button>
+          <button class="btn" data-mr="fullscreen">⛶ <span data-i18n="k.m.key.f11">Schermo intero</span></button>
+          <button class="btn" data-mr="skip" id="mr-skip" hidden data-i18n="k.m.mr.skip">Salta intro</button>
+          <button class="btn" data-mr="close" data-i18n="a.common.close">Chiudi</button>
         </div>
       </div>
     </section>
 
     <nav class="tabbar">
-      <button data-tab="home" class="on"><span>🏠</span>Home</button>
+      <button data-tab="home" class="on"><span>🏠</span><span data-i18n="c.tab.home">Home</span></button>
       <button data-tab="lib"><span>🔍</span><span data-i18n="k.m.tab.lib">Libreria</span></button>
       <button data-tab="act"><span>⏳</span><span data-i18n="k.m.tab.act">Attività</span></button>
-      <button data-tab="media"><span>🎬</span>Media</button>
+      <button data-tab="media"><span>🎬</span><span data-i18n="g.dash.label.media">Media</span></button>
       <button data-tab="pad"><span>🎮</span><span data-i18n="k.emu.common.controller">Controller</span></button>
     </nav>
   </main>
