@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.1 (2026-11-14)
+### Corretto
+
+- **macOS, aggiornamento automatico**: dopo l'aggiornamento dall'app, macOS non segnala più Pozzo come «danneggiato». Il file della versione resta fuori dal pacchetto .app e l'app viene firmata di nuovo dopo la sostituzione.
+
+### Aggiunto
+
+- **macOS e Linux**: molte funzioni finora solo per Windows. Pausa e ripresa del gioco con chiusura di tutti i suoi processi; giochi Steam, Epic, Battle.net, GOG Galaxy e Minecraft Java riconosciuti; emulatori .app/AppImage riconosciuti e installabili dall'app (anche i core di RetroArch); notifiche di sistema; collegamento sul desktop; Cestino del Finder; timer di sospensione e spegnimento; compressione APFS.
+- **macOS e Linux, telefono e streaming**: il telefono funziona da mouse e tastiera, audio dal telefono al PC, batteria del DualSense, Sunshine avviato come servizio (Homebrew su macOS, systemd su Linux) e doppio schermo DS/3DS su macOS.
+- **macOS**: overlay sopra il gioco, tasto per lo screenshot della finestra del gioco, avviso in Impostazioni quando manca il permesso di Accessibilità e link pozzo:// registrato.
+- **macOS e Linux**: elenco delle funzioni della versione Windows che non ci sono (Impostazioni › Sistema), mostrato anche al primo avvio.
+
+### Cambiato
+
+- Il pulsante Pausa/Riprendi torna anche su macOS e Linux.
+
 ## 0.18.0 (2026-11-13)
 
 ### Aggiunto
