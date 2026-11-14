@@ -162,6 +162,19 @@ GSUi.applyPrefs(document, GSUi.saved());
 GSUi.applyTheme(document);
 /* ui-prefs:end */
 
+/* poll:start - timer che dorme a finestra nascosta (minimizzata o coperta). Test: tests/test_poll_visible.js */
+/** Esegue fn ogni ms solo mentre la pagina e' visibile; al ritorno in vista la lancia subito (recupera quel che e' cambiato). */
+function pollWhileVisible(fn, ms, env = { document, setInterval, clearInterval }) {
+  let id = null, slept = env.document.hidden; // nata nascosta: al primo ritorno in vista recupera
+  const sync = () => {
+    if (env.document.hidden) { if (id !== null) { env.clearInterval(id); id = null; slept = true; } return; }
+    if (id === null) { id = env.setInterval(fn, ms); if (slept) { slept = false; fn(); } }
+  };
+  env.document.addEventListener("visibilitychange", sync);
+  sync();
+}
+/* poll:end */
+
 const SHORT = { megadrive: "MD", mastersystem: "SMS", gamegear: "GG", psx: "PS1", ps2: "PS2", ps3: "PS3", psp: "PSP",
   psvita: "VITA", gamecube: "GC", gc: "GC", wiiu: "WII U", switch: "SWITCH", switch2: "SWITCH 2", xbox360: "X360", dreamcast: "DC",
   saturn: "SAT", segacd: "MCD", sega32x: "32X", pcengine: "PCE", nds: "DS", "3ds": "3DS", n64: "N64", windows: "PC" };

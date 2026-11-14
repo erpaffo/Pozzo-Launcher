@@ -763,7 +763,7 @@ window.addEventListener("mousemove", (e) => {
   attractX = e.clientX; attractY = e.clientY;
   if (far && attractX >= 0) attractWake(e);
 }, { capture: true });
-setInterval(() => { // pulsanti o stick non mappati dai comandi di Big Picture contano comunque come attivita'
+pollWhileVisible(() => { // pulsanti o stick non mappati dai comandi di Big Picture contano comunque come attivita'
   const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
   if (pads.some((p) => p.buttons.some((b) => b.pressed) || p.axes.some((a) => Math.abs(a) > 0.6))) attractWake({});
 }, 400);

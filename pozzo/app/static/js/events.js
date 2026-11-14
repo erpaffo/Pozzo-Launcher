@@ -228,8 +228,7 @@ function bind() {
   scroller.addEventListener("scroll", () => closeCtx(), { passive: true });
   window.addEventListener("blur", closeCtx);
   window.addEventListener("focus", syncLibrary);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) syncLibrary(); });
-  setInterval(syncLibrary, 3000); // libreria ricostruita da un lavoro in sottofondo: compare entro 3 s
+  pollWhileVisible(syncLibrary, 3000); // libreria ricostruita da un lavoro in sottofondo: compare entro 3 s; a finestra nascosta dorme e al ritorno si risincronizza
   scroller.addEventListener("scroll", scheduleRender, { passive: true });
   new ResizeObserver(() => { layout(); render(); }).observe(scroller);
 

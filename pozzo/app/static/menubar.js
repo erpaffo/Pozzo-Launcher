@@ -109,7 +109,7 @@
     } catch { /* riprova al prossimo giro */ }
   };
   count();
-  setInterval(count, 3000);
+  pollWhileVisible(count, 3000);
 
   let open = null;
   const close = () => { document.getElementById("mb-drop")?.remove(); bar.querySelectorAll(".on").forEach((b) => b.classList.remove("on")); open = null; };
