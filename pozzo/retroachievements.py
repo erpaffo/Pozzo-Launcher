@@ -15,11 +15,12 @@ from pathlib import Path
 
 import httpx
 
+from . import __version__
 from . import matching
 
 BASE_URL = "https://retroachievements.org/API"
 MEDIA_URL = "https://media.retroachievements.org"
-UA = {"User-Agent": "PozzoLauncher/1.0"}
+UA = {"User-Agent": f"PozzoLauncher/{__version__}"}
 
 # Mappa dagli id piattaforma di PozzoLauncher (pozzo/platforms.py) agli id di RetroAchievements
 # (verificata su https://github.com/RetroAchievements/RAWeb/blob/master/config/systems.php).

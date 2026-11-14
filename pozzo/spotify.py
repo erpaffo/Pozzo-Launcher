@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 from typing import Callable
 
+from . import __version__
 from . import profilecfg as PC
 
 AUTH_URL = "https://accounts.spotify.com/authorize"
@@ -130,7 +131,7 @@ class SpotifyClient:
 
     def _send(self, method: str, url: str, *, data: dict | None = None, headers: dict | None = None):
         payload = urllib.parse.urlencode(data).encode() if data is not None else None
-        req = urllib.request.Request(url, data=payload, headers={"User-Agent": "PozzoLauncher/1.0", **(headers or {})}, method=method)
+        req = urllib.request.Request(url, data=payload, headers={"User-Agent": f"PozzoLauncher/{__version__}", **(headers or {})}, method=method)
         if data is not None:
             req.add_header("Content-Type", "application/x-www-form-urlencoded")
         try:
@@ -176,7 +177,7 @@ class SpotifyClient:
             url += "?" + urllib.parse.urlencode(params)
         payload = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(url, data=payload, headers={"Authorization": f"Bearer {token}",
-            "Content-Type": "application/json", "User-Agent": "PozzoLauncher/1.0"}, method=method)
+            "Content-Type": "application/json", "User-Agent": f"PozzoLauncher/{__version__}"}, method=method)
         try:
             response = self.opener(req, timeout=HTTP_TIMEOUT)
             status, headers, raw = response.status, response.headers, response.read()

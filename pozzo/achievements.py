@@ -13,7 +13,9 @@ from pathlib import Path
 
 import httpx
 
-UA = {"User-Agent": "PozzoLauncher/1.0"}
+from . import __version__
+
+UA = {"User-Agent": f"PozzoLauncher/{__version__}"}
 STEAM = "https://api.steampowered.com"
 GOG_API = "https://gameplay.gog.com/clients/{cid}/users/{uid}/achievements"
 EPIC_GQL = "https://graphql.epicgames.com/graphql"

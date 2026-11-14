@@ -15,12 +15,13 @@ import time
 
 import httpx
 
+from . import __version__
 from . import matching
 
 ITAD = "https://api.isthereanydeal.com"
 GGDEALS = "https://api.gg.deals/v1/prices/by-steam-app-id/"
 STEAM_STORE = "https://store.steampowered.com"
-UA = {"User-Agent": "PozzoLauncher/1.0"}
+UA = {"User-Agent": f"PozzoLauncher/{__version__}"}
 
 
 def settings(cfg) -> dict:

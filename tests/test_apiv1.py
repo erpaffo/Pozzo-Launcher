@@ -104,6 +104,8 @@ def test_v1(tmp: Path, cfg):
         assert c.get("/api/v1/games", params={"store": "steam"}).json()["total"] == 1
         page = c.get("/api/v1/games", params={"limit": 2, "offset": 1, "sort": "-year"}).json()
         assert page["limit"] == 2 and len(page["items"]) == 2 and page["items"][0]["year"] >= page["items"][1]["year"], page
+        neg = c.get("/api/v1/games", params={"limit": 2, "offset": -1, "sort": "-year"}).json()
+        assert neg["offset"] == 0 and neg["items"] == c.get("/api/v1/games", params={"limit": 2, "sort": "-year"}).json()["items"], neg
         assert c.get("/api/v1/games", params={"versions": True}).json()["total"] == 5
         r = c.get("/api/v1/games", params={"sort": "boh"})
         assert r.status_code == 400 and r.json()["code"] == "bad_request", r.text

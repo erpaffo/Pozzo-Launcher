@@ -140,8 +140,8 @@ def register(app: FastAPI, ctx: dict) -> None:
             raise HTTPException(400, f"Ordinamento non valido: usa {', '.join(keys)} (con - per il contrario)")
         out.sort(key=keys[field], reverse=sort.startswith("-"))
         limit = max(1, min(MAX_LIMIT, int(limit)))
-        return {"total": len(out), "limit": limit, "offset": int(offset),
-                "items": out[int(offset):int(offset) + limit]}
+        offset = max(0, int(offset))  # negativo: out[-5:] sarebbe la coda dell'elenco
+        return {"total": len(out), "limit": limit, "offset": offset, "items": out[offset:offset + limit]}
 
     @app.get("/api/v1/games/{gid}", tags=["libreria"], summary="Un gioco, con tutte le sue versioni")
     def v1_game(gid: int, request: Request):
