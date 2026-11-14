@@ -76,8 +76,13 @@ def sources(cfg) -> list[dict]:
 def _get(url: str) -> bytes:
     if not url.startswith(("http://", "https://")):
         return Path(url).read_bytes()
+    # indice e file sono codice che girera': in chiaro chiunque sulla rete potrebbe sostituirli (sha256 compresi)
+    if not url.startswith("https://"):
+        raise ValueError(f"serve un indirizzo https: {url}")
     with httpx.Client(timeout=20, follow_redirects=True, headers={"User-Agent": f"PozzoLauncher/{__version__}"}) as c:
         r = c.get(url)
+        if r.url.scheme != "https":  # redirect verso http
+            raise ValueError(f"serve un indirizzo https: {r.url}")
         r.raise_for_status()
         if len(r.content) > MAX_FILE:
             raise ValueError(f"file troppo grande: {url}")

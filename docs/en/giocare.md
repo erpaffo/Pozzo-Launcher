@@ -15,7 +15,8 @@ preserved. **⬇ Download Cores** grabs RetroArch cores missing for consoles in 
 buildbot. Ryujinx and Eden do not publish on GitHub: they must be installed manually. On macOS and Linux, installation uses each emulator's own packages (.dmg or .app on macOS, AppImage on Linux). Dolphin has no Linux build, Xenia is Windows only, and Cemu on Mac is the Intel build (runs via Rosetta).
 
 Emulators belong to their respective developers: Pozzo downloads the builds they publish without modifying them, and every row links
-to the original project.
+to the original project. A file from a GitHub release is installed only if it matches the SHA-256 digest GitHub
+publishes; sites that publish no digest (RetroArch, Dolphin, PPSSPP) are flagged in the installation log.
 
 **Programs**: one path per emulator, shared by all consoles using it. **🔍 Find Emulators** searches a folder for
 recognized executables: RetroArch, Ryujinx, Eden, melonDS, Dolphin, PCSX2, DuckStation, PPSSPP,

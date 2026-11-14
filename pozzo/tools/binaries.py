@@ -133,6 +133,8 @@ def ensure(cfg, name: str, progress=lambda d: None, cancel: threading.Event | No
         work = tools_dir(cfg) / ".tmp" / name
         try:
             asset = _latest(cfg, src)
+            if not asset["sum"]:  # tutte le fonti sono release GitHub, che hanno sempre il digest
+                raise RuntimeError(f"la release di {name} non ha il checksum del file: download rifiutato")
             space.check(asset["size"] * 2 + 64 * 2**20, tools_dir(cfg))
             shutil.rmtree(work, ignore_errors=True)
             work.mkdir(parents=True)
@@ -143,7 +145,7 @@ def ensure(cfg, name: str, progress=lambda d: None, cancel: threading.Event | No
                     raise InterruptedError
                 progress(int(done * 100 / total) if total else 0)
             PT._download(asset["url"], arc, prog)
-            if asset["sum"] and PT._sha256(arc) != asset["sum"]:
+            if PT._sha256(arc) != asset["sum"]:
                 raise RuntimeError("il file scaricato non corrisponde al checksum della release: download rifiutato")
             _extract(src, arc, work / src["exe"])
             dest.mkdir(parents=True, exist_ok=True)

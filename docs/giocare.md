@@ -15,7 +15,9 @@ restano. **⬇ Scarica i core** prende dal buildbot di libretro i core di RetroA
 libreria. Ryujinx ed Eden non pubblicano su GitHub: si installano a mano. Su macOS e Linux l'installazione usa i pacchetti di ogni emulatore (.dmg o .app su macOS, AppImage su Linux). Dolphin non ha una build Linux, Xenia è solo Windows, Cemu su Mac è la versione Intel (gira con Rosetta).
 
 Gli emulatori sono dei loro sviluppatori: Pozzo scarica le build che pubblicano, senza modificarle, e ogni riga porta
-al progetto originale.
+al progetto originale. Un file da una release GitHub si installa solo se corrisponde all'impronta SHA-256 che GitHub
+pubblica; i siti che non pubblicano un'impronta (RetroArch, Dolphin, PPSSPP) lo segnalano nel registro
+dell'installazione.
 
 **Programmi**: un percorso per emulatore, valido per tutte le console che lo usano. **🔍 Trova emulatori** cerca in
 una cartella gli eseguibili conosciuti: RetroArch, Ryujinx, Eden, melonDS, Dolphin, PCSX2, DuckStation, PPSSPP,

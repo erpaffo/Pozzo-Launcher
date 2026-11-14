@@ -219,8 +219,43 @@ def test_install_linux(tmp: Path):
     print("ok  Linux: AppImage eseguibile, RPCS3 da /releases/latest, Dolphin non disponibile")
 
 
+def test_checksum(tmp: Path):
+    """Asset di una release GitHub senza digest: rifiutato prima di scaricarlo. Fonti che non pubblicano
+    checksum (sito del progetto, GitLab, Codeberg): si installa, ma il log lo dice."""
+    (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n', encoding="utf-8")
+    cfg = config.load(tmp / "config.toml")
+    urls = []
+
+    def download(url, dest, progress=None, token=""):
+        urls.append(url)
+        Path(dest).write_bytes(_zip({"DuckStation/duckstation-qt-x64-ReleaseLTCG.exe": b"x"}))
+
+    saved = PT._download
+    PT._download = download
+    try:
+        gh = {"name": "d.zip", "url": "https://github.com/o/r/releases/download/v1/d.zip", "sum": ""}
+        try:
+            EI._stage(cfg, gh, "duckstation")
+            raise AssertionError("asset GitHub senza digest accettato")
+        except RuntimeError as e:
+            assert "checksum" in str(e)
+        assert urls == []
+        said = []
+        saved_latest = EI._latest
+        EI._latest = lambda cfg, src: ("v1", {"name": "d.zip", "url": "https://esempio.org/d.zip"})
+        try:
+            with _os("win32"):
+                EI.install(cfg, "duckstation", say=said.append)
+        finally:
+            EI._latest = saved_latest
+        assert any("non verificat" in m for m in said), said
+    finally:
+        PT._download = saved
+    print("ok  checksum obbligatorio per le release GitHub, avviso per le fonti senza")
+
+
 if __name__ == "__main__":
-    for fn in (test_install, test_install_macos, test_install_linux):
+    for fn in (test_install, test_install_macos, test_install_linux, test_checksum):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
             fn(Path(t))
     print("TUTTI I TEST OK")

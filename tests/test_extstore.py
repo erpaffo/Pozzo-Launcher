@@ -241,5 +241,24 @@ def test_fonti(t: Path):
     print("ok  repository separati: export, store con rimandi, fonti aggiunte da link, priorita' dello store ufficiale")
 
 
+def test_solo_https():
+    """Indice e file delle estensioni (codice eseguito) solo in https, anche dopo un redirect."""
+    import httpx
+    expect(lambda: S._get("http://esempio.it/index.json"), "https")
+    real = S.httpx.Client
+
+    def handler(req):
+        if req.url.scheme == "https":
+            return httpx.Response(302, headers={"location": "http://esempio.it/index.json"})
+        return httpx.Response(200, content=b"{}")
+    S.httpx.Client = lambda **kw: real(transport=httpx.MockTransport(handler), **kw)
+    try:
+        expect(lambda: S._get("https://esempio.it/index.json"), "https")
+    finally:
+        S.httpx.Client = real
+    print("ok  solo https per lo store delle estensioni")
+
+
 if __name__ == "__main__":
+    test_solo_https()
     main()

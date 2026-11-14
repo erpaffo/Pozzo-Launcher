@@ -141,10 +141,18 @@ try:
                     raise SystemExit("doveva fallire offline")
                 except RuntimeError as e:
                     assert "connessione" in str(e)
+            # senza checksum: rifiutato prima di scaricare
+            asset["sum"] = ""
+            with mock.patch.object(binaries.PT, "_download", side_effect=AssertionError("scaricato")):
+                try:
+                    binaries.ensure(cfg, "redumper")
+                    raise SystemExit("doveva rifiutare senza checksum")
+                except RuntimeError as e:
+                    assert "checksum" in str(e)
             # annullo durante il download: nessun residuo
             ev = threading.Event()
             ev.set()
-            asset["sum"] = ""
+            asset["sum"] = hashlib.sha256(data).hexdigest()
             try:
                 binaries.ensure(cfg, "redumper", cancel=ev)
                 raise SystemExit("doveva annullare")

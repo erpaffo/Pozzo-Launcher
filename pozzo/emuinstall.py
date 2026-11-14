@@ -247,6 +247,10 @@ def _find_exe(dest: Path, emu: str) -> str | None:
 
 def _stage(cfg, asset: dict, name: str, progress=None) -> Path:
     """Scarica ed estrae in una cartella temporanea (rifiuta il file se il checksum della release non torna)."""
+    # GitHub calcola il digest di ogni asset: se manca qualcosa non torna. Le altre fonti (sito del progetto,
+    # GitLab, Codeberg) non lo pubblicano: si installa lo stesso e install() lo dice nel log.
+    if not asset.get("sum") and "sum" in asset and asset["url"].startswith("https://github.com/"):
+        raise RuntimeError("la release GitHub non ha il checksum del file: download rifiutato")
     work = emus_dir(cfg) / ".tmp" / name
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
@@ -439,6 +443,8 @@ def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
     if dest.exists() and PT._running(dest):
         raise EmulatorRunning(f"chiudi {emu} prima di aggiornarlo")
     say(f"Scarico {asset['name']}…")
+    if not asset.get("sum"):
+        say(f"Attenzione: la fonte non pubblica un checksum di {asset['name']}, file non verificato")
     staged = _stage(cfg, asset, emu, progress)  # se fallisce, la cartella vecchia non e' stata toccata
     bak = _bak(dest)
     had, backed = dest.exists(), False
