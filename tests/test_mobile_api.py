@@ -1,4 +1,5 @@
 """Telefono: stato compatto (lavori in corso) e comandi remoti. Nessuna rete, nessun Discord."""
+import contextlib
 import json
 import sys
 import tempfile
@@ -274,15 +275,18 @@ def test_copertine_progressive(tmp_path):
         png = b"\x89PNG\r\n\x1a\n" + b"\0" * 64
         slow = threading.Event()
 
-        real_get = httpx.Client.get
+        real_get = httpx.Client.stream
 
-        def fake_get(self, u, **kw):  # il server usa un httpx.Client condiviso; il TestClient passa oltre
-            if "gametdb" not in str(u):
-                return real_get(self, u, **kw)
+        @contextlib.contextmanager
+        def fake_get(self, method, u, **kw):  # le copertine remote si scaricano a pezzi (stream), non con get
+            if "gametdb" not in str(u):  # il server usa un httpx.Client condiviso; il TestClient passa oltre
+                with real_get(self, method, u, **kw) as r:
+                    yield r
+                return
             slow.wait(5)  # host lento: prima la richiesta della griglia sarebbe rimasta appesa qui
-            return httpx.Response(200, content=png)
+            yield httpx.Response(200, content=png)
 
-        httpx.Client.get = fake_get
+        httpx.Client.stream = fake_get
         try:
             t0 = _time.time()
             assert api.get(f"/img/{row[0]}/cover?q=1").status_code == 202
@@ -296,7 +300,7 @@ def test_copertine_progressive(tmp_path):
             assert [g[0] for g in api.get(f"/api/library/patches?since={before}").json()["games"]] == [row[0]]
             assert api.get(f"/img/{row[0]}/cover?q=1").status_code == 200
         finally:
-            httpx.Client.get = real_get
+            httpx.Client.stream = real_get
     finally:
         gate.set()
         wait_idle(api)

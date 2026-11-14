@@ -1,5 +1,10 @@
 """Lettore XInput condiviso: gli slot vuoti si rileggono solo ogni 1,5 s, quelli collegati ogni giro."""
-from pozzo.library import launcher as L
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from pozzo.library import launcher as L  # noqa: E402
 
 def test_xinput_reader():
     calls = []
@@ -27,3 +32,8 @@ def test_xinput_reader():
     read(); calls.clear()
     t[0] += 0.05
     assert read() == 0 and calls == [], calls
+
+
+if __name__ == "__main__":
+    test_xinput_reader()
+    print("ok  lettore XInput condiviso")
