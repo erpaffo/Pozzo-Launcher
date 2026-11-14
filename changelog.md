@@ -1,7 +1,6 @@
 # Changelog
 
-## Non rilasciato
-
+## 0.19.0 (2026-11-14)
 ### Aggiunto
 
 - **Download, doppioni**: un link, una magnet o un .torrent già in lista non si aggiunge due volte (si può aggiungere comunque). In un gruppo di link i doppioni vengono saltati e gli altri aggiunti.
