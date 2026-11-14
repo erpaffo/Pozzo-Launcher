@@ -15,7 +15,10 @@ from .. import hosts
 from ..task import mb
 
 RETRIES = 5
-CHUNK = 256 * 1024
+# quanto httpcore legge dal socket per volta: blocchi piu' grandi a limite basso lasciano ogni connessione ferma
+# per minuti (8 x 256 KB a 20 KB/s = ~100 s) e il server la chiude.
+# shortcut: sotto ~10 KB/s per segmento restano decine di secondi tra due letture; se serve, meno segmenti a limite basso
+CHUNK = 64 * 1024
 MIN_SEGMENT = 2 * 1024 * 1024  # sotto questa dimensione un solo flusso basta
 # link che valgono una richiesta sola: ogni richiesta in piu' (anche il controllo) dà 410 Gone
 ONE_TIME = ('1fichier.com',)
@@ -27,19 +30,27 @@ class HashMismatch(ValueError):
 
 
 class Bucket:
-    """Limite di banda condiviso tra tutti i flussi (byte/s, 0 = illimitato)."""
+    """Limite di banda condiviso tra tutti i flussi (byte/s, 0 = illimitato). Il debito e' in byte e si ripaga al
+    ritmo attuale: un limite tolto o cambiato vale entro un secondo. Chi prende aspetta prima che il debito sia
+    pagato, cosi' il debito non supera mai un blocco e ogni flusso torna a leggere spesso."""
 
     def __init__(self):
         self.rate = 0
-        self._t = time.monotonic()
+        self._debt = 0.0
+        self._at = time.monotonic()
+
+    def _pay(self):
+        now = time.monotonic()
+        self._debt = max(0.0, self._debt - (now - self._at) * self.rate) if self.rate > 0 else 0.0
+        self._at = now
 
     async def take(self, n: int):
-        if self.rate <= 0:
-            return
-        self._t = max(self._t, time.monotonic()) + n / self.rate
-        wait = self._t - time.monotonic()
-        if wait > 0:
-            await asyncio.sleep(wait)
+        self._pay()
+        while self.rate > 0 and self._debt > 0:
+            await asyncio.sleep(min(self._debt / self.rate, 1))  # a pezzi di 1 s: si rilegge il limite
+            self._pay()
+        if self.rate > 0:
+            self._debt += n
 
 
 def safe_name(name: str) -> str:
