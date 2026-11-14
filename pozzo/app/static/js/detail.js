@@ -25,6 +25,11 @@ async function coverTransition(from, update, to) {
 }
 const tileCover = (id) => S.nodes.get(id)?.querySelector(".cover");
 
+/** Con la scheda modale lo sfondo e' inerte: Tab e il lettore di schermo non escono dal pannello (la trappola in events.js non basta). */
+function setDetailInert(on) {
+  for (const id of ["experience-bar", "sidebar", "main"]) document.getElementById(id)?.toggleAttribute("inert", on);
+}
+
 function presentDetail() {
   const detail = $("#detail");
   const mode = ["panel", "page", "modal"].includes(GS.experience?.detail) ? GS.experience.detail : "panel";
@@ -36,7 +41,9 @@ function presentDetail() {
     detail.setAttribute("role", "dialog");
     detail.setAttribute("aria-modal", "true");
     document.documentElement.dataset.detailModal = "true";
+    setDetailInert(true);
   } else {
+    setDetailInert(false);
     detail.setAttribute("role", mode === "panel" ? "complementary" : "region"); // panel non e' modale: nessun dialog
     detail.removeAttribute("aria-modal");
     delete document.documentElement.dataset.detailModal;
@@ -899,6 +906,7 @@ function closeDetail() {
   if (dc && gid != null) coverTransition(dc, hide, () => tileCover(gid)).catch(hide); else hide();
   paintGameAccent(null);
   S.detail = null;
+  setDetailInert(false); // prima di rimettere il focus: un nodo inerte non lo accetta
   if (S.detailFocus?.isConnected) S.detailFocus.focus();
   S.detailFocus = null;
 }
