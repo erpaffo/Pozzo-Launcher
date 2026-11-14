@@ -14,7 +14,9 @@ from pathlib import Path
 
 import httpx
 
-UA = "PozzoLauncher/1.0 (+https://github.com/)"
+from . import __version__
+
+UA = f"PozzoLauncher/{__version__} (+https://github.com/)"
 
 
 class RateLimiter:
