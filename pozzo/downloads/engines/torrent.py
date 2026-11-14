@@ -102,22 +102,36 @@ def _layout(ti):
     return ti.layout() if hasattr(ti, "layout") else ti.files()  # files() deprecato da libtorrent 2.1
 
 
-async def _is_resolvable(url: str) -> bool:
+_NXDOMAIN = {socket.EAI_NONAME, getattr(socket, "EAI_NODATA", socket.EAI_NONAME)}
+
+
+async def _is_resolvable(url: str) -> bool | None:
+    """True = il nome si risolve, False = il nome non esiste, None = non si sa (DNS lento, rete giu', IP, host di
+    test): nel dubbio il tracker resta e decide libtorrent, che riprova da solo con attese crescenti."""
     host = urlsplit(url).hostname
     if not host:
         return False
     if host.endswith((".example", ".test", ".invalid", ".localhost")) or host in ("127.0.0.1", "::1"):
-        return True
+        return None
     try:
         socket.inet_aton(host)
-        return True
+        return None
     except OSError:
         pass
     try:
-        await asyncio.wait_for(asyncio.to_thread(socket.gethostbyname, host), timeout=1.0)
+        await asyncio.wait_for(asyncio.to_thread(socket.getaddrinfo, host, None), timeout=5)
         return True
-    except Exception:
-        return False
+    except socket.gaierror as e:
+        return False if e.errno in _NXDOMAIN else None
+    except Exception:  # noqa: BLE001 - timeout o altro: non e' una prova che il tracker non esista
+        return None
+
+
+def _permanent(a) -> bool:
+    """Errore del tracker che riprovare non risolve (annuncio sparito, protocollo non supportato). Timeout, rete giu',
+    DNS che non risponde passano: quei tracker li riprova libtorrent con la sua attesa crescente."""
+    cat, code = a.error.category().name(), a.error.value()
+    return (cat == "http" and code in (404, 410)) or (cat == "libtorrent" and code == 24)  # 24: unsupported URL protocol
 
 
 class Engine:
@@ -131,7 +145,9 @@ class Engine:
         self._resume: dict = {}  # task id -> bytes appena arrivati dall'alert
         self.logs: dict = {}  # task id -> task.log: tracker e errori dei file arrivano come alert
         self._warned_trackers: set[tuple[str, str]] = set()  # (tid, tracker_key) gia' avvisati di errore
-        self.dead_trackers: dict[str, set[str]] = {}  # task id -> url tracker non raggiungibili (blacklist per voce)
+        # task id -> url tracker che non funzioneranno mai (nome inesistente, annuncio sparito): non si riprovano, neanche
+        # dopo un riavvio (options["bad_trackers"]), e il loro errore non riempie il registro a ogni annuncio
+        self.dead_trackers: dict[str, set[str]] = {}
         self.trackers: list[str] = []  # aggiunti a ogni torrent
         self.pex = True
         self.seed = (0.0, 0)  # (rapporto, minuti) di condivisione dopo la fine; (0, 0) = nessuna
@@ -191,7 +207,7 @@ class Engine:
         have = {e["url"] for e in h.trackers()}
         for url in self.trackers:
             if url not in have and url not in dead:
-                h.add_tracker({"url": url, "tier": 0, "fail_limit": 1})
+                h.add_tracker({"url": url, "tier": 0})
 
     def blacklist_tracker(self, tid: str, url: str):
         self.dead_trackers.setdefault(tid, set()).add(url)
@@ -248,12 +264,13 @@ class Engine:
                     err = a.error
                     msg = (a.error_message() or err.message()).strip()
                     if err.value() not in (180, 10051, 10065) and "unreachable" not in msg.lower() and "non raggiungibile" not in msg.lower():
-                        url = a.tracker_url()
-                        key = (tid, host or url)
-                        if key not in self._warned_trackers:
+                        url, perm = a.tracker_url(), _permanent(a)
+                        key = (tid, host or url, perm)
+                        if key not in self._warned_trackers:  # una riga per tracker, non una per tentativo
                             self._warned_trackers.add(key)
-                            self.logs[tid](f"Tracker {host}: {msg} (non riprovato)", "warn")
-                        self.blacklist_tracker(tid, url)
+                            self.logs[tid](f"Tracker {host}: {msg} ({'non riprovato' if perm else 'riprovo più tardi'})", "warn")
+                        if perm:
+                            self.blacklist_tracker(tid, url)
                 elif isinstance(a, lt.tracker_reply_alert):
                     self.logs[tid](f"Tracker {host}: {a.num_peers} peer")
                 elif isinstance(a, (lt.file_error_alert, lt.torrent_error_alert)):
@@ -303,18 +320,19 @@ async def _params(task, eng: Engine, client):
     if src.lower().startswith("magnet:"):
         p = lt.parse_magnet_uri(src)
         p.flags |= lt.torrent_flags.default_dont_download  # niente byte prima di aver scelto i file
-        dead = set(task.options.get("dead_trackers") or [])
+        dead = set(task.options.get("bad_trackers") or [])
+        urls = [u for u in dict.fromkeys(p.trackers) if u not in dead]
+        found = await asyncio.gather(*(_is_resolvable(u) for u in urls))
+        dns = True in found  # nessun nome risolto: rete o DNS giu', un «non esiste» ora non e' una prova
         valid = []
-        for u in dict.fromkeys(p.trackers):
-            if u in dead:
-                continue
-            if await _is_resolvable(u):
-                valid.append(u)
-            else:
+        for u, ok in zip(urls, found):
+            if ok is False and dns:
                 dead.add(u)
-                task.log(f"Tracker {urlsplit(u).hostname or u}: host non raggiungibile (escluso)", "warn")
+                task.log(f"Tracker {urlsplit(u).hostname or u}: il nome non esiste (escluso)", "warn")
+            else:
+                valid.append(u)
         eng.dead_trackers[task.id] = dead
-        task.options["dead_trackers"] = list(dead)
+        task.options["bad_trackers"] = list(dead)
         p.trackers = valid
         p.tracker_tiers = [0] * len(valid)
         return p
@@ -371,18 +389,24 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
         raise ValueError(f"Torrent non aggiunto: {e}")
     eng.handles[task.id] = h
     eng.logs[task.id] = task.log
-    if task.options.get("dead_trackers"):
-        dead = set(task.options["dead_trackers"])
+    dead = set(task.options.get("bad_trackers") or [])
+    if dead:
         eng.dead_trackers.setdefault(task.id, set()).update(dead)
         current = h.trackers()
         new_tr = [t for t in current if t["url"] not in dead]
         if len(new_tr) != len(current):
             h.replace_trackers(new_tr)
+    # elenco della 0.18 e prima: dentro anche tracker solo lenti o caduti per un momento. Si butta una volta e i
+    # tracker del magnet tolti allora (spariti anche dai resume data) tornano
+    if task.options.pop("dead_trackers", None) and task.source.strip().lower().startswith("magnet:"):
+        have = {e["url"] for e in h.trackers()}
+        for u in lt.parse_magnet_uri(task.source.strip()).trackers:
+            if u not in have and u not in dead:
+                h.add_tracker({"url": u, "tier": 0})
     try:
         tr = h.trackers()
         for e in tr:
-            e["fail_limit"] = 1
-            e["tier"] = 0
+            e["tier"] = 0  # tutti insieme; fail_limit resta 0: libtorrent riprova con attese crescenti
         h.replace_trackers(tr)
     except RuntimeError:
         pass
@@ -417,7 +441,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) ->
             waited = waited or not s.has_metadata
             task.options.update(metadata=s.has_metadata, peers=s.num_peers, seeds=s.num_seeds, upload_rate=s.upload_rate,
                                 sequential=bool(task.options.get("sequential")), ratio=_ratio(s), trackers=len(h.trackers()),
-                                dead_trackers=list(eng.dead_trackers.get(task.id, set())))
+                                bad_trackers=list(eng.dead_trackers.get(task.id, set())))
             # in stallo: scarica ma non c'e' nessun seed e non arriva un byte (i peer parziali non bastano)
             idle = st == "downloading" and not s.num_seeds and s.download_rate < 1
             idle_since = (idle_since or time.monotonic()) if idle else None

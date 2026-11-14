@@ -368,34 +368,76 @@ def test_tracker_paralleli_e_filtro_avvisi(tmp):
     assert len(logs) == 1
     assert "fake.invalid" in logs[0][0] and logs[0][1] == "warn"
     assert not any("unreachable" in m[0].lower() or "non raggiungibile" in m[0].lower() for m in logs)
-    assert any(t["url"] == "udp://fake.invalid:1337/ann" and t["fail_limit"] == 1 for t in h.trackers())
-    assert "udp://fake.invalid:1337/ann" in e.dead_trackers[tid]
+    # nome non risolto durante il download: puo' essere il Wi-Fi caduto, libtorrent lo riprova (niente fail_limit 1)
+    assert "riprovo" in logs[0][0]
+    assert all(t["fail_limit"] == 0 for t in h.trackers()), h.trackers()
+    assert "udp://fake.invalid:1337/ann" not in e.dead_trackers.get(tid, set())
     ses.remove_torrent(h)
 
 
-def test_pre_verifica_e_blacklist_tracker_unreachable(tmp):
+def _dns(monkeypatch, table):
+    """getaddrinfo finto: host -> "ok" | "nx" (il nome non esiste) | "again" (DNS giu') | "slow" (oltre il timeout)."""
+    import socket
+
+    def fake(host, *a, **k):
+        r = table[host]
+        if r == "slow":
+            raise socket.timeout("lento")
+        if r in ("nx", "again"):
+            raise socket.gaierror(socket.EAI_NONAME if r == "nx" else socket.EAI_AGAIN, r)
+        return [(socket.AF_INET, socket.SOCK_DGRAM, 0, "", ("1.2.3.4", 0))]
+    monkeypatch.setattr(TOR.socket, "getaddrinfo", fake)
+    monkeypatch.setattr(TOR.socket, "gethostbyname", lambda h: fake(h)[0][4][0])  # quello che usava la 0.18
+
+
+def _magnet(*hosts):
+    from urllib.parse import quote
+    return "magnet:?xt=urn:btih:" + "0123456789abcdef" * 2 + "01234567" + "".join(
+        f"&tr={quote(f'udp://{h}:1337/ann', safe='')}" for h in hosts)
+
+
+def test_pre_verifica_esclude_solo_i_nomi_che_non_esistono(tmp, monkeypatch):
     import asyncio
     e = TOR.Engine(tmp / "res")
     e.configure({})
-    mag = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&tr=udp%3A%2F%2Fnonexistent-fake-xyz123.org%3A1337%2Fann&tr=udp%3A%2F%2Fvalid.example%3A1337%2Fann"
-    t = T.DownloadTask(source=mag, save_path=str(tmp))
+    _dns(monkeypatch, {"buono.org": "ok", "lento.org": "slow", "sparito.org": "nx", "giu.org": "again"})
+    t = T.DownloadTask(source=_magnet("buono.org", "lento.org", "sparito.org", "giu.org", "valid.example"), save_path=str(tmp))
     p = asyncio.run(TOR._params(t, e, None))
-    assert "udp://valid.example:1337/ann" in p.trackers
-    assert "udp://nonexistent-fake-xyz123.org:1337/ann" not in p.trackers
-    assert "udp://nonexistent-fake-xyz123.org:1337/ann" in t.options["dead_trackers"]
+    hosts = {u.split("//")[1].split(":")[0] for u in p.trackers}
+    assert hosts == {"buono.org", "lento.org", "giu.org", "valid.example"}, hosts  # lento o DNS giu': restano
+    assert t.options["bad_trackers"] == ["udp://sparito.org:1337/ann"]
 
-    p.save_path = str(tmp)
-    ses = e.session()
-    h = ses.add_torrent(p)
-    e.handles[t.id] = h
-    e.logs[t.id] = lambda m, l="info": None
-    h.add_tracker({"url": "udp://runtime-dead.invalid:1337/ann", "tier": 0})
-    h.force_reannounce()
-    assert _wait(lambda: e._pump() or "udp://runtime-dead.invalid:1337/ann" in e.dead_trackers[t.id], 15)
-    assert "udp://runtime-dead.invalid:1337/ann" in e.dead_trackers[t.id]
-    assert any(tr["url"] == "udp://runtime-dead.invalid:1337/ann" and tr["fail_limit"] == 1 for tr in h.trackers())
 
-    e.trackers = ["udp://runtime-dead.invalid:1337/ann"]
-    e.add_trackers(h, t)
-    assert len([tr for tr in h.trackers() if "runtime-dead.invalid" in tr["url"]]) == 1
-    ses.remove_torrent(h)
+def test_pre_verifica_senza_rete_non_esclude_nessuno(tmp, monkeypatch):
+    """Offline (macOS risponde «il nome non esiste» per tutti): nessun nome risolto = nessuna prova, restano tutti."""
+    import asyncio
+    e = TOR.Engine(tmp / "res")
+    e.configure({})
+    _dns(monkeypatch, {"a.org": "nx", "b.org": "nx"})
+    t = T.DownloadTask(source=_magnet("a.org", "b.org"), save_path=str(tmp))
+    p = asyncio.run(TOR._params(t, e, None))
+    assert len(p.trackers) == 2 and not t.options.get("bad_trackers")
+
+
+def test_errori_permanenti_dei_tracker():
+    def alert(cat, code):
+        err = SimpleNamespace(category=lambda: SimpleNamespace(name=lambda: cat), value=lambda: code)
+        return SimpleNamespace(error=err)
+    assert TOR._permanent(alert("http", 404)) and TOR._permanent(alert("http", 410))
+    assert TOR._permanent(alert("libtorrent", 24))  # protocollo non supportato
+    for cat, code in (("http", 503), ("http", 429), ("libtorrent", 36), ("asio.netdb", 1), ("asio.netdb", 2), ("system", 61)):
+        assert not TOR._permanent(alert(cat, code)), (cat, code)  # timeout, nome non risolto, rifiutato: si riprova
+
+
+def test_vecchio_elenco_dei_tracker_morti_buttato_una_volta(swarm, tmp):
+    """Task della 0.18: options["dead_trackers"] (con dentro anche tracker solo lenti) si butta, i tracker tornano."""
+    m = _mgr(tmp)
+    m.start()
+    t = m.add(swarm.magnet + "&tr=udp%3A%2F%2Flento.example%3A1337%2Fann", connect=[swarm.peer],
+              dead_trackers=["udp://lento.example:1337/ann"])
+    assert _wait(lambda: t.id in m._torrent.handles)
+    h = m._torrent.handles[t.id]
+    assert _wait(lambda: "udp://lento.example:1337/ann" in {e["url"] for e in h.trackers()})
+    assert "dead_trackers" not in t.options
+    assert _wait(lambda: t.status == T.COMPLETED), (t.status, t.error)
+    m.stop()
