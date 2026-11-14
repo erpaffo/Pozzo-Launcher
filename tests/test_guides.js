@@ -26,6 +26,7 @@ for (const sec of W.SECTIONS) {
   for (const it of sec.items) { assert.ok(it, `voce mancante in ${sec.id}`); items.push({ it, where: `sezione ${sec.id}` }); }
 }
 assert.ok(new Set(W.SECTIONS.flatMap((s) => s.items.map((i) => i.id))).size >= 20, "almeno 20 tutorial nella libreria");
+assert.ok(W.NEWS["0.19.0"].length >= 6, "novita' 0.19.0");
 
 for (const { it, where } of items) {
   const pre = it.p || "b.news";

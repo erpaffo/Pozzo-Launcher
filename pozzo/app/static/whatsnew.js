@@ -201,6 +201,12 @@
       gs("sync", 3, { sel: ["#sync-now"], wait: true }),
     ]),
   };
+  // novita' 0.19.0: riusano le voci della libreria (stessi testi, stessa spunta «fatto», un solo posto da tradurre)
+  NEWS["0.19.0"] = [
+    { id: "dedupe", icon: "🧬", steps: [gs("dlAdd", 2, { sel: ["#dl-add"], wait: true, prep: view("downloads") })] },
+    G.dlWatch, G.dlVpn, G.dlCnl, G.dlDisk,
+    { id: "saveSkipped", icon: "💾", steps: G.saves.steps.slice(0, 2) },
+  ];
   // le voci gia' presenti nelle novita' (stesso oggetto: la spunta «fatto» vale per entrambe)
   const old = (id) => NEWS["0.18.0"].concat(NEWS["0.17.6"]).find((x) => x.id === id);
   const SECTIONS = [
