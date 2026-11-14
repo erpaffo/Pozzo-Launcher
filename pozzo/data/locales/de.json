@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Speicherstände wiederhergestellt ({written} Dateien, {removed} entfernt)",
  "f.sv.shared": "{n} Dateien werden mit anderen Spielen geteilt (Memory Cards): beim Wiederherstellen wird auch deren Speicherstand zurückgesetzt.",
  "f.sv.shared_warn": "\nAchtung: auch die gemeinsamen Memory Cards werden zurückgesetzt.",
+ "f.sv.skipped": "{n} Dateien übersprungen: außerhalb der Speicherstand-Ordner des Spiels",
  "f.sv.unchanged": "Keine Änderungen seit der letzten Version",
  "f.sv.undo": "Letzte Partie rückgängig machen",
  "f.sv.undo_title": "Speicherstände in den Zustand vor der letzten Partie zurückversetzen",

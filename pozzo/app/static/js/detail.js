@@ -785,6 +785,8 @@ async function downloadMain(d) {
 /* ---- salvataggi del gioco: versioni prima e dopo ogni partita, rollback, percorsi manuali e rilevati */
 const SV_REASON = { "prima-della-partita": "f.sv.reason_before_play", "dopo-partita": "f.sv.reason_after_play", manuale: "f.sv.reason_manual",
   "prima-del-ripristino": "f.sv.reason_before_restore", ludusavi: "f.sv.reason_ludusavi" };
+// File del backup fuori dalle cartelle dei salvataggi del gioco: restore/diff li saltano, l'utente deve saperlo
+const svSkipped = (x) => (x.skipped?.length ? t("f.sv.skipped", {n: x.skipped.length}) : "");
 async function loadSaves(d) {
   let r;
   try { r = await api(`/api/game/${d.id}/saves`); } catch { return; }
@@ -813,7 +815,7 @@ async function loadSaves(d) {
       </details></div>`;
   const restore = async (name, what) => {
     if (!confirm(t("f.sv.restore_confirm", {what}) + (r.shared.length ? t("f.sv.shared_warn") : ""))) return;
-    try { const x = await api(`${url}/restore`, { body: { name } }); toast(x.removed ? t("f.sv.restored_removed", {written: x.written, removed: x.removed}) : t("f.sv.restored", {written: x.written})); }
+    try { const x = await api(`${url}/restore`, { body: { name } }); toast(x.removed ? t("f.sv.restored_removed", {written: x.written, removed: x.removed}) : t("f.sv.restored", {written: x.written}) + (svSkipped(x) ? `\n${svSkipped(x)}` : ""), !!svSkipped(x)); }
     catch (err) { return toast(err.message, true); }
     loadSaves(d);
   };
@@ -846,7 +848,8 @@ async function loadSaves(d) {
         const list = (k, label) => x[k].length ? `<div><b>${label} (${x[k].length})</b>${x[k].map((f) => `<div title="${esc(f)}">${esc(f)}</div>`).join("")}</div>` : "";
         row.nextElementSibling?.classList.contains("sv-diffbox") && row.nextElementSibling.remove();
         row.insertAdjacentHTML("afterend", `<div class="sv-diffbox small muted">${list("changed", window.t("f.sv.changed")) + list("missing", window.t("f.sv.missing"))
-          + list("extra", window.t("f.sv.extra")) || window.t("f.sv.identical", {n: x.same})}</div>`);
+          + list("extra", window.t("f.sv.extra")) || window.t("f.sv.identical", {n: x.same})}${svSkipped(x)
+          ? `<div><b>${svSkipped(x)}</b>${x.skipped.map((f) => `<div title="${esc(f)}">${esc(f)}</div>`).join("")}</div>` : ""}</div>`);
         return;
       } else return;
     } catch (err) { return toast(err.message, true); }
@@ -937,7 +940,7 @@ function onGameDownloaded(ev) {
   toast(plan.toast);
   if (plan.open != null) openDetail(plan.open);
 }
-if (typeof module !== "undefined") module.exports = { coverTransition, safeAccent, downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
+if (typeof module !== "undefined") module.exports = { svSkipped, coverTransition, safeAccent, downloadedPlan, dlRows, dlPick, linkUrlsOf, DL_PARTS, dlRank, dlSortRows, dlMagnetOf };
 
 /* Tasto destro su un link di download (giochi di ogni console): copia l'indirizzo per aprirlo a mano nel browser.
    I magnet non c'entrano: si copiano dal torrent. Vale per i pulsanti con data-dl / data-dparts / data-mu / data-open / data-paste. */

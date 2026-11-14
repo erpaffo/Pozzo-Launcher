@@ -72,4 +72,9 @@ assert.deepStrictEqual(linkUrlsOf({ dataset: { dl: "https://1fichier.com/x" } })
 assert.deepStrictEqual(linkUrlsOf({ dataset: { dl: "magnet:?xt=urn:btih:aa" } }), [], "il magnet non ha il menu");
 assert.deepStrictEqual(linkUrlsOf({ dataset: { dparts: "0" } }), ["https://a/1.rar", "https://a/2.rar"]);
 assert.deepStrictEqual(linkUrlsOf({ dataset: { open: "https://nxbrew.net/g" } }), ["https://nxbrew.net/g"]);
+// ripristino salvataggi: i file fuori dalle cartelle del gioco vanno detti, non saltati in silenzio
+const { svSkipped } = require("../pozzo/app/static/js/detail.js");
+assert.strictEqual(svSkipped({ written: 3, skipped: [] }), "", "niente saltati: nessun avviso");
+assert.strictEqual(svSkipped({ written: 3 }), "", "risposta senza il campo");
+assert.strictEqual(svSkipped({ skipped: ["C:/x/a", "C:/x/b"] }), "2 file saltati: fuori dalle cartelle dei salvataggi del gioco");
 console.log("test_detail_downloaded.js: ok");

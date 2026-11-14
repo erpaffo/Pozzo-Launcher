@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Kayıtlar geri yüklendi ({written} dosya, {removed} kaldırıldı)",
  "f.sv.shared": "{n} dosya diğer oyunlarla paylaşılıyor (hafıza kartı): geri yüklenince onların kaydı da geri döner.",
  "f.sv.shared_warn": "\nDikkat: paylaşılan hafıza kartları da geri döner.",
+ "f.sv.skipped": "{n} dosya atlandı: oyunun kayıt klasörlerinin dışında",
  "f.sv.unchanged": "Son sürümden bu yana değişiklik yok",
  "f.sv.undo": "Son oyunu geri al",
  "f.sv.undo_title": "Kayıtları son oyundan önceki haline döndür",

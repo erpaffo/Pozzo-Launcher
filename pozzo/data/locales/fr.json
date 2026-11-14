@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Sauvegardes restaurées ({written} fichiers, {removed} supprimés)",
  "f.sv.shared": "{n} fichiers partagés avec d'autres jeux (cartes mémoire) : en restaurant, la sauvegarde de ces jeux revient aussi en arrière.",
  "f.sv.shared_warn": "\nAttention : les cartes mémoire partagées reviennent aussi en arrière.",
+ "f.sv.skipped": "{n} fichiers ignorés : hors des dossiers de sauvegarde du jeu",
  "f.sv.unchanged": "Aucune modification depuis la dernière version",
  "f.sv.undo": "Annuler la dernière partie",
  "f.sv.undo_title": "Remet les sauvegardes comme elles étaient avant la dernière partie",

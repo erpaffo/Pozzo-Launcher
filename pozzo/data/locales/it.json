@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Salvataggi ripristinati ({written} file, {removed} tolti)",
  "f.sv.shared": "{n} file condivisi con altri giochi (memory card): ripristinando torna indietro anche il loro salvataggio.",
  "f.sv.shared_warn": "\nAttenzione: anche le memory card condivise tornano indietro.",
+ "f.sv.skipped": "{n} file saltati: fuori dalle cartelle dei salvataggi del gioco",
  "f.sv.unchanged": "Nessuna modifica dall'ultima versione",
  "f.sv.undo": "Annulla l'ultima partita",
  "f.sv.undo_title": "Riporta i salvataggi a com'erano prima dell'ultima partita",

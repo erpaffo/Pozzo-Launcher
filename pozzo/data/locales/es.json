@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Guardados restaurados ({written} archivos, {removed} quitados)",
  "f.sv.shared": "{n} archivos compartidos con otros juegos (tarjetas de memoria): al restaurar, también vuelve atrás su guardado.",
  "f.sv.shared_warn": "\nAtención: también vuelven atrás las tarjetas de memoria compartidas.",
+ "f.sv.skipped": "{n} archivos omitidos: fuera de las carpetas de guardado del juego",
  "f.sv.unchanged": "Sin cambios desde la última versión",
  "f.sv.undo": "Deshacer la última partida",
  "f.sv.undo_title": "Devuelve los guardados a como estaban antes de la última partida",

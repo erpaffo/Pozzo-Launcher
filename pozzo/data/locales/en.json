@@ -1464,6 +1464,7 @@
  "f.sv.restored_removed": "Saves restored ({written} files, {removed} removed)",
  "f.sv.shared": "{n} files shared with other games (memory cards): restoring also rolls back their save.",
  "f.sv.shared_warn": "\nWarning: shared memory cards also roll back.",
+ "f.sv.skipped": "{n} files skipped: outside the game's save folders",
  "f.sv.unchanged": "No changes since the last version",
  "f.sv.undo": "Undo the last game",
  "f.sv.undo_title": "Roll the saves back to how they were before the last game",
