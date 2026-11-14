@@ -68,6 +68,54 @@ def test_incompleti_spostamento_riprendibile(tmp):
     assert not inc.exists() and t.save_path == str(fin) and "final_dir" not in t.options
 
 
+def test_incompleti_non_sovrascrive_file_nella_cartella_finale(tmp, monkeypatch):
+    m = _mgr(tmp, incomplete_dir=str(tmp / "inc"))
+    t = m.add("https://x.example/a.zip")
+    inc, fin = Path(t.save_path), tmp / "out"
+    (inc / "a.zip").write_bytes(b"nuovo")
+    (inc / "b.bin").write_bytes(b"2")
+    fin.mkdir(exist_ok=True)
+    (fin / "a.zip").write_bytes(b"mio")  # file dell'utente (o di un download di prima) con lo stesso nome
+    with pytest.raises(OSError):
+        m._move_final(t)
+    assert (fin / "a.zip").read_bytes() == b"mio" and not (fin / "b.bin").exists()  # nessuno spostato a meta'
+    assert (inc / "a.zip").read_bytes() == b"nuovo" and t.save_path == str(inc) and t.options["final_dir"] == str(fin)
+    # il post-download lo registra e lascia i file dove sono
+    seen = []
+    m.on_completed = lambda x: seen.append(x.save_path)
+    t.status = T.COMPLETED
+    m._post(t)
+    for _ in range(100):
+        if t.options.get("post_done"):
+            break
+        import time
+        time.sleep(0.05)
+    assert seen == [str(inc)] and any("non riuscito" in l["msg"] for l in t.logs)
+    # altro disco, copia che fallisce: niente .pozzo-move lasciato nella cartella finale
+    (fin / "a.zip").unlink()
+    monkeypatch.setattr(M.os, "replace", lambda a, b: (_ for _ in ()).throw(OSError(18, "cross-device")))
+    monkeypatch.setattr(M.shutil, "copy2", lambda a, b: (Path(b).write_bytes(b"me"), (_ for _ in ()).throw(OSError(28, "pieno")))[1])
+    with pytest.raises(OSError):
+        m._move_final(t)
+    assert not list(fin.glob("*.pozzo-move")) and (inc / "a.zip").exists()
+
+
+def test_incompleti_ripresa_dopo_copia_completata(tmp):
+    """Crash su un altro disco dopo la copia ma prima di togliere l'originale: la ripresa non lo scambia per un file altrui."""
+    import os
+    import shutil
+    m = _mgr(tmp, incomplete_dir=str(tmp / "inc"))
+    t = m.add("https://x.example/a.zip")
+    inc, fin = Path(t.save_path), tmp / "out"
+    (inc / "a.zip").write_bytes(b"1")
+    (inc / "b.bin").write_bytes(b"2")
+    fin.mkdir(exist_ok=True)
+    shutil.copy2(inc / "a.zip", fin / "a.zip")
+    os.utime(fin / "a.zip", ns=(os.stat(inc / "a.zip").st_atime_ns, os.stat(inc / "a.zip").st_mtime_ns))
+    m._move_final(t)
+    assert (fin / "a.zip").read_bytes() == b"1" and (fin / "b.bin").read_bytes() == b"2" and not inc.exists()
+
+
 def test_incompleti_nel_post_prima_di_on_completed(tmp):
     m = _mgr(tmp, incomplete_dir=str(tmp / "inc"))
     t = m.add("https://x.example/a.zip")

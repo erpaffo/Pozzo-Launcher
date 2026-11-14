@@ -1145,16 +1145,34 @@ class Manager:
         provvisorio e poi con os.replace, quindi nella destinazione non c'e' mai un file a meta'; si rifa solo cio' che resta."""
         src, dst = Path(t.save_path), Path(t.options["final_dir"])
         if src != dst and src.is_dir():
+            files = sorted(p for p in src.rglob("*") if p.is_file())
+
+            def ours(f: Path, to: Path) -> bool:
+                """Copia gia' arrivata di questo task (crash tra la copia e la cancellazione dell'originale)."""
+                a, b = f.stat(), to.stat()
+                return a.st_size == b.st_size and int(a.st_mtime) == int(b.st_mtime)  # copy2 conserva la data
+            # prima di spostare qualcosa: un file con lo stesso nome nella destinazione e' dell'utente, non si sovrascrive
+            busy = [to for f in files if (to := dst / f.relative_to(src)).exists() and not ours(f, to)]
+            if busy:
+                raise OSError(f"in {dst} c'è già {busy[0].name}{f' (e altri {len(busy) - 1})' if len(busy) > 1 else ''}:"
+                              f" non lo sovrascrivo, i file restano in {src}")
             t.log(f"Sposto i file in {dst}")
-            for f in sorted(p for p in src.rglob("*") if p.is_file()):
+            for f in files:
                 to = dst / f.relative_to(src)
                 to.parent.mkdir(parents=True, exist_ok=True)
+                if to.exists():  # la copia di prima e' completa: resta solo da togliere l'originale
+                    f.unlink()
+                    continue
                 try:
                     os.replace(f, to)
                 except OSError:  # altro disco: copia con nome provvisorio, poi rinomina e solo dopo toglie l'originale
                     tmp = to.with_name(to.name + ".pozzo-move")
-                    shutil.copy2(f, tmp)
-                    os.replace(tmp, to)
+                    try:
+                        shutil.copy2(f, tmp)
+                        os.replace(tmp, to)
+                    except OSError:
+                        tmp.unlink(missing_ok=True)  # copia a meta' (disco pieno...): non resta nella cartella finale
+                        raise
                     f.unlink()
             for d in sorted((p for p in src.rglob("*") if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
                 try:
