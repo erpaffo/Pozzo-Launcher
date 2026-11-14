@@ -138,9 +138,13 @@ def _permanent(a) -> bool:
 
 
 def disk_full(ec) -> bool:
-    """L'errore di libtorrent (torrent_status.errc / file_error_alert.error) e' «disco pieno»: ENOSPC su macOS e Linux,
-    ERROR_DISK_FULL / ERROR_HANDLE_DISK_FULL su Windows (categoria system in entrambi i casi)."""
-    return ec.category().name() in ("system", "generic") and ec.value() in ((112, 39) if os.name == "nt" else (errno.ENOSPC,))
+    """L'errore di libtorrent (torrent_status.errc / file_error_alert.error) e' «disco pieno»: ENOSPC nella categoria
+    generic (errno, uguale ovunque) e nella system su macOS e Linux; su Windows la system usa i codici Win32
+    ERROR_DISK_FULL / ERROR_HANDLE_DISK_FULL."""
+    cat = ec.category().name()
+    if cat == "generic":
+        return ec.value() == errno.ENOSPC
+    return cat == "system" and ec.value() in ((112, 39) if os.name == "nt" else (errno.ENOSPC,))
 
 
 class Engine:

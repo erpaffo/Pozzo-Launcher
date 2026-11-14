@@ -446,8 +446,14 @@ def test_vecchio_elenco_dei_tracker_morti_buttato_una_volta(swarm, tmp):
 # ------------------------------------------------------------ disco pieno
 def test_errore_disco_pieno_di_libtorrent():
     import errno
-    for cat in (lt.generic_category(), lt.system_category()):
-        assert TOR.disk_full(lt.error_code(errno.ENOSPC, cat))  # file_error_alert / torrent_status.errc su macOS e Linux
+    import os
+    assert TOR.disk_full(lt.error_code(errno.ENOSPC, lt.generic_category()))  # errno: uguale su ogni sistema
+    if os.name == "nt":  # categoria system = codici Win32: ERROR_DISK_FULL, ERROR_HANDLE_DISK_FULL
+        assert TOR.disk_full(lt.error_code(112, lt.system_category()))
+        assert TOR.disk_full(lt.error_code(39, lt.system_category()))
+        assert not TOR.disk_full(lt.error_code(errno.ENOSPC, lt.system_category()))  # 28 in Win32 e' un altro errore
+    else:
+        assert TOR.disk_full(lt.error_code(errno.ENOSPC, lt.system_category()))  # file_error_alert / errc su macOS e Linux
     assert not TOR.disk_full(lt.error_code(errno.EACCES, lt.system_category()))  # altri errori di scrittura: restano errori
     assert not TOR.disk_full(lt.error_code(errno.ENOSPC, lt.libtorrent_category()))  # stesso numero, altra categoria
 
