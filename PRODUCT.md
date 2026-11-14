@@ -20,7 +20,7 @@ App desktop per Windows, macOS e Linux con interfaccia web servita localmente (F
 
 ## Capabilities and Constraints
 - Solo locale, nessun account o servizio cloud obbligatorio (vedi PRIVACY.md).
-- Ogni testo visibile passa dall'i18n in 7 lingue: it, en, de, es, fr, pt-BR, tr (`pozzo/data/locales/`, skill `translate`).
+- Ogni testo visibile passa dall'i18n in 6 lingue: it, en, de, es, fr, pt-BR (`pozzo/data/locales/`, skill `translate`).
 - Gratuito e open source: nessuna funzione a pagamento.
 - Estensioni opzionali in `extensions/` (es. diario, limite-tempo) che l'overlay può leggere, ma che possono mancare.
 - Indecisi: quali widget includere nella prima versione (metriche, clip, menu emulatori), uso di dipendenze di sistema per le metriche.

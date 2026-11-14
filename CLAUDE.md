@@ -13,7 +13,7 @@ Launcher desktop Windows (anche macOS/Linux in CI) per ROM + giochi PC degli sto
 - `pozzo/` backend. Pipeline scraping: `scanner.py` → `matching.py` → `pipeline.py`, con `sources/` (igdb, rawg, thegamesdb, screenscraper, libretro, offline…), `cache.py`/`cachepolicy.py`, `net.py` (rate limit). Store: `stores/` (steam, epic, gog, xbox…). Libreria utente: `library/` (`userdata.py`, `launcher.py`, `saves.py`…). Emulatori: `emudetect.py`, `emuinstall*.py`, `emuadapters/`, `emucfg.py`. Telefono: `remote/`. Overlay in gioco: `overlay.py`. CLI: `cli.py`.
 - `pozzo/app/` server: `server.py` (`create_app`), `routes/*.py` (un file per area, `build_router`), `extensions.py`/`extstore.py` (plugin), `apiv1.py`, `jobs.py`.
 - `pozzo/app/static/` frontend: `index.html`, `app.js`, `core.js`, `js/`, `experiences/`, `bigpicture*`, `app.css` (token tema), `i18n.js`.
-- `pozzo/data/locales/` 7 lingue (it, en, de, es, fr, pt-BR, tr): ogni testo visibile va in tutte (skill `translate`).
+- `pozzo/data/locales/` 6 lingue (it, en, de, es, fr, pt-BR): ogni testo visibile va in tutte (skill `translate`).
 - `extensions/<nome>/` 24 plugin opzionali: `plugin.toml` + `backend.py` + `frontend.js` + `style.css`. Possono mancare, il core non deve dipenderne.
 - `tests/` ~240 file; `packaging/` PyInstaller + installer; `docs/` manuale MkDocs (it, `en/`); `themes/`, `profiles/`.
 - `cache/ build/ dist/ release/ site/ scratch/` sono output/temporanei: non leggerli.
@@ -21,7 +21,7 @@ Launcher desktop Windows (anche macOS/Linux in CI) per ROM + giochi PC degli sto
 ## Convenzioni
 - Segui lo stile dei file vicini; modifica piccola ma completa: aggiorna test, `docs/` e chiamanti.
 - Nessuna nuova dipendenza per poche righe.
-- Nuovo testo UI → 7 lingue prima del commit.
+- Nuovo testo UI → 6 lingue prima del commit.
 
 ## Risparmio token
 - Per domande sull'architettura leggi `graphify-out/GRAPH_REPORT.md` (god nodes) o usa `/graphify query "..."` invece di scorrere i file. Il grafo è in `graphify-out/` (gitignored); dopo modifiche al codice: `graphify update .` (gratis).

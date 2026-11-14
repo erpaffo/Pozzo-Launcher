@@ -1,4 +1,4 @@
-"""Stringhe lunghe nelle lingue: etichette brevi in de, pt-BR, tr che superano 1.6 volte l'italiano.
+"""Stringhe lunghe nelle lingue: etichette brevi in de, pt-BR che superano 1.6 volte l'italiano.
 
 Fallisce solo su chiavi mancanti o {segnaposto} diversi dall'italiano. Il resto e' informativo: stampa
 le etichette piu' lunghe, da controllare a mano nel layout (pulsanti, voci della barra, tessere).
@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 
 LOCALES = Path(__file__).resolve().parents[1] / "pozzo" / "data" / "locales"
-LANGS = ["de", "pt-BR", "tr"]
+LANGS = ["de", "pt-BR"]
 SHORT_MAX = 20      # un'etichetta e' "breve" se l'italiano sta in 20 caratteri
 RATIO_MAX = 1.6     # oltre questo rapporto la stringa e' segnalata
 PH = re.compile(r"\{\w+\}")
