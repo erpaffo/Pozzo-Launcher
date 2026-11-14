@@ -36,7 +36,7 @@ html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); ove
 .bp-clock { font-size: 1.15rem; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 #bp-main { overflow: hidden; position: relative; }
-.bp-tab.focus { color: #fff; background: var(--accent); }
+.bp-tab.focus { color: var(--accent-ink); background: var(--accent); }
 
 /* home: scaffali */
 .bp-home { position: absolute; inset: 0; overflow: hidden; }
@@ -99,7 +99,7 @@ html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); ove
 .bp-game .meta { color: #cfd5e2; font-size: 1.1rem; }
 .bp-actions { display: flex; gap: .9rem; flex-wrap: wrap; margin: .6rem 0; }
 .bp-btn { padding: .9rem 1.7rem; border-radius: 12px; background: rgba(255,255,255,.08); font-weight: 700; font-size: 1.1rem; transition: transform .12s; }
-.bp-btn.main { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; min-width: 12rem; text-align: center; }
+.bp-btn.main { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--accent-ink); min-width: 12rem; text-align: center; }
 .bp-btn.focus { transform: scale(1.06); box-shadow: 0 0 0 4px #fff, 0 0 30px color-mix(in srgb, var(--accent) 70%, transparent); }
 .bp-btn.on { color: var(--fav); }
 .bp-desc { color: #d3d8e3; line-height: 1.55; font-size: 1.02rem; max-height: 30vh; overflow: hidden; white-space: pre-wrap;
@@ -112,7 +112,7 @@ html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); ove
 .kbd { display: grid; grid-template-columns: repeat(7, 3.4rem); gap: .45rem; align-content: start; }
 .kbd .k { height: 3.4rem; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(255,255,255,.08); font-weight: 700; font-size: 1.15rem; }
 .kbd .k.wide { grid-column: span 2; font-size: .9rem; }
-.kbd .k.focus { background: var(--accent); color: #fff; transform: scale(1.06); }
+.kbd .k.focus { background: var(--accent); color: var(--accent-ink); transform: scale(1.06); }
 .search-box { font-size: 1.8rem; font-weight: 700; padding: .6rem 1rem; border-bottom: 3px solid var(--accent); min-height: 3.2rem; margin-bottom: 1rem; }
 .search-res { display: flex; flex-wrap: wrap; gap: 1rem; align-content: start; overflow: hidden; }
 .search-res .card { width: 9.5rem; }
