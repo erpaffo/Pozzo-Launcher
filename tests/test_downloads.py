@@ -869,9 +869,10 @@ def test_tick_non_rifa_la_vista_dei_task_fermi(tmp, monkeypatch):
     m = Manager(cfg, events=SimpleNamespace(emit=lambda n, d: sent.append([v["id"] for v in d["tasks"]])))
     done = [T.DownloadTask(source=f"http://x/{i}", save_path=str(tmp), name=f"g{i}.zip", status=T.COMPLETED, options={"post_done": True}) for i in range(300)]
     m.tasks = {t.id: t for t in done}
-    calls = []
+    calls, mine = [], {t.id for t in done}
     orig = T.DownloadTask.view
-    monkeypatch.setattr(T.DownloadTask, "view", lambda self: calls.append(self.id) or orig(self))
+    # il patch e' sulla classe: il ciclo di un altro Manager ancora vivo (test precedenti, sotto carico) conterebbe le sue viste
+    monkeypatch.setattr(T.DownloadTask, "view", lambda self: self.id in mine and calls.append(self.id) or orig(self))
     m._tick()
     assert len(calls) == 300 and len(sent.pop()) == 300  # primo giro: la UI li vede tutti
     m._tick()  # il salvataggio del primo giro li segna come toccati: una volta sola
