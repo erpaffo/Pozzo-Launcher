@@ -4027,7 +4027,7 @@
  "b.news.themes.s1.title": "Escolha um tema",
  "b.news.themes.s1.text": "Esta é a lista de temas. Passe o mouse (ou o teclado) sobre um tema para ver a prévia e clique para ativá-lo.",
  "b.news.themes.s2.title": "Troque na hora",
- "b.news.themes.s2.text": "No menu Exibir você passa para o próximo tema a qualquer momento, sem abrir as configurações.",
+ "b.news.themes.s2.text": "Pressione {nextTheme} para passar ao próximo tema a qualquer momento, sem abrir as configurações.",
  "b.news.detailLayout.title": "Layout da ficha do jogo",
  "b.news.detailLayout.text": "Escolha como organizar botões e informações ao abrir um jogo no modo modal.",
  "b.news.detailLayout.s1.title": "Escolha o layout",

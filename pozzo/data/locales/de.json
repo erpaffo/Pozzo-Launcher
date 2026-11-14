@@ -4027,7 +4027,7 @@
  "b.news.themes.s1.title": "Wähle ein Design",
  "b.news.themes.s1.text": "Das ist die Liste der Designs. Fahre mit der Maus (oder der Tastatur) über ein Design, um die Vorschau zu sehen, und klicke, um es zu aktivieren.",
  "b.news.themes.s2.title": "Schnell wechseln",
- "b.news.themes.s2.text": "Über das Menü Ansicht wechselst du jederzeit zum nächsten Design, ohne die Einstellungen zu öffnen.",
+ "b.news.themes.s2.text": "Mit {nextTheme} wechselst du jederzeit zum nächsten Design, ohne die Einstellungen zu öffnen.",
  "b.news.detailLayout.title": "Layout der Spielkarte",
  "b.news.detailLayout.text": "Wähle, wie Schaltflächen und Infos angeordnet sind, wenn du ein Spiel im modalen Modus öffnest.",
  "b.news.detailLayout.s1.title": "Wähle das Layout",

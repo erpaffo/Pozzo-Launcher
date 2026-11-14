@@ -4027,7 +4027,7 @@
  "b.news.themes.s1.title": "Elige un tema",
  "b.news.themes.s1.text": "Esta es la lista de temas. Pasa el ratón (o el teclado) por un tema para ver la vista previa y haz clic para activarlo.",
  "b.news.themes.s2.title": "Cámbialo al vuelo",
- "b.news.themes.s2.text": "Desde el menú Ver pasas al siguiente tema en cualquier momento, sin abrir los ajustes.",
+ "b.news.themes.s2.text": "Pulsa {nextTheme} para pasar al siguiente tema en cualquier momento, sin abrir los ajustes.",
  "b.news.detailLayout.title": "Diseño de la ficha del juego",
  "b.news.detailLayout.text": "Elige cómo se colocan botones e información cuando abres un juego en modo modal.",
  "b.news.detailLayout.s1.title": "Elige el diseño",

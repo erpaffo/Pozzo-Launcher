@@ -67,7 +67,7 @@
   const go = (tab) => () => { if (typeof openSettings === "function") openSettings(tab); };
   const home = () => { const p = document.getElementById("settings-page"); if (p && !p.hidden && typeof closeSettings === "function") closeSettings(); };
   const step = (id, n, extra = {}) => ({
-    id: `${id}-${n}`, get title() { return t(`b.news.${id}.s${n}.title`); }, text: () => t(`b.news.${id}.s${n}.text`), ...extra,
+    id: `${id}-${n}`, get title() { return t(`b.news.${id}.s${n}.title`); }, text: (k) => t(`b.news.${id}.s${n}.text`, k), ...extra,
   });
   const DL_NAV = ['.nav-item[data-view="downloads"]', '#menubar button[data-view="downloads"]'];
 
@@ -76,7 +76,7 @@
       { id: "whatsnew", icon: "✨" },
       { id: "themes", icon: "🎨", steps: [
         step("themes", 1, { sel: ["#theme-list"], wait: true, prep: go("aspetto") }),
-        step("themes", 2, { sel: ['.mb-top[data-m="Visualizza"]', "#experience-nav"] }),
+        step("themes", 2, { prep: home }), // scorciatoia da tastiera: nessun elemento a cui ancorarla
       ] },
       { id: "detailLayout", icon: "🗂️", steps: [
         step("detailLayout", 1, { sel: ["#detail-layout-list"], wait: true, prep: go("aspetto") }),

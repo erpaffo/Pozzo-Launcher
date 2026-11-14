@@ -4027,7 +4027,7 @@
  "b.news.themes.s1.title": "Pick a theme",
  "b.news.themes.s1.text": "This is the list of themes. Hover a theme (or focus it with the keyboard) to preview it, then click to turn it on.",
  "b.news.themes.s2.title": "Switch on the fly",
- "b.news.themes.s2.text": "From the View menu you can jump to the next theme at any time, without opening the settings.",
+ "b.news.themes.s2.text": "Press {nextTheme} to switch to the next theme at any time, without opening the settings.",
  "b.news.detailLayout.title": "Game card layout",
  "b.news.detailLayout.text": "Choose how buttons and details are arranged when you open a game in modal mode.",
  "b.news.detailLayout.s1.title": "Pick a layout",

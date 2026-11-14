@@ -4027,7 +4027,7 @@
  "b.news.themes.s1.title": "Choisissez un thème",
  "b.news.themes.s1.text": "Voici la liste des thèmes. Survolez un thème (ou sélectionnez-le au clavier) pour l'aperçu, puis cliquez pour l'activer.",
  "b.news.themes.s2.title": "Changez-le à la volée",
- "b.news.themes.s2.text": "Depuis le menu Affichage, passez au thème suivant à tout moment, sans ouvrir les paramètres.",
+ "b.news.themes.s2.text": "Appuyez sur {nextTheme} pour passer au thème suivant à tout moment, sans ouvrir les paramètres.",
  "b.news.detailLayout.title": "Disposition de la fiche du jeu",
  "b.news.detailLayout.text": "Choisissez comment disposer boutons et informations quand vous ouvrez un jeu en mode modal.",
  "b.news.detailLayout.s1.title": "Choisissez la disposition",

@@ -193,4 +193,60 @@ const nextBtn = (w) => w.card().children.find((c) => c.className === "gs-tour-ro
   const t = T.create({ win: w.win, doc: w.doc, store: w.store, A, setTimeout() {}, desktop: () => false });
   assert.equal(t.start({ manual: true }), false);
 }
+// 9) prep prima del bersaglio: l'anello sta sull'elemento della schermata nuova, non su quello della vecchia
+{
+  const w = world({ sels: { "#old": box(100, 100, 50, 50) } });
+  const mkEl = (r) => { const e = w.doc.createElement("div"); e.rect = r; return e; };
+  const steps = [
+    { id: "a", sel: ["#old"], title: "A", text: () => "a" },
+    { id: "b", sel: ["#new"], title: "B", text: () => "b", prep: () => { delete w.doc.targets["#old"]; w.doc.targets["#new"] = mkEl(box(700, 300, 80, 40)); } },
+  ];
+  assert.equal(w.tour.start({ steps }), true);
+  const ring = () => w.root().find("gs-tour-ring");
+  assert.equal(ring().style.left, "94px");
+  nextBtn(w).click();
+  assert.equal(ring().style.left, `${700 - 6}px`);            // anello sul bersaglio dopo il prep
+  assert.equal(ring().hidden, false);
+  w.tour.stop();
+  // il bersaglio non arriva mai: il passo con prep cade senza lasciare l'anello altrove
+  const x = world({ sels: { "#a": box(100, 100, 50, 50) } });
+  x.tour.start({ steps: [{ id: "a", sel: ["#a"], title: "A", text: () => "a" }, { id: "b", sel: ["#nope"], title: "B", text: () => "b", prep() {} }] });
+  assert.equal(where(x), "Passo 1 di 2");
+  nextBtn(x).click();
+  assert.equal(where(x), "Passo 1 di 1");                // dopo il prep il passo senza bersaglio e' caduto
+}
+
+// 10) nascosti o senza dimensioni: saltati; fuori in verticale (contenitore che scorre): raggiunto con scrollIntoView
+{
+  const find = (m) => (s) => (m[s] ? { getBoundingClientRect: () => m[s] } : null);
+  const vp = { w: 1200, h: 800 };
+  const st = [{ id: "z", sel: ["#z"] }, { id: "h", sel: ["#h"] }, { id: "v", sel: ["#v"] }, { id: "x", sel: ["#x"] }];
+  const r = T.resolve(st, find({ "#z": box(0, 0, 0, 0), "#h": box(20, 20, 0, 40), "#v": box(100, 1500, 80, 30), "#x": box(-500, 10, 50, 50) }), vp, A);
+  assert.deepEqual(r.map((p) => p.step.id), ["v"]);
+  // piu' corrispondenze: la prima nascosta non oscura la seconda visibile
+  const many = { getBoundingClientRect: () => box(0, 0, 0, 0) }, ok = { getBoundingClientRect: () => box(10, 10, 50, 50) };
+  const m = T.resolve([{ id: "t", sel: [".tile"] }], () => [many, ok], vp, A);
+  assert.equal(m[0].el, ok);
+  const w = world({});
+  let scrolled = 0;
+  const e = w.doc.createElement("div"); e.rect = box(100, 1500, 80, 30); e.scrollIntoView = () => { scrolled++; e.rect = box(100, 300, 80, 30); };
+  w.doc.targets["#v"] = e;
+  w.tour.start({ steps: [{ id: "v", sel: ["#v"], title: "V", text: () => "v" }] });
+  assert.equal(scrolled, 1);
+  assert.equal(w.root().find("gs-tour-ring").style.top, `${300 - 6}px`);
+}
+
+// 11) l'anello resta sullo stesso nodo finche' e' nel DOM (la griglia ricicla i riquadri)
+{
+  const w = world({ sels: { ".tile": box(300, 200, 100, 100) } });
+  w.tour.start({ steps: [{ id: "t", sel: [".tile"], title: "T", text: () => "t" }] });
+  const first = w.doc.targets[".tile"];
+  const other = w.doc.createElement("div"); other.rect = box(800, 500, 100, 100);
+  w.doc.targets[".tile"] = other;
+  w.wl.resize.forEach((f) => f());
+  assert.equal(w.root().find("gs-tour-ring").style.left, "294px");
+  Object.defineProperty(first, "isConnected", { get: () => false });
+  w.wl.resize.forEach((f) => f());
+  assert.equal(w.root().find("gs-tour-ring").style.left, "794px");
+}
 console.log("test_tour: ok");

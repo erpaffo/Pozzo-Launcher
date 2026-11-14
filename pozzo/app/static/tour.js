@@ -74,19 +74,26 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
     return { done: o.done === true, off: o.off === true };
   };
 
-  /** Passi realmente mostrabili: senza sel sempre; con sel solo se un candidato esiste ed e' visibile nella finestra.
-   * wait: il passo resta anche senza bersaglio (scheda centrata finche' compare, es. dopo prep() che apre una pagina). */
-  function resolve(steps, find, vp, A) {
+  /** Raggiungibile: nella finestra, oppure fuori solo in verticale (dentro un contenitore che scorre: render() lo porta in vista).
+   * Fuori in orizzontale (cassetto chiuso, finestra stretta) o senza dimensioni (nascosto) no. */
+  const reachable = (r, vp, A) => A.inView(r, vp) || (r.width > 0 && r.height > 0 && r.right > 0 && r.left < vp.w);
+
+  /** Passi realmente mostrabili: senza sel sempre; con sel solo se un candidato esiste ed e' raggiungibile.
+   * wait: il passo resta anche senza bersaglio (scheda centrata finche' compare, es. dopo prep() che apre una pagina).
+   * prep non ancora eseguito (ran): il passo resta, perche' il bersaglio puo' comparire solo dopo prep().
+   * find puo' dare un elemento o un elenco: vale il primo candidato raggiungibile (la stessa classe sta anche in viste nascoste). */
+  function resolve(steps, find, vp, A, ran = new Set()) {
     const out = [];
     for (const step of steps) {
       if (!step.sel) { out.push({ step, el: null }); continue; }
       let hit = null;
       for (const sel of step.sel) {
-        let el = null;
-        try { el = find(sel); } catch { /* selettore non valido: prossimo */ }
-        if (el && A.inView(el.getBoundingClientRect(), vp)) { hit = el; break; }
+        let c = null;
+        try { c = find(sel); } catch { /* selettore non valido: prossimo */ }
+        hit = [].concat(c || []).find((el) => reachable(el.getBoundingClientRect(), vp, A)) || null;
+        if (hit) break;
       }
-      if (hit || step.wait) out.push({ step, el: hit });
+      if (hit || step.wait || (step.prep && !ran.has(step.id))) out.push({ step, el: hit });
     }
     return out;
   }
@@ -94,12 +101,15 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
   function create(env) {
     const { win, doc, store, A } = env;
     let mem = null, ui = null, cur = null, shownId = null, opener = null, raf = 0, timer = 0, armed = false;
+    let pin = null; // bersaglio gia' evidenziato: resta quello finche' e' nel DOM (la griglia ricicla i riquadri)
+    const ran = new Set(); // passi con prep gia' eseguito
     let steps = STEPS, custom = false; // custom: tutorial con passi propri (non tocca lo stato del tour di primo avvio)
 
     const read = () => mem || loadState(store);
     const write = (st) => { mem = st; try { store.setItem(KEY, JSON.stringify(st)); } catch { /* si perde solo la memoria */ } };
     const vp = () => ({ w: win.innerWidth, h: win.innerHeight });
-    const list = () => resolve(steps, (s) => doc.querySelector(s), vp(), A);
+    const find = (s) => (doc.querySelectorAll ? [...doc.querySelectorAll(s)] : doc.querySelector(s));
+    const list = () => resolve(steps, find, vp(), A, ran);
     const safe = (f) => (...a) => { try { return f(...a); } catch (e) { try { console.warn("tour", e); } catch { /* niente console */ } } };
 
     function keys() {
@@ -107,7 +117,7 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
         try { return PS.keysOf(PS.REGISTRY.find((x) => x.id === id)).map((c) => PS.formatCombo(c)); } catch { return []; }
       };
       return { search: lab("search")[0] || "/", palette: lab("palette")[0] || "Ctrl+K",
-        help: lab("help").sort((a, b) => a.length - b.length)[0] || "?" };
+        help: lab("help").sort((a, b) => a.length - b.length)[0] || "?", nextTheme: lab("nextTheme")[0] || "Ctrl+Shift+T" };
     }
 
     function build() {
@@ -145,6 +155,12 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
 
     function render() {
       if (!ui) return;
+      // prep PRIMA di cercare il bersaglio: se apre o chiude una pagina, l'elemento giusto e' quello della pagina nuova
+      if (shownId !== cur) {
+        const pre = steps.find((s) => s.id === cur);
+        if (pre?.prep) { ran.add(cur); safe(pre.prep)(); }
+        pin = null;
+      }
       const shown = list();
       if (!shown.length) return end(null);
       let i = shown.findIndex((s) => s.step.id === cur);
@@ -153,11 +169,17 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
         i = shown.findIndex((s) => steps.indexOf(s.step) > pos);
         if (i < 0) i = shown.length - 1;
         cur = shown[i].step.id;
+        return schedule(); // il nuovo passo esegue il suo prep al giro dopo
       }
-      const { step, el } = shown[i], n = shown.length;
+      const { step } = shown[i], n = shown.length;
+      let el = shown[i].el;
+      if (el && pin && pin.id === cur && pin.el.isConnected !== false && reachable(pin.el.getBoundingClientRect(), vp(), A)) el = pin.el;
+      if (el) {
+        pin = { id: cur, el };
+        if (!A.inView(el.getBoundingClientRect(), vp()) && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
       if (shownId !== cur) {
         shownId = cur;
-        if (step.prep) safe(step.prep)(); // porta l'utente dove serve (es. una pagina delle impostazioni); il bersaglio arriva al giro dopo
         ui.title.textContent = step.title;
         ui.text.textContent = step.text(keys());
         ui.count.textContent = t("b.common.stepOf", {n: i + 1, tot: n});
@@ -229,7 +251,7 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
       win.removeEventListener("scroll", schedule, true);
       win.clearInterval(timer); if (raf && win.cancelAnimationFrame) win.cancelAnimationFrame(raf);
       raf = 0; timer = 0;
-      ui.root.remove(); ui = null; cur = shownId = null;
+      ui.root.remove(); ui = null; cur = shownId = pin = null; ran.clear();
       if (opener && opener.isConnected !== false && opener.focus) opener.focus();
       opener = null;
       win.dispatchEvent(new CustomEvent("pozzo:tour-end", { detail: { kind: kind || "stop", custom: wasCustom } }));
@@ -285,7 +307,7 @@ html[data-motion="off"] .gs-tour-card,html[data-motion="reduced"] .gs-tour-card{
     };
   }
 
-  const api = { KEY, STEPS, loadState, resolve, create };
+  const api = { KEY, STEPS, loadState, resolve, reachable, create };
   if (typeof window === "undefined") { module.exports = api; return; }
 
   let store = null;
