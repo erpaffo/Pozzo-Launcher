@@ -1441,10 +1441,10 @@ async function dlCnlCheck() {
     b.setAttribute("role", "status");
     document.body.append(b);
   }
-  const p = list[0], no = esc(t("d.cnl.discard"));
+  const p = list[0];
   b.innerHTML = `<span>${esc(t("d.cnl.found", { n: p.links.length, site: p.site || "?" }))}${list.length > 1 ? " · " + esc(t("d.cnl.more", { n: list.length - 1 })) : ""}</span>
     <button class="btn primary" type="button" data-a="add">${esc(t("d.cnl.review"))}</button>
-    <button class="btn" type="button" data-a="no" aria-label="${no}" title="${no}">✕</button>`;
+    <button class="btn" type="button" data-a="no" aria-label="${esc(t("d.cnl.discard"))}" title="${esc(t("d.cnl.discard"))}">✕</button>`;
   b.title = p.source || ""; // la pagina di provenienza intera: chi decide sa da dove arrivano
   b.hidden = false;
   b.onclick = async (e) => {
