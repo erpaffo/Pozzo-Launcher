@@ -1278,9 +1278,13 @@ class Manager:
             end = (COMPLETED, "")
         except asyncio.CancelledError:
             end = None  # pausa/annulla/chiusura: lo stato lo ha gia' messo chi ha chiesto
-        except (httpx.HTTPError, OSError, ValueError, RuntimeError) as e:  # RuntimeError: libtorrent
+        except Exception as e:  # noqa: BLE001 - qualunque errore deve liberare il posto qui sotto, o il task resta in corso per sempre
             net = isinstance(e, (httpx.TransportError, ConnectionError, socket.timeout)) and t.type == "http"
-            end = (ERROR,f"{type(e).__name__}: {e}" if not str(e) else str(e))
+            # RuntimeError: libtorrent; fuori da queste famiglie e' un errore imprevisto: il tipo serve a capire cosa
+            known = isinstance(e, (httpx.HTTPError, OSError, ValueError, RuntimeError))
+            end = (ERROR, str(e) if known and str(e) else f"{type(e).__name__}: {e}")
+            if not known:
+                log.warning("download %s: errore imprevisto", t.id, exc_info=e)
             notes = self._res.get(t.id, (0, []))[1]
             if t.phase and notes:  # fallito prima del download: porta con se' perche' i risolutori non hanno risolto
                 end = (ERROR, f"{end[1]} ({'; '.join(notes)})")

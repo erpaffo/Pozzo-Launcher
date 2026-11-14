@@ -3,6 +3,7 @@
 import asyncio
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -742,3 +743,19 @@ def test_a_download_finito_parte_il_dopo_download_una_volta(server, tmp):
     m.pause(t.id)  # un task gia' completato non riparte
     m.stop()
     assert len(got) == 1
+
+
+@pytest.mark.parametrize("exc", [KeyError("segs"), subprocess.TimeoutExpired("steamcmd", 5)])
+def test_errore_imprevisto_del_motore_libera_il_posto(tmp, monkeypatch, exc):
+    """Un'eccezione fuori dalle famiglie note (KeyError, TimeoutExpired...) non lascia il task in corso per sempre."""
+    m = _mgr(tmp)
+    t = _task("http://x/a", tmp)
+    t.type, t.status = "cli", T.RUNNING
+
+    async def boom(task, cfg):
+        raise exc
+    monkeypatch.setattr(M.CLI, "run", boom)
+    m.tasks, m._jobs, m._dl_ids = {t.id: t}, {t.id: None}, {t.id}
+    asyncio.run(m._job(t, 0))
+    assert t.status == T.ERROR and type(exc).__name__ in t.error, t.error
+    assert t.id not in m._jobs and not m._dl_ids
