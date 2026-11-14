@@ -53,7 +53,9 @@ def test_task_troppo_grande_resta_in_coda(tmp_path, monkeypatch):
     asyncio.run(tick())
     _refreshed(m)  # lo spazio si legge in un thread: al primo giro non c'e' ancora, chi aspetta resta in coda
     asyncio.run(tick())
-    assert big.status == T.QUEUED and big.phase.startswith("Spazio insufficiente: servono 10.0 GB")
+    # 10 GB se il piccolo parte al secondo giro, 12 se il thread dello spazio finisce gia' durante il primo e il piccolo
+    # (2 GB) e' gia' in corso: tutti e due giusti, dipende solo dai tempi
+    assert big.status == T.QUEUED and big.phase in ("Spazio insufficiente: servono 10.0 GB", "Spazio insufficiente: servono 12.0 GB"), big.phase
     assert small.status == T.RUNNING
 
 
