@@ -108,8 +108,7 @@ def test_macos_native_window(monkeypatch):
                      ("orderFrontRegardless", ()), ("orderFrontRegardless", ())]  # HUD mostrato senza w.show(): niente furto di fuoco
     calls.clear()
     monkeypatch.setattr(OV.sys, "platform", "win32")  # ramo Windows: nessun selettore Cocoa, show() normale
-    ov._click_through(w)
-    ov._front(w)
+    ov._click_through(w)  # (niente _front: su Windows manderebbe un vero Alt via keybd_event)
     ov._show_passive(w)
     assert calls == [("show", ())]
 

@@ -77,8 +77,8 @@ def test_sunshine_percorsi(tmp_path):
     real_exists = Path.exists
     target = "/opt/homebrew/bin/sunshine"
     with platform("darwin"), mock.patch.object(SU.shutil, "which", lambda n: None), \
-            mock.patch.object(Path, "exists", lambda self: str(self) == target or real_exists(self)), \
-            mock.patch.dict(os.environ, {"HOME": str(home)}):
+            mock.patch.object(Path, "exists", lambda self: self.as_posix() == target or real_exists(self)), \
+            mock.patch.object(Path, "home", return_value=home):  # su Windows HOME non conta, e str() ha i backslash
         assert SU.install_dir() == Path("/opt/homebrew/bin")
         assert SU.read_conf() == {"port": "47989"}
     with platform("darwin"), mock.patch.object(SU.shutil, "which", lambda n: None), \
@@ -126,7 +126,7 @@ def test_scanner_disco(tmp_path):
                                               fake_run(calls, plistlib.dumps({"SolidState": True}))), \
             mock.patch.object(SC, "_mount_of", lambda p: Path("/")):
         assert SC.disk_kind(tmp_path) == "ssd"
-    assert calls == [["diskutil", "info", "-plist", "/"]], calls
+    assert calls == [["diskutil", "info", "-plist", str(Path("/"))]], calls  # str(): su Windows "\\"
     SC._DISK_CACHE.clear()
     with platform("darwin"), mock.patch.object(SC.subprocess, "run", fake_run([], plistlib.dumps({}))), \
             mock.patch.object(SC, "_mount_of", lambda p: Path("/")):
@@ -179,9 +179,9 @@ def test_media_vlc(tmp_path):
     mpv = "/opt/homebrew/bin/mpv"
     real_is_file = Path.is_file
     with platform("darwin"), mock.patch.object(mod.shutil, "which", lambda n: None), \
-            mock.patch.object(Path, "is_file", lambda self: str(self) in (vlc, mpv) or real_is_file(self)):
+            mock.patch.object(Path, "is_file", lambda self: self.as_posix() in (vlc, mpv) or real_is_file(self)):
         assert mod.find_external_player() == mpv  # mpv prima di VLC
-        with mock.patch.object(mod, "MPV_PATHS", ()):
+        with mock.patch.object(mod, "MPV_PATHS", ()), mock.patch.object(mod, "VLC_PATHS", (vlc,)):  # niente VLC vero di Windows
             assert mod.find_external_player() == vlc
     assert mod.VLC_PATHS[0] == r"C:\Program Files\VideoLAN\VLC\vlc.exe"
     print("ok  media-locale: VLC e mpv su macOS")

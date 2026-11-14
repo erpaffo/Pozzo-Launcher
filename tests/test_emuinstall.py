@@ -113,6 +113,9 @@ def _app(where: Path, name: str, data: bytes = b"bin"):
 
 
 def test_install_macos(tmp: Path):
+    if os.name == "nt":  # link simbolici, permessi posix e HOME: ha senso solo fuori da Windows
+        print("-- saltato: solo fuori da Windows")
+        return
     (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n', encoding="utf-8")
     cfg = config.load(tmp / "config.toml")
     asset = lambda n: {"name": n, "url": n, "size": 0}  # noqa: E731
@@ -177,6 +180,9 @@ def test_install_macos(tmp: Path):
 
 
 def test_install_linux(tmp: Path):
+    if os.name == "nt":  # link simbolici, permessi posix e HOME: ha senso solo fuori da Windows
+        print("-- saltato: solo fuori da Windows")
+        return
     (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n', encoding="utf-8")
     cfg = config.load(tmp / "config.toml")
     asset = lambda n: {"name": n, "url": n, "size": 0}  # noqa: E731

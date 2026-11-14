@@ -12,13 +12,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pozzo.library import shortcut as SC
 
+REAL = sys.platform
+
 with tempfile.TemporaryDirectory() as t:
     SC.desktop_dir = lambda: Path(t) / "Desktop"
     base = '"/opt/Pozzo Launcher/pozzo-cli" -c "/x/c.toml"'
     for plat, ext in (("darwin", ".command"), ("linux", ".desktop")):
         sys.platform = plat
         p = SC.create('Gioco: "A"/B', base, "/opt/Pozzo Launcher", "k$1", "/x/i.png")
-        assert p.name == f"Gioco AB{ext}" and p.stat().st_mode & stat.S_IXUSR
+        assert p.name == f"Gioco AB{ext}" and (REAL == "win32" or p.stat().st_mode & stat.S_IXUSR)  # chmod +x non esiste su Windows
         txt = p.read_text(encoding="utf-8")
         assert "play --key" in txt and "pozzo-cli" in txt
         if plat == "darwin":

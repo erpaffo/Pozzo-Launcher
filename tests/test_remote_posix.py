@@ -40,34 +40,37 @@ assert S.service_state() == ""
 S._run, S._brew, S.sys.platform, S.shutil.which = saved
 
 # --- mic: Popen finto con una pipe vera (serve fileno per select)
-sys.platform_saved = sys.platform
-mic.sys.platform = "linux"
-mic._player_cmd = lambda: ["fake"]
-assert mic.devices() == ["default"] and mic.pick(["default"]) == 0
-r, w = os.pipe()
+if sys.platform == "win32":  # select() su pipe non esiste su Windows (e li'il lettore posix non si usa)
+    print("-- saltato: mic posix su Windows")
+else:
+    sys.platform_saved = sys.platform
+    mic.sys.platform = "linux"
+    mic._player_cmd = lambda: ["fake"]
+    assert mic.devices() == ["default"] and mic.pick(["default"]) == 0
+    r, w = os.pipe()
 
 
-class FakeProc:
-    stdin = os.fdopen(w, "wb")
-    terminated = False
+    class FakeProc:
+        stdin = os.fdopen(w, "wb")
+        terminated = False
 
-    def poll(self):
-        return None
+        def poll(self):
+            return None
 
-    def terminate(self):
-        self.terminated = True
+        def terminate(self):
+            self.terminated = True
 
 
-proc = FakeProc()
-mic.subprocess.Popen = lambda *a, **k: proc
-p = mic.Player(0)
-assert p.play(b"\x01\x00\x02\x00") and os.read(r, 8) == b"\x01\x00\x02\x00"
-assert not p.play(b"\x01")
-p.close()
-assert proc.terminated
-mic._player_cmd = lambda: None
-assert mic.devices() == []
-mic.sys.platform = sys.platform_saved
+    proc = FakeProc()
+    mic.subprocess.Popen = lambda *a, **k: proc
+    p = mic.Player(0)
+    assert p.play(b"\x01\x00\x02\x00") and os.read(r, 8) == b"\x01\x00\x02\x00"
+    assert not p.play(b"\x01")
+    p.close()
+    assert proc.terminated
+    mic._player_cmd = lambda: None
+    assert mic.devices() == []
+    mic.sys.platform = sys.platform_saved
 
 # --- dualsense: ioreg e sysfs finti
 D.sys.platform = "darwin"

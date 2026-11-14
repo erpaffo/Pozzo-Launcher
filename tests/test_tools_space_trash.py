@@ -40,7 +40,8 @@ try:
          mock.patch.object(trash.Path, "home", return_value=tmp / "home"):
         dest = trash.to_trash(d)
     assert not d.exists() and (Path(dest) / "a.bin").read_bytes() == b"x" * 10
-    assert Path(dest).parent == tmp / "home" / ".pozzo-trash"
+    # su Windows il fallback e' la radice del disco (anchor), non la home
+    assert Path(dest).parent == (tmp if sys.platform == "win32" else tmp / "home") / ".pozzo-trash"
     try:
         trash.to_trash(tmp / "non-esiste")
         raise SystemExit("doveva fallire")
@@ -53,7 +54,7 @@ try:
         calls.append(argv)
         return mock.Mock(returncode=0)
 
-    f = tmp / 'Gioco "beta"\\x'
+    f = tmp / ('Gioco beta' if sys.platform == "win32" else 'Gioco "beta"\\x')  # " e \ non sono validi nei nomi su Windows
     f.mkdir()
     with mock.patch.object(trash.sys, "platform", "darwin"), \
          mock.patch.object(trash.subprocess, "run", side_effect=fake_run), \

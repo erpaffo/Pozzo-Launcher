@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import types
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -26,9 +27,13 @@ def _sys(home: Path, platform: str, **env):
     os.environ["HOME"] = str(home)
     os.environ.update(env)
     sys.platform = platform
+    # su Windows Path.home() legge USERPROFILE, non HOME
+    ph = mock.patch.object(Path, "home", return_value=Path(home))
+    ph.start()
     try:
         yield
     finally:
+        ph.stop()
         sys.platform = saved_p
         for k, v in saved.items():
             if v is None:

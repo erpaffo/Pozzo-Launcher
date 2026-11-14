@@ -5,24 +5,24 @@ import sys
 import tempfile
 import types
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pozzo.stores import epic, minecraft, steam  # noqa: E402
 
 REAL_PLATFORM = sys.platform
 steam.reg_get = lambda *a, **k: None  # niente registro fuori da Windows
-REAL_HOME = os.environ.get("HOME")
 
 
 def run(platform, home, fn):
-    """Esegue fn con sys.platform e HOME finti, poi ripristina."""
+    """Esegue fn con sys.platform e home finti, poi ripristina."""
     sys.platform = platform
-    os.environ["HOME"] = str(home)
     try:
-        return fn()
+        # Path.home() su Windows legge USERPROFILE, non HOME: si patcha direttamente
+        with mock.patch.object(Path, "home", return_value=Path(home)):
+            return fn()
     finally:
         sys.platform = REAL_PLATFORM
-        os.environ["HOME"] = REAL_HOME or ""
 
 
 def steam_path(home, platform):

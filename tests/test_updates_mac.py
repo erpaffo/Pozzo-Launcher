@@ -3,7 +3,7 @@
 import hashlib
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pozzo import updates
@@ -13,10 +13,11 @@ def _swap(platform, base):
     old = sys.platform
     sys.platform = platform
     try:
-        cmd = updates.swap_script(base, Path("/s/stage"), Path("/a/App"), 42)
+        cmd = updates.swap_script(base, PurePosixPath("/s/stage"), PurePosixPath("/a/App"), 42)  # "/" anche su Windows
     finally:
         sys.platform = old
-    return Path(cmd[-1]).read_text(encoding="utf-8")
+    # write_text su Windows raddoppia i \r: si normalizza
+    return Path(cmd[-1]).read_bytes().decode("utf-8").replace("\r\r\n", "\n").replace("\r\n", "\n")
 
 
 def test_stage_has_no_manifest_in_bundle():

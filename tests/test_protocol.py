@@ -102,14 +102,14 @@ def test_fuori_windows_o_sotto_pytest_non_scrive(monkeypatch):
 
 def test_darwin_statico(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "darwin")
-    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(P.Path, "home", classmethod(lambda c: tmp_path))  # su Windows HOME non conta
     assert P.register() is True and P.unregister() is False
     assert not list(tmp_path.iterdir())  # niente scritto
 
 
 def test_linux_scrive_desktop_e_xdg_mime(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(P.Path, "home", classmethod(lambda c: tmp_path))  # su Windows HOME non conta
     calls = []
     monkeypatch.setattr(P.shutil, "which", lambda n: "/usr/bin/" + n)
     monkeypatch.setattr(P.subprocess, "run", lambda *a, **k: calls.append(a[0]))

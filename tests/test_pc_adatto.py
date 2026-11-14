@@ -40,8 +40,9 @@ def test_steam_parse():
 
 
 def test_detect_linux_mac(monkeypatch=None):
-    import json as _j, sys as _s
-    old = (pa._run, pa.sys.platform)
+    import json as _j, sys as _s, types as _t
+    old = (pa._run, pa.sys.platform, pa.platform)
+    pa.platform = _t.SimpleNamespace(processor=lambda: "", machine=lambda: "x86_64")  # uname() di Windows con sys.platform finto: non fidarsi
     out = {("sysctl", "-n", "hw.memsize"): str(16 * 2**30), ("sysctl", "-n", "machdep.cpu.brand_string"): "Apple M4",
            ("system_profiler", "SPDisplaysDataType", "-json"): _j.dumps({"SPDisplaysDataType": [{"sppci_model": "Apple M4"}]}),
            ("nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"): "NVIDIA GeForce RTX 3060, 12288 MiB"}
@@ -54,4 +55,4 @@ def test_detect_linux_mac(monkeypatch=None):
         h = pa.detect()
         assert h["gpu"] == {"name": "NVIDIA GeForce RTX 3060", "vram_gb": 12.0}
     finally:
-        pa._run, pa.sys.platform = old
+        pa._run, pa.sys.platform, pa.platform = old

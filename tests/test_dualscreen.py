@@ -4,6 +4,7 @@ ritaglio dello schermo, ciclo nel server e cancello di rete. Nessun emulatore ve
 import sys
 import tempfile
 import time
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -236,9 +237,10 @@ def test_percorsi_config_per_sistema():
     real_plat, real_env = D.sys.platform, dict(os.environ)
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         h, exe = Path(t), str(Path(t) / "bin" / "emu")
-        os.environ["HOME"] = t
         os.environ.pop("XDG_CONFIG_HOME", None)
         os.environ["APPDATA"] = str(h / "AppData")
+        home = mock.patch.object(Path, "home", return_value=h)  # su Windows HOME non conta (USERPROFILE)
+        home.start()
         try:
             D.sys.platform = "darwin"
             assert D.config_file("melonds", exe) == h / "Library/Preferences/melonDS/melonDS.toml"
@@ -258,6 +260,7 @@ def test_percorsi_config_per_sistema():
             assert D.config_file("azahar", exe) == h / "AppData/Azahar/config/qt-config.ini"
             assert D.supported()
         finally:
+            home.stop()
             D.sys.platform = real_plat
             os.environ.clear()
             os.environ.update(real_env)
