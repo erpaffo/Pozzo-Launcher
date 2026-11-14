@@ -107,3 +107,25 @@ def test_cancello_telefono(tmp_path):
         assert gate.post("/api/play/920/save", content=b"x").status_code == 401
     finally:
         close(app, gate)
+
+
+def test_impronte_emulatorjs(tmp_path, monkeypatch):
+    """I file di EmulatorJS girano con l'origine dell'app: si accettano solo con lo SHA-256 fissato."""
+    import hashlib
+    for core in {c for _, c in W.CORES.values()}:  # ogni file che si puo' scaricare ha la sua impronta
+        assert all(r[4:] in W.EJS_SHA256 for _, r in W._wanted({"core": core}))
+    body = {"data": b"originale"}
+    monkeypatch.setattr(W.PT, "_download", lambda url, dest, progress=None, token="": dest.write_bytes(body["data"]))
+    monkeypatch.setitem(W.EJS_SHA256, "loader.js", hashlib.sha256(b"originale").hexdigest())
+    cfg = make_cfg(tmp_path)
+    dest = W.root(cfg) / "ejs" / "loader.js"
+    W._fetch(cfg, W.EJS_BASE + "loader.js", dest, {}, 0, 1, W.EJS_SHA256["loader.js"])
+    assert dest.read_bytes() == b"originale"
+    dest.unlink()
+    body["data"] = b"manomesso"
+    try:
+        W._fetch(cfg, W.EJS_BASE + "loader.js", dest, {}, 0, 1, W.EJS_SHA256["loader.js"])
+        raise AssertionError("file manomesso accettato")
+    except RuntimeError:
+        pass
+    assert not dest.exists() and not dest.with_name("loader.js.part").exists()

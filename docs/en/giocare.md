@@ -195,7 +195,8 @@ Warnings:
 Light consoles can be played inside Pozzo with **EmulatorJS**, and Flash games (`.swf`) with **Ruffle**: **Play in
 browser** is in the game details, in the right-click menu, in Big Picture and on the phone. The consoles are NES, SNES,
 Game Boy, GBA, Mega Drive, Master System, Game Gear, PC Engine, PlayStation, Atari 2600, N64, DS and arcade. The
-emulator is downloaded on the first game; saves and states are stored in the user data and included in the backup.
+emulator is downloaded on the first game and every file must match the expected SHA-256 digest (pinned in the app for
+EmulatorJS, the GitHub release one for Ruffle), otherwise it is discarded; saves and states are stored in the user data and included in the backup.
 PlayStation needs your own BIOS.
 
 ## RetroArch: Bezel, Shader and Cheats
