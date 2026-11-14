@@ -272,3 +272,14 @@ def test_rss_config_validata(tmp):
 def test_rss_fetch_blocca_reti_locali():
     with pytest.raises(ValueError):
         RSS.fetch("http://127.0.0.1:1/feed")
+
+
+def test_rss_non_accoda_link_verso_la_lan(tmp):
+    """Un feed rotto o ostile non fa scaricare indirizzi privati: si salta quel link e si passa al successivo dell'item."""
+    m = _mgr(tmp)
+    xml = (b'<rss version="2.0"><channel><item><title>Gioco A</title><guid>a</guid><link>http://192.168.1.1/a.zip</link></item>'
+           b'<item><title>Gioco B</title><guid>b</guid><link>http://192.168.1.1/b.zip</link><enclosure url="https://8.8.8.8/b.zip"/></item>'
+           b'</channel></rss>')
+    m._rss_fetch = lambda u: xml
+    assert m.rss_check({"url": "https://feed.example/lan", "interval_min": 30, "filters": [{"regex": "Gioco", "category": ""}]}) == 1
+    assert [t.source for t in m.tasks.values()] == ["https://8.8.8.8/b.zip"]

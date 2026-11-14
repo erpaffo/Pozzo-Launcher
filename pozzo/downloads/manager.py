@@ -1060,6 +1060,8 @@ class Manager:
             for item, cat in hits:
                 for link in item["links"]:  # il primo che la coda accetta
                     try:
+                        if link.lower().startswith(SCHEMES):
+                            hosts.assert_public(link)  # il feed e' di terzi: niente GET verso la LAN (router, NAS) come se l'avesse scritto l'utente
                         self.add(link, category=cat)
                         n += 1
                         break
