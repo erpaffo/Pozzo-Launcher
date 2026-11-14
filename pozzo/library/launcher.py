@@ -456,11 +456,43 @@ def _extract(cfg, target: Path, ident: str, on_status) -> Path:
     return out
 
 
+def _xinput_reader(get, clock=time.monotonic):
+    """Maschera dei pulsanti dei 4 slot. get(i) -> pulsanti, o None se lo slot non risponde.
+    Leggere uno slot vuoto e' lento: dopo un «non collegato» lo si riprova solo ogni 1,5 s."""
+    retry = [0.0] * 4
+
+    def buttons() -> int:
+        out, now = 0, clock()
+        for i in range(4):
+            if now < retry[i]:
+                continue
+            b = get(i)
+            if b is None:
+                retry[i] = now + 1.5
+            else:
+                out |= b
+        return out
+    return buttons
+
+
+_XINPUT = None
+_XINPUT_LOCK = threading.Lock()
+
+
 def _xinput():
     """Lettura dei controller Xbox (XInput) da Windows: funziona anche quando la finestra attiva e'
-    quella del gioco (il browser invece smette di leggere i controller se non ha il focus)."""
+    quella del gioco (il browser invece smette di leggere i controller se non ha il focus).
+    Un solo lettore per processo: uscita con combo e overlay ne condividono lo stato degli slot."""
+    global _XINPUT
     if sys.platform != "win32":
         return None
+    with _XINPUT_LOCK:
+        if _XINPUT is None:
+            _XINPUT = _xinput_load()
+        return _XINPUT
+
+
+def _xinput_load():
     import ctypes
     from ctypes import wintypes
 
@@ -481,14 +513,10 @@ def _xinput():
     else:
         return None
 
-    def buttons() -> int:
-        out = 0
-        for i in range(4):
-            st = STATE()
-            if lib.XInputGetState(i, ctypes.byref(st)) == 0:
-                out |= st.Gamepad.wButtons
-        return out
-    return buttons
+    def get(i):
+        st = STATE()
+        return st.Gamepad.wButtons if lib.XInputGetState(i, ctypes.byref(st)) == 0 else None
+    return _xinput_reader(get)
 
 
 XINPUT_BACK, XINPUT_START, XINPUT_RB, XINPUT_LB = 0x0020, 0x0010, 0x0200, 0x0100
