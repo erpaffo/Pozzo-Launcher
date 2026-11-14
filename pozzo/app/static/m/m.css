@@ -28,13 +28,13 @@ input, select, textarea { background: var(--bg2); border: 1px solid #2c3142; bor
 .brand { font-weight: 800; font-size: 18px; }
 .top-row { display: flex; align-items: center; gap: 10px; }
 .top-row .brand { flex: 1; }
-#install-btn { background: var(--accent, #5b8cff); color: #0f1117; border: 0; border-radius: 10px;
+#install-btn { position: relative; background: var(--accent, #5b8cff); color: #0f1117; border: 0; border-radius: 10px;
   padding: 7px 12px; font-weight: 700; font-size: 13px; }
 #run-mini { background: linear-gradient(135deg, #1d3b2e, #183228); border-radius: 12px; padding: 10px 12px;
   display: flex; align-items: center; gap: 8px; }
 #run-mini b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #run-mini .dot { width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
-#run-mini button { background: rgba(255,255,255,.1); border: 0; border-radius: 9px; padding: 6px 9px; }
+#run-mini button { position: relative; background: rgba(255,255,255,.1); border: 0; border-radius: 9px; padding: 6px 9px; }
 .view { padding: 4px 16px 16px; }
 h2.sec { font-size: 17px; margin: 18px 0 8px; }
 .row-scroll { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
@@ -91,8 +91,11 @@ h2.sec { font-size: 17px; margin: 18px 0 8px; }
 body.pad-on { overflow: hidden; height: 100%; touch-action: none; }
 .pad-bar { position: absolute; top: calc(6px + var(--safe-t)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px;
   align-items: center; justify-content: center; flex-wrap: wrap; max-width: calc(100vw - 20px); z-index: 7; font-size: 12px; }
-.pad-bar button { background: rgba(255,255,255,.08); border: 0; border-radius: 9px; padding: 8px 10px; font-size: 12px;
+.pad-bar button { position: relative; background: rgba(255,255,255,.08); border: 0; border-radius: 9px; padding: 8px 10px; font-size: 12px;
   min-width: 38px; }
+/* area di tocco di almeno 44x44 senza ingrandire il disegno del tasto */
+#install-btn::after, #run-mini button::after, .pad-bar button::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
 /* il pulsante per uscire dal controller e tornare alla Home: sempre visibile, anche con titoli lunghi */
 #pad-exit { background: rgba(91,140,255,.35); font-size: 17px; min-width: 44px; }
 #pad-info { color: var(--muted); min-width: 0; max-width: 32vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -347,3 +350,11 @@ body.pad-on { overflow: hidden; height: 100%; touch-action: none; }
 .mr-row input[type=range] { flex: 3; }
 .mr-time { display: flex; justify-content: space-between; margin: 2px 0; }
 .btn:disabled { opacity: .4; }
+
+/* movimento ridotto: via scheletro pulsante e scorrimenti decorativi; lo stato resta visibile (colore, barre, pressione) */
+@media (prefers-reduced-motion: reduce) {
+  .card.sk .cv, .card.sk .t { animation: none; opacity: .7; }
+  .sheet-box { animation: none; }
+  .card:active { transform: none; }
+  .act-bar i { transition: none; }
+}
