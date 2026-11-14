@@ -126,7 +126,7 @@ La coda raccoglie tutti i download attivi, in pausa o completati in una vista a 
   - Velocità totale istantanea in download (discesa) e upload (salita);
   - Posti occupati rispetto al limite massimo dei download contemporanei (impostabile in *Impostazioni › Download*);
   - Indicatore della **Modalità lenta** (limite di banda attivabile a mano o su fasce orarie programmate);
-  - Indicatore **🎮 Modalità gioco**: quando avvii una partita, il launcher rileva la sessione attiva e riduce automaticamente la priorità dei download in corso per proteggere il ping e la CPU.
+  - Indicatore **🎮 Modalità gioco**: quando avvii una partita, il launcher rileva la sessione attiva e agisce secondo la sezione *Mentre giochi* in *Impostazioni › Download*: di default i download continuano come sempre; «Limita la banda» abbassa la velocità di discesa al valore di «Banda lasciata al gioco»; «Metti in pausa i torrent» li ferma (e con l'opzione «Metti in pausa anche i download HTTP» ferma anche quelli HTTP). Alla chiusura del gioco riprendono solo i download fermati da questa modalità.
 - **Pulsanti e menu rapido**: Con il tasto destro su una riga (o con il tasto `Menu` da tastiera) puoi cambiare la priorità del download, spostarlo in cima o in fondo alla lista, metterlo in pausa o riprenderlo, forzare il ricontrollo, aprire la cartella del file scaricato o copiare il link originale.
 
 ### Dettagli e registro in tempo reale

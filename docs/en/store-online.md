@@ -127,7 +127,7 @@ The queue gathers all active, paused, or completed downloads in a centered, resp
   - Instantaneous aggregate download and upload speeds;
   - Active download slots relative to maximum concurrent limit (configurable in *Settings › Downloads*);
   - **Slow Mode** indicator (bandwidth throttle activated manually or via scheduled time windows);
-  - **🎮 Game Mode** indicator: when you launch a game, the launcher detects active gameplay and automatically lowers background download priority to safeguard CPU and latency.
+  - **🎮 Game Mode** indicator: when you launch a game, the launcher detects active gameplay and acts according to the *While gaming* section in *Settings › Downloads*: by default downloads keep running as usual; *Limit bandwidth* caps download speed at the *Bandwidth left to the game* value; *Pause torrents* pauses torrents (and HTTP downloads too, with *Also pause HTTP downloads*). When the game closes, only downloads stopped by this mode resume.
 - **Context menu and quick actions**: Right-click a row (or press keyboard `Menu` key) to adjust download priority, move to top/bottom of queue, pause or resume, force recheck, open containing directory, or copy source link.
 
 ### Real-Time Details and Event Log
