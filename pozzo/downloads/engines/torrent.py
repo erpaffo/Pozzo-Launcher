@@ -354,9 +354,10 @@ def _ratio(s) -> float:
     return round(s.all_time_upload / max(s.total_wanted_done, 1), 3)
 
 
-async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
+async def run(task, eng: Engine, client, on_complete=lambda: None, gate=None) -> None:
     """Scarica i file scelti di `task`, poi condivide finche' non arriva a eng.seed (rapporto o minuti; chiama on_complete
-    alla fine dello scaricamento) e toglie il torrent dalla sessione. Lo stato sta in task.options."""
+    alla fine dello scaricamento) e toglie il torrent dalla sessione. Lo stato sta in task.options. `gate`: attesa di un
+    posto nella coda quando i metadati arrivano dopo l'attesa (nell'attesa il manager non conta il magnet tra i posti)."""
     dest = Path(task.save_path).resolve()
     dest.mkdir(parents=True, exist_ok=True)
     resumed = eng.resume_file(task.id).exists()
@@ -392,7 +393,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
         h.force_recheck()
         task.log("Ricontrollo dei file su disco")
     ready, last_save, start, seeding = False, time.monotonic(), time.monotonic(), 0.0
-    state, peers, meta, mile, idle_since = None, False, False, None, None
+    state, peers, meta, mile, idle_since, waited = None, False, False, None, None, False
     try:
         while True:
             eng._pump()
@@ -413,6 +414,7 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
                 for peer in task.options.get("connect") or []:  # peer noti "ip:porta" (test, rete locale)
                     ip, _, port = str(peer).rpartition(":")
                     h.connect_peer((ip, int(port)))
+            waited = waited or not s.has_metadata
             task.options.update(metadata=s.has_metadata, peers=s.num_peers, seeds=s.num_seeds, upload_rate=s.upload_rate,
                                 sequential=bool(task.options.get("sequential")), ratio=_ratio(s), trackers=len(h.trackers()),
                                 dead_trackers=list(eng.dead_trackers.get(task.id, set())))
@@ -429,6 +431,10 @@ async def run(task, eng: Engine, client, on_complete=lambda: None) -> None:
                 ti = h.torrent_file()
                 fs = _layout(ti)
                 if not meta:
+                    if gate and waited:  # magnet: il posto lasciato nell'attesa dei metadati si riprende in coda
+                        await gate()  # nessun byte intanto: i file hanno ancora priorita' 0 (default_dont_download)
+                        task.phase = ""
+                        task.options["metadata"] = True  # subito: col False di prima il tick lo terrebbe fuori dai posti
                     meta = True
                     real = [i for i in range(fs.num_files()) if not fs.file_flags(i) & lt.file_storage.flag_pad_file]
                     task.log(f"Metadati ricevuti: {ti.name()}, {len(real)} file, {mb(ti.total_size())}")

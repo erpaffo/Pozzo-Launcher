@@ -203,6 +203,31 @@ def test_magnet_senza_metadati_libera_il_posto(swarm, tmp, monkeypatch):
     m.stop()
 
 
+def test_magnet_con_metadati_rispettano_i_posti(tmp, monkeypatch):
+    """20 magnet, 2 posti: chi aspetta i metadati non occupa, ma a metadati arrivati scaricano al massimo in 2."""
+    import asyncio
+    active, peak = set(), [0]
+
+    async def fake(task, eng, client, on_complete=lambda: None, gate=None):
+        task.options["metadata"] = False
+        await asyncio.sleep(0.05)
+        if gate:
+            await gate()
+        task.options["metadata"] = True
+        active.add(task.id)
+        peak[0] = max(peak[0], len(active))
+        await asyncio.sleep(0.3)
+        active.discard(task.id)
+
+    monkeypatch.setattr(TOR, "run", fake)
+    m = _mgr(tmp, max_active=2)
+    m.start()
+    ts = [m.add("magnet:?xt=urn:btih:" + f"{i:040x}") for i in range(20)]
+    assert _wait(lambda: all(t.status == T.COMPLETED for t in ts), 60), [t.status for t in ts]
+    assert peak[0] <= 2, peak
+    m.stop()
+
+
 def test_set_files_aggiorna_la_vista_e_riapre_il_completato(tmp):
     m = _mgr(tmp)
     t = T.DownloadTask(source="magnet:?xt=urn:btih:" + "a" * 40, save_path=str(tmp), type="torrent", status=T.COMPLETED,

@@ -930,8 +930,8 @@ class Manager:
                     self._last[t.id] = (t.done, now)
                 else:
                     t.speed = 0.0
-            # posti: solo chi scarica davvero. Fuori: torrent in condivisione o in attesa dei metadati, task HTTP che
-            # risolvono il link o lo aspettano al gate. Un job annullato ma non ancora finito occupa (tipo "")
+            # posti: solo chi scarica davvero. Fuori: torrent in condivisione o in attesa dei metadati (poi aspettano
+            # un posto al gate), task HTTP che risolvono il link o lo aspettano al gate. Un job annullato ma non ancora finito occupa (tipo "")
             busy, resolving = [], 0
             for tid in self._jobs:
                 o = self.tasks.get(tid)
@@ -951,6 +951,11 @@ class Manager:
             lim = s.get("host_limits") or {}
             act = [self._link_host.get(i) or hosts.host(self.tasks[i].source) for i in self._dl_ids if i in self.tasks]
             for t in sorted((self.tasks[i] for i, f in self._gates.items() if not f.done() and i in self.tasks), key=_order):
+                if t.type == "torrent":  # magnet con i metadati appena arrivati: riprende il posto lasciato nell'attesa
+                    if free("torrent"):
+                        busy.append("torrent")
+                        self._gates[t.id].set_result(None)
+                    continue
                 h = self._link_host.get(t.id) or hosts.host(t.source)
                 if free("http") and host_free(h, act, lim):  # link pronto e posto libero (anche per l'host): si scarica (prima chi ha priorita')
                     busy.append("http")
@@ -1294,7 +1299,7 @@ class Manager:
             elif t.type == "cli":
                 await CLI.run(t, self.cfg)
             elif t.type == "torrent":
-                await TOR.run(t, self._torrent, self._client, lambda: self._completed(t))
+                await TOR.run(t, self._torrent, self._client, lambda: self._completed(t), gate=lambda: self._gate(t))
             else:
                 await HTTP.run(t, self._client, self._buckets.setdefault(t.id, HTTP.Bucket()), segments,
                                lambda u: self._resolve(t, u), gate=lambda: self._gate(t))
