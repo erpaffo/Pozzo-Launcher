@@ -811,3 +811,31 @@ def test_salvataggio_dopo_la_cancellazione_non_resuscita_il_task(tmp):
     m.cancel(t.id)
     m.save(t)  # estrazione che finisce dopo la cancellazione
     assert m.store.load() == []
+
+
+async def test_ripresa_non_tiene_aperta_la_risposta_del_controllo(server, tmp):
+    """Alla ripresa la risposta del controllo non serve: tenerla aperta costa una connessione in piu' all'host."""
+    aperte = []
+
+    async def hook(r):
+        aperte.append(r)
+    t = _task(server + "/a", tmp)
+    b = H.Bucket()
+    b.rate = 1024 * 1024
+    async with httpx.AsyncClient(event_hooks={"response": [hook]}) as c:
+        job = asyncio.ensure_future(H.run(t, c, b, 2, lambda u: u))
+        while t.done < 1024 * 1024:
+            await asyncio.sleep(0.05)
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job
+        aperte.clear()
+        b2 = H.Bucket()
+        b2.rate = 1024 * 1024
+        job = asyncio.ensure_future(H.run(t, c, b2, 2, lambda u: u))
+        while len(aperte) < 3:  # controllo + due segmenti
+            await asyncio.sleep(0.05)
+        assert sum(not r.is_closed for r in aperte) <= 2, "una connessione in piu' del numero di segmenti"
+        job.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await job

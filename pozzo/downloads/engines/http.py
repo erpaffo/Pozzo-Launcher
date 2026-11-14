@@ -264,6 +264,9 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
                     fails, why = fails + 1, f"HTTP {e.response.status_code}"
                 except httpx.TransportError as e:
                     fails, why = fails + 1, f"{type(e).__name__}: {e}"
+                finally:
+                    if src is not None:
+                        await src.aclose()  # nullcontext non la chiude: senza, resta una connessione in piu' fino alla fine
                 if fails > RETRIES:
                     task.log(f"Segmento {i + 1}: {why}; tentativi esauriti", "error")
                     raise httpx.TransportError("troppi tentativi falliti")
@@ -275,6 +278,8 @@ async def _download(task, client, bucket, segments, url, headers, first, meta):
     sync_done()
     # il primo flusso riusa la risposta del controllo solo se parte dall'inizio (download nuovo)
     reuse = first if segs[0][2] == 0 else None
+    if reuse is None:
+        await first.aclose()  # alla ripresa il controllo non serve piu': niente connessione in piu' all'host
     workers = [asyncio.ensure_future(worker(0, reuse)), *(asyncio.ensure_future(worker(i)) for i in range(1, len(segs)))]
     try:
         await asyncio.gather(*workers)
