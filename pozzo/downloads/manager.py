@@ -370,6 +370,8 @@ class Manager:
         self._if_name, self._if_at = None, 0.0  # interfaccia letta l'ultima volta e quando (None = mai: si legge subito)
         self._if_paused: list[str] = []  # task fermati dal kill switch: ripartono quando l'interfaccia torna
         self._stopping = False  # stop() in corso: chi condivide resta segnato, per ripartire al prossimo avvio
+        self._closed = False  # stop() finito: il ciclo esce (prima un manager fermato continuava a fare tick)
+        self._th: threading.Thread | None = None
 
     # ------------------------------------------------------------ impostazioni
     def _raw(self) -> dict:
@@ -585,7 +587,8 @@ class Manager:
                     pass
         name = self._raw()["interface"]
         self._if_name, self._if_at, IFACE.BIND = name, time.monotonic(), self._iface_read(name)  # prima del client HTTP
-        threading.Thread(target=self._thread, daemon=True, name="downloads").start()
+        self._th = threading.Thread(target=self._thread, daemon=True, name="downloads")
+        self._th.start()
         self._ready.wait(10)
 
     def _thread(self):
@@ -621,8 +624,12 @@ class Manager:
             self.store.save(list(self.tasks.values()))
         if self._torrent and self._loop:
             self._loop.call_soon_threadsafe(self._torrent.close)
-
-    # ------------------------------------------------------------ comandi
+        # il ciclo esce dopo la chiusura della sessione (callback in coda prima del risveglio): niente tick, salvataggi
+        # o interfacce (IFACE.BIND e' di modulo) da un manager gia' fermato
+        self._closed = True
+        self._poke()
+        if self._th and self._th is not threading.current_thread():
+            self._th.join(5)
     def add(self, source: str, save_path: str = "", **opts) -> DownloadTask:
         source = source.strip()
         dry, checked = opts.pop("dry_run", False), opts.pop("checked", False)  # lotto di link: prima si valida tutto, poi si aggiunge
@@ -945,7 +952,7 @@ class Manager:
         self._client = self._new_client()  # IFACE.BIND gia' letto da start(): legato fin dal primo job
         try:
             opened = False
-            while True:
+            while not self._closed:
                 try:
                     self._tick()
                 except Exception:  # noqa: BLE001 - un tick sbagliato non deve fermare la coda
@@ -1045,6 +1052,8 @@ class Manager:
                 if t.type == "torrent":  # magnet con i metadati appena arrivati: riprende il posto lasciato nell'attesa
                     if free("torrent"):
                         busy.append("torrent")
+                        # occupa da subito: il job lo segna solo quando riprende, e un tick in mezzo ridarebbe il posto
+                        t.options["metadata"] = True
                         self._gates[t.id].set_result(None)
                     continue
                 h = self._link_host.get(t.id) or hosts.host(t.source)
