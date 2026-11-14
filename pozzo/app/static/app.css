@@ -80,7 +80,8 @@ html[data-ui-density="compact"] { --space-scale: .7; }
 .nav-item .lbl { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav-item .cnt { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .nav-item .tag { font-size: 10px; color: var(--accent-2); border: 1px solid var(--accent-2); border-radius: 4px; padding: 0 4px; }
-.nav-item .fav-star { background: transparent; border: none; cursor: pointer; padding: 0 4px; font-size: 13px; color: var(--muted); opacity: 0; transition: opacity .15s ease, color .15s ease; flex: none; }
+.nav-item .fav-star { position: relative; background: transparent; border: none; cursor: pointer; padding: 0 4px; font-size: 13px; color: var(--muted); opacity: 0; transition: opacity .15s ease, color .15s ease; flex: none; }
+.nav-item .fav-star::after { content: ""; position: absolute; inset: -6px -2px; } /* area di tocco >= 24px senza spostare il layout */
 .nav-item:hover .fav-star, .nav-item .fav-star:focus-visible, .nav-item .fav-star.is-fav { opacity: 1; }
 .nav-item .fav-star.is-fav { color: var(--accent); }
 .plugin-row .fav-star { background: transparent; border: none; cursor: pointer; padding: 2px 4px; font-size: 15px; color: var(--muted); flex: none; }
@@ -307,8 +308,9 @@ html:has(#detail.open[data-modal-layout="editorial"]) #app::after {
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 3px 4px 3px 11px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); }
-.chip .x { border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 50%; width: 20px; height: 20px; }
-.chip .x:hover { background: var(--bad); color: #fff; }
+.chip .x { position: relative; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 50%; width: 20px; height: 20px; }
+.chip .x::after { content: ""; position: absolute; inset: -2px; } /* area di tocco 24x24 */
+.chip .x:hover { background: var(--bad); color: var(--bg); }
 .chip.add { padding: 3px 11px; color: var(--accent); border-style: dashed; }
 .versions { display: flex; flex-direction: column; gap: 4px; }
 .version { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 7px; background: var(--bg-2); font-size: 12.5px; }
@@ -345,7 +347,8 @@ html:has(#detail.open[data-modal-layout="editorial"]) #app::after {
 .changelog ul { margin: 4px 0; padding-left: 18px; }
 .changelog li { margin: 2px 0; }
 .d-mine { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
-.d-stars .star { background: none; border: 0; padding: 0 1px; font-size: 18px; line-height: 1; cursor: pointer; color: var(--line); }
+.d-stars .star { position: relative; background: none; border: 0; padding: 0 1px; font-size: 18px; line-height: 1; cursor: pointer; color: var(--line); }
+.d-stars .star::after { content: ""; position: absolute; inset: -3px -2px; } /* area di tocco >= 24px */
 .d-stars .star.on { color: #f5c542; }
 .d-stars .star:focus-visible { outline: 2px solid #f5c542; border-radius: 3px; }
 .d-note { width: 100%; resize: vertical; min-height: 40px; margin-bottom: 6px; }
