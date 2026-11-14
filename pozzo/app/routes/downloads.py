@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from ... import storelinks as SL
 from .. import browserdl
 from ...cache import Cache
-from ...downloads import bandwidth, debrid, finish, hosts, install, linkcheck, multiup, resolvers
+from ...downloads import bandwidth, debrid, finish, hosts, iface, install, linkcheck, multiup, resolvers
 from ...downloads.engines import http as HTTP, steamcmd as STEAMCMD, torrent as TOR
 from ...downloads.extract import queue_forecast
 from ...downloads.manager import Duplicate, Manager
@@ -319,6 +319,11 @@ def build_router(ctx) -> APIRouter:
         except ValueError as e:
             raise HTTPException(400, str(e))
         return {"ok": True}
+
+    @router.get("/api/downloads/interfaces")
+    def api_downloads_interfaces():
+        """Interfacce di rete di adesso, con i loro indirizzi: la UI le propone per legarci i download (VPN)."""
+        return {"interfaces": iface.interfaces()}
 
     @router.post("/api/downloads/settings")
     def api_downloads_settings(body: dict = Body(...)):

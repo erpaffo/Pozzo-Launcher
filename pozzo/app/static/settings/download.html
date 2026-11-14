@@ -65,6 +65,15 @@
 <p class="muted small" data-i18n="j.dl.game.desc2">Con «Limita la banda» il limite qui sopra sostituisce quello globale finché giochi (0 = nessun limite).
   Alla chiusura del gioco riprendono solo i download fermati da questa modalità: quelli messi in pausa a mano restano fermi.</p>
 
+<h3 data-i18n="j.dl.net.title">Rete</h3>
+<label class="lbl-field"><span data-i18n="j.dl.iface">Interfaccia di rete per i download</span>
+  <select class="field" id="dls-iface" aria-describedby="dls-iface-state dls-iface-desc">
+    <option value="" data-i18n="j.dl.iface.any">Qualunque (predefinita)</option></select></label>
+<p class="small bad" id="dls-iface-state" role="status"></p>
+<p class="muted small" id="dls-iface-desc" data-i18n="j.dl.iface.desc">Scegli la VPN: download HTTP e torrent, risoluzione dei link, debrid, controllo dei link e feed RSS escono solo da lì.
+  Se l'interfaccia si spegne o sparisce i download vanno in pausa e niente parte da un'altra strada; riprendono da soli quando torna.
+  Restano fuori le richieste DNS, il browser nascosto che apre le pagine di alcuni siti di hosting (con l'interfaccia spenta non si apre), SteamCMD e i client degli store.</p>
+
 <h3>BitTorrent</h3>
 <div class="row wrap">
   <label><span data-i18n="j.dl.bt.port">Porta (0 = casuale)</span> <input class="field" id="dls-port" type="number" min="0" max="65535"></label>

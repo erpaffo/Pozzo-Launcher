@@ -20,7 +20,7 @@ from urllib.parse import urljoin, urlsplit
 import httpx
 
 from ..net import UA
-from . import resolvers
+from . import iface, resolvers
 
 
 class Blocked(Exception):
@@ -130,7 +130,7 @@ def resolve(url: str) -> str:
     final = ""
     if h in _SITES:
         try:
-            with httpx.Client(headers=HEADERS, timeout=TIMEOUT, follow_redirects=True) as s:
+            with httpx.Client(headers=HEADERS, timeout=TIMEOUT, follow_redirects=True, **iface.client_kw()) as s:
                 final = _SITES[h](url, s) or ""
         except Blocked as e:
             resolvers.note(str(e))
@@ -142,6 +142,8 @@ def resolve(url: str) -> str:
             return final
     # shortcut: il link trovato dal browser non porta con sé i cookie della finestra (1fichier li chiede),
     # se un host rifiuta il download passare lì i cookie: task.options["headers"] li manda HTTP.run
+    if iface.BIND == ():  # kill switch: il browser non si lega all'interfaccia, con la VPN giu' non si apre
+        return ""
     from .. import storelinks as SL  # import qui: storelinks tira dietro beautifulsoup
     final = SL.with_browser(url)
     if not final or _same_page(final, url) or urlsplit(final).path.lower().rstrip("/") in _FORM_PATH:

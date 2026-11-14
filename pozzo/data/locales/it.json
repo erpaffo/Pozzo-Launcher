@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "Già nella lista dei download",
  "d.dup.ask": "Già nella lista ({n}):\n{list}\n\nAggiungere comunque?",
  "d.dup.skipped": "{n} già in lista, non aggiunti",
- "k.m.dl_dup": "Già nella coda del PC"
+ "k.m.dl_dup": "Già nella coda del PC",
+ "j.dl.net.title": "Rete",
+ "j.dl.iface": "Interfaccia di rete per i download",
+ "j.dl.iface.any": "Qualunque (predefinita)",
+ "j.dl.iface.desc": "Scegli la VPN: download HTTP e torrent, risoluzione dei link, debrid, controllo dei link e feed RSS escono solo da lì. Se l'interfaccia si spegne o sparisce i download vanno in pausa e niente parte da un'altra strada; riprendono da soli quando torna. Restano fuori le richieste DNS, il browser nascosto che apre le pagine di alcuni siti di hosting (con l'interfaccia spenta non si apre), SteamCMD e i client degli store.",
+ "j.dl.iface.off": "spenta",
+ "j.dl.iface.gone": "non disponibile adesso",
+ "j.dl.iface.down": "⚠ «{name}» non è disponibile: i download HTTP e torrent restano fermi finché non torna.",
+ "d.iface.name": "Interfaccia di rete assente",
+ "d.iface.tt": "L'interfaccia di rete scelta per i download (VPN) non è disponibile: i download sono in pausa e riprendono da soli quando torna"
 }

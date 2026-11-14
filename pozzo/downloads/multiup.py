@@ -20,7 +20,7 @@ from urllib.parse import urljoin, urlsplit
 import httpx
 from bs4 import BeautifulSoup
 
-from . import hosts, resolvers
+from . import hosts, iface, resolvers
 
 # Preferenza: host che il resto della catena sa portare a termine (1fichier/krakenfiles compilano il modulo,
 # datanodes/filekeeper li clicca il browser). Chi non c'e' viene dopo; LAST = host senza un risolutore.
@@ -38,7 +38,7 @@ def is_page(url: str) -> bool:
 
 
 def _get(url: str, **kw) -> httpx.Response:  # unico punto di rete
-    with httpx.Client(headers=hosts.HEADERS, timeout=hosts.TIMEOUT) as s:
+    with httpx.Client(headers=hosts.HEADERS, timeout=hosts.TIMEOUT, **iface.client_kw()) as s:
         return s.get(url, **kw)
 
 

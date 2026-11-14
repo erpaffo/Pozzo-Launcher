@@ -164,6 +164,15 @@ If you subscribe to a Debrid multi-host service, configure your API key in **Set
 - Supported hoster links unlock automatically at maximum account speed, bypassing free-tier wait queues and throttle caps.
 - If a game is hosted on MultiUp, the card displays individual mirror hosts with dedicated buttons to pick your preferred server.
 
+### Network Interface (VPN) and Kill Switch
+
+In **Settings › Downloads › Network** you can choose the network interface downloads go out from, usually your VPN's. The list shows the PC's interfaces with their addresses; the launcher remembers the name, because a VPN's address changes at every connection. Empty (default) = any, as before.
+
+- **What goes through the interface**: HTTP and torrent downloads (listening, peer connections, trackers, DHT), resolving file host links, Debrid services, link checks, RSS feeds and `.torrent` files fetched from a link. If the interface has both IPv4 and IPv6 addresses, torrents use both; HTTP downloads go out from the IPv4 address (a site reachable only over IPv6 cannot be downloaded in that case).
+- **Kill switch**: every 5 seconds the launcher checks that the interface still exists and is up. If it is missing, running downloads pause with "Interfaccia di rete non disponibile" (network interface not available), 🔌 appears in the queue bar and no download starts; meanwhile none of these requests leaves by another route. When the interface comes back, even with a different address, downloads resume by themselves from where they were. A name that no longer exists never falls back to "any" on its own.
+- **What does not go through the interface**: DNS lookups (they go to the system's DNS server: with a VPN it is usually the VPN's), the hidden browser that opens the pages of some file hosts and shorteners (it does not open while the interface is missing), SteamCMD and the store clients. If you need those to use the VPN too, use the VPN's own kill switch.
+- On macOS and Linux the system picks the route from its routing table: packets still carry the VPN address, and with the VPN down they do not leave.
+
 ### Automatic Extraction and Folder Sorting
 
 When a download finishes:

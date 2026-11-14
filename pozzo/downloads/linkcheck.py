@@ -14,7 +14,7 @@ from urllib.parse import unquote, urlsplit
 import httpx
 
 from ..net import UA
-from . import hosts
+from . import hosts, iface
 
 MAX_LINKS = 50
 WORKERS = 5  # richieste insieme: abbastanza per 50 link in pochi secondi senza martellare un host
@@ -65,7 +65,7 @@ def check(url: str, client: httpx.Client | None = None) -> dict:
     if not url.lower().startswith(("http://", "https://")):
         return out  # magnet/torrent: niente da interrogare
     own = client is None
-    c = client or httpx.Client(timeout=TIMEOUT, headers={"User-Agent": UA}, follow_redirects=False)
+    c = client or httpx.Client(timeout=TIMEOUT, headers={"User-Agent": UA}, follow_redirects=False, **iface.client_kw())
     try:
         cur = url
         for _ in range(HOPS + 1):

@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from ..net import UA
-from . import resolvers
+from . import iface, resolvers
 
 SERVICES = ("realdebrid", "alldebrid", "premiumize", "torbox", "debridlink")
 NAMES = {"realdebrid": "Real-Debrid", "alldebrid": "AllDebrid", "premiumize": "Premiumize", "torbox": "TorBox",
@@ -65,7 +65,8 @@ _hosts_fail: dict[str, tuple[float, str]] = {}  # motivo dell'ultimo errore dell
 
 
 def _client(timeout=None) -> httpx.Client:
-    return httpx.Client(timeout=timeout or httpx.Timeout(30, connect=10), headers={"User-Agent": UA}, follow_redirects=True)
+    return httpx.Client(timeout=timeout or httpx.Timeout(30, connect=10), headers={"User-Agent": UA}, follow_redirects=True,
+                        **iface.client_kw())
 
 
 def _domains(values) -> set[str]:

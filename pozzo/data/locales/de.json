@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "Bereits in der Download-Liste",
  "d.dup.ask": "Bereits in der Liste ({n}):\n{list}\n\nTrotzdem hinzufügen?",
  "d.dup.skipped": "{n} bereits in der Liste, nicht hinzugefügt",
- "k.m.dl_dup": "Bereits in der Warteschlange des PCs"
+ "k.m.dl_dup": "Bereits in der Warteschlange des PCs",
+ "j.dl.net.title": "Netzwerk",
+ "j.dl.iface": "Netzwerkschnittstelle für Downloads",
+ "j.dl.iface.any": "Beliebig (Standard)",
+ "j.dl.iface.desc": "Wähle dein VPN: HTTP- und Torrent-Downloads, Link-Auflösung, Debrid, Link-Prüfung und RSS-Feeds laufen nur darüber. Fällt die Schnittstelle aus oder verschwindet sie, werden die Downloads pausiert und nichts geht über einen anderen Weg hinaus; sie laufen von selbst weiter, sobald sie zurück ist. Nicht abgedeckt: DNS-Anfragen, der versteckte Browser, der die Seiten mancher Filehoster öffnet (bei ausgefallener Schnittstelle öffnet er sich nicht), SteamCMD und die Store-Clients.",
+ "j.dl.iface.off": "inaktiv",
+ "j.dl.iface.gone": "derzeit nicht verfügbar",
+ "j.dl.iface.down": "⚠ „{name}“ ist nicht verfügbar: HTTP- und Torrent-Downloads bleiben angehalten, bis sie zurück ist.",
+ "d.iface.name": "Netzwerkschnittstelle fehlt",
+ "d.iface.tt": "Die für Downloads gewählte Netzwerkschnittstelle (VPN) ist nicht verfügbar: Die Downloads sind pausiert und laufen von selbst weiter, sobald sie zurück ist"
 }

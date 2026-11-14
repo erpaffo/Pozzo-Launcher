@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "Déjà dans la liste des téléchargements",
  "d.dup.ask": "Déjà dans la liste ({n}) :\n{list}\n\nAjouter quand même ?",
  "d.dup.skipped": "{n} déjà dans la liste, non ajoutés",
- "k.m.dl_dup": "Déjà dans la file d'attente du PC"
+ "k.m.dl_dup": "Déjà dans la file d'attente du PC",
+ "j.dl.net.title": "Réseau",
+ "j.dl.iface": "Interface réseau pour les téléchargements",
+ "j.dl.iface.any": "N'importe laquelle (par défaut)",
+ "j.dl.iface.desc": "Choisissez votre VPN : les téléchargements HTTP et torrent, la résolution des liens, le debrid, la vérification des liens et les flux RSS ne sortent que par là. Si l'interface s'arrête ou disparaît, les téléchargements se mettent en pause et rien ne passe par un autre chemin ; ils reprennent seuls quand elle revient. Ne sont pas couverts : les requêtes DNS, le navigateur caché qui ouvre les pages de certains hébergeurs (il ne s'ouvre pas quand l'interface est coupée), SteamCMD et les clients des boutiques.",
+ "j.dl.iface.off": "inactive",
+ "j.dl.iface.gone": "indisponible pour le moment",
+ "j.dl.iface.down": "⚠ « {name} » n'est pas disponible : les téléchargements HTTP et torrent restent arrêtés jusqu'à son retour.",
+ "d.iface.name": "Interface réseau absente",
+ "d.iface.tt": "L'interface réseau choisie pour les téléchargements (VPN) n'est pas disponible : les téléchargements sont en pause et reprennent seuls à son retour"
 }

@@ -168,7 +168,13 @@ class Engine:
         """Impostazioni del manager (limiti gia' scelti tra normali e «lenti»)."""
         disc = s.get("discovery") or {}
         pol, lvl = ENCRYPTION.get(s.get("encryption"), ENCRYPTION["prefer"])
-        pack = {"listen_interfaces": f"0.0.0.0:{int(s.get('port') or 0)},[::]:{int(s.get('port') or 0)}",
+        port, bind = int(s.get("port") or 0), s.get("bind")
+        # interfaccia scelta (downloads/iface.py): ascolto e connessioni in uscita solo dai suoi indirizzi. Tracker, DHT e
+        # LSD passano dai socket d'ascolto: senza un socket IPv4 un tracker IPv4 non si annuncia (verificato su 2.1.1).
+        # Interfaccia assente (bind = ()): solo loopback, nessun pacchetto esce da un'altra strada
+        ips = ("0.0.0.0", "::") if bind is None else bind or ("127.0.0.1",)
+        pack = {"listen_interfaces": ",".join(f"[{a}]:{port}" if ":" in a else f"{a}:{port}" for a in ips),
+                "outgoing_interfaces": "" if bind is None else ",".join(ips),
                 "enable_dht": bool(disc.get("dht")), "enable_lsd": bool(disc.get("lsd")),
                 "enable_upnp": bool(disc.get("upnp")), "enable_natpmp": bool(disc.get("upnp")),
                 "in_enc_policy": pol, "out_enc_policy": pol, "allowed_enc_level": lvl,

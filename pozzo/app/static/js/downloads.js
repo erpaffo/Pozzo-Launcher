@@ -513,6 +513,7 @@ async function renderDownloads(pv) {
       <button class="dl-lim" id="dl-s-lim" type="button" title="${t("d.st.lim_tt")}"></button>
       <button class="btn" id="dl-alt" type="button" aria-pressed="false">🐢 ${t("d.alt.name")}</button>
       <span id="dl-s-game" hidden title="${t("d.game.tt")}">🎮 ${t("d.game.name")}</span>
+      <span id="dl-s-iface" class="bad" hidden title="${t("d.iface.tt")}">🔌 ${t("d.iface.name")}</span>
     </div></div>`;
   $("#dl-add", pv).onclick = dlOpenAdd;
   $("#dl-hist-box", pv).addEventListener("toggle", dlFit);
@@ -722,6 +723,8 @@ function dlStatus() {
   set("#dl-s-lim", d || u ? `${t("d.limit")} ${d ? "↓ " + d + " KB/s" : ""}${d && u ? " " : ""}${u ? "↑ " + u + " KB/s" : ""}` : t("d.limit.none"));
   const g = $("#dl-s-game");
   if (g) g.hidden = !s.game_active;
+  const f = $("#dl-s-iface");
+  if (f) f.hidden = !s.iface_down; // kill switch: la VPN scelta manca, i download restano fermi
 }
 
 /** stepper «pronto a giocare» e testo dell'ora sotto il nome (riga o testata di gruppo); "" se non ci sono */
@@ -1438,7 +1441,7 @@ const DLS_FIELDS = [
   ["#dls-game-mode", "game_mode", "str"], ["#dls-game-limit", "game_limit_kbps", "int"],
   ["#dls-game-http", "game_pause_http", "bool"], ["#s2-fmt", "switch2_format", "str"],
   ["#dls-incomplete", "incomplete_dir", "str"], ["#dls-watch", "watch_dir", "str"], ["#dls-seed-action", "seed_action", "str"],
-  ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"],
+  ["#dls-ipf", "ip_filter_path", "str"], ["#dls-pw", "passwords", "lines"], ["#dls-iface", "interface", "str"],
 ];
 
 function dlsRead(el, kind) {
@@ -1469,6 +1472,7 @@ function dlsFill(s) {
     $("[data-deb=key]", box).placeholder = d.key_set ? t("d.deb.ph_replace") : t("d.deb.ph_new");
   });
   $("#dls-ipf-err").textContent = s.ip_filter_error || "";
+  $("#dls-iface-state").textContent = s.iface_down ? t("j.dl.iface.down", { name: s.interface }) : "";
   dlsListsFill(s);
   dlsAltState();
 }
@@ -1491,7 +1495,25 @@ async function loadDownloadSettings() {
   if (!dir) return;
   if (!dir.dataset.bound) dlsBind();
   try { DL.settings = (await api("/api/downloads")).settings || {}; } catch (e) { return toast(e.message, true); }
+  await dlsIfaces(DL.settings);
   dlsFill(DL.settings);
+}
+
+/* interfacce di rete (VPN) di adesso con i loro indirizzi; quella salvata e ora assente resta scelta, segnata come tale */
+async function dlsIfaces(s) {
+  const sel = $("#dls-iface"), cur = s.interface || "";
+  let list = [];
+  try { list = (await api("/api/downloads/interfaces")).interfaces || []; } catch { /* elenco non leggibile: resta quella salvata */ }
+  if (cur && !list.some((i) => i.name === cur)) list.push({ name: cur, up: false, addrs: [], gone: true });
+  sel.querySelectorAll("option[data-iface]").forEach((o) => o.remove());
+  for (const i of list) {
+    const o = document.createElement("option");
+    o.dataset.iface = "1";
+    o.value = i.name;
+    o.textContent = i.name + (i.gone ? ` — ${t("j.dl.iface.gone")}` : (i.addrs.length ? ` — ${i.addrs.join(", ")}` : "") + (i.up ? "" : ` (${t("j.dl.iface.off")})`));
+    sel.append(o);
+  }
+  sel.value = cur;
 }
 
 function dlsBind() {

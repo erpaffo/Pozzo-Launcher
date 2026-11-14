@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "Ya está en la lista de descargas",
  "d.dup.ask": "Ya está en la lista ({n}):\n{list}\n\n¿Añadir de todos modos?",
  "d.dup.skipped": "{n} ya en la lista, no añadidos",
- "k.m.dl_dup": "Ya está en la cola del PC"
+ "k.m.dl_dup": "Ya está en la cola del PC",
+ "j.dl.net.title": "Red",
+ "j.dl.iface": "Interfaz de red para las descargas",
+ "j.dl.iface.any": "Cualquiera (predeterminada)",
+ "j.dl.iface.desc": "Elige tu VPN: las descargas HTTP y torrent, la resolución de enlaces, el debrid, la comprobación de enlaces y los feeds RSS salen solo por ella. Si la interfaz se apaga o desaparece, las descargas se pausan y nada sale por otro camino; se reanudan solas cuando vuelve. Quedan fuera las consultas DNS, el navegador oculto que abre las páginas de algunos sitios de alojamiento (con la interfaz apagada no se abre), SteamCMD y los clientes de las tiendas.",
+ "j.dl.iface.off": "apagada",
+ "j.dl.iface.gone": "no disponible ahora",
+ "j.dl.iface.down": "⚠ «{name}» no está disponible: las descargas HTTP y torrent siguen detenidas hasta que vuelva.",
+ "d.iface.name": "Interfaz de red ausente",
+ "d.iface.tt": "La interfaz de red elegida para las descargas (VPN) no está disponible: las descargas están en pausa y se reanudan solas cuando vuelva"
 }

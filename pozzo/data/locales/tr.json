@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "İndirme listesinde zaten var",
  "d.dup.ask": "Listede zaten var ({n}):\n{list}\n\nYine de eklensin mi?",
  "d.dup.skipped": "{n} listede zaten var, eklenmedi",
- "k.m.dl_dup": "PC kuyruğunda zaten var"
+ "k.m.dl_dup": "PC kuyruğunda zaten var",
+ "j.dl.net.title": "Ağ",
+ "j.dl.iface": "İndirmeler için ağ arayüzü",
+ "j.dl.iface.any": "Herhangi biri (varsayılan)",
+ "j.dl.iface.desc": "VPN'ini seç: HTTP ve torrent indirmeleri, bağlantı çözümleme, debrid, bağlantı denetimi ve RSS beslemeleri yalnızca oradan çıkar. Arayüz kapanır ya da kaybolursa indirmeler duraklar ve hiçbir şey başka bir yoldan çıkmaz; arayüz geri geldiğinde kendiliğinden devam ederler. Kapsam dışı: DNS sorguları, bazı dosya barındırma sitelerinin sayfalarını açan gizli tarayıcı (arayüz kapalıyken açılmaz), SteamCMD ve mağaza istemcileri.",
+ "j.dl.iface.off": "kapalı",
+ "j.dl.iface.gone": "şu anda kullanılamıyor",
+ "j.dl.iface.down": "⚠ “{name}” kullanılamıyor: HTTP ve torrent indirmeleri o geri gelene kadar durur.",
+ "d.iface.name": "Ağ arayüzü yok",
+ "d.iface.tt": "İndirmeler için seçilen ağ arayüzü (VPN) kullanılamıyor: indirmeler duraklatıldı ve arayüz geri geldiğinde kendiliğinden devam eder"
 }

@@ -409,14 +409,16 @@ def resolve(cache, url: str) -> str:
     hit = cache.kv_get(RESOLVED_PREFIX + url, RESOLVED_TTL)
     if hit:
         return hit
+    from .downloads import iface  # risolve i link dei download: esce dall'interfaccia scelta per i download
     final = ""
     try:  # alcuni accorciatori non chiedono nulla: un semplice GET basta
-        r = httpx.get(url, headers=HEADERS, timeout=httpx.Timeout(15, connect=8), follow_redirects=True)
+        with httpx.Client(headers=HEADERS, timeout=httpx.Timeout(15, connect=8), follow_redirects=True, **iface.client_kw()) as c:
+            r = c.get(url)
         if r.status_code == 200 and not is_shortener(str(r.url)):
             final = str(r.url)
     except httpx.HTTPError:
         pass
-    if not final:
+    if not final and iface.BIND != ():  # kill switch: il browser nascosto non si lega all'interfaccia
         final = with_browser(url)
     if final and not is_shortener(final):
         if not _SIGNED.search(final):  # URL firmata (scade): in cache a 30 giorni farebbe danni

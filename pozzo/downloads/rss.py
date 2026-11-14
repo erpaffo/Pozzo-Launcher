@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import httpx
 
 from .. import net
-from . import hosts
+from . import hosts, iface
 
 MAX_BYTES = 5 * 1024 * 1024
 MAX_HOPS = 3
@@ -55,7 +55,7 @@ def parse(data: bytes) -> list[dict]:
 
 def fetch(url: str) -> bytes:
     """Scarica il feed (sincrono, da un thread). Anti-SSRF come i download: ogni salto controllato da hosts.assert_public."""
-    with httpx.Client(timeout=20, headers={"User-Agent": net.UA}, follow_redirects=False) as c:
+    with httpx.Client(timeout=20, headers={"User-Agent": net.UA}, follow_redirects=False, **iface.client_kw()) as c:
         for _ in range(MAX_HOPS + 1):
             hosts.assert_public(url)
             with c.stream("GET", url) as r:

@@ -4053,5 +4053,14 @@
  "s.downloads.duplicate": "Already in the download list",
  "d.dup.ask": "Already in the list ({n}):\n{list}\n\nAdd anyway?",
  "d.dup.skipped": "{n} already in the list, not added",
- "k.m.dl_dup": "Already in the PC queue"
+ "k.m.dl_dup": "Already in the PC queue",
+ "j.dl.net.title": "Network",
+ "j.dl.iface": "Network interface for downloads",
+ "j.dl.iface.any": "Any (default)",
+ "j.dl.iface.desc": "Choose your VPN: HTTP and torrent downloads, link resolving, debrid, link checks and RSS feeds go out only through it. If the interface goes down or disappears, downloads pause and nothing leaves by another route; they resume by themselves when it comes back. Not covered: DNS lookups, the hidden browser that opens the pages of some file hosts (it does not open while the interface is down), SteamCMD and the store clients.",
+ "j.dl.iface.off": "down",
+ "j.dl.iface.gone": "not available now",
+ "j.dl.iface.down": "⚠ “{name}” is not available: HTTP and torrent downloads stay stopped until it comes back.",
+ "d.iface.name": "Network interface missing",
+ "d.iface.tt": "The network interface chosen for downloads (VPN) is not available: downloads are paused and resume by themselves when it comes back"
 }

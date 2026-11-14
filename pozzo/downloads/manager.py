@@ -26,7 +26,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from .. import config as C, net
-from . import hosts, ingest as I, linkcheck, resolvers, rss as RSS, task as TASK
+from . import hosts, iface as IFACE, ingest as I, linkcheck, resolvers, rss as RSS, task as TASK
 try:
     from .bandwidth import record as _record_bw
 except ImportError:  # modulo non ancora presente: niente statistiche di banda
@@ -57,6 +57,7 @@ DEFAULTS = {"dir": "", "max_active": 3, "segments": 4, "limit_down": 0, "limit_u
             "rss": [],  # [{url, interval_min, filters: [{regex, category}]}]
             "check_links": False,  # prima di accodare un link http(s): se risulta offline, add() lo rifiuta
             "host_limits": {},  # {"dominio": N}: massimo N download HTTP insieme da quel dominio (e sottodomini)
+            "interface": "",  # interfaccia di rete (nome, es. la VPN) da cui escono HTTP e torrent; vuota = qualunque
             "rules": []}  # [{match: regex su nome/gioco, platform: id console, subfolder: str}], la prima che combacia vale  # estrazioni/inserimenti in libreria insieme (letto all'avvio)
 INTS = {"max_active": (1, 10), "segments": (1, 8), "limit_down": (0, 10_000_000), "limit_up": (0, 10_000_000),
         "port": (0, 65535), "max_active_http": (0, 10), "max_active_torrent": (0, 10), "seed_minutes": (0, 100_000),
@@ -77,6 +78,9 @@ log = logging.getLogger("pozzo.downloads")
 CAT_ACTIONS = ("pause", "remove")  # a limite di condivisione raggiunto: torrent fermo (il task resta) o tolto dalla lista (i file restano)
 WATCH_EVERY = 10  # s tra due controlli della cartella sorvegliata
 WATCH_QUIET = 3  # s: un .torrent modificato da meno si sta ancora copiando
+IFACE_EVERY = 5  # s tra due letture degli indirizzi dell'interfaccia scelta (kill switch)
+IFACE_PHASE = "Interfaccia di rete non disponibile"  # fase dei download fermati perche' l'interfaccia scelta manca
+BOUND = ("http", "torrent")  # i motori legati all'interfaccia: steamcmd e i client degli store sono programmi esterni
 SAVE_EVERY = 10 # s tra due salvataggi dello stesso task nel tick, se non cambia stato/fase/errore/nome
 
 
@@ -362,6 +366,8 @@ class Manager:
         self._watch_bad: dict[str, str] = {}  # percorso -> motivo gia' scritto nel log (una riga sola, non una per giro)
         self._space_busy = False  # lettura dello spazio libero dei dischi in corso (thread dl-space)
         self._check = linkcheck.check  # i test lo sostituiscono: nessuna rete
+        self._if_name, self._if_at = None, 0.0  # interfaccia letta l'ultima volta e quando (None = mai: si legge subito)
+        self._if_paused: list[str] = []  # task fermati dal kill switch: ripartono quando l'interfaccia torna
         self._stopping = False  # stop() in corso: chi condivide resta segnato, per ripartire al prossimo avvio
 
     # ------------------------------------------------------------ impostazioni
@@ -383,6 +389,7 @@ class Manager:
         s["alt_active"] = alt_active(s)
         s["game_active"] = self._game["on"]
         s["ip_filter_error"] = self._torrent.ip_error if self._torrent else ""
+        s["iface_down"] = bool(s["interface"]) and IFACE.BIND == ()
         return s
 
     def update_settings(self, body: dict) -> dict:
@@ -398,6 +405,12 @@ class Manager:
                 new["rss"] = _feeds(body["rss"])
             if "host_limits" in body:
                 new["host_limits"] = _host_limits(body["host_limits"])
+            if "interface" in body:
+                name = str(body["interface"] or "").strip()[:256]
+                # si sceglie dall'elenco di adesso; quella gia' salvata resta valida anche se ora manca (VPN spenta)
+                if name and name != cur["interface"] and name not in {i["name"] for i in IFACE.interfaces()}:
+                    raise ValueError(f"Interfaccia di rete non trovata: {name}")
+                new["interface"] = name
             if "seed_action" in body:
                 if body["seed_action"] not in CAT_ACTIONS:
                     raise ValueError("seed_action: pause o remove")
@@ -569,6 +582,8 @@ class Manager:
                     p.unlink()
                 except OSError:
                     pass
+        name = self._raw()["interface"]
+        self._if_name, self._if_at, IFACE.BIND = name, time.monotonic(), self._iface_read(name)  # prima del client HTTP
         threading.Thread(target=self._thread, daemon=True, name="downloads").start()
         self._ready.wait(10)
 
@@ -898,21 +913,36 @@ class Manager:
             self._loop.call_soon_threadsafe(job.cancel)
 
     # ------------------------------------------------------------ ciclo
-    async def _main(self):
+    @staticmethod
+    async def _redirect_public(r):  # catena di redirect: un link pubblico non puo' rimbalzare verso la LAN
+        loc = r.headers.get("location")
+        if r.is_redirect and loc:
+            to = r.request.url.join(loc)
+            if to.host != r.request.url.host:  # shortcut: stesso host non si ricontrolla, un link LAN scritto a mano resta valido
+                await asyncio.to_thread(hosts.assert_public, str(to))
+
+    def _new_client(self):
+        """Client dei download HTTP, legato all'interfaccia scelta (IFACE.BIND) se ce n'e' una."""
+        kw = IFACE.client_kw(True, http2=False, limits=net.LIMITS)
         try:  # HTTP/1.1: con HTTP/2 tutti i segmenti verso un host passano su una sola connessione
-            client = self.client_factory(http2=False)
-        except TypeError:  # factory senza il parametro (test)
+            client = self.client_factory(http2=False, **kw)
+        except TypeError:  # factory senza il parametro (test); legato a un'interfaccia mai senza transport
+            if kw:
+                raise
             client = self.client_factory()
-        async def _redirect_public(r):  # catena di redirect: un link pubblico non puo' rimbalzare verso la LAN
-            loc = r.headers.get("location")
-            if r.is_redirect and loc:
-                to = r.request.url.join(loc)
-                if to.host != r.request.url.host:  # shortcut: stesso host non si ricontrolla, un link LAN scritto a mano resta valido
-                    await asyncio.to_thread(hosts.assert_public, str(to))
         if hasattr(client, "event_hooks"):
-            client.event_hooks["response"].append(_redirect_public)
-        async with client:
-            self._client = client
+            client.event_hooks["response"].append(self._redirect_public)
+        return client
+
+    async def _close_later(self, client, jobs):
+        """Client di prima dell'ultimo cambio d'interfaccia: si chiude quando i job fermati hanno finito di uscire."""
+        if jobs:
+            await asyncio.wait(jobs, timeout=60)
+        await client.aclose()
+
+    async def _main(self):
+        self._client = self._new_client()  # IFACE.BIND gia' letto da start(): legato fin dal primo job
+        try:
             opened = False
             while True:
                 try:
@@ -931,6 +961,8 @@ class Manager:
                     await asyncio.wait_for(self._wake.wait(), 1)
                 except asyncio.TimeoutError:
                     pass
+        finally:
+            await self._client.aclose()
 
     def mark_ready(self, tid: str) -> bool:
         """Task con la libreria in attesa della scansione: se il gioco e' comparso, libreria e dati sono fatti."""
@@ -967,12 +999,13 @@ class Manager:
         self._space_refresh()
         self._auto_resume()
         s = self._raw()
+        self._iface_tick(s)
         self._rss_tick(s)
         self._watch_tick(s)
         self._game_tick(s)
         down, up = self._limits(s)
         if self._torrent:
-            self._torrent.configure({**s, "limit_down": down, "limit_up": up})
+            self._torrent.configure({**s, "limit_down": down, "limit_up": up, "bind": IFACE.BIND})
         now = time.monotonic()
         with self.lock:
             for t in self.tasks.values():
@@ -1022,6 +1055,8 @@ class Manager:
             for t in sorted((t for t in self.tasks.values() if t.status == QUEUED and t.id not in self._jobs), key=_order):
                 if not _due(t.options, self.now()):
                     continue  # pianificato («Avvia alle»): aspetta il suo orario, senza occupare un posto
+                if t.type in BOUND and IFACE.BIND == ():
+                    continue  # kill switch: l'interfaccia scelta manca, non parte niente
                 if len(busy) >= int(s["max_active"]):
                     break
                 gap = self._space_gap(t)
@@ -1049,7 +1084,8 @@ class Manager:
                 t.log("Avviato")
                 self._jobs[t.id] = asyncio.ensure_future(self._job(t, int(s["segments"])))
             for t in self.tasks.values():  # condivisione interrotta dalla chiusura: riparte, senza occupare posti
-                if t.options.get("seeding") and t.status == COMPLETED and t.id not in self._jobs and not self._stopping:
+                if t.options.get("seeding") and t.status == COMPLETED and t.id not in self._jobs and not self._stopping \
+                        and IFACE.BIND != ():
                     t.log("Riprendo la condivisione")
                     self._jobs[t.id] = asyncio.ensure_future(self._job(t, 0))
             self._share(down)
@@ -1093,6 +1129,56 @@ class Manager:
             if alt != self._alt_sent:
                 self._alt_sent, ev["settings"] = alt, self.settings()
             self.events.emit("downloads", ev)
+
+    @staticmethod
+    def _iface_read(name: str):
+        """Indirizzi dell'interfaccia `name` (None se non ne e' scelta una). Un errore vale «assente», mai «qualunque»."""
+        if not name:
+            return None
+        try:
+            return IFACE.addrs(name)
+        except Exception:  # noqa: BLE001 - psutil che fallisce: nel dubbio niente traffico
+            log.warning("Interfacce di rete non leggibili", exc_info=True)
+            return ()
+
+    def _iface_tick(self, s: dict):
+        """Kill switch: ogni IFACE_EVERY s si rileggono gli indirizzi dell'interfaccia scelta (psutil: solo chiamate
+        locali al sistema, niente rete ne' dischi, quindi qui e fuori dal lock). Se manca o e' spenta i download in corso
+        vanno in pausa e non parte niente; se torna (anche con un altro indirizzo) o cambia, client HTTP e sessione
+        torrent si rilegano (la sessione nel tick, con configure) e i download fermati da qui ripartono."""
+        name = s["interface"]
+        if name == self._if_name and time.monotonic() - self._if_at < IFACE_EVERY:
+            return
+        self._if_name, self._if_at = name, time.monotonic()
+        bind = self._iface_read(name)
+        if bind == IFACE.BIND:
+            return
+        IFACE.BIND = bind
+        self._alt_sent = None  # il prossimo evento porta le impostazioni (iface_down): la UI mostra perche' e' tutto fermo
+        log.warning("Interfaccia dei download %s: %s", name or "(qualunque)",
+                    ", ".join(bind) if bind else "non disponibile" if name else "nessun vincolo")
+        prev, self._client = self._client, self._new_client()
+        with self.lock:
+            asyncio.ensure_future(self._close_later(prev, list(self._jobs.values())))
+            # col client vecchio un HTTP in corso uscirebbe dall'indirizzo di prima: riparte col nuovo. I torrent no:
+            # rilegando la sessione, libtorrent chiude da se' le connessioni dei socket tolti
+            run = [t for t in self.tasks.values() if t.status == RUNNING and (t.type == "http" or (t.type == "torrent" and bind == ()))]
+            for t in run:
+                self.pause(t.id)
+            if bind == ():
+                for t in run:
+                    t.phase = IFACE_PHASE
+                    t.log(f"In pausa: l'interfaccia di rete «{name}» non è disponibile, riprendo quando torna", "warn")
+                self._if_paused += [t.id for t in run]
+                return
+            ids, self._if_paused = [*self._if_paused, *(t.id for t in run)], []
+            for tid in dict.fromkeys(ids):
+                t = self.tasks.get(tid)
+                if t and t.status in (PAUSED, QUEUED):
+                    if t.phase == IFACE_PHASE:
+                        t.phase = ""
+                    t.log(f"Interfaccia di rete {'«' + name + '»' if name else 'libera'}: riprendo" + (f" da {bind[0]}" if bind else ""))
+                    self.resume(tid)
 
     def _rss_tick(self, s: dict):
         """Un thread per feed scaduto (rete e parsing fuori dal ciclo); al massimo uno alla volta per feed."""
@@ -1195,10 +1281,11 @@ class Manager:
         self._net_at = time.monotonic()
 
         def probe():
-            try:
-                socket.create_connection(("1.1.1.1", 443), 3).close()
-            except OSError:
-                return  # ancora offline
+            try:  # dall'interfaccia dei download, se scelta: e' da li' che i task devono poter ripartire
+                src = IFACE.source()
+                socket.create_connection(("2606:4700:4700::1111" if src and ":" in src[0] else "1.1.1.1", 443), 3, src).close()
+            except (OSError, ValueError):
+                return  # ancora offline (o interfaccia assente)
             with self.lock:
                 for t in self.tasks.values():
                     if t.status == ERROR and t.options.get("net_err"):

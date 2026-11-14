@@ -163,6 +163,15 @@ Se possiedi un account per un servizio Debrid, puoi configurare la tua chiave AP
 - I link dei provider associati vengono sbloccati automaticamente alla velocità massima consentita dal tuo account Debrid, superando code di attesa e limiti di velocità degli host gratuiti.
 - Se un gioco è disponibile tramite MultiUp, la scheda mostrerà i singoli host disponibili con pulsanti dedicati per scegliere il server desiderato.
 
+### Interfaccia di rete (VPN) e kill switch
+
+In **Impostazioni › Download › Rete** puoi scegliere l'interfaccia di rete da cui escono i download, di solito quella della VPN. L'elenco mostra le interfacce del PC con i loro indirizzi; il launcher ricorda il nome, perché l'indirizzo di una VPN cambia a ogni connessione. Vuota (predefinita) = qualunque, come prima.
+
+- **Cosa passa dall'interfaccia**: download HTTP e torrent (ascolto, connessioni ai peer, tracker, DHT), risoluzione dei link dei siti di hosting, servizi Debrid, controllo dei link, feed RSS e i `.torrent` scaricati da un link. Se l'interfaccia ha indirizzi IPv4 e IPv6 il torrent li usa tutti e due; i download HTTP escono dall'indirizzo IPv4 (un sito raggiungibile solo in IPv6 in quel caso non si scarica).
+- **Kill switch**: ogni 5 secondi il launcher controlla che l'interfaccia ci sia ancora e sia accesa. Se manca, i download in corso vanno in pausa con «Interfaccia di rete non disponibile», nella barra della coda compare 🔌 e nessun download parte; nel frattempo nessuna richiesta di questi esce da un'altra strada. Quando l'interfaccia torna, anche con un indirizzo diverso, i download ripartono da soli dal punto in cui erano. Un nome che non esiste più non torna mai da solo a «qualunque».
+- **Cosa non passa dall'interfaccia**: le richieste DNS (vanno al server DNS del sistema: con la VPN di solito è quello della VPN), il browser nascosto che apre le pagine di alcuni siti di hosting e degli accorciatori (con l'interfaccia assente non si apre), SteamCMD e i client degli store. Se ti serve che anche questi passino dalla VPN, usa il kill switch della VPN stessa.
+- Su macOS e Linux il sistema sceglie la strada in base alla tabella di instradamento: i pacchetti escono comunque con l'indirizzo della VPN, e con la VPN spenta non partono.
+
 ### Estrazione automatica e smistamento nelle cartelle
 
 Quando un download viene completato:
