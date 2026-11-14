@@ -1,6 +1,7 @@
 """Robustezza del download manager: post-download che riparte dopo un riavvio, disco pieno, nuovi tentativi di
 risoluzione, tetto alle estrazioni insieme. Nessuna rete: il motore HTTP e' finto."""
 import errno
+import httpx
 import sys
 import threading
 import time
@@ -167,4 +168,95 @@ def test_risoluzione_fallita_si_ritenta_con_un_tetto(tmp, monkeypatch):
     assert calls == {a.id: 3, b.id: 1} and b.status == T.ERROR and "res_err" not in a.options
     assert "Real-Debrid" in a.error and _wait(lambda: sum(idle) == 2), idle  # fallito una volta sola, alla fine
     assert sum("Nuovo tentativo" in l["msg"] for l in a.log_after(0)[0]) == 2
+    m.stop()
+
+
+def _status(code):
+    req = httpx.Request("GET", "https://cdn.test/f.bin?token=x")
+    return httpx.HTTPStatusError(f"HTTP {code}", request=req, response=httpx.Response(code, request=req))
+
+
+def _expiring(monkeypatch, plan):
+    """Motore HTTP finto: plan[n] = (byte scaricati, codice con cui fallisce o None per finire) alla n-esima partenza."""
+    calls = []
+
+    async def run(task, *a, **k):
+        done, code = plan[min(len(calls), len(plan) - 1)]
+        calls.append(dict(task.options))  # le opzioni con cui parte: il link vecchio deve essere sparito
+        task.name, task.size, task.done = "x.bin", 10, done
+        task.options["segs"] = [[0, 9, done]]
+        if code is None:
+            task.done = 10
+            return
+        if not task.options.get("direct"):
+            task.options["url"] = "https://cdn.test/f.bin?token=x"  # link risolto da debrid/host
+        else:
+            task.options["url"] = task.source
+        raise _status(code)
+    monkeypatch.setattr(M.HTTP, "run", run)
+    monkeypatch.setattr(M, "RESOLVE_WAIT", 0)
+    monkeypatch.setattr(M, "RESOLVE_TRIES", 2)
+    return calls
+
+
+def test_link_scaduto_a_meta_si_risolve_da_solo(tmp, monkeypatch):
+    calls = _expiring(monkeypatch, [(4, 403), (4, None)])
+    m = _mgr(tmp)
+    idle = []
+    m.on_idle = lambda ok, bad: idle.append((ok, bad))
+    m.start()
+    t = m.add("https://debrid.test/a")
+    assert _wait(lambda: t.status == T.COMPLETED), (t.status, t.error)
+    assert len(calls) == 2 and "url" not in calls[1] and calls[1]["segs"] == [[0, 9, 4]]  # link buttato, segmenti tenuti
+    msgs = [l["msg"] for l in t.log_after(0)[0]]
+    assert any("Link scaduto (HTTP 403)" in x for x in msgs) and any("Nuovo tentativo 1/2" in x for x in msgs)
+    assert _wait(lambda: idle == [(1, 0)]), idle  # la scadenza non e' un fallimento
+    assert not t.error and "res_err" not in t.options and "exp_done" not in t.options
+    m.stop()
+
+
+def test_link_morto_finisce_in_errore_dopo_i_tentativi(tmp, monkeypatch):
+    for code in (401, 410):
+        calls = _expiring(monkeypatch, [(4, code)])  # sempre lo stesso: nessun progresso tra un tentativo e l'altro
+        m = _mgr(tmp / str(code))
+        idle = []
+        m.on_idle = lambda ok, bad: idle.append((ok, bad))
+        m.start()
+        t = m.add("https://debrid.test/a")
+        assert _wait(lambda: len(calls) == 3 and t.status == T.ERROR and "retry_at" not in t.options), (len(calls), t.status)
+        time.sleep(1.5)
+        assert len(calls) == 3 and "scaduto" in t.error and f"HTTP {code}" in t.error  # messaggio chiaro, non si ripete all'infinito
+        assert _wait(lambda: idle == [(0, 1)]), idle  # fallito una volta sola, alla fine
+        m.stop()
+
+
+def test_link_scaduto_con_progressi_non_esaurisce_i_tentativi(tmp, monkeypatch):
+    calls = _expiring(monkeypatch, [(2, 403), (4, 403), (6, 403), (8, 403), (9, None)])  # ogni link regge un po'
+    m = _mgr(tmp)
+    m.start()
+    t = m.add("https://debrid.test/a")
+    assert _wait(lambda: t.status == T.COMPLETED, 40), (len(calls), t.status, t.error)
+    assert len(calls) == 5
+    m.stop()
+
+
+def test_link_scritto_dall_utente_che_da_403_non_si_ritenta(tmp, monkeypatch):
+    calls = _expiring(monkeypatch, [(4, 403)])
+    m = _mgr(tmp)
+    m.start()
+    a = m.add("https://x.test/a", direct=True)  # il link e' gia' quello finale: risolvere di nuovo non cambia nulla
+    assert _wait(lambda: a.status == T.ERROR) and "HTTP 403" in a.error and "retry_at" not in a.options
+    time.sleep(1.5)
+    assert len(calls) == 1
+    m.stop()
+
+
+def test_403_senza_byte_scaricati_e_un_rifiuto_non_un_link_scaduto(tmp, monkeypatch):
+    calls = _expiring(monkeypatch, [(0, 403)])
+    m = _mgr(tmp)
+    m.start()
+    b = m.add("https://debrid.test/b")
+    assert _wait(lambda: b.status == T.ERROR) and "retry_at" not in b.options
+    time.sleep(1.5)
+    assert len(calls) == 1
     m.stop()

@@ -143,6 +143,7 @@ Double-clicking a download (or opening the resizable bottom pane) reveals three 
 
 - **Parallel segments**: HTTP files download using concurrent segments over HTTP/1.1 to saturate available host bandwidth. On Windows, partial files are created as "sparse files", avoiding pre-allocation zero-fills on disk.
 - **Automatic link resolution**: Shorteners and file host pages (DataNodes, FileKeeper, KrakenFiles, 1Fichier, etc.) are resolved inside an embedded browser instance. If paused or interrupted, transfers resume from the exact byte offset without re-downloading completed chunks.
+- **Link expired mid-download**: if a link unlocked by a Debrid service or a host expires while you download (401, 403 or 410 after hours of transfer), the launcher drops it and asks for a new one by itself, with growing waits (30 s, 1 min, 2 min…), and continues from the segments already downloaded. After 5 attempts without new progress the download ends in error with a clear message and you can resume it by hand. If the original link you pasted is the one refusing, it is not retried: nothing would change.
 - **Show browser for Captchas**: If a host requires a manual captcha or Cloudflare check, enable **Settings › Downloads › Show browser while resolving links**: the window becomes visible so you can solve challenges on screen before downloading begins.
 
 ### Native Torrent and Magnet Support

@@ -142,6 +142,7 @@ Facendo doppio clic su un download (oppure aprendo il pannello inferiore ridimen
 
 - **Segmenti paralleli**: I file HTTP vengono scaricati a segmenti contemporanei con protocollo HTTP/1.1 per sfruttare la massima velocità consentita dall'host. Su Windows i file parziali vengono creati come file «sparsi», evitando di dover scrivere tutti gli zeri in anticipo sul disco.
 - **Risoluzione automatica**: Gli accorciatori e le pagine dei provider (DataNodes, FileKeeper, KrakenFiles, 1Fichier, ecc.) vengono risolti in un'istanza del browser interno. Se il download viene chiuso o interrotto, riprende esattamente dal punto raggiunto senza riscaricare i megabyte già completati.
+- **Link scaduto a metà**: se un link sbloccato da un servizio Debrid o da un host scade mentre scarichi (401, 403 o 410 dopo ore di download), il launcher lo scarta e ne chiede uno nuovo da solo, con attese crescenti (30 s, 1 min, 2 min…), e riprende dai segmenti già scaricati. Dopo 5 tentativi senza nuovi progressi il download va in errore con un messaggio chiaro e puoi riprenderlo a mano. Se invece a rifiutare è il link originale che hai incollato, non si ritenta: non cambierebbe nulla.
 - **Mostra browser per Captcha**: Se un host richiede di risolvere manualmente un captcha o un controllo Cloudflare, puoi attivare **Impostazioni › Download › Mostra il browser mentre risolve i link**: la finestra diventerà visibile consentendoti di completare la verifica a schermo prima che il download parta.
 
 ### Torrent e Magnet integrati

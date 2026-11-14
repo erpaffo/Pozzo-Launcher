@@ -69,6 +69,7 @@ RESOLVERS_MAX = 3  # task HTTP che risolvono il link insieme (non occupano posti
 SPACE_PHASE = "Spazio insufficiente"  # fase di un task in coda che non ha ancora spazio sul disco
 NET_TRIES = 20  # riprese automatiche per task dopo un errore di rete
 RESOLVE_TRIES, RESOLVE_WAIT = 5, 30  # nuovi tentativi se il link non si risolve (debrid/host occupato); attesa in s, raddoppia
+LINK_EXPIRED = (401, 403, 410)  # un link risolto che risponde cosi' a meta' e' scaduto (stessi tentativi di RESOLVE_TRIES)
 POST_TRIES = 3  # riprese del post-download dopo una chiusura a meta': oltre, e' lui che fa cadere il launcher
 DISK_FULL = "Disco pieno"  # motivo della pausa di un task fermato da un errore di scrittura (ENOSPC)
 log = logging.getLogger("pozzo.downloads")
@@ -1409,6 +1410,19 @@ class Manager:
                 code = e.response.status_code if isinstance(e, httpx.HTTPStatusError) else 0
                 # fallito prima di scaricare per un motivo che puo' passare: debrid/host che dicono perche', 429, 5xx
                 res = t.type == "http" and not net and bool(t.phase) and bool(notes or code == 429 or code >= 500)
+                # link risolto scaduto a meta' (debrid/host, dopo ore): si butta e si risolve di nuovo, con gli stessi tetti.
+                # Se a rispondere cosi' e' il link scritto dall'utente (nessun passaggio di risoluzione) non cambierebbe nulla
+                if t.type == "http" and code in LINK_EXPIRED and t.done and t.options.get("url") not in (None, t.source):
+                    if t.done > (t.options.get("exp_done") or 0):  # ha scaricato dall'ultimo scadere: un link che dura ore non esaurisce i tentativi
+                        t.options["res_err"] = 0
+                    t.options["exp_done"] = t.done
+                    t.options.pop("url", None)
+                    t.options.pop("url_at", None)
+                    res = True
+                    if (t.options.get("res_err") or 0) >= RESOLVE_TRIES:
+                        end = (ERROR, f"Il link è scaduto e non se ne ottiene uno nuovo ({end[1]})")
+                    else:
+                        t.log(f"Link scaduto (HTTP {code}): ne chiedo uno nuovo", "warn")
                 self._log(t, f"Errore: {end[1]}", "error")
         with self.lock:
             self._res.pop(t.id, None)  # un thread del risolutore ancora vivo non scrive piu' sul task
@@ -1437,6 +1451,7 @@ class Manager:
                     t.log(f"Nuovo tentativo {n}/{RESOLVE_TRIES} tra {wait} s", "warn")
                 else:
                     t.options.pop("res_err", None)
+                    t.options.pop("exp_done", None)
                 if end[0] == PAUSED:
                     t.options["disk_full"], t.phase = True, DISK_FULL
                 # net_err = n. di riprese automatiche gia' fatte; False = non si riprende da sola
