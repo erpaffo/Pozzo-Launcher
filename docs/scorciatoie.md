@@ -94,4 +94,15 @@ Il polling parte solo quando un controller è collegato (premi un tasto la prima
 Gli stick hanno una zona morta, i controller collegati insieme funzionano tutti. Con un gioco in esecuzione i comandi
 dell'interfaccia sono sospesi; restano Select + Start e i comandi musica/Discord.
 
+## Suggerimenti nell'app
+
+Un fumetto ancorato a un pulsante ti fa scoprire una funzione (scorciatoie comprese): al massimo due a ogni avvio, il
+primo dopo una decina di secondi e il secondo almeno un minuto più tardi, mai mentre sono aperte le impostazioni o una
+finestra. Sono decine, quindi li incontri nel tempo, e ognuno compare una sola volta: **Ho capito** (o Esc) lo chiude per
+sempre. Dal fumetto stesso scegli **Silenzia per 1 giorno** o **Non mostrare più** per tutti.
+
+In **Impostazioni › Generale › Suggerimenti** scegli *Attivi*, *Silenzia per 1 giorno*, *Silenzia per 7 giorni* o *Disattiva
+per sempre*; sotto la descrizione vedi quanti suggerimenti ci sono e quanti ne restano da vedere, e **Rivedi tutti i
+suggerimenti** li rimette in coda.
+
 Vedi anche [Big Picture](bigpicture.md).

@@ -581,10 +581,12 @@ function loadHints() {
   const sel = $("#hint-mode"), h = GS.hints?.settings;
   if (!sel || !h) return;
   sel.value = h.mode();
+  const count = () => { $("#hint-count").textContent = t("b.hints.set.count", h.counts()); };
+  count();
   if (sel.dataset.bound) return;
   sel.dataset.bound = "1";
   sel.addEventListener("change", () => h.setMode(sel.value));
-  $("#hint-reset").addEventListener("click", () => { h.resetSeen(); toast(t("e.hints.reset")); });
+  $("#hint-reset").addEventListener("click", () => { h.resetSeen(); count(); toast(t("e.hints.reset")); });
 }
 
 function loadTour() {

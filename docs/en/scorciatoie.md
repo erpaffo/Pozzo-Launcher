@@ -94,4 +94,14 @@ Controller polling initializes only when a controller is detected (press any but
 Thumbsticks include a deadzone, and multiple simultaneously connected controllers are supported. When a game is active,
 interface navigation controls are suspended; Select + Start and music/Discord shortcuts remain active.
 
+## Tips in the app
+
+A bubble anchored to a button shows you a feature (shortcuts included): at most two per launch, the first after about ten
+seconds and the second at least a minute later, never while settings or a dialog are open. There are dozens, so you meet
+them over time, and each one appears only once: **Got it** (or Esc) closes it for good. From the bubble itself you can pick
+**Mute for 1 day** or **Don't show again** for all of them.
+
+In **Settings › General › Tips** choose *On*, *Mute for 1 day*, *Mute for 7 days* or *Turn off for good*; the description
+shows how many tips exist and how many are left to see, and **Show all tips again** puts them back in the queue.
+
 See also [Big Picture](bigpicture.md).

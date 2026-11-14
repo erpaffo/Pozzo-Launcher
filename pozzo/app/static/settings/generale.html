@@ -23,13 +23,14 @@
   Premi <code>?</code> per l'elenco completo.</p>
 <button class="btn" type="button" data-sc-open>⌨ Mostra e personalizza le scorciatoie…</button>
 
-<h3>Suggerimenti</h3>
-<p class="muted small">Piccoli fumetti (al massimo due a ogni avvio, mai ripetuti) che ti fanno scoprire le funzioni.</p>
+<h3 data-i18n="b.hints.set.title">Suggerimenti</h3>
+<p class="muted small" data-i18n="b.hints.set.desc">Piccoli fumetti che ti fanno scoprire le funzioni: al massimo due a ogni avvio, mai ripetuti.</p>
+<p class="muted small" id="hint-count" aria-live="polite"></p>
 <div class="row wrap">
-  <select class="field" id="hint-mode"><option value="on">Attivi</option>
-    <option value="day">Silenzia per 1 giorno</option>
-    <option value="week">Silenzia per 7 giorni</option><option value="off">Disattiva per sempre</option></select>
-  <button class="btn" id="hint-reset" type="button">Rivedi tutti i suggerimenti</button>
+  <select class="field" id="hint-mode" data-i18n-aria="b.hints.set.title"><option value="on" data-i18n="b.hints.set.on">Attivi</option>
+    <option value="day" data-i18n="b.hints.day">Silenzia per 1 giorno</option>
+    <option value="week" data-i18n="b.hints.set.week">Silenzia per 7 giorni</option><option value="off" data-i18n="b.hints.set.off">Disattiva per sempre</option></select>
+  <button class="btn" id="hint-reset" type="button" data-i18n="b.hints.set.reset">Rivedi tutti i suggerimenti</button>
 </div>
 
 <h3>Tour guidato</h3>

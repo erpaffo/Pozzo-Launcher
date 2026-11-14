@@ -136,4 +136,43 @@ e.t += 999999; e.E.tick(); assert.equal(e.open, null);
 e = env(); e.els["#a"] = e.box(1, 1); e.E.register({ id: "a", target: "#a", text: "A" });
 e.blocked = true; assert.equal(e.E.show("a"), false); e.blocked = false; assert.equal(e.E.show("a"), true);
 
+// when che lancia: il suggerimento e' saltato, il motore continua con gli altri
+e = env(); e.els["#a"] = e.box(1, 1); e.els["#b"] = e.box(1, 1);
+e.E.register({ id: "a", target: "#a", text: "A", priority: 9, when: () => { throw new Error("boom"); } });
+e.E.register({ id: "b", target: "#b", text: "B", priority: 1 });
+e.t += 10000; e.E.tick(); assert.equal(e.open, "b");
+
+// conteggi per la descrizione nelle impostazioni: totale registrati e ancora da vedere
+e = env(); e.els["#a"] = e.box(1, 1);
+e.E.register({ id: "a", target: "#a", text: "A" }); e.E.register({ id: "b", target: "#nope", text: "B" });
+assert.deepEqual(e.E.counts(), { total: 2, left: 2 });
+e.t += 10000; e.E.tick(); assert.deepEqual(e.E.counts(), { total: 2, left: 1 });
+e.E.resetSeen(); assert.deepEqual(e.E.counts(), { total: 2, left: 2 });
+
+// --- catalogo: id unici, testo in tutte le lingue, scorciatoie e bersagli reali ---
+const fs = require("node:fs");
+const root = path.join(__dirname, "..", "pozzo");
+const ids = H.CATALOG.map((c) => c.id);
+assert.equal(new Set(ids).size, ids.length, "id duplicati nel catalogo");
+assert.ok(ids.length >= 50, "il catalogo dovrebbe avere decine di suggerimenti");
+const locales = ["it", "en", "de", "es", "fr", "pt-BR"].map((l) => [l, JSON.parse(fs.readFileSync(path.join(root, "data", "locales", l + ".json"), "utf8"))]);
+const need = [...ids.map((i) => "b.hints." + i), "b.hints.once", "b.hints.set.title", "b.hints.set.desc", "b.hints.set.count",
+  "b.hints.set.on", "b.hints.set.week", "b.hints.set.off", "b.hints.set.reset", "b.hints.day"];
+for (const [l, cat] of locales) {
+  for (const k of need) assert.ok(typeof cat[k] === "string" && cat[k].trim(), `${l}: manca ${k}`);
+  assert.ok(cat["b.hints.set.count"].includes("{total}") && cat["b.hints.set.count"].includes("{left}"), `${l}: segnaposto del conteggio`);
+}
+const stat = path.join(root, "app", "static");
+const files = [path.join(stat, "index.html"), ...[stat, path.join(stat, "js")].flatMap((d) => fs.readdirSync(d).filter((f) => f.endsWith(".js")).map((f) => path.join(d, f)))];
+const src = files.filter((f) => !/hints\.js$/.test(f)).map((f) => fs.readFileSync(f, "utf8")).join("\n");
+const regIds = [...fs.readFileSync(path.join(stat, "shortcuts.js"), "utf8").matchAll(/\{ id: "(\w+)"/g)].map((m) => m[1]);
+for (const c of H.CATALOG) {
+  if (c.key) assert.ok(regIds.includes(c.key), `${c.id}: scorciatoia ${c.key} inesistente`);
+  for (const sel of [].concat(c.target, c.done || [])) {
+    const toks = [...sel.matchAll(/#([\w-]+)|\.([\w-]+)|data-view="([\w-]+)"/g)].map((m) => m[1] || m[2] || m[3]);
+    assert.ok(toks.length, `${c.id}: selettore senza id o classe: ${sel}`);
+    for (const tk of toks) assert.ok(src.includes(tk), `${c.id}: ${sel} usa "${tk}" che non compare nei sorgenti del frontend`);
+  }
+}
+
 console.log("test_hints: ok");
