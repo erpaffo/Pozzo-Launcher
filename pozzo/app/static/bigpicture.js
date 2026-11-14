@@ -200,6 +200,7 @@ function gridScreen(title, items, tab = "all", opts = {}) {
       const W = $("#grid").clientWidth - 6 * 16;
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
       const cardW = (opts.text ? 15 : 11) * rem, gap = 1.3 * rem;
+      this._win = null; // il contenitore e' nuovo: serve una ricostruzione
       this.cols = Math.max(1, Math.floor((W + gap) / (cardW + gap)));
       this.cw = cardW + gap;
       this.ch = (opts.text ? cardW * 9 / 16 : cardW * 4 / 3) + (opts.text ? 1.4 : 3.2) * rem;
@@ -214,6 +215,16 @@ function gridScreen(title, items, tab = "all", opts = {}) {
       const scrollRow = Math.max(0, row - Math.floor(rowsVisible / 2) + 1);
       const from = Math.max(0, (scrollRow - 1) * this.cols), to = Math.min(items.length, (scrollRow + rowsVisible + 1) * this.cols);
       inner.style.transform = `translateY(${-scrollRow * this.ch}px)`;
+      // le card si ricostruiscono solo se cambia la finestra visibile: con il solo focus si sposta la classe (niente flicker delle immagini a ogni tick dello stick)
+      const win = `${from}|${to}`;
+      if (this._win === win && inner.firstElementChild) {
+        inner.querySelector(".card.focus")?.classList.remove("focus");
+        if (this.navFocus === null) inner.querySelector(`.card[data-i="${this.i}"]`)?.classList.add("focus");
+        const cur = items[this.i];
+        if (cur && !opts.text) setBackground(cur.id);
+        return;
+      }
+      this._win = win;
       const pad = 3 * parseFloat(getComputedStyle(document.documentElement).fontSize);
       let html = "";
       for (let k = from; k < to; k++) {
