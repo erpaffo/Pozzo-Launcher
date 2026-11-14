@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 
 from ..remote.emusetup import ini_update
@@ -15,7 +16,12 @@ _TITLE = re.compile(r"^[0-9A-Fa-f]{16}$")
 def _base(exe) -> Path:
     if exe and (Path(exe).parent / "user").is_dir():  # modalità portatile
         return Path(exe).parent / "user"
-    return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming") / "eden"
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming") / "eden"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "eden"
+    xdg = os.environ.get("XDG_DATA_HOME", "")
+    return (Path(xdg) if os.path.isabs(xdg) else Path.home() / ".local" / "share") / "eden"
 
 
 def target(exe, game_id, *, core=None, game_name=None) -> Path | None:

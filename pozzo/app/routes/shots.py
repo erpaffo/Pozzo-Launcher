@@ -67,6 +67,8 @@ def build_router(ctx) -> APIRouter:
             p = shots.root
         if sys.platform == "win32" and p.is_file():
             subprocess.Popen(["explorer", "/select,", str(p)])
+        elif sys.platform == "darwin" and p.is_file():
+            subprocess.Popen(["open", "-R", str(p)])  # -R: seleziona il file nel Finder
         else:
             L.open_uri(str(p if p.is_dir() else p.parent))
         return {"ok": True}

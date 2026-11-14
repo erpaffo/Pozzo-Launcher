@@ -7,11 +7,12 @@ rilevato dall'account usato piu' di recente (config/loginusers.vdf), oppure impo
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from .. import profilecfg as PC
 from ..net import request
-from .base import StoreGame, StoreProvider, parse_vdf, reg_get
+from .base import StoreGame, StoreProvider, is_windows, parse_vdf, reg_get
 
 CDN = "https://cdn.akamai.steamstatic.com/steam/apps/{id}/"
 # tipo dichiarato da Steam: 0 gioco, 4 DLC, 6 software/applicazione (verificato su IStoreBrowseService)
@@ -23,6 +24,14 @@ SKIP_APPS = {"228980", "1007", "1070560", "1391110", "1628350", "1826330", "2180
              "1580130", "1887720", "2348590", "2805730", "250820", "1113280"}
 SKIP_WORDS = ("redistributable", "steamworks", "proton ", "steam linux runtime", "soundtrack", "dedicated server",
               "sdk", "benchmark")
+
+
+def steam_roots() -> list[Path]:
+    """Radici standard di Steam fuori da Windows (la root contiene steamapps/ e config/)."""
+    h = Path.home()
+    if sys.platform == "darwin":
+        return [h / "Library/Application Support/Steam"]
+    return [h / ".steam/steam", h / ".local/share/Steam", h / ".var/app/com.valvesoftware.Steam/.local/share/Steam"]
 
 
 def images(appid: str) -> dict:
@@ -44,7 +53,11 @@ class Steam(StoreProvider):
 
     def path(self) -> Path | None:
         p = self.settings.get("path") or reg_get("HKCU", r"Software\Valve\Steam", "SteamPath")
-        return Path(p) if p and Path(p).exists() else None
+        if p and Path(p).exists():
+            return Path(p)
+        if is_windows():
+            return None
+        return next((r for r in steam_roots() if r.is_dir()), None)
 
     def detected(self) -> bool:
         return self.path() is not None

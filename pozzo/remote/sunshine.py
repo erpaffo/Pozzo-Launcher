@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,12 @@ CURRENT = "▶ Gioco in corso"
 
 
 def install_dir() -> Path | None:
+    if sys.platform != "win32":
+        for exe in (shutil.which("sunshine"), "/opt/homebrew/bin/sunshine", "/usr/local/bin/sunshine",
+                    "/Applications/Sunshine.app/Contents/MacOS/sunshine"):
+            if exe and Path(exe).exists():
+                return Path(exe).parent
+        return None
     for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("ProgramFiles(x86)", "")):
         p = Path(base) / "Sunshine" / "sunshine.exe"
         if base and p.exists():
@@ -80,10 +87,18 @@ def launcher_cmd(cfg) -> tuple[str, str]:
     return f'"{sys.executable}" -m pozzo{conf}', str(root)
 
 
+def conf_dir() -> Path | None:
+    """Cartella di sunshine.conf e apps.json: su Windows sotto l'installazione, altrove ~/.config/sunshine."""
+    if sys.platform != "win32":
+        return Path.home() / ".config" / "sunshine"
+    d = install_dir()
+    return d / "config" if d else None
+
+
 def read_conf() -> dict[str, str]:
     """sunshine.conf (chiave = valore). Le voci assenti usano i valori predefiniti di Sunshine."""
-    d = install_dir()
-    p = d / "config" / "sunshine.conf" if d else None
+    d = conf_dir()
+    p = d / "sunshine.conf" if d else None
     out: dict[str, str] = {}
     if p and p.is_file():
         for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -310,10 +325,14 @@ def _make_bp_image(dest: Path, subtitle: str = "Big Picture"):
     d.polygon([(c[0], c[1] - r2), (c[0] + r2, c[1]), (c[0], c[1] + r2), (c[0] - r2, c[1])], fill=(0x5b, 0x6c, 0xe6))
     try:
         from PIL import ImageFont
-        f = ImageFont.truetype("segoeuib.ttf" if sys.platform == "win32" else "DejaVuSans-Bold.ttf", 54)
-        f2 = ImageFont.truetype("segoeui.ttf" if sys.platform == "win32" else "DejaVuSans.ttf", 40)
+        if sys.platform == "darwin":  # Helvetica.ttc: indice 1 = grassetto
+            f = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 54, index=1)
+            f2 = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 40, index=0)
+        else:
+            f = ImageFont.truetype("segoeuib.ttf" if sys.platform == "win32" else "DejaVuSans-Bold.ttf", 54)
+            f2 = ImageFont.truetype("segoeui.ttf" if sys.platform == "win32" else "DejaVuSans.ttf", 40)
     except Exception:
-        f = f2 = None
+        f = f2 = None  # PIL usa il suo font di ripiego
     d.text((300, 590), "Pozzo Launcher", fill="white", anchor="mm", font=f)
     d.text((300, 650), subtitle, fill=(220, 225, 255), anchor="mm", font=f2)
     im.save(dest, "PNG", optimize=True)

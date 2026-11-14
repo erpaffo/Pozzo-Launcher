@@ -56,6 +56,8 @@ try:
 
     # adopt: l'originale va nel cestino solo se richiesto
     with mock.patch("pozzo.tools.trash._fixed_drive", return_value=False), \
+         mock.patch("pozzo.tools.trash._posix_trash", return_value=False), \
+         mock.patch("pozzo.tools.trash.Path.home", return_value=tmp), \
          mock.patch("pozzo.tools.trash.Path.anchor", new_callable=mock.PropertyMock, return_value=str(tmp)):
         r = c.post(f"/api/tools/job/{j['id']}/adopt", json={"move_old": False})
         assert r.status_code == 200 and g.exists()

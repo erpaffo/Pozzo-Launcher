@@ -360,7 +360,13 @@ def resolve_target(platform: P.Platform, path: Path) -> Path:
 def ryujinx_data_dir(exe: str | Path) -> Path:
     """Cartella dati di Ryujinx: «portable» accanto all'exe se c'e', altrimenti %APPDATA%/Ryujinx."""
     portable = Path(exe).parent / "portable"
-    return portable if portable.is_dir() else Path(os.environ.get("APPDATA", str(Path.home()))) / "Ryujinx"
+    if portable.is_dir():
+        return portable
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Ryujinx"
+    if sys.platform != "win32":
+        return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "Ryujinx"
+    return Path(os.environ.get("APPDATA", str(Path.home()))) / "Ryujinx"
 
 
 def register_switch_update(exe: str | Path, base: Path, siblings: list[Path]) -> Path | None:
@@ -487,9 +493,9 @@ class _Job:
 
     @staticmethod
     def new():
-        """None fuori da Windows o se il Job non si crea: si resta sul PID del processo."""
+        """Fuori da Windows: gruppo di processi (il gioco parte in una sessione sua). None se il Job non si crea."""
         if sys.platform != "win32":
-            return None
+            return _PgJob()
         try:
             return _Job()
         except Exception:
@@ -526,10 +532,54 @@ class _Job:
         self.k.CloseHandle(self.h)
 
 
+class _PgJob:
+    """Equivalente posix del Job Object: i processi avviati con start_new_session sono capi di un gruppo, figli compresi."""
+
+    def __init__(self):
+        self.pgids: set[int] = set()
+
+    def add(self, proc) -> bool:
+        try:
+            self.pgids.add(proc.pid)  # con start_new_session pgid == pid
+            return True
+        except AttributeError:  # processo finto nei test
+            return False
+
+    def pids(self) -> list[int]:
+        import psutil
+        out = []
+        for p in psutil.process_iter():
+            try:
+                if os.getpgid(p.pid) in self.pgids and p.status() != psutil.STATUS_ZOMBIE:
+                    out.append(p.pid)
+            except (psutil.Error, OSError):
+                pass
+        return out
+
+    def active(self) -> int:
+        return len(self.pids())
+
+    def kill(self):
+        import signal
+        for g in self.pgids:
+            try:
+                os.killpg(g, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    def close(self):
+        pass
+
+
 def _suspend(pid: int, on: bool) -> bool:
-    """Sospende/riprende un processo (NtSuspendProcess/NtResumeProcess, come Nyrna). Solo Windows."""
+    """Sospende/riprende un processo (NtSuspendProcess/NtResumeProcess, come Nyrna; SIGSTOP/SIGCONT fuori da Windows)."""
     if sys.platform != "win32":
-        return False
+        import signal
+        try:
+            os.kill(pid, signal.SIGSTOP if on else signal.SIGCONT)
+            return True
+        except OSError:
+            return False
     import ctypes
     from ctypes import wintypes
     k = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -949,7 +999,7 @@ class Launcher:
 
     def pause(self) -> bool:
         """Congela il gioco (e i suoi figli): niente CPU/GPU, anche senza pausa nel gioco. Il tempo di gioco si ferma."""
-        if sys.platform != "win32" or self.state.get("status") != "running" or self._frozen:
+        if self.state.get("status") != "running" or self._frozen:
             return False
         pids = self._session_pids()
         if not pids:
@@ -1186,7 +1236,8 @@ class Launcher:
             return None
         try:
             args = [a.strip('"') for a in shlex.split(pr.get("companion_args") or "", posix=False)]
-            proc = subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent))
+            proc = subprocess.Popen([pr["companion"], *args], cwd=str(Path(pr["companion"]).parent),
+                                    start_new_session=bool(job) and sys.platform != "win32")
             if job:
                 job.add(proc)
             self._comp_pid = proc.pid
@@ -1256,7 +1307,8 @@ class Launcher:
                 if is_uri:
                     open_uri(target)
                     return None
-                return subprocess.Popen([target, *args], cwd=launch.get("cwd") or str(Path(target).parent))
+                return subprocess.Popen([target, *args], cwd=launch.get("cwd") or str(Path(target).parent),
+                                        start_new_session=bool(job) and sys.platform != "win32")
 
             proc = start()
             if launch.get("window") and proc:
@@ -1411,7 +1463,8 @@ class Launcher:
             t0 = time.time()
             import tempfile  # stderr su file temporaneo (non in memoria): serve per l'ultimo log in caso di crash
             with tempfile.TemporaryFile() as errf:  # chiuso anche se Popen o l'attesa falliscono
-                proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf)
+                proc = subprocess.Popen(cmd, cwd=str(Path(pl["exe"]).parent), stderr=errf,
+                                        start_new_session=bool(job) and sys.platform != "win32")
                 job = job if job and job.add(proc) else None
                 self._proc, self._track, self._job = proc, None, job
                 if full:  # rete di sicurezza per ogni emulatore: se la finestra non copre lo schermo, ci pensa Pozzo

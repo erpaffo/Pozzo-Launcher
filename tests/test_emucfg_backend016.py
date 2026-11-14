@@ -47,6 +47,7 @@ def test_ryujinx_target_minuscolo(tmp_path):
 
 def test_eden_target_portatile_e_appdata(tmp_path, monkeypatch):
     eden = _eden()
+    monkeypatch.setattr(sys, "platform", "win32")  # percorso APPDATA: e' il caso Windows
     monkeypatch.setenv("APPDATA", str(tmp_path / "ad"))
     exe = tmp_path / "eden.exe"
     assert eden.target(exe, TID) == tmp_path / "ad" / "eden" / "config" / "custom" / f"{TID}.ini"

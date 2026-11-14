@@ -680,7 +680,9 @@ def _num(value, default: float = 0.0) -> float:
         return default
 
 
-VLC_PATHS = (r"C:\Program Files\VideoLAN\VLC\vlc.exe", r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe")
+VLC_PATHS = (r"C:\Program Files\VideoLAN\VLC\vlc.exe", r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe",
+             "/Applications/VLC.app/Contents/MacOS/VLC")
+MPV_PATHS = ("/opt/homebrew/bin/mpv", "/usr/local/bin/mpv")  # Homebrew: non sempre nel PATH dell'app
 
 
 def find_external_player() -> str | None:
@@ -689,7 +691,7 @@ def find_external_player() -> str | None:
         exe = shutil.which(name)
         if exe:
             return exe
-    for exe in VLC_PATHS:
+    for exe in (*MPV_PATHS, *VLC_PATHS):
         if Path(exe).is_file():
             return exe
     return None

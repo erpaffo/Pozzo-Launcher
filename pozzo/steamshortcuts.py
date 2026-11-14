@@ -80,7 +80,14 @@ def is_ours(e) -> bool:
 
 def steam_running() -> bool:
     if sys.platform != "win32":
-        return False
+        # nomi di processo del client: steam_osx su macOS, steam su Linux
+        name = {"darwin": "steam_osx", "linux": "steam"}.get(sys.platform)
+        if not name:
+            return False
+        try:
+            return subprocess.run(["pgrep", "-x", name], capture_output=True, timeout=5).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
     r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq steam.exe", "/NH"], capture_output=True, text=True,
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     return "steam.exe" in r.stdout.lower()

@@ -3,6 +3,7 @@ rimovibili, Linux/macOS) si usa la cartella .pozzo-trash sullo stesso volume (re
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -28,19 +29,41 @@ def _win_recycle(p: Path) -> bool:
     return not r.returncode and not p.exists()
 
 
+def _posix_trash(p: Path) -> bool:
+    # macOS: il Finder sposta nel Cestino (chiede il permesso di automazione la prima volta)
+    if sys.platform == "darwin":
+        esc = str(p).replace("\\", "\\\\").replace('"', '\\"')
+        r = subprocess.run(["osascript", "-e", f'tell application "Finder" to delete POSIX file "{esc}"'],
+                           capture_output=True, timeout=300)
+    elif shutil.which("gio"):
+        r = subprocess.run(["gio", "trash", str(p)], capture_output=True, timeout=300)
+    else:
+        return False
+    return not r.returncode and not p.exists()
+
+
 def to_trash(path) -> str:
     """Ritorna dove e' finito ('cestino' o il percorso in .pozzo-trash). OSError se non riesce: non cancella mai."""
     p = Path(path).resolve()
     if not p.exists():
         raise FileNotFoundError(str(p))
-    if sys.platform == "win32" and _fixed_drive(p):
+    if sys.platform == "win32":
+        if _fixed_drive(p):
+            try:
+                if _win_recycle(p):
+                    return "cestino"
+            except (OSError, subprocess.SubprocessError):
+                pass
+        root = Path(p.anchor) / ".pozzo-trash"
+    else:
         try:
-            if _win_recycle(p):
+            if _posix_trash(p):
                 return "cestino"
         except (OSError, subprocess.SubprocessError):
             pass
-    root = Path(p.anchor) / ".pozzo-trash"
-    root.mkdir(exist_ok=True)
+        # shortcut: la fallback in home evita la radice del disco, ma un rename cross-volume solleva OSError
+        root = Path.home() / ".pozzo-trash"
+    root.mkdir(parents=True, exist_ok=True)
     dst, n = root / f"{time.strftime('%Y%m%d-%H%M%S')}-{p.name}", 2
     while dst.exists():
         dst, n = root / f"{time.strftime('%Y%m%d-%H%M%S')}-{n}-{p.name}", n + 1

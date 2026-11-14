@@ -258,24 +258,28 @@ def emulator_dirs(emulator: str, exe: str | None) -> list[Path]:
     docs = _home("Documents")
     c: list[Path | None] = []
     e = (emulator or "").lower()
-    if e == "retroarch" and base:
-        c += [base / "screenshots"]
-        cfgf = base / "retroarch.cfg"
-        if cfgf.exists():
+    if e == "retroarch":
+        c += [base / "screenshots" if base else None, _home("Library", "Application Support", "RetroArch", "screenshots")]
+        cfgf = base / "retroarch.cfg" if base else None
+        if cfgf and cfgf.exists():
             m = re.search(r'^screenshot_directory\s*=\s*"([^"]*)"', cfgf.read_text(encoding="utf-8", errors="ignore"), re.M)
             if m and m.group(1) and m.group(1) != "default":
                 d = m.group(1).replace(":\\", str(base) + "\\", 1) if m.group(1).startswith(":") else m.group(1)
                 c.append(Path(d))
     elif e == "dolphin":
         c += [base / "User" / "ScreenShots" if base else None, docs / "Dolphin Emulator" / "ScreenShots",
-              _env("APPDATA", "Dolphin Emulator", "ScreenShots"), _home(".local", "share", "dolphin-emu", "ScreenShots")]
+              _env("APPDATA", "Dolphin Emulator", "ScreenShots"), _home(".local", "share", "dolphin-emu", "ScreenShots"),
+              _home("Library", "Application Support", "Dolphin", "ScreenShots")]
     elif e == "pcsx2":
-        c += [base / "snaps" if base else None, docs / "PCSX2" / "snaps", _home(".config", "PCSX2", "snaps")]
+        c += [base / "snaps" if base else None, docs / "PCSX2" / "snaps", _home(".config", "PCSX2", "snaps"),
+              _home("Library", "Application Support", "PCSX2", "snaps")]
     elif e == "duckstation":
         c += [base / "screenshots" if base else None, docs / "DuckStation" / "screenshots",
-              _home(".local", "share", "duckstation", "screenshots")]
+              _home(".local", "share", "duckstation", "screenshots"),
+              _home("Library", "Application Support", "DuckStation", "screenshots")]
     elif e == "ppsspp":
-        c += [base / "memstick" / "PSP" / "SCREENSHOT" if base else None, docs / "PPSSPP" / "PSP" / "SCREENSHOT"]
+        c += [base / "memstick" / "PSP" / "SCREENSHOT" if base else None, docs / "PPSSPP" / "PSP" / "SCREENSHOT",
+              _home("Library", "Application Support", "PPSSPP", "PSP", "SCREENSHOT")]
     elif e == "ryujinx":
         c += [_home("Pictures", "Ryujinx"), base / "portable" / "screenshots" if base else None]
     elif e in ("eden", "yuzu", "suyu", "citron"):

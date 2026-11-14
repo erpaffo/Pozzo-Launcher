@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+import sys
 import time
 from pathlib import Path
 from urllib.parse import quote
@@ -27,7 +28,10 @@ ASSETS = "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/p
 CATALOG ="https://catalog-public-service-prod06.ol.epicgames.com/catalog/api/shared/namespace/{ns}/bulk/items"
 LOGIN_URL = ("https://www.epicgames.com/id/login?redirectUrl=" +
              quote(f"https://www.epicgames.com/id/api/redirect?clientId={CLIENT_ID}&responseType=code", safe=""))
-MANIFESTS = Path(r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests")
+if sys.platform == "darwin":
+    MANIFESTS = Path.home() / "Library/Application Support/Epic/EpicGamesLauncher/Data/Manifests"
+else:
+    MANIFESTS = Path(r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests")
 
 
 def uri(ns: str, cid: str, app: str, action: str) -> str:

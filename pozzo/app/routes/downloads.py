@@ -286,6 +286,10 @@ def build_router(ctx) -> APIRouter:
         if sys.platform == "win32":
             # "/select," separato dal percorso: attaccati, con gli spazi Python li quota insieme ed Explorer apre Documenti
             subprocess.Popen(["explorer", "/select,", str(target)] if target else ["explorer", str(folder)])
+        elif sys.platform == "darwin":
+            # niente shell: il percorso viene dall'utente; "open -R" seleziona il file nel Finder
+            subprocess.Popen(["open", "-R", str(target)] if target else ["open", str(folder)],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             subprocess.Popen(["xdg-open", str(folder)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # niente shell: il percorso viene dall'utente
         return {"ok": True}

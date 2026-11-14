@@ -79,6 +79,8 @@ try:
     cfg = SimpleNamespace(cache=cache)
     with mock.patch.object(A.RL, "apply") as ap, \
          mock.patch.object(trash, "_fixed_drive", return_value=False), \
+         mock.patch.object(trash, "_posix_trash", return_value=False), \
+         mock.patch.object(trash.Path, "home", return_value=tmp), \
          mock.patch.object(trash.Path, "anchor", new_callable=mock.PropertyMock, return_value=str(tmp)):
         r = A.adopt(cfg, "psx", old, new, move_old=False)
         assert r == {"relinked": True, "trashed": None} and old.exists()

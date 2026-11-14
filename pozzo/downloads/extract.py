@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import zipfile
@@ -491,7 +492,10 @@ def extract(archive, dest, *, password: str | None = None, on_progress=None, can
                 log(f"{backend.__name__.strip('_')} non disponibile: {e}", "warn")
                 _clear(tmp)
         else:
-            raise NoBackend(NO_RAR if g.kind == "rar" else NO_BACKEND)
+            msg = NO_RAR if g.kind == "rar" else NO_BACKEND
+            if sys.platform == "darwin" and not _sevenzip():
+                msg += ". Con Homebrew: brew install sevenzip"
+            raise NoBackend(msg)
         _sanitize(tmp, log)
         return _place(tmp, dest, g.name)
     finally:

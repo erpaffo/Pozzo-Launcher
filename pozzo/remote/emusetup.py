@@ -91,12 +91,22 @@ def pcsx2_ini(exe: str | None) -> Path:
         d = Path(exe).parent
         if (d / "portable.ini").exists() or (d / "portable.txt").exists():
             return d / "inis" / "PCSX2.ini"
-    return documents_dir() / "PCSX2" / "inis" / "PCSX2.ini"
+    if sys.platform == "darwin":
+        root = Path.home() / "Library" / "Application Support"
+    elif sys.platform == "win32":
+        root = documents_dir()
+    else:
+        xdg = os.environ.get("XDG_CONFIG_HOME", "")
+        root = Path(xdg) if os.path.isabs(xdg) else Path.home() / ".config"
+    return root / "PCSX2" / "inis" / "PCSX2.ini"
 
 
 def dolphin_dir(exe: str | None) -> Path:
     if exe and (Path(exe).parent / "portable.txt").exists():
         return Path(exe).parent / "User"
+    if sys.platform != "win32":  # stessa logica dell'adattatore (import ritardato: dolphin importa emusetup)
+        from ..emuadapters.dolphin import _user_dir
+        return _user_dir(exe)
     appdata = Path(os.environ.get("APPDATA", "")) / "Dolphin Emulator"
     if appdata.exists():
         return appdata
@@ -104,9 +114,11 @@ def dolphin_dir(exe: str | None) -> Path:
 
 
 def _running(names: tuple[str, ...]) -> bool:
+    # macOS/Linux: il processo è "Dolphin" o "pcsx2-qt" senza .exe
+    want = {n.lower().removesuffix(".exe") for n in names}
     try:
         import psutil
-        return any((p.info.get("name") or "").lower() in names for p in psutil.process_iter(["name"]))
+        return any((p.info.get("name") or "").lower().removesuffix(".exe") in want for p in psutil.process_iter(["name"]))
     except Exception:
         return False
 
@@ -180,7 +192,7 @@ def setup(what: str, emulators: dict, players: int = 1, apply_wiimotes: bool = T
     """what: pcsx2_buzz | pcsx2_guitar | dolphin_wii. Ritorna {"files": [...], "backups": [...], "note": str}."""
     players = max(1, min(4, int(players or 1)))
     if what.startswith("pcsx2_"):
-        if _running(("pcsx2-qt.exe", "pcsx2.exe")):
+        if _running(("pcsx2-qt", "pcsx2")):
             raise RuntimeError("Chiudi PCSX2 prima: all'uscita riscriverebbe le sue impostazioni")
         p = pcsx2_ini(emulators.get("pcsx2"))
         if not p.exists():
@@ -190,7 +202,7 @@ def setup(what: str, emulators: dict, players: int = 1, apply_wiimotes: bool = T
         return {"files": [str(p)], "backups": [b] if b else [],
                 "note": "In PCSX2 il telefono N è il controller XInput N-1 (giocatore N). Le associazioni sono in Impostazioni › Controller."}
     if what == "dolphin_wii":
-        if _running(("dolphin.exe",)):
+        if _running(("dolphin", "dolphin-emu")):
             raise RuntimeError("Chiudi Dolphin prima: all'uscita riscriverebbe le sue impostazioni")
         base = dolphin_dir(emulators.get("dolphin")) / "Config"
         files, backups = [], []

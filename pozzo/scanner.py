@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import plistlib
 import re
 import subprocess
 import sys
@@ -197,11 +198,28 @@ def _hash_job(args: tuple[str, str, bool, int, int]) -> dict:
 _DISK_CACHE: dict[str, str] = {}
 
 
+def _mount_of(path) -> Path:
+    m = Path(path).resolve()
+    while not m.is_mount() and m != m.parent:
+        m = m.parent
+    return m
+
+
+def _mac_kind(mount: Path) -> str:
+    try:
+        r = subprocess.run(["diskutil", "info", "-plist", str(mount)], capture_output=True, timeout=20)
+        info = plistlib.loads(r.stdout)
+        return "ssd" if info.get("SolidState") else "hdd"
+    except (OSError, subprocess.SubprocessError, plistlib.InvalidFileException, ValueError, AttributeError):
+        return "hdd"
+
+
 def disk_kind(path: Path, setting: str = "auto") -> str:
-    """'hdd' o 'ssd'. Su Windows lo chiede a PowerShell (una volta per lettera di unita')."""
+    """'hdd' o 'ssd'. Su Windows lo chiede a PowerShell (una volta per lettera di unita'), su macOS a diskutil."""
     if setting in ("hdd", "ssd"):
         return setting
-    drive = Path(path).resolve().drive.rstrip(":").upper()
+    # su macOS non ci sono lettere: la chiave della cache e' il volume
+    drive = str(_mount_of(path)) if sys.platform == "darwin" else Path(path).resolve().drive.rstrip(":").upper()
     if drive in _DISK_CACHE:
         return _DISK_CACHE[drive]
     kind = "hdd"  # nel dubbio, la strategia HDD e' quella che fa meno danni
@@ -215,6 +233,8 @@ def disk_kind(path: Path, setting: str = "auto") -> str:
                 kind = "ssd"
         except (OSError, subprocess.SubprocessError):
             pass
+    elif sys.platform == "darwin":
+        kind = _mac_kind(Path(drive))
     elif sys.platform != "win32":
         try:
             dev = os.stat(path).st_dev

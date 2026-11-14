@@ -71,6 +71,7 @@ def test_la_scansione_non_mostra_l_aggiornamento_come_gioco(tmp_path):
 
 
 def test_ryujinx_riceve_l_aggiornamento_piu_nuovo(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")  # percorso APPDATA: e' il caso Windows
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     exe = tmp_path / "emu" / "Ryujinx.exe"
     exe.parent.mkdir()

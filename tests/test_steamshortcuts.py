@@ -72,3 +72,28 @@ def test_art_copied_as_png(steam, tmp_path):
     r = SS.apply(steam, "42", [{**ENT, "art": {"p": src}}])
     aid = SS.appid(ENT["exe"], "Sonic")
     assert r["art"] == 1 and (steam / f"userdata/42/config/grid/{aid}p.png").exists()
+
+
+@pytest.mark.parametrize("platform, name", [("darwin", "steam_osx"), ("linux", "steam")])
+def test_steam_running_pgrep(monkeypatch, platform, name):
+    import subprocess as sp
+    from unittest import mock
+    calls = []
+    monkeypatch.setattr(SS.sys, "platform", platform)
+    monkeypatch.setattr(sp, "run", lambda argv, **kw: calls.append(argv) or mock.Mock(returncode=0))
+    assert SS.steam_running() is True
+    assert calls == [["pgrep", "-x", name]]
+    monkeypatch.setattr(sp, "run", lambda argv, **kw: mock.Mock(returncode=1))
+    assert SS.steam_running() is False
+    monkeypatch.setattr(sp, "run", mock.Mock(side_effect=FileNotFoundError("pgrep")))
+    assert SS.steam_running() is False
+
+
+def test_steam_running_win32_unchanged(monkeypatch):
+    import subprocess as sp
+    from unittest import mock
+    calls = []
+    monkeypatch.setattr(SS.sys, "platform", "win32")
+    monkeypatch.setattr(sp, "run", lambda argv, **kw: calls.append(argv) or mock.Mock(stdout="steam.exe  1234"))
+    assert SS.steam_running() is True
+    assert calls[0][:2] == ["tasklist", "/FI"] and calls[0][2] == "IMAGENAME eq steam.exe"

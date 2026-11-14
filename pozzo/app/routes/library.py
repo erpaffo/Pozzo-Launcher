@@ -582,8 +582,10 @@ def build_router(ctx) -> APIRouter:
             raise HTTPException(404, I.tr("s.library.fileMissing"))
         if sys.platform == "win32":
             subprocess.Popen(["explorer", "/select,", str(f)])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", str(f)])  # -R: seleziona il file nel Finder
         else:
-            subprocess.Popen(["xdg-open" if sys.platform != "darwin" else "open", str(f.parent)])
+            subprocess.Popen(["xdg-open", str(f.parent)])
         return {"ok": True}
 
     @router.post("/api/collections")

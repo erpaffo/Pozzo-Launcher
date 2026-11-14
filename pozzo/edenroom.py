@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .emuadapters import eden as _eden
 from .remote import emusetup
 
 PROCS = ("eden.exe", "eden")
@@ -77,8 +78,7 @@ def config_file(exe: str | None) -> Path | None:
     """qt-config.ini di Eden: portatile (cartella `user` accanto all'exe), altrimenti dati dell'utente."""
     base = Path(exe).parent if exe else None
     c = [base / "user" / "config" / "qt-config.ini" if base else None,
-         Path(os.environ["APPDATA"]) / "eden" / "config" / "qt-config.ini" if os.environ.get("APPDATA") else None,
-         Path.home() / ".local" / "share" / "eden" / "config" / "qt-config.ini"]
+         _eden._base(None) / "config" / "qt-config.ini"]  # dati utente per OS
     c = [p for p in c if p]
     return next((p for p in c if p.is_file()), c[0] if c else None)
 

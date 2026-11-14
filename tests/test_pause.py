@@ -76,8 +76,8 @@ def test_paused_interval_excluded_from_playtime(monkeypatch):
     assert ln.played_since(1000.0) == pytest.approx(10)
 
 
-def test_api_running_can_pause_only_on_windows(monkeypatch):
-    """La UI nasconde Pausa/Riprendi fuori da Windows: il flag arriva dal server (il telefono ha un altro OS)."""
+def test_api_running_can_pause(monkeypatch):
+    """Il flag arriva dal server (il telefono ha un altro OS): ora c'e' la pausa anche su posix."""
     import types
 
     from fastapi.testclient import TestClient
@@ -90,7 +90,48 @@ def test_api_running_can_pause_only_on_windows(monkeypatch):
         cfg = config.Config(cache=d / "cache", output=d / "out")
         cfg.config_path = d / "config.toml"
         with TestClient(create_app(cfg)) as c:
-            monkeypatch.setattr(stream, "sys", types.SimpleNamespace(platform="linux"))
-            assert c.get("/api/running").json()["can_pause"] is False
-            monkeypatch.setattr(stream, "sys", types.SimpleNamespace(platform="win32"))
             assert c.get("/api/running").json()["can_pause"] is True
+
+
+posix = pytest.mark.skipif(sys.platform == "win32", reason="SIGSTOP/gruppi di processi solo posix")
+
+
+@posix
+def test_posix_pause_resume_and_tree_kill():
+    ln = _launcher()
+    job = L._Job.new()
+    p = subprocess.Popen(["sh", "-c", "sleep 30 & wait"], start_new_session=True)
+    assert job.add(p)
+    ln._job, ln._proc = job, p
+    try:
+        end = time.time() + 5
+        while len(job.pids()) < 2 and time.time() < end:  # sh + sleep
+            time.sleep(0.1)
+        assert len(job.pids()) >= 2
+        assert ln.pause() and ln.running()["paused"]
+        assert all(psutil.Process(x).status() == psutil.STATUS_STOPPED for x in job.pids())
+        assert ln.resume()
+        time.sleep(0.2)
+        assert all(psutil.Process(x).status() != psutil.STATUS_STOPPED for x in job.pids())
+        pids = job.pids()
+        job.kill()
+        p.wait(5)
+        end = time.time() + 5
+        while job.active() and time.time() < end:
+            time.sleep(0.1)
+        assert job.active() == 0 and not any(psutil.pid_exists(x) and psutil.Process(x).status() != psutil.STATUS_ZOMBIE for x in pids)
+    finally:
+        ln._unfreeze()
+        job.kill()
+
+
+def test_ryujinx_data_dir_per_os(monkeypatch, tmp_path):
+    monkeypatch.setattr(L.Path, "home", classmethod(lambda c: Path("/h")))
+    exe = tmp_path / "Ryujinx"
+    monkeypatch.setattr(L.sys, "platform", "darwin")
+    assert L.ryujinx_data_dir(exe) == Path("/h/Library/Application Support/Ryujinx")
+    monkeypatch.setattr(L.sys, "platform", "linux")
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    assert L.ryujinx_data_dir(exe) == Path("/h/.config/Ryujinx")
+    monkeypatch.setenv("XDG_CONFIG_HOME", "/x")
+    assert L.ryujinx_data_dir(exe) == Path("/x/Ryujinx")

@@ -991,14 +991,15 @@ def test_stream_optimize():
         (d / "config").mkdir()
         (d / "config" / "sunshine.conf").write_text("locale = it\nnvenc_preset = 4\nnvenc_twopass = full_res\n# nota\n",
                                                    encoding="utf-8")
-        saved = SUN.install_dir, SUN.service_state, SUN.start_mode, SUN.pc_link
+        saved = SUN.install_dir, SUN.service_state, SUN.start_mode, SUN.pc_link, SUN.conf_dir
         SUN.install_dir, SUN.service_state, SUN.start_mode = (lambda: d), (lambda: "running"), (lambda: "manual")
+        SUN.conf_dir = lambda: d / "config"
         SUN.pc_link = lambda: {"name": "Wi-Fi", "wifi": True, "speed": 866}
         try:
             assert SUN.read_conf() == {"locale": "it", "nvenc_preset": "4", "nvenc_twopass": "full_res"}
             titles = [c["title"] for c in SUN.optimize_checks()]
         finally:
-            SUN.install_dir, SUN.service_state, SUN.start_mode, SUN.pc_link = saved
+            SUN.install_dir, SUN.service_state, SUN.start_mode, SUN.pc_link, SUN.conf_dir = saved
     assert any("non parte con Windows" in x for x in titles), titles
     assert any("P4" in x for x in titles) and any("Two-pass" in x for x in titles) and any("Wi-Fi" in x for x in titles), titles
     assert SUN.ours({"name": SUN.CURRENT}) and not SUN.ours({"name": "Desktop"}) and not SUN.ours({"name": SUN.CURRENT, "cmd": "x"})

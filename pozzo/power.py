@@ -12,6 +12,12 @@ import time
 
 MODES = ("none", "sleep", "shutdown")
 DELAY = 60  # secondi per annullare
+# Windows usa i comandi sotto; macOS e Linux hanno i loro (sospensione e spegnimento senza password)
+_OTHER = {
+    "darwin": {"sleep": ["pmset", "sleepnow"],
+               "shutdown": ["osascript", "-e", 'tell application "System Events" to shut down']},
+    "linux": {"sleep": ["systemctl", "suspend"], "shutdown": ["systemctl", "poweroff"]},
+}
 
 _lock = threading.Lock()
 _state: dict = {"mode": "", "at": 0.0, "timer": None}
@@ -36,8 +42,8 @@ def schedule(mode: str, delay: int = DELAY) -> dict:
     """Programma `mode` ("sleep" | "shutdown"); un secondo invio sostituisce quello in attesa."""
     if mode not in ("sleep", "shutdown"):
         raise ValueError("Azione non valida")
-    if sys.platform != "win32":
-        raise ValueError("Spegnimento e sospensione sono disponibili solo su Windows")
+    if sys.platform not in ("win32", "darwin", "linux"):
+        raise ValueError("Spegnimento e sospensione non sono disponibili su questo sistema")
     cancel()
     timer = threading.Timer(max(5, int(delay)), _do, args=(mode,))
     timer.daemon = True
@@ -53,7 +59,9 @@ def _do(mode: str):
             return
         _state.update(mode="", at=0.0, timer=None)
     try:
-        if mode == "shutdown":
+        if sys.platform != "win32":
+            subprocess.run(_OTHER[sys.platform][mode], check=False)
+        elif mode == "shutdown":
             subprocess.run(["shutdown", "/s", "/t", "0"], check=False,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         else:
