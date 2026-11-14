@@ -164,7 +164,7 @@ html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); ove
 
 /* ---- mouse: animazioni al passaggio (senza clic) */
 #bp.mouse .bp-tab, #bp.mouse .card, #bp.mouse .bp-btn, #bp.mouse .kbd .k, #bp.mouse .hint { cursor: pointer; }
-.bp-tab { position: relative; transition: color .18s, background .18s, transform .18s cubic-bezier(.2,.8,.3,1.4), box-shadow .18s; }
+.bp-tab { position: relative; transition: color .18s, background .18s, transform .18s cubic-bezier(.2,.8,.3,1), box-shadow .18s; }
 .bp-tab::after { content: ""; position: absolute; left: 1.1rem; right: 1.1rem; bottom: .2rem; height: 3px; border-radius: 3px;
   background: var(--accent); transform: scaleX(0); transition: transform .22s ease, opacity .22s; opacity: 0; }
 .bp-tab:hover { color: var(--text); background: rgba(255,255,255,.1); transform: translateY(-2px);
@@ -173,7 +173,7 @@ html, body { font-size: calc(clamp(15px, 1.15vw, 24px) * var(--ui-zoom, 1)); ove
 .bp-tab.active::after { transform: scaleX(1); opacity: .9; }
 .bp-tab.focus::after { opacity: 0; }
 .bp-tab:active { transform: translateY(0) scale(.96); }
-.bp-tab.bump { animation: tabBump .32s cubic-bezier(.2,.8,.3,1.4); }
+.bp-tab.bump { animation: tabBump .32s cubic-bezier(.2,.8,.3,1); }
 @keyframes tabBump { 0% { transform: scale(.9); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
 .card:not(.focus):hover { transform: translateY(-6px) scale(1.04); z-index: 1; }
 .card:not(.focus):hover .cv { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent), 0 14px 34px rgba(0,0,0,.55); }
@@ -255,3 +255,104 @@ html[data-bptext="xlarge"] .shelf h2 { font-size: 1.3rem; }
 #bp-bg > video.vsnap { filter: brightness(.4) saturate(1.1); }
 .ds-bat { flex: none; font-size: 1.05rem; color: var(--muted); }
 .ds-bat.low { color: #e5534b; }
+
+/* movimento ridotto (stesso meccanismo di motion.css: data-motion su <html>, o preferenza di sistema se non e' "normal").
+   Restano anello di focus e colore come indicatori di stato; via scale/lift e scorrimenti animati. */
+html[data-motion="off"] .bp-tab,
+html[data-motion="reduced"] .bp-tab,
+html[data-motion="off"] .bp-tab::after,
+html[data-motion="reduced"] .bp-tab::after,
+html[data-motion="off"] .card,
+html[data-motion="reduced"] .card,
+html[data-motion="off"] .card .cv,
+html[data-motion="reduced"] .card .cv,
+html[data-motion="off"] .card .lbl,
+html[data-motion="reduced"] .card .lbl,
+html[data-motion="off"] .bp-btn,
+html[data-motion="reduced"] .bp-btn,
+html[data-motion="off"] .kbd .k,
+html[data-motion="reduced"] .kbd .k,
+html[data-motion="off"] .hint,
+html[data-motion="reduced"] .hint,
+html[data-motion="off"] .bpm-card,
+html[data-motion="reduced"] .bpm-card,
+html[data-motion="off"] .bp-shelves-inner,
+html[data-motion="reduced"] .bp-shelves-inner,
+html[data-motion="off"] .shelf-row,
+html[data-motion="reduced"] .shelf-row,
+html[data-motion="off"] .bp-grid-inner,
+html[data-motion="reduced"] .bp-grid-inner,
+html[data-motion="off"] .card.tile-text.with-img .sys,
+html[data-motion="reduced"] .card.tile-text.with-img .sys,
+html[data-motion="off"] .card.coll-card .art,
+html[data-motion="reduced"] .card.coll-card .art,
+html[data-motion="off"] .card.coll-card .logo,
+html[data-motion="reduced"] .card.coll-card .logo { transition: none; }
+html[data-motion="off"] .card.focus,
+html[data-motion="reduced"] .card.focus,
+html[data-motion="off"] .card:not(.focus):hover,
+html[data-motion="reduced"] .card:not(.focus):hover,
+html[data-motion="off"] .shelf-row .card.resume-card.focus,
+html[data-motion="reduced"] .shelf-row .card.resume-card.focus,
+html[data-motion="off"] .bp-btn.focus,
+html[data-motion="reduced"] .bp-btn.focus,
+html[data-motion="off"] .bp-btn:not(.focus):not(.disabled):not(.main):hover,
+html[data-motion="reduced"] .bp-btn:not(.focus):not(.disabled):not(.main):hover,
+html[data-motion="off"] .bp-btn.main:not(.focus):hover,
+html[data-motion="reduced"] .bp-btn.main:not(.focus):hover,
+html[data-motion="off"] .kbd .k.focus,
+html[data-motion="reduced"] .kbd .k.focus,
+html[data-motion="off"] .kbd .k:not(.focus):hover,
+html[data-motion="reduced"] .kbd .k:not(.focus):hover,
+html[data-motion="off"] .bp-tab:hover,
+html[data-motion="reduced"] .bp-tab:hover,
+html[data-motion="off"] .bp-tab:active,
+html[data-motion="reduced"] .bp-tab:active,
+html[data-motion="off"] .hint:hover,
+html[data-motion="reduced"] .hint:hover,
+html[data-motion="off"] .bpm-card.focus,
+html[data-motion="reduced"] .bpm-card.focus,
+html[data-motion="off"] .bpm-ep.focus,
+html[data-motion="reduced"] .bpm-ep.focus,
+html[data-motion="off"] .card.coll-card.focus .art,
+html[data-motion="reduced"] .card.coll-card.focus .art { transform: none; }
+html[data-motion="off"] .card.tile-text.with-img.focus .sys,
+html[data-motion="reduced"] .card.tile-text.with-img.focus .sys { transform: translate(-50%, -50%); }
+html[data-motion="off"] .card.coll-card.focus .logo,
+html[data-motion="reduced"] .card.coll-card.focus .logo { transform: translateX(-50%); }
+html[data-motion="off"] .bp-tab.bump,
+html[data-motion="reduced"] .bp-tab.bump { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+html:not([data-motion="normal"]) .bp-tab,
+html:not([data-motion="normal"]) .bp-tab::after,
+html:not([data-motion="normal"]) .card,
+html:not([data-motion="normal"]) .card .cv,
+html:not([data-motion="normal"]) .card .lbl,
+html:not([data-motion="normal"]) .bp-btn,
+html:not([data-motion="normal"]) .kbd .k,
+html:not([data-motion="normal"]) .hint,
+html:not([data-motion="normal"]) .bpm-card,
+html:not([data-motion="normal"]) .bp-shelves-inner,
+html:not([data-motion="normal"]) .shelf-row,
+html:not([data-motion="normal"]) .bp-grid-inner,
+html:not([data-motion="normal"]) .card.tile-text.with-img .sys,
+html:not([data-motion="normal"]) .card.coll-card .art,
+html:not([data-motion="normal"]) .card.coll-card .logo { transition: none; }
+html:not([data-motion="normal"]) .card.focus,
+html:not([data-motion="normal"]) .card:not(.focus):hover,
+html:not([data-motion="normal"]) .shelf-row .card.resume-card.focus,
+html:not([data-motion="normal"]) .bp-btn.focus,
+html:not([data-motion="normal"]) .bp-btn:not(.focus):not(.disabled):not(.main):hover,
+html:not([data-motion="normal"]) .bp-btn.main:not(.focus):hover,
+html:not([data-motion="normal"]) .kbd .k.focus,
+html:not([data-motion="normal"]) .kbd .k:not(.focus):hover,
+html:not([data-motion="normal"]) .bp-tab:hover,
+html:not([data-motion="normal"]) .bp-tab:active,
+html:not([data-motion="normal"]) .hint:hover,
+html:not([data-motion="normal"]) .bpm-card.focus,
+html:not([data-motion="normal"]) .bpm-ep.focus,
+html:not([data-motion="normal"]) .card.coll-card.focus .art { transform: none; }
+html:not([data-motion="normal"]) .card.tile-text.with-img.focus .sys { transform: translate(-50%, -50%); }
+html:not([data-motion="normal"]) .card.coll-card.focus .logo { transform: translateX(-50%); }
+html:not([data-motion="normal"]) .bp-tab.bump { animation: none; }
+}
