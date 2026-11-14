@@ -278,6 +278,15 @@ jobs:
           # verrebbero estratti in cartelle e mancherebbero nella release
           skip-decompress: true
 
+      # senza l'installer Windows la release diventa «latest» e l'app installata propone un aggiornamento che non
+      # riesce a scaricare: meglio non pubblicare (le altre piattaforme mancanti restano non bloccanti)
+      - name: Installer Windows presente?
+        run: |
+          compgen -G "release/PozzoLauncher-${GITHUB_REF_NAME#v}-windows-x64-setup.exe" > /dev/null || {
+            echo "::error::installer Windows (PozzoLauncher-${GITHUB_REF_NAME#v}-windows-x64-setup.exe) mancante: release non pubblicata"
+            exit 1
+          }
+
       # manuale in PDF tra i file della release (stesso testo del sito, vedi docs.yml)
       - uses: actions/setup-python@v6
         with:
