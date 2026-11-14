@@ -1,5 +1,40 @@
 # Changelog
 
+## Non rilasciato
+
+### Aggiunto
+
+- **Download, doppioni**: un link, una magnet o un .torrent già in lista non si aggiunge due volte (si può aggiungere comunque). In un gruppo di link i doppioni vengono saltati e gli altri aggiunti.
+- **Download, cartella sorvegliata**: in Impostazioni › Download si sceglie una cartella; i .torrent che vi compaiono vengono aggiunti da soli e rinominati in .added.
+- **Download, interfaccia di rete (VPN) con kill switch**: i download HTTP e torrent escono solo dall'interfaccia scelta; se sparisce si fermano e ripartono da soli quando torna.
+- **Download, Click'n'Load** (spento di default): i link inviati dalle pagine con il pulsante Click'n'Load compaiono in un avviso e si aggiungono solo dopo la conferma.
+- **Download, link scaduti**: un link sbloccato (debrid o host) che scade a metà si risolve di nuovo da solo e riprende dagli stessi segmenti.
+- **Download, torrent e spazio su disco**: i torrent controllano lo spazio libero e vanno in pausa «Disco pieno», con ripresa automatica come i download HTTP.
+- **Salvataggi**: anteprima e risultato del ripristino dicono quali file del backup sono stati saltati perché fuori dalle cartelle del gioco.
+
+### Corretto
+
+- **Download**: un errore imprevisto non lascia più un download «In corso» per sempre con il posto in coda occupato.
+- **Download HTTP**: se un segmento fallisce si fermano anche gli altri, così la ripresa non rischia di rovinare il file.
+- **Download con cartella degli incompleti**: lo spostamento finale non sovrascrive più un file con lo stesso nome.
+- **Download pianificati**: «Avvia alle 01:00» impostato in serata parte nella notte, non subito.
+- **Aggiornamenti in tempo reale** (download, schermata del gioco, avvisi): il flusso di eventi dell'interfaccia veniva rifiutato e la pagina Download interrogava il PC ogni 2 secondi.
+- **Download a più volumi**: niente più falso errore «Libreria» né doppia estrazione quando i volumi sono download separati.
+- **Download**: un download eliminato durante l'estrazione non ricompare al riavvio; aggiungere più link insieme è tutto o niente.
+- **Torrent**: le magnet rispettano il numero massimo di download contemporanei dopo aver ricevuto i metadati; un tracker lento o irraggiungibile per un momento non viene più escluso per sempre.
+- **Limite di banda**: a limiti bassi le connessioni non cadono più e un limite cambiato vale entro un secondo.
+- **Feed RSS**: i link verso indirizzi della rete locale vengono scartati.
+- **Big Picture e tema Chiaro**: testo del focus e colori di stato leggibili in tutti i temi.
+- **Telefono**: zoom con due dita consentito e pulsanti più grandi da toccare.
+- **Lingue**: i testi della sezione Amici, della pagina del telefono e di Big Picture sono tradotti.
+
+### Migliorato
+
+- **Sicurezza**: aggiornamenti, EmulatorJS, estensioni ed emulatori si installano solo con l'impronta SHA-256 verificata (dove la fonte non la pubblica resta un avviso nel registro); il ripristino dei salvataggi scrive solo nelle cartelle del gioco; chiavi e password non finiscono più nei registri e nei report; immagini remote limitate a 25 MB.
+- **Meno risorse a riposo**: timer fermi a finestra nascosta, un solo lettore del controller durante il gioco, cartelle delle ROM non più ripercorse ogni 15 secondi, download completati che non pesano più sul ciclo dei download.
+- **Avvio dei giochi più rapido**: il backup dei salvataggi non rilegge i file invariati.
+- **Accessibilità**: movimento ridotto rispettato in Big Picture e sul telefono; la scheda gioco in finestra tiene il focus dentro il pannello.
+
 ## 0.18.1 (2026-11-14)
 ### Corretto
 
