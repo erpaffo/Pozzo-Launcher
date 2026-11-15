@@ -430,6 +430,9 @@ To test an extension locally in your launcher, `python tools/extensions.py insta
 | **Local Media** | Movies, TV series, and music from local PC folders browsable as a dedicated media library: title recognition, local artwork support (poster.jpg, folder.jpg), playback resume, and support for internal or external media players |
 | **Web Recipes** | Movies and podcast catalogs from legitimate public web directories and feeds (e.g., Internet Archive and NASA podcasts) extracted via declarative TOML recipes without executable code; features ETag caching, robots.txt compliance, metadata details, episodes, and direct playback |
 | **Twitch and YouTube** | in each game's details, live Twitch streams and YouTube videos (trailers and guides); personal keys in Settings › Streaming |
+| **Events and Shows** | calendar of Gamescom, Summer Game Fest, Nintendo Direct, and other gaming showcases, with reminders 7 days and 1 day before they start |
+| **Media Server** | your Jellyfin or Plex libraries inside Pozzo Launcher: same grid, same search, with "Continue Watching" and "Watched" synced with the server |
+| **Speedruns** | world records and links to speedrun.com for games in your library, directly in each game's detail view |
 
 **Store Minerva + Switch** stores its presets in `PRESETS` (`backend.py`): adding additional repositories requires only a single line
 (`{"console": ["https://…"]}`). Because listings for a console may use different layout formats

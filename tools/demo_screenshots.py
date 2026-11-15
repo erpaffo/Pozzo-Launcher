@@ -40,8 +40,13 @@ PALETTES = ((29, 90, 133), (112, 62, 128), (185, 91, 56), (25, 122, 115), (181, 
 
 
 def _font(size: int, bold: bool = False):
-    candidates = (r"C:\Windows\Fonts\segoeuib.ttf", r"C:\Windows\Fonts\arialbd.ttf") if bold else (
-        r"C:\Windows\Fonts\segoeui.ttf", r"C:\Windows\Fonts\arial.ttf")
+    candidates = (
+        r"C:\Windows\Fonts\segoeuib.ttf", r"C:\Windows\Fonts\arialbd.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/System/Library/Fonts/Helvetica.ttc",
+    ) if bold else (
+        r"C:\Windows\Fonts\segoeui.ttf", r"C:\Windows\Fonts\arial.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf", "/System/Library/Fonts/Helvetica.ttc",
+    )
     for path in candidates:
         if Path(path).exists():
             return ImageFont.truetype(path, size)

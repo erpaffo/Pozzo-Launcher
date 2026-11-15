@@ -11,7 +11,7 @@ hide:
     
     <a href="download.md" class="hero-release-pill">
       <span class="hero-pulse-dot"></span>
-      <span>Disponibile la nuova versione <strong class="gh-release-tag">v0.14.3</strong> · Gratuito e Open Source</span>
+      <span>Disponibile la nuova versione <strong class="gh-release-tag">v0.19.0</strong> · Gratuito e Open Source</span>
     </a>
 
     <h1 class="hero-title">

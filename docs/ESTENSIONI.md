@@ -449,6 +449,9 @@ non parte (WinError 448). La release contiene solo lo store.
 | **Media locale** | film, serie e musica dalle cartelle del tuo computer sfogliati come una libreria multimediale: riconoscimento dei nomi, poster locali (poster.jpg, folder.jpg), ripresa della riproduzione e supporto per lettore integrato o esterno |
 | **Ricette web** | cataloghi di film e podcast da siti e feed web leciti (es. Internet Archive e podcast NASA) estratti tramite ricette TOML dichiarative senza codice eseguito; cache con ETag, rispetto di robots.txt, dettaglio, episodi e riproduzione |
 | **Twitch e YouTube** | nel dettaglio di ogni gioco, le dirette Twitch in corso e i video YouTube (trailer e guide); chiavi personali in Impostazioni › Streaming |
+| **Eventi e fiere** | calendario di Gamescom, Summer Game Fest, Nintendo Direct e delle altre fiere videoludiche, con promemoria a 7 giorni e a 1 giorno dall'inizio |
+| **Media server** | le librerie del tuo Jellyfin o Plex dentro Pozzo Launcher: stessa griglia, stessa ricerca, «continua a guardare» e «visto» sincronizzati col server |
+| **Speedrun** | record del mondo e link a speedrun.com per i giochi della tua libreria, direttamente nel dettaglio del gioco |
 
 **Store Minerva + Switch** tiene i preset in `PRESETS` (`backend.py`): per aggiungerne altri basta una riga
 (`{"console": ["https://…"]}`). Poiché gli elenchi della stessa console possono avere formati diversi

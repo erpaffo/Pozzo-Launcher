@@ -164,7 +164,7 @@ GSUi.applyTheme(document);
 
 /* poll:start - timer che dorme a finestra nascosta (minimizzata o coperta). Test: tests/test_poll_visible.js */
 /** Esegue fn ogni ms solo mentre la pagina e' visibile; al ritorno in vista la lancia subito (recupera quel che e' cambiato). */
-function pollWhileVisible(fn, ms, env = { document, setInterval, clearInterval }) {
+function pollWhileVisible(fn, ms, env = { document, setInterval: (...a) => setInterval(...a), clearInterval: (...a) => clearInterval(...a) }) { // wrapper: WebKit (macOS) vieta setInterval con this != window
   let id = null, slept = env.document.hidden; // nata nascosta: al primo ritorno in vista recupera
   const sync = () => {
     if (env.document.hidden) { if (id !== null) { env.clearInterval(id); id = null; slept = true; } return; }

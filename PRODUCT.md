@@ -36,7 +36,7 @@ README.md, docs/ (manuale online), screenshot in docs/img/. Nessuna testimonianz
 2. Un solo overlay per tutti i sistemi, ROM ed emulatori compresi.
 3. Tastiera e controller sono cittadini di pari livello.
 4. Tutto locale e senza account.
-5. Ogni funzione nuova arriva in tutte e 7 le lingue.
+5. Ogni funzione nuova arriva in tutte e 6 le lingue.
 
 ## Accessibility & Inclusion
 Navigazione completa da tastiera e controller con focus sempre visibile; contrasto del testo leggibile a distanza; rispetto di "riduci movimento"; target di tocco/focus ampi.

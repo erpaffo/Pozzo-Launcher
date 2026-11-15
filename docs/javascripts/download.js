@@ -109,7 +109,8 @@
     if (!isoStr) return '';
     try {
       var d = new Date(isoStr);
-      return d.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' });
+      var loc = (document.documentElement.lang || '').toLowerCase().startsWith('en') || location.pathname.indexOf('/en/') !== -1 ? 'en-US' : 'it-IT';
+      return d.toLocaleDateString(loc, { year: 'numeric', month: 'long', day: 'numeric' });
     } catch (e) {
       return '';
     }
@@ -117,7 +118,7 @@
 
   // Aggiorna gli elementi della UI
   function applyReleaseData(release, os) {
-    var tag = (release && release.tag_name) || 'v0.14.3';
+    var tag = (release && release.tag_name) || 'v0.19.0';
     var assets = parseAssets(release ? release.assets : []);
 
     // Aggiorna tutti i tag versione presenti
