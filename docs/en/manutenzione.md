@@ -45,7 +45,7 @@ In **Settings › Library › Data Backups**, favorites, playtime, statuses, not
 - Not included: caches, metadata, images, screenshot files, the download queue, `config.toml` and emulators.
 - **Hot restore**: works while the app is running. Before restoring, a copy of the current data is saved so the restore operation can be undone.
 
-There is no need to back up the library database (`library.db`): it rebuilds itself automatically. For game saves, see [Playing](giocare.md#salvataggi).
+There is no need to back up the library database (`library.db`): it rebuilds itself automatically. For game saves, see [Playing](giocare.md#save-management).
 
 ## The Health Page
 
@@ -102,4 +102,4 @@ The library rebuilds itself automatically after every scan, store refresh, or im
 ## Logs
 
 - Standard executable logging without a terminal is located at `<data directory>/logs/pozzo.log`.
-- Detailed diagnostic logging (stores, scheduler, errors) is enabled via `--log` or `POZZO_LOG` (see [Logging to file](store-online.md#log-su-file)).
+- Detailed diagnostic logging (stores, scheduler, errors) is enabled via `--log` or `POZZO_LOG` (see [Logging to file](store-online.md#file-logging)).

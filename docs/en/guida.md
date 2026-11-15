@@ -24,9 +24,9 @@ Looking for an instantaneous interface that stays smooth even with hundreds of t
 ### 2. I don't know what to play tonight!
 Short on time, playing with friends, or looking for smart recommendations based on games you've loved?
 
-[![What are we playing tonight: smart recommendations and quick random pick](../images/stasera.jpg)](libreria.md#per-te-e-a-cosa-vuoi-giocare)
+[![What are we playing tonight: smart recommendations and quick random pick](../images/stasera.jpg)](libreria.md#for-you-and-what-to-play)
 
-👉 **What to do:** Open the **✨ For You** view in the sidebar or click **🎲 What do you want to play?**: the app will ask 3 quick questions (available time, players, genre) and immediately suggest the best ready-to-launch games! Read the [For You and recommendations](libreria.md#per-te-e-a-cosa-vuoi-giocare) guide.
+👉 **What to do:** Open the **✨ For You** view in the sidebar or click **🎲 What do you want to play?**: the app will ask 3 quick questions (available time, players, genre) and immediately suggest the best ready-to-launch games! Read the [For You and recommendations](libreria.md#for-you-and-what-to-play) guide.
 
 ---
 
@@ -78,14 +78,14 @@ Have questions about launching an emulator, syncing saves between two PCs, or tr
 ### 8. Manage downloads with a unified queue, Torrent, and Debrid services
 Want to download your games with parallel-segment acceleration, handle torrent files or unrestrict links via Real-Debrid, and automatically extract archives into the right folders?
 
-👉 **What to do:** Open the **⬇ Downloads** view in the sidebar and refer to the [Integrated Download Manager](store-online.md#gestore-dei-download-integrato-coda-torrent-e-debrid) guide to explore queue options, Game Mode, and automated extraction for Nintendo Switch.
+👉 **What to do:** Open the **⬇ Downloads** view in the sidebar and refer to the [Integrated Download Manager](store-online.md#built-in-download-manager-queue-torrent-and-debrid) guide to explore queue options, Game Mode, and automated extraction for Nintendo Switch.
 
 ---
 
 ### 9. Play online with a friend (RetroArch Netplay & Eden Switch)
 Want to challenge a friend remotely to arcade/console classics on RetroArch or host a private local/wireless room on Nintendo Switch with Eden?
 
-👉 **What to do:** Go to the [Play with a friend](giocare.md#partita-con-un-amico) section: generate an invite code with one click, send it to your friend, and jump right into a match over local network, internet, or free VPN.
+👉 **What to do:** Go to the [Play with a friend](giocare.md#play-with-a-friend) section: generate an invite code with one click, send it to your friend, and jump right into a match over local network, internet, or free VPN.
 
 ---
 
@@ -96,16 +96,16 @@ Want to challenge a friend remotely to arcade/console classics on RetroArch or h
 | **Library** | Box art grid with instant search, filters, automatic and custom collections, recommendations | [The Library](libreria.md) |
 | **ROMs & Metadata** | Recognizes console folders, identifies games offline, and downloads data and images from multiple sources | [ROMs and data scraping](rom-e-scraping.md) |
 | **Gaming** | Launches each game with the proper emulator, records session playtime, backs up saves, fast SSD scratch disk | [Gaming](giocare.md) |
-| **Download Manager** | Unified queue with multi-segment HTTP, Torrent, and Debrid (Real-Debrid, etc.) with automatic extraction | [Adding stores and downloads](store-online.md#gestore-dei-download-integrato-coda-torrent-e-debrid) |
-| **Multiplayer / Netplay** | Play remotely with a friend on RetroArch or Eden Switch via invite code without dedicated servers | [Playing with a friend](giocare.md#partita-con-un-amico) |
+| **Download Manager** | Unified queue with multi-segment HTTP, Torrent, and Debrid (Real-Debrid, etc.) with automatic extraction | [Adding stores and downloads](store-online.md#built-in-download-manager-queue-torrent-and-debrid) |
+| **Multiplayer / Netplay** | Play remotely with a friend on RetroArch or Eden Switch via invite code without dedicated servers | [Playing with a friend](giocare.md#play-with-a-friend) |
 | **PC Games** | Installed and owned games from Steam, Epic, GOG, Riot, Battle.net, Amazon, Xbox | [PC games from stores](store-pc.md) |
 | **Online Stores** | Game catalogs available to download for consoles and PC, fetched from websites and web archives | [Adding stores](store-online.md) |
 | **Extras** | Weekly free games, wishlist with key price tracking, PC ports of console classics | [Free games, wishlist, PC ports](extra.md) |
 | **Phone** | Phone as a remote, controller (up to 4 players), and DS/3DS touch dual-screen | [Phone and streaming](telefono-streaming.md) |
 | **TV** | Native full-screen interface built for controllers and 4K displays | [Big Picture](bigpicture.md) |
 | **Customization** | 4 color themes, 6 desktop experience profiles, and extension/plugin store | [Themes and plugins](ESTENSIONI.md) |
-| **Multi-PC & Family** | Data sync between two PCs via LAN/shared folder and separated user profiles | [Data and maintenance](manutenzione.md#sincronizzazione-tra-pc), [Profiles](libreria.md#profili-utente) |
-| **Integrations** | Discord Rich Presence (including 1 of 2 netplay), system notifications, web library export | [Gaming](giocare.md#mostrare-su-discord-cosa-stai-giocando), [Notifications](extra.md#system-notifications) |
+| **Multi-PC & Family** | Data sync between two PCs via LAN/shared folder and separated user profiles | [Data and maintenance](manutenzione.md#syncing-between-pcs), [Profiles](libreria.md#user-profiles) |
+| **Integrations** | Discord Rich Presence (including 1 of 2 netplay), system notifications, web library export | [Gaming](giocare.md#showing-what-youre-playing-on-discord), [Notifications](extra.md#system-notifications) |
 | **Help & FAQ** | Step-by-step troubleshooting, Health self-diagnostics, frequently asked questions | [Help Center and FAQ](assistenza.md) |
 
 ---

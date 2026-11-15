@@ -116,7 +116,7 @@ within its directory. Steam also supplies its own total playtime.
 
 PC games also benefit from **pre-launch and post-exit scripts** (globally or per-game in the **⚙ Launch Profile**
 of the individual game), **automatic launcher exit** when closing a game, and the **🖥 Desktop Shortcut**:
-these are explained in [Playing Games](giocare.md#script-prima-e-dopo-il-gioco).
+these are explained in [Playing Games](giocare.md#pre-launch-and-post-exit-scripts).
 
 ## Non-Official Stores
 

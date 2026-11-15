@@ -56,15 +56,15 @@ Themes are independent of the layout and can be combined with it.
 
 ## What it does
 
-- **Fast scraping**. ROMs are recognized offline (CRC and name against the No-Intro/Redump DATs), and online sources are queried only for what is missing, respecting their limits. If it is interrupted, it resumes where it left off.
-- A Playnite-style library, with consoles and stores together. Regional versions are merged, and you get favorites (per console too), statuses, collections, search and filters; it copes with tens of thousands of games. A menu bar at the top gets you straight to the most-used actions and settings.
-- **PC games** from Steam, Epic, GOG, Amazon, Battle.net, Xbox and others, next to your ROMs. You can add any `.exe`, game or application by hand: it shows up right away, and the cover and data follow. Each game can also launch other applications along with it, for example a deck tracker.
-- **Big Picture**: a full-screen mode designed for the controller, even from the couch.
-- From your phone you can browse and launch games, and the phone doubles as a controller (gyroscope included). For streaming there are Sunshine and Moonlight.
-- **Online stores** are lists of games taken from other websites, which show up as a "store" of each console.
-- Seven layouts (Catalog, Shelves, Console, Dashboard, Cinema, Showcase, Original) and the light, midnight blue, OLED and retro themes, to mix as you like.
-- **Extensions** to install from the store inside the app: what to play tonight, achievements, release calendar, play diary…
-- Plus the extras: free games, a wishlist with prices, PC ports, save backups, Discord (including mute, deafen and leave the call), Spotify and media keys, keyboard shortcuts, export for ES-DE and Pegasus.
+- **Fast scraping & importers**. ROMs are recognized offline (CRC and name against No-Intro/Redump DATs, plus Nintendo Switch 2 / Eglantine `.nup`/NSP/folder support), and online sources are queried only for what is missing, respecting their limits. If interrupted, it resumes where it left off. You can also import existing Steam ROM Manager and RetroArch playlists with preview.
+- A Playnite-style library, with consoles and stores together. Regional versions are merged, and you get favorites (per console too), statuses, collections, saved filters, search, and **3 game detail layouts** (Classic, 2-column Cockpit, Editorial + Side Drawer); it copes with tens of thousands of games. A top menu bar and command palette (`Ctrl+K`) get you straight to actions and settings.
+- **PC games** from Steam, Epic, GOG, Amazon, Battle.net, Xbox, Riot, Minecraft, Network Folder, and **Pozzo Remote** shared libraries, next to your ROMs — with clientless installs via SteamCMD, `legendary`, `gogdl`, and `nile`. Add any `.exe` or web game by hand, and configure per-game automations (pre/post scripts, temporary archive extraction, resolution/HDR/power, Magpie upscaling, ViGEmBus/HidHide controller remap, DualSense/DS4 battery & lightbar).
+- **Play everywhere**: desktop, **Big Picture** controller mode, **Play in Browser** (EmulatorJS for retro consoles & Ruffle for Flash), one-click emulator/RetroArch core installs (with bezels, shaders, and cheats), and a cross-platform **In-game Overlay** (`Ctrl+Shift+O` / `Select+R3`) with live achievement toasts.
+- From your phone you can browse and launch games, use it as a controller (gyroscope included), or stream audio. For remote play there are Sunshine and Moonlight, plus **Play with a friend** (RetroArch Netplay / Eden).
+- **Online stores & integrated Download Manager**: browse game lists from external sites, and download via multi-segment HTTP, native Torrent/Magnet, or debrid/hoster services — with categories, RSS auto-filters, watched `.torrent` folder, VPN interface binding + kill switch, Click'n'Load, and disk-space auto-pause.
+- **Seven layouts** (Catalog, Shelves, Console, Dashboard, Cinema, Showcase, Original), **5 built-in themes** (Default, Light, Midnight Blue, OLED, Retro), **Experience Presets**, and a built-in **Theme Editor** (HSL sliders, WCAG contrast check, `.pozzo-theme.json` import/export).
+- **22 Extensions** in the in-app store: statistics, what to play tonight, retro anniversaries, library cleanup, gaming journal, time limit, personal goals, year in review, SteamGridDB, release calendar, gaming news, Can My PC Run It?, reviews & scores, deals & bundles, local media, web recipes, Jellyfin/Plex media server, Twitch & YouTube, events & shows, speedruns…
+- **Guided & secure**: first-run tour, **30 interactive tutorials**, **61 contextual hints**, **6 UI languages** (English, Italian, French, Spanish, Portuguese, German), automatic rotating backups, Ed25519/SHA-256 update verification, local `/api/v1` REST API, plus free games, wishlist with prices, PC ports, Discord (mute/deafen/leave), Spotify, shortcuts, and export for ES-DE, Pegasus, and Steam.
 
 ## Download
 
@@ -78,15 +78,15 @@ The executables are on the **[Releases](https://github.com/erpaffo/Pozzo-Launche
 
 The executables are not signed: on Windows SmartScreen asks for confirmation (*More info › Run anyway*), on macOS the first time open the app with right click › Open.
 
-When a new version is out a notice appears. Install it with one click from **Settings › About** (**⬇ Install and restart**) and your data stays where it is.
+When a new version is out a notice appears. Install it with one click from **Settings › System** (**⬇ Install and restart**) and your data stays where it is.
 
 ## Getting started
 
-1. Open Pozzo Launcher and choose your ROM folder in **Settings › New games**.
+1. Open Pozzo Launcher and choose your ROM folder in **Settings › Library**.
 2. Start the search: the library fills up, and covers and data arrive in the background.
-3. For PC games, connect your stores from **Settings › Stores**.
+3. For PC games, connect your stores from **Settings › Stores and accounts**.
 
-Configuration, cache and library live in the user folder (`%LOCALAPPDATA%\PozzoLauncher` on Windows, `~/Library/Application Support/PozzoLauncher` on macOS, `~/.local/share/PozzoLauncher` on Linux). Everything else (source credentials, terminal commands, online stores, phone, extensions) is in the **[official manual](https://erpaffo.github.io/Pozzo-Launcher/)** (available in English and Italian).
+Configuration, cache and library live in the user folder (`%LOCALAPPDATA%\PozzoLauncher` on Windows, `~/Library/Application Support/PozzoLauncher` on macOS, `~/.local/share/PozzoLauncher` on Linux). Everything else (source credentials, terminal commands, online stores, phone, extensions) is in the **[official manual](https://erpaffo.github.io/Pozzo-Launcher/)** (available in English and Italian; the app UI is available in 6 languages).
 
 ## From source
 
@@ -96,7 +96,7 @@ python -m pozzo app          # opens the app
 python -m pozzo run          # scan and scraping only, from the terminal
 ```
 
-Code structure, how to build the executables and performance: [Development](docs/sviluppo.md). To contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
+Code structure, how to build the executables and performance: [Development](docs/en/sviluppo.md). To contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Disclaimer
 

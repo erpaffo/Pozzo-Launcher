@@ -118,7 +118,7 @@
 
   // Aggiorna gli elementi della UI
   function applyReleaseData(release, os) {
-    var tag = (release && release.tag_name) || 'v0.19.0';
+    var tag = (release && release.tag_name) || 'v0.19.1';
     var assets = parseAssets(release ? release.assets : []);
 
     // Aggiorna tutti i tag versione presenti

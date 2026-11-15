@@ -120,7 +120,7 @@ To add a new icon, add an entry to the `ICONS` dictionary: no external assets or
 
 ### How to Add a Theme
 
-A theme consists of two files, `theme.json` and `theme.css`, placed in `<data directory>/themes/<id>/` (alongside `config.toml`) or bundled within the app under `pozzo/app/themes/<id>/`. File specifications, required CSS variables, and attributes (`<html data-mode>`, `<html data-theme>`) are detailed in [Themes and Plugins](ESTENSIONI.md#temi), which also references the four built-in themes as examples.
+A theme consists of two files, `theme.json` and `theme.css`, placed in `<data directory>/themes/<id>/` (alongside `config.toml`) or bundled within the app under `pozzo/app/themes/<id>/`. File specifications, required CSS variables, and attributes (`<html data-mode>`, `<html data-theme>`) are detailed in [Themes and Plugins](ESTENSIONI.md#themes), which also references the four built-in themes as examples.
 
 On the codebase side, themes require no code changes:
 
@@ -128,7 +128,7 @@ On the codebase side, themes require no code changes:
 - `pozzo/app/routes/appsettings.py` — `GET /api/extensions` supplies themes, active theme, and experiences; `POST /api/app/theme` writes `app.theme` to `config.toml`; `GET /themes/<id>/<file>` serves static theme files;
 - `core.js` (`loadExtensions`) — injects `<link data-ext="theme">` stylesheets (`desktop` or `bigpicture` according to active mode), waits for application before unhiding the window, and sets `document.documentElement.dataset.theme`.
 
-The stable API for scripting and integrations is documented in [Reference › Local API](riferimento.md#api-locale): `/api/v1` endpoints maintain backward compatibility, while `/api` endpoints are internal to the web UI.
+The stable API for scripting and integrations is documented in [Reference › Local API](riferimento.md#local-api): `/api/v1` endpoints maintain backward compatibility, while `/api` endpoints are internal to the web UI.
 
 ## Exporting the Library as a Web Page
 

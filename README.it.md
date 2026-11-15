@@ -56,15 +56,15 @@ I temi sono indipendenti dalla grafica e si possono combinare.
 
 ## Cosa fa
 
-- **Scraping veloce**. Le ROM vengono riconosciute offline (CRC e nome sui DAT No-Intro/Redump), e le fonti online si interrogano solo per quello che manca, rispettando i loro limiti. Se si interrompe, riprende da dove era rimasto.
-- Una libreria in stile Playnite, con console e store insieme. Le versioni regionali vengono unite, ci sono preferiti (anche per console), stati, collezioni, ricerca e filtri, e regge anche decine di migliaia di giochi. In alto c'è una barra dei menu per arrivare subito alle azioni e alle impostazioni più usate.
-- **Giochi PC** da Steam, Epic, GOG, Amazon, Battle.net, Xbox e altri, accanto alle ROM. Puoi aggiungere a mano qualsiasi `.exe`, gioco o applicazione che sia: compare subito, copertina e dati arrivano dopo. Ogni gioco può anche avviare altre applicazioni insieme a sé, per esempio un deck tracker.
-- **Big Picture**: schermo intero pensato per il controller, anche dal divano.
-- Dal telefono sfogli e avvii i giochi, e il telefono fa anche da controller (giroscopio compreso). Per lo streaming ci sono Sunshine e Moonlight.
-- Gli **store online** sono elenchi di giochi presi da altri siti, che compaiono come «store» di ogni console.
-- Sette grafiche (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale) e i temi chiaro, notte blu, OLED e retrò, da combinare come vuoi.
-- **Estensioni** da installare dallo store dentro l'app: cosa gioco stasera, obiettivi, calendario uscite, diario di gioco…
-- Poi gli extra: giochi gratis, lista desideri con prezzi, port PC, copie dei salvataggi, Discord (anche muto, sordo ed esci dalla chiamata), Spotify e tasti multimediali, scorciatoie da tastiera, esportazione per ES-DE e Pegasus.
+- **Scraping veloce e importatori**. Le ROM vengono riconosciute offline (CRC e nome sui DAT No-Intro/Redump, più supporto Nintendo Switch 2 / Eglantine `.nup`/NSP/cartelle), e le fonti online si interrogano solo per quello che manca, rispettando i loro limiti. Se si interrompe, riprende da dove era rimasto. Puoi anche importare playlist di Steam ROM Manager e RetroArch con anteprima.
+- Una libreria in stile Playnite, con console e store insieme. Le versioni regionali vengono unite, ci sono preferiti (anche per console), stati, collezioni, filtri salvati, ricerca e **3 layout per la scheda gioco** (Classico, Cockpit a 2 colonne, Editoriale + pannello laterale); regge anche decine di migliaia di giochi. In alto c'è la barra dei menu e la palette comandi (`Ctrl+K`) per arrivare subito ad azioni e impostazioni.
+- **Giochi PC** da Steam, Epic, GOG, Amazon, Battle.net, Xbox, Riot, Minecraft, Cartella di rete e librerie condivise **Pozzo remoto**, accanto alle ROM — anche senza client tramite SteamCMD, `legendary`, `gogdl` e `nile`. Aggiungi a mano qualsiasi `.exe` o gioco web, con automazioni per singolo gioco (script prima/dopo, estrazione temporanea archivi, risoluzione/HDR/energia, upscaling Magpie, remap controller ViGEmBus/HidHide, batteria e barra LED DualSense/DS4).
+- **Gioca ovunque**: desktop, **Big Picture** per il controller, **Gioca nel browser** (EmulatorJS per console retro e Ruffle per Flash), installazione emulatori e core RetroArch in un clic (con bezel, shader e trucchi) e **Overlay in partita** multipiattaforma (`Ctrl+Shift+O` / `Select+R3`) con notifiche obiettivi in tempo reale.
+- Dal telefono sfogli e avvii i giochi, lo usi come controller (giroscopio compreso) o ascolti l'audio. Per giocare a distanza ci sono Sunshine e Moonlight, oltre a **Partita con un amico** (RetroArch Netplay / Eden).
+- **Store online e gestore download integrato**: sfogli elenchi di giochi da siti esterni e scarichi tramite HTTP multi-segmento, Torrent/Magnet nativo o servizi debrid/hoster — con categorie, filtri automatici RSS, cartella `.torrent` osservata, interfaccia VPN con kill switch, Click'n'Load e pausa automatica su disco pieno.
+- **Sette grafiche** (Catalogo, Scaffali, Console, Dashboard, Cinema, Vetrina, Originale), **5 temi integrati** (Predefinito, Chiaro, Notte blu, OLED, Retrò), **Preset esperienza** e **Editor dei temi** integrato (cursori HSL, controllo contrasto WCAG, importa/esporta `.pozzo-theme.json`).
+- **22 Estensioni** nello store dentro l'app: statistiche, cosa gioco stasera, anniversari retro, pulizia libreria, diario di gioco, limite di tempo, obiettivi personali, riepilogo annuale, SteamGridDB, calendario uscite, notizie videogiochi, il mio PC ce la fa?, recensioni e punteggi, sconti e bundle, media locale, ricette web, media server Jellyfin/Plex, Twitch e YouTube, eventi e fiere, speedrun…
+- **Guidato e sicuro**: tour iniziale, **30 tutorial interattivi**, **61 suggerimenti contestuali**, **6 lingue dell'interfaccia** (italiano, inglese, francese, spagnolo, portoghese, tedesco), backup automatici a rotazione, verifica Ed25519/SHA-256 sugli aggiornamenti, API locale `/api/v1`, più giochi gratis, lista desideri con prezzi, port PC, Discord (muto/sordo/esci dalla chiamata), Spotify, scorciatoie da tastiera ed esportazione per ES-DE, Pegasus e Steam.
 
 ## Download
 
@@ -78,15 +78,15 @@ Gli eseguibili sono nella pagina **[Releases](https://github.com/erpaffo/Pozzo-L
 
 Gli eseguibili non sono firmati: su Windows SmartScreen chiede conferma (*Ulteriori informazioni › Esegui comunque*), su macOS la prima volta apri l'app con clic destro › Apri.
 
-Quando esce una versione nuova compare un avviso. La installi con un clic da **Impostazioni › Info** (**⬇ Installa e riavvia**) e i tuoi dati restano dove sono.
+Quando esce una versione nuova compare un avviso. La installi con un clic da **Impostazioni › Sistema** (**⬇ Installa e riavvia**) e i tuoi dati restano dove sono.
 
 ## Per iniziare
 
-1. Apri Pozzo Launcher e scegli la cartella delle ROM in **Impostazioni › Nuovi giochi**.
+1. Apri Pozzo Launcher e scegli la cartella delle ROM in **Impostazioni › Libreria**.
 2. Avvia la ricerca: la libreria si riempie, e copertine e dati arrivano in sottofondo.
-3. Per i giochi PC, collega gli store da **Impostazioni › Store**.
+3. Per i giochi PC, collega gli store da **Impostazioni › Store e account**.
 
-Configurazione, cache e libreria stanno nella cartella dell'utente (`%LOCALAPPDATA%\PozzoLauncher` su Windows, `~/Library/Application Support/PozzoLauncher` su macOS, `~/.local/share/PozzoLauncher` su Linux). Tutto il resto (credenziali delle fonti, comandi da terminale, store online, telefono, estensioni) è nel [manuale](https://erpaffo.github.io/Pozzo-Launcher/).
+Configurazione, cache e libreria stanno nella cartella dell'utente (`%LOCALAPPDATA%\PozzoLauncher` su Windows, `~/Library/Application Support/PozzoLauncher` su macOS, `~/.local/share/PozzoLauncher` su Linux). Tutto il resto (credenziali delle fonti, comandi da terminale, store online, telefono, estensioni) è nel [manuale](https://erpaffo.github.io/Pozzo-Launcher/) (disponibile in italiano e inglese; l'interfaccia dell'app è tradotta in 6 lingue).
 
 ## Dai sorgenti
 

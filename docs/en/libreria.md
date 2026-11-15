@@ -10,16 +10,16 @@ The library is loaded into the application all at once: search, filters, and sor
 
 | View | What it shows |
 |---|---|
-| **✨ For You** | Netflix-style recommendation page (see [For You](#per-te-e-a-cosa-vuoi-giocare)) |
+| **✨ For You** | Netflix-style recommendation page (see [For You](#for-you-and-what-to-play)) |
 | **▦ All Games** | The entire library: ROMs and PC games |
 | **★ Favorites** | Games marked with a star; under this item, a **sub-item for each console** containing favorites for that console (only consoles that have favorites appear) |
 | **🛒 Stores** | Games to install or download: games owned in stores but not installed, and games from online stores |
 | **👥 Local Multiplayer** | Games supporting at least 2 players on the same screen |
-| **🎁 Free Games** | Current free offers and giveaways (see [Free Games](extra.md#giochi-gratis)) |
-| **🕹 Ports & Apps** | Console games recompiled natively for PC and games/emulators from GitHub releases (see [Ports & Apps](extra.md#port-e-app)) |
-| **♡ Wishlist** | Games you want to buy, with price tracking and alerts (see [Wishlist](extra.md#lista-desideri)) |
+| **🎁 Free Games** | Current free offers and giveaways (see [Free Games](extra.md#free-games)) |
+| **🕹 Ports & Apps** | Console games recompiled natively for PC and games/emulators from GitHub releases (see [Ports & Apps](extra.md#ports-and-apps)) |
+| **♡ Wishlist** | Games you want to buy, with price tracking and alerts (see [Wishlist](extra.md#wishlist)) |
 | **📷 Screenshots** | Screenshots captured during your play sessions |
-| **🏆 Top Games** | Top 100 and Top 1000 leaderboards (see [Top Games](#migliori-giochi)) |
+| **🏆 Top Games** | Top 100 and Top 1000 leaderboards (see [Top Games](#best-games)) |
 | **📊 Statistics** | Playtime by console and store, most played games, data completeness |
 | **◷ Recently Played** | Sorted by last played session |
 | **🧩 Applications** | Programs manually added as an *Application* rather than a game (only appears if any exist) |
@@ -60,7 +60,7 @@ Metadata, box art, and cache are stored as **a single copy per PC**: if two prof
 
 Profiles are configured **per device**: the PC and another browser session can run under different profiles (via the `gs_profile` cookie). The phone (`/m/`) pairs using an authentication token rather than the PC cookie: it uses whichever profile was last active on the server until another is chosen. Backups also include the `profiles/*.json` files, which contain account credentials.
 
-The **Main** profile is permanent and cannot be deleted. Deleting another profile does not permanently wipe anything: its database and account file are archived into `cache/profiles/eliminati/` (the active account file resides in the settings directory under `profiles/`). Profiles cannot be switched while a game session is running. With [PC synchronization](manutenzione.md#sincronizzazione-tra-pc), each profile syncs with the profile sharing the **same name** on the other PC.
+The **Main** profile is permanent and cannot be deleted. Deleting another profile does not permanently wipe anything: its database and account file are archived into `cache/profiles/eliminati/` (the active account file resides in the settings directory under `profiles/`). Profiles cannot be switched while a game session is running. With [PC synchronization](manutenzione.md#syncing-between-pcs), each profile syncs with the profile sharing the **same name** on the other PC.
 
 ## Search, Sort, and Group
 
@@ -116,7 +116,7 @@ Main actions:
 - **Personal note** and **1 to 5 star rating**: applied across all versions of the game.
 - **Collections**: add or remove the game from a collection.
 - **Versions**: other versions of the same game (regions, revisions, other stores); you can select which one to set as default/primary.
-- **⚙ Launch profile** (emulator, arguments, and custom launch scripts for this specific game) and **🖥 Desktop shortcut**: see [Gaming](giocare.md#profilo-di-avvio-di-un-singolo-gioco).
+- **⚙ Launch profile** (emulator, arguments, and custom launch scripts for this specific game) and **🖥 Desktop shortcut**: see [Gaming](giocare.md#launch-profile-for-a-single-game).
 - **Missing: …** with **⟳ Fetch missing data**: re-queries sources specifically for this game and its versions.
 - Contextual extra sections depending on the game: saves, RetroAchievements, Switch updates & DLCs, available PC ports. These are detailed in their respective chapters.
 

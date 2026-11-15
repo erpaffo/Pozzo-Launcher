@@ -234,7 +234,7 @@ alternatively, using environment variables: `SS_USER`, `SS_PASSWORD`, `SS_DEVID`
 
 ## Command-Line Scraping
 
-Scraping can also be run headlessly from the terminal (see [Reference](riferimento.md#comandi-da-terminale)):
+Scraping can also be run headlessly from the terminal (see [Reference](riferimento.md#cli-commands)):
 
 ```powershell
 python -m pozzo run                # all detected platforms

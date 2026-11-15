@@ -144,7 +144,7 @@ GitHub API rate limits.
 ### Mods and Saves
 
 - **Mods** via Thunderstore: install and manage directly from the port page. GameBanana is linked externally.
-- Port **saves** integrate seamlessly into per-game save versioning (see [Playing Games](giocare.md#salvataggi)).
+- Port **saves** integrate seamlessly into per-game save versioning (see [Playing Games](giocare.md#save-management)).
 
 ## Friends
 

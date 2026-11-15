@@ -17,7 +17,7 @@
 | `themes/`, `plugins/` | Your custom themes and plugins | You |
 
 The directory containing `config.toml` is located as described in
-[Installation](installazione.md#dove-stanno-i-dati).
+[Installation](installazione.md#where-the-data-lives).
 
 ## config.toml
 
@@ -128,7 +128,7 @@ Written by the app; can be edited manually when the app is closed. Most useful s
 
 | Section | Content |
 |---|---|
-| `catalogs` | Online console stores (see [Specifying the format manually](store-online.md#indicare-il-formato-a-mano)) |
+| `catalogs` | Online console stores (see [Specifying the format manually](store-online.md#specifying-the-format-manually)) |
 | `pc_stores` | Other PC stores: `[{"url": …, "kind": "repack" or "direct"}]` |
 | `emulators`, `launch` | Options configured in **Settings › Emulators** |
 | `stores` | Active stores and linked accounts |
