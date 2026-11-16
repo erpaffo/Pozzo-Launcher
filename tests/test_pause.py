@@ -109,6 +109,9 @@ def test_posix_pause_resume_and_tree_kill():
             time.sleep(0.1)
         assert len(job.pids()) >= 2
         assert ln.pause() and ln.running()["paused"]
+        end = time.time() + 5  # SIGSTOP si applica in modo asincrono: sul runner lento lo stato non e' subito «stopped»
+        while not all(psutil.Process(x).status() == psutil.STATUS_STOPPED for x in job.pids()) and time.time() < end:
+            time.sleep(0.05)
         assert all(psutil.Process(x).status() == psutil.STATUS_STOPPED for x in job.pids())
         assert ln.resume()
         time.sleep(0.2)

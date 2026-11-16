@@ -21,7 +21,7 @@ dell'installazione.
 
 **Programmi**: un percorso per emulatore, valido per tutte le console che lo usano. **🔍 Trova emulatori** cerca in
 una cartella gli eseguibili conosciuti: RetroArch, Ryujinx, Eden, melonDS, Dolphin, PCSX2, DuckStation, PPSSPP,
-RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu. **＋ Aggiungi un altro emulatore** aggiunge un programma
+RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu, OpenEmu (macOS), mGBA, Mesen, bsnes, Snes9x, DeSmuME, Project64, RMG, BlastEm, Redream, Mednafen, DOSBox Staging. **＋ Aggiungi un altro emulatore** aggiunge un programma
 qualsiasi.
 
 **Cerca emulatori già installati**: in cima alla pagina, questo pulsante esegue una scansione rapida del PC (circa 4 secondi)

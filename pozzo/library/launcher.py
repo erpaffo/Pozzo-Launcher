@@ -99,6 +99,24 @@ PRESETS: dict[str, list[tuple[str, str | None]]] = {
     "fbneo": [(RA, "fbneo")],
 }
 
+# Emulatori in piu', aggiunti in coda ai candidati di ogni console: il preferito resta quello di prima, questi si usano
+# se sono gli unici configurati o se li scegli tu per la console. OpenEmu (solo macOS) gestisce da solo molti sistemi.
+_EXTRA = {
+    "mesen": ["nes", "fds", "snes", "gb", "gbc", "gba", "pcengine", "mastersystem", "gamegear", "wonderswan", "wonderswancolor"],
+    "mgba": ["gb", "gbc", "gba"], "snes9x": ["snes"], "bsnes": ["snes"], "desmume": ["nds"], "project64": ["n64"],
+    "rmg": ["n64"], "blastem": ["megadrive", "mastersystem", "segacd"], "redream": ["dreamcast"],
+    "mednafen": ["nes", "snes", "gb", "gbc", "gba", "virtualboy", "megadrive", "mastersystem", "gamegear", "saturn", "psx",
+                 "pcengine", "pcenginecd", "pcfx", "ngp", "ngpc", "wonderswan", "wonderswancolor"],
+    "dosbox-staging": ["dos"],
+    "openemu": ["nes", "fds", "snes", "n64", "gb", "gbc", "gba", "nds", "virtualboy", "pokemini", "sg-1000", "mastersystem",
+                "megadrive", "gamegear", "segacd", "sega32x", "saturn", "psx", "psp", "pcengine", "pcenginecd", "pcfx", "ngp",
+                "ngpc", "wonderswan", "wonderswancolor", "atari2600", "atari5200", "atari7800", "atarilynx", "atarijaguar",
+                "3do", "coleco", "intellivision", "vectrex"],
+}
+for _emu, _pids in _EXTRA.items():
+    for _pid in _pids:
+        PRESETS.setdefault(_pid, []).append((_emu, None))
+
 STANDALONE_ARGS = {
     "dolphin": ["-b", "-e", "{rom}"],
     "pcsx2": ["-batch", "{rom}"],
@@ -119,6 +137,7 @@ STANDALONE_ARGS = {
     "vita3k": ["{rom}"],
     "shadps4": ["{rom}"],
     "sharpemu": ["{rom}"],
+    **{e: ["{rom}"] for e in _EXTRA},
 }
 
 # opzione «schermo intero» del profilo del gioco: flag nativo degli emulatori che lo hanno (certi), per gli altri
@@ -128,6 +147,7 @@ FULLSCREEN_ARGS = {
     RA: ["-f"], "dolphin": ["-C", "Dolphin.Display.Fullscreen=True"], "pcsx2": ["-fullscreen"], "duckstation": ["-fullscreen"],
     "ppsspp": ["--fullscreen"], "cemu": ["-f"], "ryujinx": ["--fullscreen"], "eden": ["-f"], "eglantine": ["-f"], "xenia": ["--fullscreen=true"],
     "xemu": ["-full-screen"], "azahar": ["-f"], "lime3ds": ["-f"], "citra": ["-f"], "melonds": ["-f"],
+    "mgba": ["-f"], "mesen": ["--fullscreen"], "dosbox-staging": ["--fullscreen"], "rmg": ["-f"],
 }
 
 # nomi degli eseguibili per la ricerca automatica degli emulatori in una cartella
@@ -152,6 +172,18 @@ KNOWN_EXES = {
     "flycast": ["flycast.exe", "flycast"],
     "shadps4": ["shadps4.exe", "shadps4"],
     "sharpemu": ["sharpemu.exe", "sharpemu"],
+    "openemu": ["openemu"],  # solo macOS: il binario dentro OpenEmu.app
+    "mgba": ["mgba.exe", "mgba-qt.exe", "mgba-qt", "mgba"],
+    "mesen": ["mesen.exe", "mesen"],
+    "snes9x": ["snes9x-x64.exe", "snes9x*.exe", "snes9x"],
+    "bsnes": ["bsnes.exe", "bsnes"],
+    "desmume": ["desmume*.exe", "desmume"],
+    "project64": ["project64*.exe"],
+    "rmg": ["rmg.exe", "rmg"],
+    "blastem": ["blastem.exe", "blastem"],
+    "redream": ["redream.exe", "redream"],
+    "mednafen": ["mednafen.exe", "mednafen"],
+    "dosbox-staging": ["dosbox.exe", "dosbox"],
 }
 
 

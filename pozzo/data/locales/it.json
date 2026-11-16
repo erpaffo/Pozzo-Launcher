@@ -2184,6 +2184,7 @@
  "i.emu.libInfo": "{v} versioni, {g} giochi unici, {c} collezioni.",
  "i.emu.libUpdated": "Libreria aggiornata",
  "i.emu.notConfigured": "non configurato",
+ "i.emu.recommended": "consigliati: {list}",
  "i.emu.other": "Altro…",
  "i.emu.rebuilding": "Aggiornamento in corso…",
  "i.emu.refreshLibrary": "Aggiorna libreria",

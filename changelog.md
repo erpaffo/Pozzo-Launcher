@@ -7,6 +7,7 @@
 - **Tutorial**: una raccolta di 30 tutorial passo passo divisi per argomento (primi passi, libreria, giocare, download, personalizza, dati), sempre raggiungibile da Impostazioni › Sistema, dal menu Impostazioni e dalla palette dei comandi.
 - **Novità della 0.19.0** con il loro tutorial: doppioni nei download, cartella sorvegliata, interfaccia di rete (VPN), Click'n'Load, spazio su disco dei torrent, file saltati nel ripristino dei salvataggi.
 - **Suggerimenti**: 46 consigli nuovi (61 in tutto) su libreria, scheda del gioco, download, gioco in corso e impostazioni. In Impostazioni › Generale › Suggerimenti si possono spegnere, mettere in pausa per 1 o 7 giorni o rivedere da capo, e si vede quanti ne restano.
+- **Altri emulatori**: Pozzo riconosce e usa anche OpenEmu (macOS), mGBA, Mesen, bsnes, Snes9x, DeSmuME, Project64, RMG, BlastEm, Redream, Mednafen e DOSBox Staging, come alternative per le loro console (il preferito di prima non cambia; si sceglie per console in Impostazioni › Emulatori). OpenEmu, mGBA, Mesen, RMG e DOSBox Staging si installano e si aggiornano da Pozzo.
 - **Emulatori Switch installabili**: Eden e Ryujinx (nella versione Ryubing, ancora sviluppata) compaiono nell'elenco degli emulatori che Pozzo scarica e aggiorna, con il loro sito e il file giusto per Windows, macOS e Linux.
 
 ### Migliorato

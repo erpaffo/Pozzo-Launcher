@@ -20,7 +20,7 @@ publishes; sites that publish no digest (RetroArch, Dolphin, PPSSPP) are flagged
 
 **Programs**: one path per emulator, shared by all consoles using it. **🔍 Find Emulators** searches a folder for
 recognized executables: RetroArch, Ryujinx, Eden, melonDS, Dolphin, PCSX2, DuckStation, PPSSPP,
-RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu. **＋ Add Another Emulator** adds any arbitrary
+RPCS3, Vita3K, Azahar, Cemu, Xenia, xemu, Flycast, shadPS4, SharpEmu, OpenEmu (macOS), mGBA, Mesen, bsnes, Snes9x, DeSmuME, Project64, RMG, BlastEm, Redream, Mednafen, DOSBox Staging. **＋ Add Another Emulator** adds any arbitrary
 program.
 
 **Scan for Already Installed Emulators**: at the top of the page, this button performs a quick scan of the PC (taking about 4 seconds),

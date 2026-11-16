@@ -51,6 +51,10 @@ _WINDOWS: dict[str, dict] = {
     "xemu": {"repo": "xemu-project/xemu", "filter": "release"},
     "flycast": {"repo": "flyinghead/flycast", "filter": "win64"},
     "shadps4": {"repo": "shadps4-emu/shadPS4", "filter": "win64"},
+    "mgba": {"repo": "mgba-emu/mgba", "home": "https://mgba.io", "filter": "win64"},
+    "mesen": {"repo": "SourMesen/Mesen2", "home": "https://www.mesen.ca", "filter": "windows"},
+    "dosbox-staging": {"repo": "dosbox-staging/dosbox-staging", "home": "https://www.dosbox-staging.org", "filter": "windows-x64"},
+    "rmg": {"repo": "Rosalie241/RMG", "home": "https://github.com/Rosalie241/RMG", "filter": "portable-windows64"},
     # Switch: Eden e Ryujinx (fork Ryubing) pubblicano su Forgejo, non su GitHub
     "eden": {"repo": "eden-emu/eden", "api": "https://git.eden-emu.dev/api/v1", "home": "https://eden-emu.dev",
              "filter": "msvc-standard"},
@@ -64,6 +68,7 @@ _WINDOWS: dict[str, dict] = {
 # libretro e .zsync gia' esclusi), "url": None = file dalle release GitHub invece del sito. Chi manca qui non ha una
 # build per quel sistema: non compare nel catalogo e il consiglio «un clic» lo dice non installabile.
 # shortcut: nomi verificati a mano (novembre 2026), da correggere se un progetto li cambia (l'errore lo dice).
+_MAC_ARCH = "x86_64" if platform.machine() == "x86_64" else "arm64"
 _POSIX: dict[str, dict[str, dict]] = {
     "darwin": {
         "retroarch": {"url": "https://buildbot.libretro.com/stable/{ver}/apple/osx/universal/RetroArch_Metal.dmg"},
@@ -82,6 +87,11 @@ _POSIX: dict[str, dict[str, dict]] = {
         "shadps4": {"asset": r"-macos-sdl-.*\.zip$"},
         "eglantine": {"asset": r"-macos-arm64-.*\.zip$"},
         "eden": {"asset": r"-macos-.*\.dmg$"},
+        # OpenEmu: frontend con i suoi core (NES, SNES, Mega Drive, Saturn, PS1, PSP...); solo macOS
+        "openemu": {"repo": "OpenEmu/OpenEmu", "home": "https://openemu.org", "asset": r"^OpenEmu_[\d.]+\.zip$"},
+        "mgba": {"asset": r"-macos\.dmg$"},
+        "mesen": {"asset": r"_macos_" + ("x64_intel" if _MAC_ARCH == "x86_64" else "arm64_applesilicon") + r"\.zip$"},
+        "dosbox-staging": {"asset": r"-macos-v[\d.]+\.dmg$"},
         "ryujinx": {"asset": r"-macos_universal\.app\.tar\.gz$"},
     },
     "linux": {  # Dolphin e Xenia non pubblicano build Linux pronte
@@ -99,6 +109,10 @@ _POSIX: dict[str, dict[str, dict]] = {
         "shadps4": {"asset": r"-linux-sdl-.*\.zip$"},  # dentro c'e' l'AppImage
         "eglantine": {"asset": r"-linux-x86_64\.appimage$"},
         "eden": {"asset": r"-amd64-gcc-standard\.appimage$"},
+        "mgba": {"asset": r"-appimage-x64\.appimage$"},
+        "mesen": {"asset": r"_linux_x64\.zip$"},
+        "dosbox-staging": {"asset": r"-linux-x86_64-v[\d.]+\.tar\.xz$"},
+        "rmg": {"asset": r"portable-linux64.*\.appimage$"},
         "ryujinx": {"asset": r"-x64\.appimage$"},
     },
 }
@@ -109,13 +123,12 @@ def _for_os(plat: str) -> dict[str, dict]:
     """SOURCES per un sistema: Windows cosi' com'e', gli altri = Windows + le differenze di _POSIX."""
     if plat == "win32":
         return _WINDOWS
-    return {e: {k: v for k, v in {**_WINDOWS[e], "filter": None, **o}.items() if v is not None}
+    return {e: {k: v for k, v in {**_WINDOWS.get(e, {}), "filter": None, **o}.items() if v is not None}
             for e, o in _POSIX.get(plat, {}).items()}
 
 
 SOURCES = _for_os(sys.platform)
 CHECK_TTL = 12 * 3600
-_MAC_ARCH = "x86_64" if platform.machine() == "x86_64" else "arm64"
 CORES_URL = {"win32": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{core}_libretro.dll.zip",
              "darwin": f"https://buildbot.libretro.com/nightly/apple/osx/{_MAC_ARCH}/latest/{{core}}_libretro.dylib.zip",
              "linux": "https://buildbot.libretro.com/nightly/linux/x86_64/latest/{core}_libretro.so.zip"}

@@ -1,18 +1,17 @@
+<nav class="emu-nav">
+  <button class="btn" type="button" data-goto="emu-s-inst" data-i18n="j.emu.inst.title">Installa emulatori</button>
+  <button class="btn" type="button" data-goto="emu-s-det" data-i18n="j.emu.det.title">Emulatori già installati</button>
+  <button class="btn" type="button" data-goto="emu-s-table" data-i18n="j.emu.table.title">Emulatore per console</button>
+  <button class="btn" type="button" data-goto="emu-s-launch" data-i18n="j.emu.launch.title">Avvio dei giochi</button>
+</nav>
+<section class="emu-sec" id="emu-s-inst">
 <h3 data-i18n="j.emu.inst.title">Installa emulatori</h3>
 <p class="muted small" data-i18n="j.emu.inst.desc">Scarica l'ultima versione ufficiale dalle release dei progetti e la imposta da sola. Gli emulatori
   sono dei loro sviluppatori: il link porta a ciascun progetto. Vanno nella cartella qui sotto, se indicata.</p>
 <div id="emu-inst"></div>
 <div id="emu-inst-job"></div>
-<h3 data-i18n="j.emu.upd.title">Aggiornamenti degli emulatori</h3>
-<label class="small" for="emu-au-mode" data-i18n="j.emu.upd.auto">Aggiornamento automatico emulatori</label>
-<div class="row"><select id="emu-au-mode" class="field grow">
-  <option value="off" data-i18n="j.emu.upd.off">Disattivato</option>
-  <option value="notify" data-i18n="j.emu.upd.notify">Solo avviso</option>
-  <option value="install" data-i18n="j.emu.upd.install">Installa automaticamente</option>
-</select></div>
-<p class="muted small" data-i18n="j.emu.upd.desc">Controlla una volta al giorno. Un emulatore aperto non viene aggiornato: si riprova il giorno dopo.</p>
-<div class="row"><button class="btn" id="emu-upd-check" type="button">🔄 <span data-i18n="j.emu.upd.check">Controlla ora</span></button></div>
-<div id="emu-upd" class="small" role="status" aria-live="polite"></div>
+</section>
+<section class="emu-sec" id="emu-s-det">
 <h3 data-i18n="j.emu.det.title">Emulatori già installati</h3>
 <div class="row">
   <input id="emu-folder" class="field grow" placeholder="Cartella che contiene gli emulatori, es. C:\Emulatori" data-i18n-placeholder="j.emu.det.folder.ph">
@@ -25,6 +24,8 @@
 <p class="muted small" data-i18n="j.emu.prog.desc">Un percorso per emulatore: vale per tutte le console che lo usano.</p>
 <div id="emu-paths"></div>
 <div class="row"><button class="btn" id="emu-add">＋ <span data-i18n="j.emu.prog.add">Aggiungi un altro emulatore</span></button></div>
+</section>
+<section class="emu-sec" id="emu-s-table">
 <h3 data-i18n="j.emu.table.title">Emulatore per console</h3>
 <p class="muted small" data-i18n-html="j.emu.table.desc">«Automatico» usa il primo emulatore installato tra quelli consigliati. Negli argomenti
   <code>{rom}</code> è il file del gioco, <code>{core}</code> il core di RetroArch.</p>
@@ -33,6 +34,21 @@
   <span class="muted small" id="emu-saved-to"></span>
   <button class="btn primary" id="emu-save" data-i18n="j.common.save">Salva</button>
 </div>
+</section>
+<section class="emu-sec">
+<details class="emu-fold"><summary data-i18n="j.emu.upd.title">Aggiornamenti degli emulatori</summary>
+<label class="small" for="emu-au-mode" data-i18n="j.emu.upd.auto">Aggiornamento automatico emulatori</label>
+<div class="row"><select id="emu-au-mode" class="field grow">
+  <option value="off" data-i18n="j.emu.upd.off">Disattivato</option>
+  <option value="notify" data-i18n="j.emu.upd.notify">Solo avviso</option>
+  <option value="install" data-i18n="j.emu.upd.install">Installa automaticamente</option>
+</select></div>
+<p class="muted small" data-i18n="j.emu.upd.desc">Controlla una volta al giorno. Un emulatore aperto non viene aggiornato: si riprova il giorno dopo.</p>
+<div class="row"><button class="btn" id="emu-upd-check" type="button">🔄 <span data-i18n="j.emu.upd.check">Controlla ora</span></button></div>
+<div id="emu-upd" class="small" role="status" aria-live="polite"></div>
+</details>
+</section>
+<section class="emu-sec" id="emu-s-launch">
 <h3 data-i18n="j.emu.launch.title">Avvio dei giochi</h3>
 <p class="muted small" data-i18n-html="j.emu.launch.desc">Script eseguiti per <b>tutti</b> i giochi (console e PC), ad esempio per cambiare risoluzione o
   attivare l'HDR. Un comando o un file <code>.bat</code>/<code>.ps1</code>; ricevono <code>POZZO_TITLE</code> e
@@ -62,3 +78,4 @@
 <p class="muted small" data-i18n="j.emu.fast.keep">Se la disattivi, la copia resta sul disco veloce e occupa spazio finché non la cancelli tu.</p>
 <div class="row end"><button class="btn primary" id="fc-save" type="button" data-i18n="j.common.save">Salva</button></div>
 <label class="chk"><input type="checkbox" id="pl-proto"> <span data-i18n="j.emu.proto.label">Registra il link pozzo:// su Windows</span> <span class="muted small" data-i18n="j.emu.proto.desc">Permette di aprire un invito ricevuto da un amico cliccando il link. Si può disattivare in ogni momento.</span></label>
+</section>
