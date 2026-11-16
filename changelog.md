@@ -1,15 +1,22 @@
 # Changelog
 
-## Non rilasciato
+## 0.19.1 (2026-11-15)
 
 ### Aggiunto
 
 - **Tutorial**: una raccolta di 30 tutorial passo passo divisi per argomento (primi passi, libreria, giocare, download, personalizza, dati), sempre raggiungibile da Impostazioni › Sistema, dal menu Impostazioni e dalla palette dei comandi.
 - **Novità della 0.19.0** con il loro tutorial: doppioni nei download, cartella sorvegliata, interfaccia di rete (VPN), Click'n'Load, spazio su disco dei torrent, file saltati nel ripristino dei salvataggi.
 - **Suggerimenti**: 46 consigli nuovi (61 in tutto) su libreria, scheda del gioco, download, gioco in corso e impostazioni. In Impostazioni › Generale › Suggerimenti si possono spegnere, mettere in pausa per 1 o 7 giorni o rivedere da capo, e si vede quanti ne restano.
+- **Emulatori Switch installabili**: Eden e Ryujinx (nella versione Ryubing, ancora sviluppata) compaiono nell'elenco degli emulatori che Pozzo scarica e aggiorna, con il loro sito e il file giusto per Windows, macOS e Linux.
+
+### Migliorato
+
+- **Documentazione**: nell'elenco delle estensioni ci sono Eventi e fiere, Media server e Speedrun; il manuale in inglese spiega la firma del manifest degli aggiornamenti; la pagina di download mostra la data nella lingua della pagina.
 
 ### Corretto
 
+- **macOS**: all'avvio compariva l'errore «Can only call Window.setInterval on instances of Window» (i controlli periodici dell'interfaccia usavano `setInterval` in un modo che WebKit non accetta).
+- **Eglantine**: non usa più la cartella dati di Eden (chiavi, configurazione, salvataggi). Pozzo gli crea una cartella `user` accanto all'eseguibile, quindi parte con dati suoi: al primo avvio vanno copiate le chiavi. Su macOS la cartella resta condivisa.
 - **Tour e tutorial**: l'evidenza non finisce più su un punto a caso dell'interfaccia quando un passo cambia schermata, su elementi nascosti o fuori vista; il passo «Temi e aspetto» apre davvero Impostazioni › Aspetto.
 - **Download**: alla chiusura il gestore dei download si ferma davvero; una magnet appena partita non fa più superare il numero massimo di download contemporanei; su Windows il disco pieno dei torrent viene riconosciuto in tutti i casi.
 

@@ -302,6 +302,14 @@ def cand_id(pl: dict) -> str:
     return pl["emulator"] + (f":{pl['core']}" if pl.get("core") else "")
 
 
+def isolate_eglantine(exe: str | Path) -> None:
+    """Eglantine e' un fork di Eden e senza una cartella «user» accanto all'eseguibile usa la stessa cartella dati
+    di Eden (%APPDATA%/eden: chiavi, config, salvataggi). Con «user» parte in modalita' portatile e resta separato.
+    shortcut: su macOS la cartella finirebbe dentro il .app e ne romperebbe la firma, li' resta condivisa."""
+    if sys.platform != "darwin":
+        (Path(exe).parent / "user").mkdir(exist_ok=True)
+
+
 def plan(cfg, platform: P.Platform, profile: dict | None = None, prefer: str | None = None, skip: str | None = None) -> dict | None:
     """Emulatore scelto per una console (o per un gioco con un profilo proprio):
     {emulator, exe, core, args, profile} oppure None. prefer/skip: id candidato (emulatore[:core]) da
@@ -1157,6 +1165,8 @@ class Launcher:
                 raise LaunchError(f"Nessun emulatore configurato per {platform.name}. Aggiungi in config.toml, "
                                   f"sezione [emulators], uno di: {cands}", "emulator_missing",
                                   {"platform": platform.id, "platform_name": platform.name})
+            if pl["emulator"] == "eglantine":
+                isolate_eglantine(pl["exe"])
             self._stop_evt.clear()
             self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],

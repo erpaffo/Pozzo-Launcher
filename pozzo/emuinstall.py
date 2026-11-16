@@ -51,6 +51,11 @@ _WINDOWS: dict[str, dict] = {
     "xemu": {"repo": "xemu-project/xemu", "filter": "release"},
     "flycast": {"repo": "flyinghead/flycast", "filter": "win64"},
     "shadps4": {"repo": "shadps4-emu/shadPS4", "filter": "win64"},
+    # Switch: Eden e Ryujinx (fork Ryubing) pubblicano su Forgejo, non su GitHub
+    "eden": {"repo": "eden-emu/eden", "api": "https://git.eden-emu.dev/api/v1", "home": "https://eden-emu.dev",
+             "filter": "msvc-standard"},
+    "ryujinx": {"repo": "ryubing/ryujinx", "api": "https://git.ryujinx.app/api/v1", "home": "https://ryujinx.app",
+                "filter": "win_x64"},
     # Switch 2: fork di Eden su Forgejo, pubblica solo pre-release (lo zip non dice «windows» nel nome)
     "eglantine": {"repo": "Franseven/PokeDinner-a-Eglantine-Fork", "api": "https://git.eden-emu.dev/api/v1",
                   "home": "https://git.eden-emu.dev/Franseven/PokeDinner-a-Eglantine-Fork", "prerelease": True},
@@ -76,6 +81,8 @@ _POSIX: dict[str, dict[str, dict]] = {
         "flycast": {"asset": r"-macos-.*\.zip$"},
         "shadps4": {"asset": r"-macos-sdl-.*\.zip$"},
         "eglantine": {"asset": r"-macos-arm64-.*\.zip$"},
+        "eden": {"asset": r"-macos-.*\.dmg$"},
+        "ryujinx": {"asset": r"-macos_universal\.app\.tar\.gz$"},
     },
     "linux": {  # Dolphin e Xenia non pubblicano build Linux pronte
         "retroarch": {"url": "https://buildbot.libretro.com/stable/{ver}/linux/x86_64/RetroArch.7z"},
@@ -91,6 +98,8 @@ _POSIX: dict[str, dict[str, dict]] = {
         "flycast": {"asset": r"-x86_64.*\.appimage$"},
         "shadps4": {"asset": r"-linux-sdl-.*\.zip$"},  # dentro c'e' l'AppImage
         "eglantine": {"asset": r"-linux-x86_64\.appimage$"},
+        "eden": {"asset": r"-amd64-gcc-standard\.appimage$"},
+        "ryujinx": {"asset": r"-x64\.appimage$"},
     },
 }
 _NOT_APP = re.compile(r"dbg|debug|libretro|\.zsync$|\.sha256$", re.I)
@@ -475,6 +484,8 @@ def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
     C.save_settings(cfg, emulators={emu: exe},
                     app={"emu_installed": {**(cfg.app.get("emu_installed") or {}), emu: {"version": tag, "dir": str(dest)}}})
     _vsave(cfg, lambda d: d.setdefault("installed", {}).__setitem__(emu, tag))
+    if emu == "eglantine":  # dati separati da quelli di Eden
+        L.isolate_eglantine(exe)
     say(f"Installato {emu} {tag} in {dest}")
     try:  # mapping del controller solo se l'emulatore non ha ancora impostazioni (mai quelle dell'utente)
         from . import controllerprofiles
