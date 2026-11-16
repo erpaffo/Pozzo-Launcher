@@ -8,7 +8,8 @@ Ogni emulatore va in <cartella>\\<id>. Un aggiornamento copia i file nuovi sopra
 e i dati dell'utente nella cartella (modalita' portatile) restano. Prima dell'aggiornamento la cartella viene
 copiata in <id>.bak (una sola copia): se l'installazione fallisce o manca l'eseguibile viene rimessa a posto, e
 rollback() la ripristina a mano. Le versioni installate e l'ultima nota (cache 12 ore) stanno in versions.json.
-Windows x64, macOS (arm64 o universale: il bundle .app, da .dmg/.zip/.tar.xz/.7z) e Linux x86_64 (AppImage).
+Windows, macOS (il bundle .app, da .dmg/.zip/.tar.xz/.7z) e Linux (AppImage), ciascuno su x64 e su ARM64: si
+scarica solo la build per il processore della macchina (ARCH); un emulatore senza quella build resta bloccato.
 """
 
 from __future__ import annotations
@@ -68,7 +69,32 @@ _WINDOWS: dict[str, dict] = {
 # libretro e .zsync gia' esclusi), "url": None = file dalle release GitHub invece del sito. Chi manca qui non ha una
 # build per quel sistema: non compare nel catalogo e il consiglio «un clic» lo dice non installabile.
 # shortcut: nomi verificati a mano (novembre 2026), da correggere se un progetto li cambia (l'errore lo dice).
-_MAC_ARCH = "x86_64" if platform.machine() == "x86_64" else "arm64"
+
+
+def _native_arch() -> str:
+    """"x64" o "arm64" della macchina, non del processo: Pozzo x64 sotto Rosetta o sotto l'emulazione di Windows
+    ARM deve comunque scegliere gli emulatori nativi (girano come programmi a parte)."""
+    m = platform.machine().lower()
+    if sys.platform == "darwin" and m == "x86_64":
+        try:
+            r = subprocess.run(["sysctl", "-n", "sysctl.proc_translated"], capture_output=True, text=True, timeout=3)
+            return "arm64" if r.stdout.strip() == "1" else "x64"
+        except Exception:  # noqa: BLE001 - sysctl assente: vale il processo
+            return "x64"
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            k = ctypes.windll.kernel32
+            proc, native = ctypes.c_ushort(), ctypes.c_ushort()
+            if k.IsWow64Process2(k.GetCurrentProcess(), ctypes.byref(proc), ctypes.byref(native)):
+                return "arm64" if native.value == 0xAA64 else "x64"  # IMAGE_FILE_MACHINE_ARM64
+        except Exception:  # noqa: BLE001 - Windows 10 prima della 1709: niente IsWow64Process2
+            pass
+    return "arm64" if m in ("arm64", "aarch64") else "x64"
+
+
+ARCH = _native_arch()
+_MAC_ARCH = "x86_64" if ARCH == "x64" else "arm64"
 _POSIX: dict[str, dict[str, dict]] = {
     "darwin": {
         "retroarch": {"url": "https://buildbot.libretro.com/stable/{ver}/apple/osx/universal/RetroArch_Metal.dmg"},
@@ -116,23 +142,81 @@ _POSIX: dict[str, dict[str, dict]] = {
         "ryujinx": {"asset": r"-x64\.appimage$"},
     },
 }
+# Le tabelle sopra sono Windows x64, macOS Apple Silicon (con le build universali) e Linux x86_64. Qui cosa cambia
+# per l'altro processore: None = nessuna build, emulatore bloccato. Windows e Linux ARM64 non ereditano nulla (una
+# build x86_64 li' non parte o va emulata): ci sono solo gli emulatori elencati. macOS Intel eredita (quasi tutte
+# universali). Cemu e shadPS4 su Apple Silicon restano x64: girano con Rosetta, che macOS installa da solo.
+# shortcut: nomi verificati sulle release di novembre 2026, da correggere se un progetto li cambia (l'errore lo dice).
+_ARCH_DIFF: dict[tuple[str, str], dict[str, dict | None]] = {
+    ("win32", "arm64"): {  # niente build ARM64: RetroArch, PCSX2, RPCS3, Cemu, Xenia, Azahar, Flycast, shadPS4, mGBA...
+        "dolphin": {"url": "https://dl.dolphin-emu.org/releases/{ver}/dolphin-{ver}-arm64.7z"},
+        "ppsspp": {"url": None, "asset": r"-windows-arm64\.zip$"},
+        "duckstation": {"asset": r"^duckstation-windows-arm64-release\.zip$"},
+        "vita3k": {"asset": r"^windows-arm64-latest\.zip$"},
+        "melonds": {"asset": r"-windows-aarch64\.zip$"},
+        "xemu": {"asset": r"^xemu-win-aarch64-release\.zip$"},
+        "eden": {"asset": r"-arm64-clang-standard\.zip$"},
+    },
+    ("linux", "arm64"): {  # RetroArch: il buildbot non ha build stabili ARM64 (si installa dalla distribuzione)
+        "ppsspp": {"url": None, "asset": r"-anylinux-aarch64\.appimage$"},
+        "duckstation": {"asset": r"^duckstation-arm64\.appimage$"},
+        "rpcs3": {"repo": "RPCS3/rpcs3-binaries-linux-arm64", "asset": r"_linux_aarch64\.appimage$", "latest": True},
+        "vita3k": {"asset": r"^vita3k-aarch64\.appimage$"},
+        "melonds": {"asset": r"-appimage-aarch64\.zip$"},
+        "xemu": {"asset": r"-aarch64\.appimage$"},
+        "eden": {"asset": r"-aarch64-gcc-standard\.appimage$"},
+        "mgba": {"asset": r"-appimage-arm64\.appimage$"},
+        "mesen": {"asset": r"_linux_arm64\.zip$"},
+        "ryujinx": {"asset": r"-arm64\.appimage$"},
+    },
+    ("darwin", "x64"): {
+        "rpcs3": {"repo": "RPCS3/rpcs3-binaries-mac", "asset": r"_macos\.7z$", "latest": True},
+        "vita3k": {"asset": r"^macos-latest\.dmg$"},
+        "eden": None,  # solo Apple Silicon
+        "eglantine": None,
+    },
+}
+_NO_INHERIT = {("win32", "arm64"), ("linux", "arm64")}
 _NOT_APP = re.compile(r"dbg|debug|libretro|\.zsync$|\.sha256$", re.I)
 
 
-def _for_os(plat: str) -> dict[str, dict]:
-    """SOURCES per un sistema: Windows cosi' com'e', gli altri = Windows + le differenze di _POSIX."""
-    if plat == "win32":
-        return _WINDOWS
-    return {e: {k: v for k, v in {**_WINDOWS.get(e, {}), "filter": None, **o}.items() if v is not None}
-            for e, o in _POSIX.get(plat, {}).items()}
+def _merge(e: str, o: dict) -> dict:
+    """Voce di Windows con le differenze o (None toglie la chiave; "filter" vale solo per i nomi di Windows)."""
+    return {k: v for k, v in {**_WINDOWS.get(e, {}), "filter": None, **o}.items() if v is not None}
 
 
-SOURCES = _for_os(sys.platform)
+def _for_os(plat: str, arch: str | None = None) -> dict[str, dict]:
+    """SOURCES per un sistema: Windows cosi' com'e', gli altri = Windows + le differenze di _POSIX; con arch, solo
+    gli emulatori che hanno una build per quel processore (vedi _ARCH_DIFF)."""
+    base = _WINDOWS if plat == "win32" else {e: _merge(e, o) for e, o in _POSIX.get(plat, {}).items()}
+    diff = _ARCH_DIFF.get((plat, arch))
+    if diff is None:
+        return base
+    out = {} if (plat, arch) in _NO_INHERIT else dict(base)
+    for e, o in diff.items():
+        if o is None:
+            out.pop(e, None)
+        else:
+            out[e] = _merge(e, o)
+    return out
+
+
+SOURCES = _for_os(sys.platform, ARCH)
+KNOWN = _for_os(sys.platform)  # tutti gli emulatori del sistema, anche quelli senza build per questo processore
 CHECK_TTL = 12 * 3600
-CORES_URL = {"win32": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{core}_libretro.dll.zip",
-             "darwin": f"https://buildbot.libretro.com/nightly/apple/osx/{_MAC_ARCH}/latest/{{core}}_libretro.dylib.zip",
-             "linux": "https://buildbot.libretro.com/nightly/linux/x86_64/latest/{core}_libretro.so.zip"}
+# core di RetroArch per (sistema, processore); manca = il buildbot non li ha (Windows ARM64)
+CORES_URL = {("win32", "x64"): "https://buildbot.libretro.com/nightly/windows/x86_64/latest/{core}_libretro.dll.zip",
+             ("darwin", "x64"): "https://buildbot.libretro.com/nightly/apple/osx/x86_64/latest/{core}_libretro.dylib.zip",
+             ("darwin", "arm64"): "https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/{core}_libretro.dylib.zip",
+             ("linux", "x64"): "https://buildbot.libretro.com/nightly/linux/x86_64/latest/{core}_libretro.so.zip",
+             ("linux", "arm64"): "https://buildbot.libretro.com/nightly/linux/aarch64/latest/{core}_libretro.so.zip"}
 _OS = {"win32": "Windows", "darwin": "macOS"}.get(sys.platform, "Linux")
+ARCH_NAME = {"x64": "x64", "arm64": "ARM64"}
+
+
+def arch_blocked(emu: str) -> bool:
+    """L'emulatore esiste per questo sistema ma non per questo processore."""
+    return emu in KNOWN and emu not in SOURCES
 _run = subprocess.run  # sostituibile nei test (hdiutil, ditto, xattr)
 
 
@@ -153,10 +237,12 @@ def installed(cfg) -> dict[str, dict]:
 def catalog(cfg) -> list[dict]:
     names = {p.id: p.name for p in P.PLATFORMS.values()}
     inst = installed(cfg)
+    # anche gli emulatori senza build per questo processore: compaiono, ma con arch_ok False (pulsante bloccato)
     return [{"id": e, "repo": s["repo"], "home": s.get("home") or f"https://github.com/{s['repo']}",
              "consoles": [names.get(pid, pid) for pid, c in L.PRESETS.items() if any(x == e for x, _ in c)],
-             "version": (inst.get(e) or {}).get("version") or "", "configured": bool(cfg.emulators.get(e))}
-            for e, s in SOURCES.items()]
+             "version": (inst.get(e) or {}).get("version") or "", "configured": bool(cfg.emulators.get(e)),
+             "arch_ok": e in SOURCES}
+            for e, s in {**KNOWN, **SOURCES}.items()]
 
 
 def _latest(cfg, src: dict) -> tuple[str, dict]:
@@ -455,6 +541,8 @@ def install(cfg, emu: str, folder: str = "", progress=None, say=print) -> str:
         say(f"{emu} e' gia' installato: {cur}")
         return cur
     if not src:
+        if arch_blocked(emu):
+            raise ValueError(f"{emu} non ha una build per {_OS} {ARCH_NAME[ARCH]}: installane una versione a mano, se esiste")
         raise ValueError(f"emulatore sconosciuto: {emu}")
     say(f"Cerco l'ultima versione di {emu} ({src['repo']})…")
     tag, asset = _latest(cfg, src)
@@ -527,6 +615,9 @@ def install_cores(cfg, cores: list[str], progress=None, say=print) -> list[str]:
     """Scarica i core dal buildbot di libretro nella cartella dei core di RetroArch."""
     if not (cfg.emulators.get(L.RA) and Path(cfg.emulators[L.RA]).exists()):
         raise RuntimeError("installa prima RetroArch")
+    url = CORES_URL.get((sys.platform, ARCH))
+    if not url:  # core di un altro processore: RetroArch non li caricherebbe
+        raise RuntimeError(f"il buildbot di libretro non ha core per {_OS} {ARCH_NAME[ARCH]}")
     if sys.platform != "win32" and not cfg.emulators.get("retroarch_cores"):
         # i core non stanno accanto al .app/AppImage: cartella di RetroArch dell'utente, che e' anche quella letta all'avvio
         base = (Path.home() / "Library" / "Application Support" / "RetroArch" if sys.platform == "darwin"
@@ -541,7 +632,7 @@ def install_cores(cfg, cores: list[str], progress=None, say=print) -> list[str]:
         say(f"Core {n}/{len(cores)}: {core}…")
         arc = dll.parent / f"{core}.download.zip"
         try:
-            PT._download(CORES_URL[sys.platform].format(core=core), arc, progress)
+            PT._download(url.format(core=core), arc, progress)
             with zipfile.ZipFile(arc) as z:
                 z.extract(dll.name, dll.parent)
             done.append(core)

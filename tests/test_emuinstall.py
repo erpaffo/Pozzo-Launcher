@@ -28,14 +28,15 @@ except ImportError:
 
 
 @contextlib.contextmanager
-def _os(plat: str):
-    """Fa girare l'installer come su `plat` (file della release, estrazione, percorsi dei core)."""
-    saved = (sys.platform, EI.SOURCES)
-    sys.platform, EI.SOURCES = plat, EI._for_os(plat)
+def _os(plat: str, arch: str = "x64"):
+    """Fa girare l'installer come su `plat` con il processore `arch` (file della release, estrazione, core)."""
+    saved = (sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH)
+    sys.platform, EI.ARCH = plat, arch
+    EI.SOURCES, EI.KNOWN = EI._for_os(plat, arch), EI._for_os(plat)
     try:
         yield
     finally:
-        sys.platform, EI.SOURCES = saved
+        sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH = saved
 
 
 def _zip(files: dict) -> bytes:
@@ -148,7 +149,7 @@ def test_install_macos(tmp: Path):
 
     saved = (PT.releases, PT._download, EI._run, os.environ.get("HOME"))
     PT.releases, PT._download, EI._run, os.environ["HOME"] = releases, download, run, str(tmp / "home")
-    with _os("darwin"):
+    with _os("darwin", "arm64"):
         try:
             assert "dolphin" in EI.SOURCES and "xenia" not in EI.SOURCES, "Xenia non ha build per macOS"
             exe = EI.install(cfg, "duckstation", say=lambda m: None)
@@ -213,7 +214,7 @@ def test_install_linux(tmp: Path):
             assert exe.stat().st_mode & 0o777 == 0o755, "AppImage eseguibile"
             exe = Path(EI.install(cfg, "rpcs3", say=lambda m: None))
             assert urls[-1] == "rpcs3.AppImage" and exe.suffix == ".AppImage"
-            assert EI.CORES_URL["linux"].endswith("/linux/x86_64/latest/{core}_libretro.so.zip")
+            assert EI.CORES_URL[("linux", "x64")].endswith("/linux/x86_64/latest/{core}_libretro.so.zip")
         finally:
             PT.releases, PT._download, PT._get = saved
     print("ok  Linux: AppImage eseguibile, RPCS3 da /releases/latest, Dolphin non disponibile")
@@ -254,8 +255,78 @@ def test_checksum(tmp: Path):
     print("ok  checksum obbligatorio per le release GitHub, avviso per le fonti senza")
 
 
+# nomi veri delle release (novembre 2026): ogni processore deve prendere il suo file e solo quello
+_REAL = {
+    "ppsspp": ["PPSSPP-v1.20.4-anylinux-aarch64.AppImage", "PPSSPP-v1.20.4-anylinux-aarch64.AppImage.zsync",
+               "PPSSPP-v1.20.4-anylinux-x86_64.AppImage", "PPSSPP-v1.20.4-Windows-ARM64.zip",
+               "PPSSPP-v1.20.4-Windows-x64.zip", "PPSSPPSDL-macOS-v1.20.4.zip"],
+    "duckstation": ["DuckStation-arm64.AppImage", "DuckStation-armhf.AppImage", "duckstation-mac-release.zip",
+                    "duckstation-windows-arm64-release-symbols.7z", "duckstation-windows-arm64-release.zip",
+                    "duckstation-windows-x64-release.zip", "DuckStation-x64-SSE2.AppImage", "DuckStation-x64.AppImage"],
+    "vita3k": ["macos-arm64-latest.dmg", "macos-latest.dmg", "ubuntu-aarch64-latest.zip", "ubuntu-latest.zip",
+               "Vita3K-aarch64.AppImage", "Vita3K-x86_64.AppImage", "windows-arm64-latest.zip", "windows-latest.zip"],
+    "melonds": ["melonDS-1.1-appimage-aarch64.zip", "melonDS-1.1-appimage-x86_64.zip", "melonDS-1.1-macOS-universal.zip",
+                "melonDS-1.1-windows-aarch64.zip", "melonDS-1.1-windows-x86_64.zip"],
+    "xemu": ["xemu-0.8.139-aarch64.AppImage", "xemu-0.8.139-dbg-aarch64.AppImage", "xemu-0.8.139-windows-arm64.zip",
+             "xemu-0.8.139-dbg-windows-arm64.zip", "xemu-0.8.139-x86_64.AppImage", "xemu-win-aarch64-release.zip",
+             "xemu-win-x86_64-release.zip", "xemu-0.8.139-macos-universal.zip"],
+    "eden": ["Eden-Linux-v0.2.1-aarch64-gcc-standard.AppImage", "Eden-Linux-aarch64-gcc-standard.AppImage.zsync",
+             "Eden-Linux-v0.2.1-amd64-gcc-standard.AppImage", "Eden-Windows-v0.2.1-amd64-msvc-standard.zip",
+             "Eden-Windows-v0.2.1-arm64-clang-pgo.zip", "Eden-Windows-v0.2.1-arm64-clang-standard.zip",
+             "Eden-macOS-v0.2.1.dmg"],
+    "mgba": ["mGBA-0.10.5-appimage-arm64.appimage", "mGBA-0.10.5-appimage-x64.appimage", "mGBA-0.10.5-macos.dmg"],
+    "mesen": ["Mesen_2.1.1_Linux_ARM64.zip", "Mesen_2.1.1_Linux_x64.zip", "Mesen_2.1.1_macOS_ARM64_AppleSilicon.zip",
+              "Mesen_2.1.1_macOS_x64_Intel.zip", "Mesen_2.1.1_Windows.zip"],
+    "ryujinx": ["ryujinx-1.3.3-arm64.AppImage", "ryujinx-1.3.3-linux_arm64.tar.gz", "ryujinx-1.3.3-x64.AppImage",
+                "ryujinx-1.3.3-macos_universal.app.tar.gz", "ryujinx-1.3.3-win_x64.zip"],
+    "rpcs3": ["rpcs3-v0.0.37-18146-ffeb16fe_macos.7z", "rpcs3-v0.0.37-18146-ffeb16fe_macos_arm64.7z",
+              "rpcs3-v0.0.42-19759-ffc50905_linux_aarch64.AppImage", "rpcs3-v0.0.37-18146-ffeb16fe_linux64.AppImage"],
+}
+_WANT = {
+    ("win32", "arm64"): {"ppsspp": "PPSSPP-v1.20.4-Windows-ARM64.zip", "duckstation": "duckstation-windows-arm64-release.zip",
+                         "vita3k": "windows-arm64-latest.zip", "melonds": "melonDS-1.1-windows-aarch64.zip",
+                         "xemu": "xemu-win-aarch64-release.zip", "eden": "Eden-Windows-v0.2.1-arm64-clang-standard.zip"},
+    ("linux", "arm64"): {"ppsspp": "PPSSPP-v1.20.4-anylinux-aarch64.AppImage", "duckstation": "DuckStation-arm64.AppImage",
+                         "vita3k": "Vita3K-aarch64.AppImage", "melonds": "melonDS-1.1-appimage-aarch64.zip",
+                         "xemu": "xemu-0.8.139-aarch64.AppImage", "eden": "Eden-Linux-v0.2.1-aarch64-gcc-standard.AppImage",
+                         "mgba": "mGBA-0.10.5-appimage-arm64.appimage", "mesen": "Mesen_2.1.1_Linux_ARM64.zip",
+                         "ryujinx": "ryujinx-1.3.3-arm64.AppImage",
+                         "rpcs3": "rpcs3-v0.0.42-19759-ffc50905_linux_aarch64.AppImage"},
+    ("darwin", "x64"): {"vita3k": "macos-latest.dmg", "rpcs3": "rpcs3-v0.0.37-18146-ffeb16fe_macos.7z"},
+    ("darwin", "arm64"): {"vita3k": "macos-arm64-latest.dmg"},
+}
+
+
+def test_arch(tmp: Path):
+    """Ogni processore prende il file giusto; senza build per quel processore l'emulatore e' bloccato."""
+    for (plat, arch), want in _WANT.items():
+        src = EI._for_os(plat, arch)
+        for emu, name in want.items():
+            got = EI._pick_asset([{"name": n, "url": n} for n in _REAL[emu]], src[emu])
+            assert got and got["name"] == name, (plat, arch, emu, got)
+    assert EI._for_os("win32", "arm64")["dolphin"]["url"].endswith("dolphin-{ver}-arm64.7z")
+    assert "pcsx2" not in EI._for_os("win32", "arm64") and "pcsx2" not in EI._for_os("linux", "arm64")
+    assert "retroarch" not in EI._for_os("linux", "arm64"), "nessuna build stabile ARM64 sul buildbot"
+    assert "eden" not in EI._for_os("darwin", "x64") and "cemu" in EI._for_os("darwin", "arm64"), "Cemu: Rosetta"
+    assert EI._for_os("win32", "x64") == EI._for_os("win32"), "Windows x64: tabella invariata"
+    assert ("win32", "arm64") not in EI.CORES_URL and "/linux/aarch64/" in EI.CORES_URL[("linux", "arm64")]
+
+    (tmp / "config.toml").write_text('[paths]\nroms = "roms"\ncache = "cache"\n', encoding="utf-8")
+    cfg = config.load(tmp / "config.toml")
+    with _os("win32", "arm64"):
+        cat = {x["id"]: x for x in EI.catalog(cfg)}
+        assert cat["pcsx2"]["arch_ok"] is False and cat["dolphin"]["arch_ok"] is True, "bloccati ma visibili"
+        assert EI.arch_blocked("pcsx2") and not EI.arch_blocked("dolphin") and not EI.arch_blocked("boh")
+        try:
+            EI.install(cfg, "pcsx2", say=lambda m: None)
+            raise AssertionError("installato un emulatore senza build ARM64")
+        except ValueError as e:
+            assert "ARM64" in str(e), e
+    print("ok  architetture: file giusto per x64/ARM64, emulatori senza build bloccati")
+
+
 if __name__ == "__main__":
-    for fn in (test_install, test_install_macos, test_install_linux, test_checksum):
+    for fn in (test_install, test_install_macos, test_install_linux, test_checksum, test_arch):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
             fn(Path(t))
     print("TUTTI I TEST OK")

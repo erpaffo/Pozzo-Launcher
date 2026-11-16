@@ -1035,40 +1035,42 @@ function backupPreviewText(p) {
 /* ---- manutenzione programmata (pannello in settings/dati.html; API /api/maintenance) */
 /* pure:maintenance:start -- formattazione del rapporto, testata da tests/test_maintenance_ui.js (usa esc e fmtSize di core.js) */
 const MAINT_LIST_MAX = 20;
+// t() viene da i18n.js; nel test in node manca e resta il testo italiano
+const mt = (k, it, p) => (typeof t === "function" ? t(k, p) : it.replace(/\{(\w+)\}/g, (m, n) => (p && n in p ? p[n] : m)));
 function maintName(x) { return x && typeof x === "object" ? String(x.game ?? x.name ?? "") : String(x ?? ""); }
 function maintList(items) {
   const list = items || [];
   const rows = list.slice(0, MAINT_LIST_MAX).map((x) => `<li>${esc(maintName(x))}`
     + (x && typeof x === "object" && x.path ? ` <span class="muted small">${esc(x.path)}</span>` : "") + "</li>").join("");
-  const more = list.length > MAINT_LIST_MAX ? `<li class="muted">e altre ${list.length - MAINT_LIST_MAX}</li>` : "";
-  return list.length ? `<ul class="maint-list">${rows}${more}</ul>` : `<p class="muted small">Nessuno.</p>`;
+  const more = list.length > MAINT_LIST_MAX ? `<li class="muted">${esc(mt("e.maint.more", "e altre {n}", { n: list.length - MAINT_LIST_MAX }))}</li>` : "";
+  return list.length ? `<ul class="maint-list">${rows}${more}</ul>` : `<p class="muted small">${esc(mt("e.maint.none", "Nessuno."))}</p>`;
 }
 function maintDiffLines(diff) {
   if (!diff) return [];
-  const short = (arr) => arr.slice(0, 5).map(maintName).join(", ") + (arr.length > 5 ? ` e altre ${arr.length - 5}` : "");
+  const short = (arr) => arr.slice(0, 5).map(maintName).join(", ") + (arr.length > 5 ? " " + mt("e.maint.more", "e altre {n}", { n: arr.length - 5 }) : "");
   const nuove = diff.rom_nuove_mancanti || [], ripr = diff.rom_ripristinate || [], bios = diff.bios_nuovi_invalidi || [];
   const out = [];
-  if (nuove.length) out.push({ cls: "maint-bad", text: `${nuove.length} ROM nuove mancanti: ${short(nuove)}` });
-  if (ripr.length) out.push({ cls: "maint-good", text: `${ripr.length} ROM ripristinate: ${short(ripr)}` });
-  if (bios.length) out.push({ cls: "maint-bad", text: `${bios.length} BIOS nuovi non validi: ${short(bios)}` });
+  if (nuove.length) out.push({ cls: "maint-bad", text: mt("e.maint.newMissing", "{n} ROM nuove mancanti: {list}", { n: nuove.length, list: short(nuove) }) });
+  if (ripr.length) out.push({ cls: "maint-good", text: mt("e.maint.restored", "{n} ROM ripristinate: {list}", { n: ripr.length, list: short(ripr) }) });
+  if (bios.length) out.push({ cls: "maint-bad", text: mt("e.maint.biosNew", "{n} BIOS nuovi non validi: {list}", { n: bios.length, list: short(bios) }) });
   const cd = diff.covers_delta || 0;
-  if (cd) out.push({ cls: cd > 0 ? "maint-bad" : "maint-good", text: `Copertine mancanti: ${cd > 0 ? "+" : ""}${cd}` });
+  if (cd) out.push({ cls: cd > 0 ? "maint-bad" : "maint-good", text: mt("e.maint.coversDelta", "Copertine mancanti: {d}", { d: `${cd > 0 ? "+" : ""}${cd}` }) });
   const fd = diff.freeable_delta || 0; // più spazio da liberare = peggio
-  if (fd) out.push({ cls: fd > 0 ? "maint-bad" : "maint-good", text: `Spazio liberabile: ${fd > 0 ? "+" : "-"}${fmtSize(Math.abs(fd))}` });
+  if (fd) out.push({ cls: fd > 0 ? "maint-bad" : "maint-good", text: mt("e.maint.freeDelta", "Spazio liberabile: {d}", { d: `${fd > 0 ? "+" : "-"}${fmtSize(Math.abs(fd))}` }) });
   return out;
 }
 function maintRenderReport(r, diff) {
-  const steps = (r.steps || []).map((s) => `<li class="${s.ok ? "maint-good" : "maint-bad"}"><span aria-label="${s.ok ? "riuscito" : "fallito"}">${s.ok ? "✓" : "✗"}</span>`
+  const steps = (r.steps || []).map((s) => `<li class="${s.ok ? "maint-good" : "maint-bad"}"><span aria-label="${esc(s.ok ? mt("e.maint.ok", "riuscito") : mt("e.maint.fail", "fallito"))}">${s.ok ? "✓" : "✗"}</span>`
     + ` ${esc(s.nome)}${s.note ? ` <span class="muted small">${esc(s.note)}</span>` : ""}</li>`).join("");
   const lines = maintDiffLines(diff);
-  const diffHtml = diff ? `<h5>Rispetto all'ultima volta:</h5>` + (lines.length
+  const diffHtml = diff ? `<h5>${esc(mt("e.maint.vsLast", "Rispetto all'ultima volta:"))}</h5>` + (lines.length
     ? `<ul class="maint-diff">${lines.map((l) => `<li class="${l.cls}">${esc(l.text)}</li>`).join("")}</ul>`
-    : `<p class="muted small">Nessuna differenza.</p>`) : "";
-  return `<h5>Passaggi</h5>${steps ? `<ul class="maint-steps">${steps}</ul>` : `<p class="muted small">Nessun passaggio registrato.</p>`}`
-    + `<h5>ROM sparite (${(r.rom_missing || []).length})</h5>${maintList(r.rom_missing)}`
-    + `<h5>BIOS non validi (${(r.bios_invalid || []).length})</h5>${maintList(r.bios_invalid)}`
-    + `<h5>Copertine mancanti</h5><p class="small">${esc(r.covers_missing ?? 0)}</p>`
-    + `<h5>Spazio liberabile</h5><p class="small">${r.freeable_bytes == null ? "non calcolato" : esc(fmtSize(r.freeable_bytes) || "0 B")}</p>`
+    : `<p class="muted small">${esc(mt("e.maint.noDiff", "Nessuna differenza."))}</p>`) : "";
+  return `<h5>${esc(mt("e.maint.steps", "Passaggi"))}</h5>${steps ? `<ul class="maint-steps">${steps}</ul>` : `<p class="muted small">${esc(mt("e.maint.noSteps", "Nessun passaggio registrato."))}</p>`}`
+    + `<h5>${esc(mt("e.maint.romGone", "ROM sparite ({n})", { n: (r.rom_missing || []).length }))}</h5>${maintList(r.rom_missing)}`
+    + `<h5>${esc(mt("e.maint.biosBad", "BIOS non validi ({n})", { n: (r.bios_invalid || []).length }))}</h5>${maintList(r.bios_invalid)}`
+    + `<h5>${esc(mt("e.maint.covers", "Copertine mancanti"))}</h5><p class="small">${esc(r.covers_missing ?? 0)}</p>`
+    + `<h5>${esc(mt("e.maint.freeable", "Spazio liberabile"))}</h5><p class="small">${r.freeable_bytes == null ? esc(mt("e.maint.notCalc", "non calcolato")) : esc(fmtSize(r.freeable_bytes) || "0 B")}</p>`
     + diffHtml;
 }
 /* pure:maintenance:end */

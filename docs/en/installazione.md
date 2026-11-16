@@ -2,14 +2,24 @@
 
 ## Choosing the right file
 
-Each release is published on the repository's **Releases** page, with two files per operating system:
+Each release is published on the repository's **Releases** page, with two files per operating system and processor:
 an **installer** and a **portable** version.
 
 | System | Installer | Portable |
 |---|---|---|
-| Windows 10/11 (64-bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `PozzoLauncher-<versione>-windows-x64.zip` |
+| Windows 10/11 (Intel/AMD 64-bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `PozzoLauncher-<versione>-windows-x64.zip` |
+| Windows 11 on ARM (Snapdragon) | `PozzoLauncher-<versione>-windows-arm64-setup.exe` | `PozzoLauncher-<versione>-windows-arm64.zip` |
 | macOS 11+ (Apple Silicon) | `PozzoLauncher-<versione>-macos-arm64.dmg` | `PozzoLauncher-<versione>-macos-arm64.zip` |
-| Linux (64-bit) | `pozzo_<versione>_amd64.deb` | `PozzoLauncher-<versione>-linux-x64.tar.gz` |
+| macOS 11+ (Intel) | `PozzoLauncher-<versione>-macos-x64.dmg` | `PozzoLauncher-<versione>-macos-x64.zip` |
+| Linux (Intel/AMD 64-bit) | `pozzo_<versione>_amd64.deb` | `PozzoLauncher-<versione>-linux-x64.tar.gz` |
+| Linux (ARM 64-bit) | `pozzo_<versione>_arm64.deb` | `PozzoLauncher-<versione>-linux-arm64.tar.gz` |
+
+On **Windows on ARM** torrents are not downloaded by the app (the library that handles them does not exist for ARM):
+Pozzo hands them to the system's torrent client. The virtual controller for the phone (ViGEm) is Windows x64 only.
+
+Emulators installed from the settings always match the PC's processor. An emulator that publishes no build for your
+processor stays in the list with the **Install** button disabled and the note *Not available for ARM64* (or *x64*):
+you can still point Pozzo to one you installed yourself.
 
 **Installer or portable?**
 
@@ -37,6 +47,28 @@ The first time, open the app with **right-click › Open** (the app is not code-
 - `.tar.gz`: extract and run `PozzoLauncher/PozzoLauncher`. On minimal desktop installations, Qt window libraries may be required: `libegl1 libnss3 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1`.
 
 If the native window cannot be opened, the app opens in your default browser.
+
+### With a package manager
+
+| System | Command |
+|---|---|
+| Windows (winget) | `winget install erpaffo.PozzoLauncher` |
+| Windows (Scoop) | `scoop bucket add pozzo https://github.com/erpaffo/scoop-bucket`, then `scoop install pozzo/pozzo-launcher` |
+| macOS (Homebrew) | `brew install --cask erpaffo/tap/pozzo-launcher` |
+| Arch Linux (AUR) | `yay -S pozzo-launcher-bin` (or `paru`, or `makepkg` by hand) |
+
+**Debian, Ubuntu and derivatives (apt)**: add the repository once; updates then arrive with `sudo apt upgrade`
+together with the rest of the system.
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://github.com/erpaffo/Pozzo-Launcher/releases/latest/download/pozzo-archive-keyring.gpg | sudo tee /etc/apt/keyrings/pozzo.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/pozzo.gpg] https://github.com/erpaffo/Pozzo-Launcher/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/pozzo.list
+sudo apt update && sudo apt install pozzo
+```
+
+Installed with winget, Scoop, Homebrew or apt, the app also updates itself as usual. Installed from the AUR, it only
+updates through `pacman`/`yay`: the app tells you about the new version but does not install it.
 
 ## First launch: the setup wizard
 

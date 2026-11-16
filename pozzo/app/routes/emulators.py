@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import threading
 from pathlib import Path
 
@@ -124,7 +125,9 @@ def build_router(ctx) -> APIRouter:
 
     @router.get("/api/emulators/catalog")
     def api_emulators_catalog():
-        return {"items": EI.catalog(cfg), "dir": str(EI.emus_dir(cfg)), "cores": EI.missing_cores(cfg, _lib_pids()),
+        cores_ok = (sys.platform, EI.ARCH) in EI.CORES_URL  # Windows ARM64: il buildbot non ha core
+        return {"items": EI.catalog(cfg), "dir": str(EI.emus_dir(cfg)),
+                "cores": EI.missing_cores(cfg, _lib_pids()) if cores_ok else [], "arch": EI.ARCH_NAME[EI.ARCH],
                 "retroarch": bool(cfg.emulators.get(L.RA) and Path(cfg.emulators[L.RA]).exists())}
 
     @router.get("/api/emulators/job")
@@ -134,6 +137,8 @@ def build_router(ctx) -> APIRouter:
     @router.post("/api/emulators/install")
     def api_emulators_install(body: dict = Body(...)):
         emu, folder = str(body.get("emu") or ""), (body.get("folder") or "").strip().strip('"')
+        if EI.arch_blocked(emu):
+            raise HTTPException(400, I.tr("s.emulators.wrongArch", emu=emu, arch=EI.ARCH_NAME[EI.ARCH]))
         if emu not in EI.SOURCES:
             raise HTTPException(400, I.tr("s.emulators.unknown"))
         if folder and not Path(folder).is_absolute():

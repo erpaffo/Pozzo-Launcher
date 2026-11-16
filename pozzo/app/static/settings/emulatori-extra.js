@@ -130,8 +130,10 @@
         });
         v.rec.appendChild(chips);
       }
-      if (d.supported === false) {
-        v.rec.appendChild(el("div", "xe-warn small", trad("k.emu.unsupported", "Pozzo non sa installare questo emulatore: scegline uno a mano.")));
+      if (d.supported === false) {  // d.arch: l'emulatore c'e', ma non per questo processore (niente pulsante)
+        v.rec.appendChild(el("div", "xe-warn small", d.arch
+          ? trad("k.emu.wrongArch", "Nessuna build di questo emulatore per il tuo processore ({arch}): scegline uno a mano.", {arch: d.arch})
+          : trad("k.emu.unsupported", "Pozzo non sa installare questo emulatore: scegline uno a mano.")));
         return;
       }
       if (d.installed) return;

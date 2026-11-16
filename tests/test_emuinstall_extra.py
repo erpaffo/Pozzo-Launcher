@@ -27,15 +27,16 @@ except ImportError:
 
 
 def _win(fn):
-    """Il test gira come su Windows (nomi dei file e percorsi), anche su macOS/Linux."""
+    """Il test gira come su Windows x64 (nomi dei file, percorsi, core), anche su macOS/Linux e su ARM."""
     @functools.wraps(fn)
     def run(*a, **k):
-        saved = (sys.platform, EI.SOURCES)
-        sys.platform, EI.SOURCES = "win32", EI._for_os("win32")
+        saved = (sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH)
+        sys.platform, EI.ARCH = "win32", "x64"
+        EI.SOURCES = EI.KNOWN = EI._for_os("win32")
         try:
             return fn(*a, **k)
         finally:
-            sys.platform, EI.SOURCES = saved
+            sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH = saved
     return run
 
 
@@ -127,6 +128,22 @@ def test_non_supportato(tmp: Path):
     assert esito["ok"] is False and esito["core_installed"] == [] and "non sa installare" in esito["message"]
 
 
+def test_processore_senza_build(tmp: Path):
+    """Windows ARM64: PCSX2 non ha una build ARM64, quindi il consiglio lo dice e non si scarica nulla."""
+    saved = (sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH)
+    sys.platform, EI.ARCH = "win32", "arm64"
+    EI.SOURCES, EI.KNOWN = EI._for_os("win32", "arm64"), EI._for_os("win32")
+    try:
+        cfg = _cfg(tmp)
+        r = X.recommend("ps2", cfg)
+        assert r["emulator"] == "pcsx2" and r["supported"] is False and r["arch"] == "ARM64", r
+        assert X.recommend("psx", cfg)["arch"] == "", "DuckStation ha la build ARM64"
+        esito = X.install_recommended("ps2", cfg=cfg)
+        assert esito["ok"] is False and "ARM64" in esito["message"] and "pcsx2" not in cfg.emulators
+    finally:
+        sys.platform, EI.SOURCES, EI.KNOWN, EI.ARCH = saved
+
+
 def test_console_sconosciuta(tmp: Path):
     try:
         X.recommend("console-che-non-esiste", _cfg(tmp))
@@ -182,7 +199,7 @@ def test_errore_di_rete(tmp: Path):
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
         test_consigliato_dedicato_e_retroarch(Path(t))
-    for fn in (test_gia_installato, test_non_supportato, test_console_sconosciuta,
+    for fn in (test_gia_installato, test_non_supportato, test_processore_senza_build, test_console_sconosciuta,
                test_installa_emulatore_dedicato_con_progress, test_installa_retroarch_e_core, test_errore_di_rete):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
             fn(Path(t))

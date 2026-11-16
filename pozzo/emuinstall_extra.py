@@ -11,6 +11,8 @@ all'utente. progress(fase: str, frazione: float 0..1) e' chiamato in sincrono du
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from . import config as C
 from . import emuinstall as EI
 from . import platforms as P
@@ -129,17 +131,19 @@ def _scelta(console_id: str) -> tuple[str, str, str | None, dict[str, str]]:
 
 
 def _supportato(emu: str) -> bool:
-    return bool(emu) and (emu == L.RA or emu in EI.SOURCES)
+    return bool(emu) and emu in EI.SOURCES
 
 
 def recommend(console_id: str, cfg=None) -> dict:
-    """{"emulator", "reason", "reasons", "installed", "supported"} per la console. ValueError se la console non esiste.
+    """{"emulator", "reason", "reasons", "installed", "supported", "arch"} per la console. ValueError se la console
+    non esiste.
 
-    reason e' la frase unica (compatibilita'); reasons = {"fedelta", "prestazioni", "controller"}.
+    reason e' la frase unica (compatibilita'); reasons = {"fedelta", "prestazioni", "controller"}. arch: nome del
+    processore (es. "ARM64") quando l'emulatore esiste ma non ha una build per questo processore, se no "".
     """
     emu, why, _, motivi = _scelta(console_id)
     return {"emulator": emu, "reason": why, "reasons": motivi, "installed": emu in EI.installed(_cfg(cfg)),
-            "supported": _supportato(emu)}
+            "supported": _supportato(emu), "arch": EI.ARCH_NAME[EI.ARCH] if EI.arch_blocked(emu) else ""}
 
 
 def _esito(ok: bool, emu: str, cores: list[str], msg: str) -> dict:
@@ -155,7 +159,11 @@ def install_recommended(console_id: str, progress=None, cfg=None) -> dict:
     emu = _scelta(console_id)[0]
     cfg = _cfg(cfg)
     nome = P.PLATFORMS[console_id].name
-    if not _supportato(emu):
+    gia_presente = bool(cfg.emulators.get(emu)) and Path(cfg.emulators[emu]).exists()  # es. RetroArch dalla distro
+    if EI.arch_blocked(emu) and not gia_presente:
+        return _esito(False, emu, [], f"{emu} non ha una build per questo processore ({EI.ARCH_NAME[EI.ARCH]}): "
+                                      f"scegli a mano un emulatore per {nome}.")
+    if not (_supportato(emu) or gia_presente):
         return _esito(False, "", [], f"Pozzo non sa installare un emulatore per {nome}: scegline uno a mano.")
     fase = [""]
 

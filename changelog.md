@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.19.2 (2026-11-16)
+### Aggiunto
+
+- **Processori ARM e Intel**: oltre a Windows x64, macOS Apple Silicon e Linux x64, Pozzo esce anche per Windows 11 su ARM (Snapdragon), macOS Intel e Linux ARM64. L'aggiornamento dall'app scarica sempre la variante giusta per il processore. Su Windows ARM i torrent passano al client torrent del sistema.
+- **Gestori di pacchetti**: Pozzo si installa con winget e Scoop (Windows), Homebrew (macOS), AUR (Arch Linux) e apt (Debian e Ubuntu, repository firmato). Installato da AUR si aggiorna con pacman: l'app avvisa della nuova versione ma non la installa.
+- **Emulatori per il tuo processore**: Pozzo installa sempre la build giusta per il processore del PC. Un emulatore senza build per ARM64 (o x64) resta in elenco con «Installa» disattivato e il motivo accanto, e si può comunque indicarne uno installato a mano.
+
+### Corretto
+
+- **Lingue**: Impostazioni › Generale (azioni al termine, avvio, scorciatoie, tour, notifiche, webhook, script globali, profili) e il rapporto della manutenzione erano solo in italiano: ora sono tradotti in tutte le lingue.
+
 ## 0.19.1 (2026-11-15)
 
 ### Aggiunto

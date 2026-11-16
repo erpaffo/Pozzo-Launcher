@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 import os
+import platform as _platform
 import re
 import shlex
 import shutil
@@ -78,9 +79,12 @@ def check(cache, force: bool = False) -> dict:
 
 
 # ---------------------------------------------------------------- installazione dall'app
+# processore di questa build (del processo, non della macchina): l'aggiornamento resta sulla stessa variante
+ARCH = "arm64" if _platform.machine().lower() in ("arm64", "aarch64") else "x64"
 # file della release per ogni modo di installazione (nomi creati da .github/workflows/release.yml)
-SUFFIX = {"setup": "-windows-x64-setup.exe", "win": "-windows-x64.zip", "mac": "-macos-arm64.zip",
-          "linux": "-linux-x64.tar.gz", "deb": "_amd64.deb"}
+SUFFIX = {"setup": f"-windows-{ARCH}-setup.exe", "win": f"-windows-{ARCH}.zip", "mac": f"-macos-{ARCH}.zip",
+          "linux": f"-linux-{ARCH}.tar.gz", "deb": "_arm64.deb" if ARCH == "arm64" else "_amd64.deb"}
+MANAGED = ".pozzo-managed"  # messo dai pacchetti (AUR) nella cartella dell'app: si aggiorna con il gestore
 STATE = {"status": "idle", "phase": "", "done": 0, "total": 0, "kind": None}
 MANIFEST = ".pozzo-release-manifest.json"
 
@@ -96,7 +100,9 @@ def _write_manifest(stage: Path, target: Path, new: dict):
         {"version": new["version"], "file": list(new["file"].values())},
         ensure_ascii=False, separators=(",", ":")
     ) + "\n", encoding="utf-8")
-PLATFORM = {"win": "windows-x64", "mac": "macos-arm64", "linux": "linux-x64"}
+PLATFORM = {"win": f"windows-{ARCH}", "mac": f"macos-{ARCH}", "linux": f"linux-{ARCH}"}
+# il manifest della release elenca i file di tutte le varianti: valide tutte, non solo quella di questa copia
+ALL_PLATFORMS = {f"{o}-{a}" for o in ("windows", "macos", "linux") for a in ("x64", "arm64")}
 _WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
 
@@ -117,6 +123,8 @@ def install_kind() -> str | None:
     if not getattr(sys, "frozen", False):
         return None
     d = app_dir()
+    if (d / MANAGED).exists():  # file di proprieta' di pacman: niente installazione dall'app, solo il link
+        return None
     if sys.platform == "win32":
         return "setup" if (d / "unins000.exe").exists() else "win"
     if sys.platform == "darwin":
@@ -226,7 +234,7 @@ def _manifest(data, expected_version: str | None = None) -> dict:
             raise ValueError("Percorso manifest non valido")
         path = PurePosixPath(raw_path)
         if (path.is_absolute() or path.as_posix() != raw_path or len(path.parts) < 2
-                or path.parts[0] not in PLATFORM.values()
+                or path.parts[0] not in ALL_PLATFORMS
                 or any(_unsafe_component(part) for part in path.parts)
                 or path.parts[1].casefold() == MANIFEST.casefold()):
             raise ValueError("Percorso manifest non sicuro")

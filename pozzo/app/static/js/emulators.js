@@ -55,12 +55,20 @@ async function renderEmuInstall() {
   try { d = await api("/api/emulators/catalog"); } catch (e) { return toast(e.message, true); }
   const cores = d.cores.length ? `<div class="row"><span class="muted small grow">${t("i.emu.coresMissing", { list: esc(d.cores.join(", ")) })}</span>`
     + `<button class="btn" data-emu-cores ${d.retroarch ? "" : "disabled title=\"" + t("i.emu.installRetroarchFirst") + "\""}>⬇ ${t("i.emu.downloadCores")}</button></div>` : "";
-  // gia' installati in cima: sono quelli che l'utente cerca; il resto resta nell'ordine del catalogo
-  const items = [...d.items].sort((a, b) => !!b.version - !!a.version);
-  $("#emu-inst").innerHTML = `<table class="emu emu-inst"><tr><th style="width:150px">${t("i.emu.col.emulator")}</th><th>${t("i.emu.col.console")}</th><th style="width:120px">${t("i.common.installed")}</th><th style="width:120px"></th></tr>`
+  // gia' installati in cima, senza build per questo processore in fondo; per il resto l'ordine del catalogo
+  const rank = (x) => (x.version ? 0 : x.arch_ok === false ? 2 : 1);
+  const items = [...d.items].sort((a, b) => rank(a) - rank(b));
+  const state = (x) => (x.version ? `<span class="status-ok">✓ ${esc(x.version)}</span>`
+    : x.arch_ok === false ? `<span class="muted" id="emu-arch-${esc(x.id)}">${t("i.emu.wrongArch", { arch: esc(d.arch) })}</span>`
+    : x.configured ? `<span class="muted">${t("i.emu.alreadySet")}</span>` : "—");
+  // senza build per questo processore il pulsante resta, disattivato e legato al motivo scritto accanto
+  const btn = (x) => (x.arch_ok === false
+    ? `<button class="btn" type="button" disabled aria-describedby="emu-arch-${esc(x.id)}">⬇ ${t("i.common.install")}</button>`
+    : `<button class="btn" type="button" data-emu-inst="${esc(x.id)}">${x.version ? "↻ " + t("i.common.update") : "⬇ " + t("i.common.install")}</button>`);
+  $("#emu-inst").innerHTML = `<table class="emu emu-inst"><tr><th style="width:150px">${t("i.emu.col.emulator")}</th><th>${t("i.emu.col.console")}</th><th style="width:150px">${t("i.common.installed")}</th><th style="width:120px"></th></tr>`
     + items.map((x) => `<tr><td><a href="#" data-open="${esc(x.home)}">${esc(x.id)} ↗</a><div class="muted small">${esc(x.repo)}</div></td>`
-      + `<td class="small"><div class="emu-cons" title="${esc(x.consoles.join(", "))}">${esc(x.consoles.join(", ") || "—")}</div></td><td class="small">${x.version ? `<span class="status-ok">✓ ${esc(x.version)}</span>` : x.configured ? `<span class="muted">${t("i.emu.alreadySet")}</span>` : "—"}</td>`
-      + `<td><button class="btn" data-emu-inst="${esc(x.id)}">${x.version ? "↻ " + t("i.common.update") : "⬇ " + t("i.common.install")}</button></td></tr>`).join("")
+      + `<td class="small"><div class="emu-cons" title="${esc(x.consoles.join(", "))}">${esc(x.consoles.join(", ") || "—")}</div></td><td class="small">${state(x)}</td>`
+      + `<td>${btn(x)}</td></tr>`).join("")
     + `</table>${cores}<p class="muted small">${t("i.emu.defaultDir", { dir: esc(d.dir) })}</p>`;
 }
 

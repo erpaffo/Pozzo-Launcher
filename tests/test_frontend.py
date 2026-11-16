@@ -554,8 +554,8 @@ def test_updates():
         z.writestr("PozzoLauncher/PozzoLauncher.exe", "nuovo")
     data = buf.getvalue()
     base = f"https://github.com/{updates.REPO}/releases/download/v99.0.0/"
-    assets = [{"name": "PozzoLauncher-99.0.0-windows-x64-setup.exe", "browser_download_url": base + "setup.exe", "size": 1},
-              {"name": "PozzoLauncher-99.0.0-windows-x64.zip", "browser_download_url": base + "w.zip", "size": len(data),
+    assets = [{"name": "PozzoLauncher-99.0.0" + updates.SUFFIX["setup"], "browser_download_url": base + "setup.exe", "size": 1},
+              {"name": "PozzoLauncher-99.0.0" + updates.SUFFIX["win"], "browser_download_url": base + "w.zip", "size": len(data),
                "digest": "sha256:" + hashlib.sha256(data).hexdigest()}]
 
     class Stream:

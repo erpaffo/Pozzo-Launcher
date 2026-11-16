@@ -1,5 +1,7 @@
-# Crea gli eseguibili per Windows, macOS e Linux e li pubblica nella release: per ogni sistema la versione
-# portatile (zip / tar.gz) e l'installer (Windows setup.exe, macOS .dmg, Linux .deb).
+# Crea gli eseguibili per Windows, macOS e Linux, ciascuno x64 e ARM64, e li pubblica nella release: per ogni
+# variante la versione portatile (zip / tar.gz) e l'installer (Windows setup.exe, macOS .dmg, Linux .deb).
+# Poi pubblica sui gestori di pacchetti: indice apt firmato negli asset della release, AUR, tap Homebrew, bucket
+# Scoop e pull request a winget-pkgs. Ogni gestore parte solo se c'e' il suo secret (vedi i job publish-*).
 #
 # Avvio: crea e invia un tag di versione, es.
 #   git tag v0.1.0 && git push origin v0.1.0
@@ -91,6 +93,8 @@ jobs:
           PYTHONUNBUFFERED: "1"  # l'output dei test arriva subito: un blocco si vede dove succede
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
 
+  # una build per sistema e processore, ognuna sul suo runner (PyInstaller non compila per un'altra CPU).
+  # I test girano solo sulle tre x64/arm64 del job test: il codice e' lo stesso, qui la prova di avvio basta.
   build:
     needs: version
     name: ${{ matrix.name }}
@@ -99,9 +103,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: windows-x64, os: windows-latest }
-          - { name: macos-arm64, os: macos-latest }
-          - { name: linux-x64, os: ubuntu-22.04 }
+          - { name: windows-x64, os: windows-latest, arch: x64 }
+          - { name: windows-arm64, os: windows-11-arm, arch: arm64 }  # senza libtorrent: niente wheel ARM64
+          - { name: macos-arm64, os: macos-latest, arch: arm64 }
+          - { name: macos-x64, os: macos-15-intel, arch: x64 }
+          - { name: linux-x64, os: ubuntu-22.04, arch: x64 }
+          - { name: linux-arm64, os: ubuntu-22.04-arm, arch: arm64 }
     steps:
       - uses: actions/checkout@v6
         with:
@@ -110,6 +117,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          architecture: ${{ matrix.arch }}
 
       - name: Dipendenze di sistema (Linux)
         if: runner.os == 'Linux'
@@ -185,7 +193,10 @@ jobs:
           OUT="PozzoLauncher-${VER}-${{ matrix.name }}"
           mkdir -p release
           case "$RUNNER_OS" in
-            Windows) FILE="release/${OUT}.zip";    7z a -tzip "$FILE" ./dist/PozzoLauncher >/dev/null ;;
+            Windows) FILE="release/${OUT}.zip"
+                     # il runner ARM64 puo' non avere 7-Zip: stesso zip (cartella PozzoLauncher alla radice)
+                     if command -v 7z >/dev/null; then 7z a -tzip "$FILE" ./dist/PozzoLauncher >/dev/null
+                     else powershell -NoProfile -Command "Compress-Archive -Path dist/PozzoLauncher -DestinationPath '$FILE'"; fi ;;
             macOS)   FILE="release/${OUT}.zip";    codesign --force --deep -s - dist/PozzoLauncher.app; ditto -c -k --keepParent dist/PozzoLauncher.app "$FILE" ;;
             Linux)   FILE="release/${OUT}.tar.gz"; tar -czf "$FILE" -C dist PozzoLauncher ;;
           esac
@@ -200,16 +211,25 @@ jobs:
         shell: bash
         run: |
           VER="${{ steps.pack.outputs.ver }}"
+          ARCH="${{ matrix.arch }}"
           case "$RUNNER_OS" in
             Windows)
-              choco install innosetup -y --no-progress >/dev/null
-              "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" -Q "-DAppVersion=$VER" packaging/installer.iss
-              FILE="release/PozzoLauncher-${VER}-windows-x64-setup.exe" ;;
+              iscc() { compgen -G "/c/Program Files*/Inno Setup*/ISCC.exe" | head -n 1; }
+              if [ -z "$(iscc)" ]; then
+                if command -v choco >/dev/null; then choco install innosetup -y --no-progress >/dev/null
+                else  # runner ARM64 senza Chocolatey: installer ufficiale (x86, gira emulato)
+                  curl -fsSL -o "$RUNNER_TEMP/is.exe" https://jrsoftware.org/download.php/is.exe
+                  MSYS_NO_PATHCONV=1 "$RUNNER_TEMP/is.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+                fi
+              fi
+              "$(iscc)" -Q "-DAppVersion=$VER" "-DAppArch=$ARCH" packaging/installer.iss
+              FILE="release/PozzoLauncher-${VER}-windows-${ARCH}-setup.exe" ;;
             macOS)
               mkdir dmg && cp -R dist/PozzoLauncher.app dmg/ && ln -s /Applications dmg/Applications
-              FILE="release/PozzoLauncher-${VER}-macos-arm64.dmg"
+              FILE="release/PozzoLauncher-${VER}-macos-${ARCH}.dmg"
               hdiutil create -volname PozzoLauncher -srcfolder dmg -ov -format UDZO "$FILE" ;;
             Linux)
+              DEBARCH=$([ "$ARCH" = arm64 ] && echo arm64 || echo amd64)  # nomi di Debian
               DEBVER="$VER"; [[ "$VER" =~ ^[0-9] ]] || DEBVER="0.0.0~$VER"  # dpkg vuole un numero all'inizio
               P=pkg
               mkdir -p $P/DEBIAN $P/opt $P/usr/bin $P/usr/share/applications $P/usr/share/pixmaps
@@ -219,10 +239,10 @@ jobs:
               printf '%s\n' "[Desktop Entry]" "Type=Application" "Name=Pozzo Launcher" \
                 "Comment=Libreria di giochi: ROM e store PC" "Exec=/opt/PozzoLauncher/PozzoLauncher" \
                 "Icon=pozzo" "Categories=Game;" > $P/usr/share/applications/pozzo.desktop
-              printf '%s\n' "Package: pozzo" "Version: $DEBVER" "Architecture: amd64" "Maintainer: erpaffo" \
+              printf '%s\n' "Package: pozzo" "Version: $DEBVER" "Architecture: $DEBARCH" "Maintainer: erpaffo" \
                 "Depends: libegl1, libnss3, libxkbcommon-x11-0, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xfixes0, libxcb-xinerama0, libxcb-xkb1" \
                 "Description: Pozzo Launcher - libreria di giochi con copertine e metadati" > $P/DEBIAN/control
-              FILE="release/pozzo_${DEBVER}_amd64.deb"
+              FILE="release/pozzo_${DEBVER}_${DEBARCH}.deb"
               dpkg-deb --root-owner-group --build $P "$FILE" ;;
           esac
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
@@ -278,6 +298,10 @@ jobs:
           # verrebbero estratti in cartelle e mancherebbero nella release
           skip-decompress: true
 
+      # rilanciando un job fallito c'e' gia' l'artifact dei manifest dei gestori: non e' un file della release
+      - name: Solo i file della release
+        run: rm -rf release/package-manifests* release/manifest-winget-scoop*
+
       # senza l'installer Windows la release diventa «latest» e l'app installata propone un aggiornamento che non
       # riesce a scaricare: meglio non pubblicare (le altre piattaforme mancanti restano non bloccanti)
       - name: Installer Windows presente?
@@ -321,11 +345,11 @@ jobs:
       - name: Piattaforme mancanti
         run: |
           mkdir -p release
-          missing=""
-          for p in windows-x64 macos-arm64 linux-x64; do
-            compgen -G "release/*${p}*" > /dev/null || missing="$missing $p"
+          missing="" found=0
+          for p in windows-x64 windows-arm64 macos-arm64 macos-x64 linux-x64 linux-arm64; do
+            if compgen -G "release/*${p}*" > /dev/null; then found=1; else missing="$missing $p"; fi
           done
-          if [ "$missing" = " windows-x64 macos-arm64 linux-x64" ]; then
+          if [ "$found" = 0 ]; then
             echo "::error::nessuna build riuscita: release non pubblicata"
             exit 1
           fi
@@ -342,6 +366,36 @@ jobs:
         continue-on-error: true
         run: python tools/release_manifest.py "$GITHUB_REF_NAME" release --solo-manifest
 
+      # Repository apt «flat» negli asset stessi della release: apt legge Packages/InRelease da
+      #   https://github.com/<repo>/releases/latest/download/ ./
+      # che GitHub rimanda sempre all'ultima release (i .deb da 200+ MB non entrerebbero in un repo git).
+      # Firma con la chiave GPG del secret APT_GPG_PRIVATE_KEY (passphrase facoltativa in APT_GPG_PASSPHRASE);
+      # senza secret si salta e la release esce senza indice apt.
+      - name: Indice apt firmato
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: |
+          [ -n "$APT_GPG_PRIVATE_KEY" ] || { echo "::notice::APT_GPG_PRIVATE_KEY assente: niente indice apt"; exit 0; }
+          compgen -G "release/*.deb" > /dev/null || { echo "::warning::nessun .deb: niente indice apt"; exit 0; }
+          command -v apt-ftparchive > /dev/null || sudo apt-get install -y apt-utils
+          export GNUPGHOME="$(mktemp -d)"
+          printf '%s\n' "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          KEY=$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr/ {print $10; exit}')
+          PASS=(); [ -z "$APT_GPG_PASSPHRASE" ] || PASS=(--pinentry-mode loopback --passphrase "$APT_GPG_PASSPHRASE")
+          cd release
+          apt-ftparchive packages . > Packages
+          gzip -9kn Packages
+          apt-ftparchive -o APT::FTPArchive::Release::Origin="Pozzo Launcher" -o APT::FTPArchive::Release::Label="Pozzo Launcher" \
+            -o APT::FTPArchive::Release::Suite=stable -o APT::FTPArchive::Release::Codename=stable \
+            -o APT::FTPArchive::Release::Architectures="amd64 arm64" release . > Release
+          gpg --batch --yes "${PASS[@]}" -u "$KEY" --clearsign -o InRelease Release
+          gpg --batch --yes "${PASS[@]}" -u "$KEY" -abs -o Release.gpg Release
+          gpg --batch --export "$KEY" > pozzo-archive-keyring.gpg  # chiave pubblica per /etc/apt/keyrings
+          gpg --batch --verify InRelease  # firma leggibile prima di pubblicarla
+          grep -c '^Package:' Packages
+          rm -rf "$GNUPGHOME"
+
       # impronte SHA-256 di tutti i file: chi scarica puo' verificare che siano integri (gli eseguibili non sono firmati)
       - name: Checksum
         run: cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
@@ -351,64 +405,148 @@ jobs:
           files: release/*
           body_path: notes.md
 
-  # manifest per winget e scoop, con le impronte SHA-256 degli asset Windows (quelli firmati, se c'e' la firma).
-  # Gira dopo la release: cosi' l'artifact non finisce nel download di «release» e le URL puntano gia' ai file pubblicati.
+  # manifest di winget, Scoop, AUR e Homebrew con le impronte SHA-256 dei file pubblicati (quelli firmati, se c'e'
+  # la firma Windows). Solo dopo una release riuscita: i manifest puntano ai suoi file.
   manifests:
-    name: manifest winget e scoop
-    needs: [build, release]
-    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') }}
+    name: manifest dei gestori di pacchetti
+    needs: [release]
+    if: ${{ !cancelled() && needs.release.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v8
-        continue-on-error: true  # nessun asset Windows: niente manifest, lo dice lo step sotto
-        with:
-          path: win
-          pattern: "*windows-x64*"
-          merge-multiple: true
-          skip-decompress: true
-
-      - name: Manifest winget e scoop
-        shell: bash
+      - name: File della release
         env:
-          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ZIP=$(compgen -G "win/*-windows-x64.zip" | head -n 1)
-          SETUP=$(compgen -G "win/*-windows-x64-setup.exe" | head -n 1)
-          if [ -z "$ZIP" ] || [ -z "$SETUP" ]; then
-            echo "::warning::asset Windows non trovati: manifest non generati"
-            exit 0
-          fi
-          VER=$(basename "$ZIP" | sed 's/^PozzoLauncher-//; s/-windows-x64\.zip$//')
-          ZIP_SHA=$(sha256sum "$ZIP" | cut -d' ' -f1)
-          SETUP_SHA=$(sha256sum "$SETUP" | cut -d' ' -f1)
-          BASE="https://github.com/$REPO/releases/download/v$VER"
-          URL_ZIP="$BASE/$(basename "$ZIP")"
-          URL_SETUP="$BASE/$(basename "$SETUP")"
-          OUT=manifests
-          # cartella come la vuole winget-pkgs: manifests/e/erpaffo/PozzoLauncher/<versione>/
-          WINGET="$OUT/winget/manifests/e/erpaffo/PozzoLauncher/$VER"
-          mkdir -p "$WINGET" "$OUT/scoop"
-          render() {
-            sed -e "s|__VERSION__|$VER|g" -e "s|__SHA256_ZIP__|$ZIP_SHA|g" -e "s|__SHA256_SETUP__|$SETUP_SHA|g" \
-              -e "s|__URL_ZIP__|$URL_ZIP|g" -e "s|__URL_SETUP__|$URL_SETUP|g" "$1" > "$2"
-          }
-          for t in packaging/winget/*.tmpl; do render "$t" "$WINGET/$(basename "${t%.tmpl}")"; done
-          render packaging/scoop/pozzolauncher.json.tmpl "$OUT/scoop/pozzolauncher.json"
-          # un segnaposto rimasto vuol dire un template non allineato con questo step
-          if grep -rq '__[A-Z_]*__' "$OUT"; then echo "::error::segnaposto non sostituiti"; exit 1; fi
-          find "$OUT" -type f
-          {
-            echo "### Manifest Windows ($VER)"
-            echo "- SHA-256 zip: $ZIP_SHA"
-            echo "- SHA-256 setup: $SETUP_SHA"
-          } >> "$GITHUB_STEP_SUMMARY"
+          mkdir rel
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir rel \
+            --pattern '*-setup.exe' --pattern '*-windows-*.zip' --pattern '*.dmg' --pattern '*-linux-*.tar.gz'
+          ls -la rel
+
+      - name: Manifest
+        run: |
+          python tools/package_manifests.py "${GITHUB_REF_NAME#v}" rel manifests "$GITHUB_REPOSITORY"
+          find manifests -type f | sort
+          echo "### Manifest dei gestori di pacchetti" >> "$GITHUB_STEP_SUMMARY"
+          find manifests -type f | sort | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: manifest-winget-scoop
+          name: package-manifests
           path: manifests/
+          include-hidden-files: true  # .SRCINFO di AUR
+
+  # Pubblicazione: ogni job salta (senza errori) se manca il suo secret. Il repository del gestore e' sempre
+  # dello stesso proprietario di questo (github.repository_owner).
+  publish-aur:
+    name: pubblica su AUR
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: PKGBUILD su aur.archlinux.org
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          [ -n "$AUR_SSH_PRIVATE_KEY" ] || { echo "::notice::AUR_SSH_PRIVATE_KEY assente: AUR saltato"; exit 0; }
+          [ -f pm/aur/PKGBUILD ] || { echo "::warning::nessun PKGBUILD (manca il tar.gz Linux): AUR saltato"; exit 0; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes"
+          git clone ssh://aur@aur.archlinux.org/pozzo-launcher-bin.git aur  # vuoto la prima volta: lo crea il push
+          cp pm/aur/PKGBUILD pm/aur/.SRCINFO aur/
+          cd aur
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && { echo "PKGBUILD gia' aggiornato"; exit 0; }
+          git commit -m "Pozzo Launcher ${GITHUB_REF_NAME#v}"
+          git push origin HEAD:master  # AUR accetta solo master
+
+  publish-homebrew:
+    name: pubblica sul tap Homebrew
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: Cask in <proprietario>/homebrew-tap
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::notice::HOMEBREW_TAP_TOKEN assente: Homebrew saltato"; exit 0; }
+          [ -f pm/homebrew/Casks/pozzo-launcher.rb ] || { echo "::warning::nessun cask (manca il .dmg): Homebrew saltato"; exit 0; }
+          git clone "https://x-access-token:${TOKEN}@github.com/${OWNER}/homebrew-tap.git" tap
+          mkdir -p tap/Casks && cp pm/homebrew/Casks/pozzo-launcher.rb tap/Casks/
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/pozzo-launcher.rb
+          git diff --cached --quiet && { echo "cask gia' aggiornato"; exit 0; }
+          git commit -m "pozzo-launcher ${GITHUB_REF_NAME#v}"
+          git push origin HEAD
+
+  publish-scoop:
+    name: pubblica sul bucket Scoop
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: Manifest in <proprietario>/scoop-bucket
+        env:
+          TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::notice::SCOOP_BUCKET_TOKEN assente: Scoop saltato"; exit 0; }
+          [ -f pm/scoop/pozzo-launcher.json ] || { echo "::warning::nessun manifest (manca lo zip Windows): Scoop saltato"; exit 0; }
+          git clone "https://x-access-token:${TOKEN}@github.com/${OWNER}/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket && cp pm/scoop/pozzo-launcher.json bucket/bucket/
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/pozzo-launcher.json
+          git diff --cached --quiet && { echo "manifest gia' aggiornato"; exit 0; }
+          git commit -m "pozzo-launcher: ${GITHUB_REF_NAME#v}"
+          git push origin HEAD
+
+  # pull request a microsoft/winget-pkgs con wingetcreate (lo strumento ufficiale): crea da solo il fork nel
+  # account del token. La prima versione la rivedono i moderatori di winget, le successive di solito no.
+  publish-winget:
+    name: pull request a winget-pkgs
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: wingetcreate submit
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_TOKEN) { Write-Output "::notice::WINGET_TOKEN assente: winget saltato"; exit 0 }
+          $ver = $env:GITHUB_REF_NAME.TrimStart('v')
+          $dir = "pm/winget/manifests/e/erpaffo/PozzoLauncher/$ver"
+          if (-not (Test-Path $dir)) { Write-Output "::warning::nessun manifest winget (manca il setup): winget saltato"; exit 0 }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --prtitle "New version: erpaffo.PozzoLauncher $ver" --token $env:WINGET_TOKEN $dir
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit fallito ($LASTEXITCODE)" }
 
   # firma Ed25519 del manifest di aggiornamento (opzionale: salta se manca il secret MANIFEST_SIGNING_KEY
   # o se la release non ha un manifest). Carica <manifest>.sig accanto al manifest.

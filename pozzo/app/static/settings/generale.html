@@ -1,27 +1,27 @@
 <h3 data-i18n="app.language">Lingua</h3>
 <div class="row wrap"><select class="field" id="ui-language"></select></div>
 
-<h3>Al termine delle operazioni</h3>
-<p class="muted small">Vale per scraping, aggiornamento degli store e download dei port: quando non c'è più niente
+<h3 data-i18n="s.general.pwHeading">Al termine delle operazioni</h3>
+<p class="muted small" data-i18n="s.general.pwDesc">Vale per scraping, aggiornamento degli store e download dei port: quando non c'è più niente
   in corso, il PC si sospende o si spegne (60 secondi per annullare da qui o dal telefono). Con un gioco aperto
   non succede niente finché non lo chiudi.</p>
 <div class="row wrap">
-  <select class="field" id="pw-after"><option value="none">Non fare niente</option>
-    <option value="sleep">Sospendi il PC</option><option value="shutdown">Spegni il PC</option></select>
-  <button class="btn" id="pw-abort" type="button" hidden>✕ Annulla</button>
+  <select class="field" id="pw-after"><option value="none" data-i18n="s.general.pwNone">Non fare niente</option>
+    <option value="sleep" data-i18n="s.general.pwSleep">Sospendi il PC</option><option value="shutdown" data-i18n="s.general.pwShutdown">Spegni il PC</option></select>
+  <button class="btn" id="pw-abort" type="button" hidden data-i18n="s.general.pwAbort">✕ Annulla</button>
   <span class="muted small" id="pw-state"></span>
 </div>
 
-<h3>Avvio</h3>
-<label class="chk"><input type="checkbox" id="resume-session-start" checked> Riprendi automaticamente l'ultima sessione all'avvio</label>
-<p class="muted small">Riapre l'ultima schermata e il gioco selezionato all'avvio dell'applicazione.</p>
-<label class="chk"><input type="checkbox" id="bp-start"> Apri in Big Picture all'avvio</label>
-<p class="muted small">Utile per HTPC e console casalinga. Da riga di comando <code>--no-bigpicture</code> forza il desktop.</p>
+<h3 data-i18n="s.general.startHeading">Avvio</h3>
+<label class="chk"><input type="checkbox" id="resume-session-start" checked> <span data-i18n="s.general.resume">Riprendi automaticamente l'ultima sessione all'avvio</span></label>
+<p class="muted small" data-i18n="s.general.resumeDesc">Riapre l'ultima schermata e il gioco selezionato all'avvio dell'applicazione.</p>
+<label class="chk"><input type="checkbox" id="bp-start"> <span data-i18n="s.general.bpStart">Apri in Big Picture all'avvio</span></label>
+<p class="muted small" data-i18n-html="s.general.bpStartDesc">Utile per HTPC e console casalinga. Da riga di comando <code>--no-bigpicture</code> forza il desktop.</p>
 
-<h3>Scorciatoie da tastiera</h3>
-<p class="muted small">Ctrl (Windows) o Cmd (Mac) + K cerca, + , impostazioni, + 1/2/3 Libreria/Preferiti/Store.
+<h3 data-i18n="s.general.scHeading">Scorciatoie da tastiera</h3>
+<p class="muted small" data-i18n-html="s.general.scDesc">Ctrl (Windows) o Cmd (Mac) + K cerca, + , impostazioni, + 1/2/3 Libreria/Preferiti/Store.
   Premi <code>?</code> per l'elenco completo.</p>
-<button class="btn" type="button" data-sc-open>⌨ Mostra e personalizza le scorciatoie…</button>
+<button class="btn" type="button" data-sc-open data-i18n="s.general.scOpen">⌨ Mostra e personalizza le scorciatoie…</button>
 
 <h3 data-i18n="b.hints.set.title">Suggerimenti</h3>
 <p class="muted small" data-i18n="b.hints.set.desc">Piccoli fumetti che ti fanno scoprire le funzioni: al massimo due a ogni avvio, mai ripetuti.</p>
@@ -33,41 +33,41 @@
   <button class="btn" id="hint-reset" type="button" data-i18n="b.hints.set.reset">Rivedi tutti i suggerimenti</button>
 </div>
 
-<h3>Tour guidato</h3>
-<p class="muted small">Un breve percorso che mostra dove si trovano le funzioni principali.</p>
-<div class="row wrap"><button class="btn" id="tour-start" type="button">Rivedi il tour</button></div>
-<label class="chk"><input type="checkbox" id="tour-auto"> Avvia il tour al primo avvio</label>
+<h3 data-i18n="s.general.tourHeading">Tour guidato</h3>
+<p class="muted small" data-i18n="s.general.tourDesc">Un breve percorso che mostra dove si trovano le funzioni principali.</p>
+<div class="row wrap"><button class="btn" id="tour-start" type="button" data-i18n="s.general.tourStart">Rivedi il tour</button></div>
+<label class="chk"><input type="checkbox" id="tour-auto"> <span data-i18n="s.general.tourAuto">Avvia il tour al primo avvio</span></label>
 
 <h3 data-i18n="s.general.notifyHeading">Notifiche di sistema</h3>
-<p class="muted small">Un avviso quando un gioco scende sotto la soglia di prezzo, esce un gioco gratis,
+<p class="muted small" data-i18n="s.general.notifyDesc">Un avviso quando un gioco scende sotto la soglia di prezzo, esce un gioco gratis,
   un port PC ha un aggiornamento o finisce una ricerca. Restano nel centro notifiche del sistema.</p>
-<label class="chk"><input type="checkbox" id="nt-on"> Attiva le notifiche</label>
+<label class="chk"><input type="checkbox" id="nt-on"> <span data-i18n="s.general.notifyOn">Attiva le notifiche</span></label>
 <p class="muted small" id="nt-state"></p>
 
-<h3>Webhook</h3>
-<p class="muted small">Invia una richiesta POST JSON a Home Assistant, Stream Deck o tuoi script.</p>
+<h3 data-i18n="s.general.whHeading">Webhook</h3>
+<p class="muted small" data-i18n="s.general.whDesc">Invia una richiesta POST JSON a Home Assistant, Stream Deck o tuoi script.</p>
 <div id="wh-list"></div>
-<div class="row wrap"><button class="btn" id="wh-add" type="button">＋ Aggiungi webhook</button>
-  <button class="btn" id="wh-save" type="button">Salva webhook</button><span class="muted small" id="wh-state"></span></div>
+<div class="row wrap"><button class="btn" id="wh-add" type="button" data-i18n="s.general.whAdd">＋ Aggiungi webhook</button>
+  <button class="btn" id="wh-save" type="button" data-i18n="s.general.whSave">Salva webhook</button><span class="muted small" id="wh-state"></span></div>
 
-<h3>Script globali</h3>
-<p class="muted small">Un comando per evento, eseguito con le variabili POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT
+<h3 data-i18n="s.general.gsHeading">Script globali</h3>
+<p class="muted small" data-i18n="s.general.gsDesc">Un comando per evento, eseguito con le variabili POZZO_GAME_ID, POZZO_TITLE, POZZO_PLATFORM, POZZO_EXE, POZZO_EVENT
   (e POZZO_DOWNLOAD_NAME per i download). Gira sul tuo PC con i tuoi permessi.</p>
-<label>Gioco avviato <input class="field" id="gs-game_started"></label>
-<label>Gioco chiuso <input class="field" id="gs-game_stopped"></label>
-<label>Download finito <input class="field" id="gs-download_finished"></label>
-<div class="row wrap"><button class="btn" id="gs-save" type="button">Salva script</button></div>
+<label><span data-i18n="s.general.gsStarted">Gioco avviato</span> <input class="field" id="gs-game_started"></label>
+<label><span data-i18n="s.general.gsStopped">Gioco chiuso</span> <input class="field" id="gs-game_stopped"></label>
+<label><span data-i18n="s.general.gsDl">Download finito</span> <input class="field" id="gs-download_finished"></label>
+<div class="row wrap"><button class="btn" id="gs-save" type="button" data-i18n="s.general.gsSave">Salva script</button></div>
 
 <div id="prof-section" hidden>
-<h3>Profili utente</h3>
-<p class="muted small">Ogni profilo ha i suoi preferiti, il tempo di gioco e le collezioni; la libreria, i dati e le copertine
+<h3 data-i18n="s.general.profHeading">Profili utente</h3>
+<p class="muted small" data-i18n="s.general.profDesc">Ogni profilo ha i suoi preferiti, il tempo di gioco e le collezioni; la libreria, i dati e le copertine
   sono una sola copia per tutti. Il PIN blocca il cambio di profilo dal menu: non protegge i file del computer.</p>
-<div class="row wrap" id="prof-now"><span>Utente in uso: <b id="prof-active"></b></span>
-  <button class="btn" id="prof-switch" type="button">👥 Cambia utente…</button></div>
+<div class="row wrap" id="prof-now"><span><span data-i18n="s.general.profNow">Utente in uso:</span> <b id="prof-active"></b></span>
+  <button class="btn" id="prof-switch" type="button" data-i18n="s.general.profSwitch">👥 Cambia utente…</button></div>
 <div id="prof-list"></div>
-<div class="row wrap"><button class="btn" id="prof-new" type="button">＋ Nuovo profilo…</button></div>
-<label class="chk"><input type="checkbox" id="prof-ask"> Con più profili, chiedi con quale entrare all'avvio («Chi gioca?»)</label>
-<label class="chk"><input type="checkbox" id="prof-remember"> Su questo dispositivo entra sempre con il profilo in uso</label>
-<p class="muted small">Se spunti l'ultima casella, «Chi gioca?» non compare più su questo dispositivo: per cambiare utente usa il pulsante
+<div class="row wrap"><button class="btn" id="prof-new" type="button" data-i18n="s.general.profNew">＋ Nuovo profilo…</button></div>
+<label class="chk"><input type="checkbox" id="prof-ask"> <span data-i18n="s.general.profAsk">Con più profili, chiedi con quale entrare all'avvio («Chi gioca?»)</span></label>
+<label class="chk"><input type="checkbox" id="prof-remember"> <span data-i18n="s.general.profRemember">Su questo dispositivo entra sempre con il profilo in uso</span></label>
+<p class="muted small" data-i18n-html="s.general.profHint">Se spunti l'ultima casella, «Chi gioca?» non compare più su questo dispositivo: per cambiare utente usa il pulsante
   qui sopra, il menu in alto a destra o <kbd>Ctrl+P</kbd>. Toglila per tornare a scegliere a ogni avvio.</p>
 </div>

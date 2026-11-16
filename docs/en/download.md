@@ -8,7 +8,7 @@ hide:
 <div class="download-page-header">
   <div class="hero-release-pill">
     <span class="hero-pulse-dot"></span>
-    <span>Latest stable version: <strong class="gh-release-tag">v0.19.1</strong> · <span class="gh-release-date">November 2026</span></span>
+    <span>Latest stable version: <strong class="gh-release-tag">v0.19.2</strong> · <span class="gh-release-date">November 2026</span></span>
   </div>
   <h1>Download Pozzo Launcher</h1>
   <p class="hero-subtitle">

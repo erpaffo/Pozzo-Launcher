@@ -76,7 +76,7 @@ def test_pubkey_e_release_senza_manifest_zip(tmp_path):
     before = sorted(p.relative_to(install_dir) for p in install_dir.rglob("*"))
     downloads = []
     with _patched(PUBKEY=PUBKEY_TEST, install_kind=lambda: "win", app_dir=lambda: app,
-                  check=lambda cache, force=False: _release(f"PozzoLauncher-{VERSION}-windows-x64.zip"),
+                  check=lambda cache, force=False: _release(f"PozzoLauncher-{VERSION}{updates.SUFFIX['win']}"),
                   _update_work_dir=lambda: tmp_path / "cache",
                   _download=lambda url, dest, **kw: downloads.append(url)):
         updates.install(None, lambda: None)
@@ -90,7 +90,7 @@ def test_pubkey_e_release_senza_manifest_zip(tmp_path):
 def test_pubkey_e_installer_senza_manifest(tmp_path):
     detached, downloads = [], []
     with _patched(PUBKEY=PUBKEY_TEST, install_kind=lambda: "setup",
-                  check=lambda cache, force=False: _release(f"PozzoLauncher-{VERSION}-windows-x64-setup.exe"),
+                  check=lambda cache, force=False: _release(f"PozzoLauncher-{VERSION}{updates.SUFFIX['setup']}"),
                   _update_work_dir=lambda: tmp_path / "cache",
                   _detach=lambda cmd: detached.append(cmd),
                   _download=lambda url, dest, **kw: downloads.append(url)):

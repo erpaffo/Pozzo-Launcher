@@ -1,5 +1,5 @@
 ; Installer Windows (Inno Setup 6) della cartella creata da PyInstaller (dist\PozzoLauncher).
-; Uso:  iscc /DAppVersion=0.5.1 packaging\installer.iss      -> release\PozzoLauncher-0.5.1-windows-x64-setup.exe
+; Uso:  iscc /DAppVersion=0.5.1 [/DAppArch=arm64] packaging\installer.iss -> release\PozzoLauncher-0.5.1-windows-<arch>-setup.exe
 ;
 ; Installa per l'utente corrente (%LOCALAPPDATA%\Programs\PozzoLauncher), senza permessi di amministratore:
 ; cosi' anche l'aggiornamento dall'app (installer lanciato con /SILENT) non chiede conferme UAC.
@@ -7,6 +7,10 @@
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
+#endif
+; x64 o arm64 (iscc /DAppArch=arm64): stesso AppId, cosi' una variante sostituisce l'altra
+#ifndef AppArch
+  #define AppArch "x64"
 #endif
 
 [Setup]
@@ -20,10 +24,15 @@ DefaultDirName={autopf}\PozzoLauncher
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+#if AppArch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 OutputDir=..\release
-OutputBaseFilename=PozzoLauncher-{#AppVersion}-windows-x64-setup
+OutputBaseFilename=PozzoLauncher-{#AppVersion}-windows-{#AppArch}-setup
 SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\PozzoLauncher.exe
 Compression=lzma2

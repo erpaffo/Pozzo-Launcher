@@ -87,12 +87,13 @@
       var n = a.name.toLowerCase();
       var url = a.browser_download_url;
 
-      if (n.indexOf('windows') !== -1 && n.indexOf('setup.exe') !== -1) out.winSetup = a;
-      else if (n.indexOf('windows') !== -1 && n.indexOf('.zip') !== -1) out.winZip = a;
-      else if (n.indexOf('macos') !== -1 && n.indexOf('.dmg') !== -1) out.macDmg = a;
-      else if (n.indexOf('macos') !== -1 && n.indexOf('.zip') !== -1) out.macZip = a;
-      else if (n.indexOf('.deb') !== -1) out.linuxDeb = a;
-      else if (n.indexOf('linux') !== -1 && n.indexOf('.tar.gz') !== -1) out.linuxTar = a;
+      // pulsanti principali: Windows e Linux x64, Mac Apple Silicon (le altre varianti stanno nella release)
+      if (/-windows-x64-setup\.exe$/.test(n)) out.winSetup = a;
+      else if (/-windows-x64\.zip$/.test(n)) out.winZip = a;
+      else if (/-macos-arm64\.dmg$/.test(n)) out.macDmg = a;
+      else if (/-macos-arm64\.zip$/.test(n)) out.macZip = a;
+      else if (/_amd64\.deb$/.test(n)) out.linuxDeb = a;
+      else if (/-linux-x64\.tar\.gz$/.test(n)) out.linuxTar = a;
       else if (n.indexOf('sha256sums') !== -1) out.checksums = a;
       else if (n.indexOf('manuale.pdf') !== -1) out.pdf = a;
     }
@@ -118,7 +119,7 @@
 
   // Aggiorna gli elementi della UI
   function applyReleaseData(release, os) {
-    var tag = (release && release.tag_name) || 'v0.19.1';
+    var tag = (release && release.tag_name) || 'v0.19.2';
     var assets = parseAssets(release ? release.assets : []);
 
     // Aggiorna tutti i tag versione presenti

@@ -72,9 +72,11 @@ The executables are on the **[Releases](https://github.com/erpaffo/Pozzo-Launche
 
 | System | Installer | Portable |
 |---|---|---|
-| Windows 10/11 (64 bit) | `PozzoLauncher-<version>-windows-x64-setup.exe` | `…-windows-x64.zip`: extract and open `PozzoLauncher.exe` |
-| macOS 11+ (Apple Silicon) | `…-macos-arm64.dmg`: drag the app to Applications | `…-macos-arm64.zip` |
-| Linux (64 bit) | `pozzo_<version>_amd64.deb` (Debian, Ubuntu, Mint…) | `…-linux-x64.tar.gz` |
+| Windows 10/11 (64 bit) | `PozzoLauncher-<version>-windows-x64-setup.exe` (ARM: `…-windows-arm64-setup.exe`) | `…-windows-x64.zip`: extract and open `PozzoLauncher.exe` |
+| macOS 11+ | `…-macos-arm64.dmg` (Apple Silicon) or `…-macos-x64.dmg` (Intel): drag the app to Applications | `…-macos-arm64.zip` / `…-macos-x64.zip` |
+| Linux (64 bit) | `pozzo_<version>_amd64.deb` or `_arm64.deb` (Debian, Ubuntu, Mint…) | `…-linux-x64.tar.gz` / `…-linux-arm64.tar.gz` |
+
+Or with a package manager: `winget install erpaffo.PozzoLauncher`, Scoop (`scoop bucket add pozzo https://github.com/erpaffo/scoop-bucket`, then `scoop install pozzo/pozzo-launcher`), `brew install --cask erpaffo/tap/pozzo-launcher`, `yay -S pozzo-launcher-bin` on Arch, and an apt repository for Debian/Ubuntu (see the [installation guide](docs/en/installazione.md)).
 
 The executables are not signed: on Windows SmartScreen asks for confirmation (*More info › Run anyway*), on macOS the first time open the app with right click › Open.
 

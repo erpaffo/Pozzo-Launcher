@@ -2,14 +2,24 @@
 
 ## Scegliere il file giusto
 
-Ogni versione è pubblicata nella pagina **Releases** del repository, con due file per sistema operativo:
+Ogni versione è pubblicata nella pagina **Releases** del repository, con due file per sistema operativo e processore:
 un **installer** e una versione **portatile**.
 
 | Sistema | Installer | Portatile |
 |---|---|---|
-| Windows 10/11 (64 bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `PozzoLauncher-<versione>-windows-x64.zip` |
+| Windows 10/11 (Intel/AMD 64 bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `PozzoLauncher-<versione>-windows-x64.zip` |
+| Windows 11 su ARM (Snapdragon) | `PozzoLauncher-<versione>-windows-arm64-setup.exe` | `PozzoLauncher-<versione>-windows-arm64.zip` |
 | macOS 11+ (Apple Silicon) | `PozzoLauncher-<versione>-macos-arm64.dmg` | `PozzoLauncher-<versione>-macos-arm64.zip` |
-| Linux (64 bit) | `pozzo_<versione>_amd64.deb` | `PozzoLauncher-<versione>-linux-x64.tar.gz` |
+| macOS 11+ (Intel) | `PozzoLauncher-<versione>-macos-x64.dmg` | `PozzoLauncher-<versione>-macos-x64.zip` |
+| Linux (Intel/AMD 64 bit) | `pozzo_<versione>_amd64.deb` | `PozzoLauncher-<versione>-linux-x64.tar.gz` |
+| Linux (ARM 64 bit) | `pozzo_<versione>_arm64.deb` | `PozzoLauncher-<versione>-linux-arm64.tar.gz` |
+
+Su **Windows ARM** i torrent non si scaricano dall'app (la libreria che li gestisce non esiste per ARM): Pozzo li
+passa al client torrent del sistema. Il controller virtuale per il telefono (ViGEm) è solo per Windows x64.
+
+Gli emulatori installati dalle impostazioni sono sempre quelli per il processore del PC. Un emulatore che non
+pubblica una build per il tuo processore resta in elenco con il pulsante **Installa** disattivato e la scritta
+*Non disponibile per ARM64* (o *x64*): puoi comunque indicarne uno installato a mano.
 
 **Installer o portatile?**
 
@@ -42,6 +52,28 @@ La prima volta apri l'app con **clic destro › Apri** (l'app non è firmata), o
   libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1`.
 
 Se la finestra nativa non si può aprire, l'app si apre nel browser predefinito.
+
+### Con un gestore di pacchetti
+
+| Sistema | Comando |
+|---|---|
+| Windows (winget) | `winget install erpaffo.PozzoLauncher` |
+| Windows (Scoop) | `scoop bucket add pozzo https://github.com/erpaffo/scoop-bucket` e poi `scoop install pozzo/pozzo-launcher` |
+| macOS (Homebrew) | `brew install --cask erpaffo/tap/pozzo-launcher` |
+| Arch Linux (AUR) | `yay -S pozzo-launcher-bin` (o `paru`, o `makepkg` a mano) |
+
+**Debian, Ubuntu e derivate (apt)**: aggiungi una volta il repository, poi gli aggiornamenti arrivano con
+`sudo apt upgrade` insieme al resto del sistema.
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://github.com/erpaffo/Pozzo-Launcher/releases/latest/download/pozzo-archive-keyring.gpg | sudo tee /etc/apt/keyrings/pozzo.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/pozzo.gpg] https://github.com/erpaffo/Pozzo-Launcher/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/pozzo.list
+sudo apt update && sudo apt install pozzo
+```
+
+Installata da winget, Scoop, Homebrew o apt, l'app si aggiorna anche da sola come le altre. Installata da AUR,
+invece, si aggiorna solo con `pacman`/`yay`: l'app avvisa della nuova versione ma non la installa.
 
 ## Primo avvio: la configurazione guidata
 

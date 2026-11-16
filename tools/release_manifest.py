@@ -96,11 +96,10 @@ def create(release: Path, version: str, payloads: bool = True) -> Path:
     if not re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z.+-]*", version):
         raise ValueError(f"Versione non valida: {version}")
     manifest = {"version": version, "file": []}
-    platforms = (
-        ("windows-x64", release / f"PozzoLauncher-{version}-windows-x64.zip"),
-        ("macos-arm64", release / f"PozzoLauncher-{version}-macos-arm64.zip"),
-        ("linux-x64", release / f"PozzoLauncher-{version}-linux-x64.tar.gz"),
-    )
+    # stessi nomi di updates.SUFFIX/PLATFORM: ogni sistema e processore ha i suoi percorsi nel manifest
+    platforms = [(f"{os_}-{arch}", release / f"PozzoLauncher-{version}-{os_}-{arch}.{ext}")
+                 for os_, ext in (("windows", "zip"), ("macos", "zip"), ("linux", "tar.gz"))
+                 for arch in ("x64", "arm64")]
     seen: set[str] = set()
     for platform, package in platforms:
         if not package.is_file():
