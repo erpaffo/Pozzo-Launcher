@@ -104,11 +104,11 @@ jobs:
       matrix:
         include:
           - { name: windows-x64, os: windows-latest, arch: x64 }
-          - { name: windows-arm64, os: windows-11-arm, arch: arm64 }  # senza libtorrent: niente wheel ARM64
+          # windows-arm64 (windows-11-arm) tolta: cryptography non ha wheel win_arm64 e dai sorgenti serve OpenSSL ARM64 (roadmap 0.20.0)
           - { name: macos-arm64, os: macos-latest, arch: arm64 }
           - { name: macos-x64, os: macos-15-intel, arch: x64 }
           - { name: linux-x64, os: ubuntu-22.04, arch: x64 }
-          - { name: linux-arm64, os: ubuntu-22.04-arm, arch: arm64 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, arch: arm64 }  # le wheel aarch64 di PyQt6 vogliono glibc >= 2.39
     steps:
       - uses: actions/checkout@v6
         with:
@@ -346,7 +346,7 @@ jobs:
         run: |
           mkdir -p release
           missing="" found=0
-          for p in windows-x64 windows-arm64 macos-arm64 macos-x64 linux-x64 linux-arm64; do
+          for p in windows-x64 macos-arm64 macos-x64 linux-x64 linux-arm64; do
             if compgen -G "release/*${p}*" > /dev/null; then found=1; else missing="$missing $p"; fi
           done
           if [ "$found" = 0 ]; then

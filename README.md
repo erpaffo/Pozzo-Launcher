@@ -72,7 +72,7 @@ The executables are on the **[Releases](https://github.com/erpaffo/Pozzo-Launche
 
 | System | Installer | Portable |
 |---|---|---|
-| Windows 10/11 (64 bit) | `PozzoLauncher-<version>-windows-x64-setup.exe` (ARM: `…-windows-arm64-setup.exe`) | `…-windows-x64.zip`: extract and open `PozzoLauncher.exe` |
+| Windows 10/11 (64 bit) | `PozzoLauncher-<version>-windows-x64-setup.exe` | `…-windows-x64.zip`: extract and open `PozzoLauncher.exe` |
 | macOS 11+ | `…-macos-arm64.dmg` (Apple Silicon) or `…-macos-x64.dmg` (Intel): drag the app to Applications | `…-macos-arm64.zip` / `…-macos-x64.zip` |
 | Linux (64 bit) | `pozzo_<version>_amd64.deb` or `_arm64.deb` (Debian, Ubuntu, Mint…) | `…-linux-x64.tar.gz` / `…-linux-arm64.tar.gz` |
 

@@ -49,7 +49,8 @@ def test_tutte_le_varianti():
         assert "arch=('x86_64' 'aarch64')" in pkg and "source_aarch64=" in pkg and ".pozzo-managed" in pkg
         assert "\tarch = aarch64" in src and f"\tpkgver = {V}" in src and src.startswith("pkgbase = pozzo-launcher-bin")
         assert PM._sha(rel / f"PozzoLauncher-{V}-linux-arm64.tar.gz") in pkg
-        if shutil.which("bash"):
+        # su Windows «bash» puo' essere il lanciatore di WSL senza distribuzione (fallisce senza messaggio)
+        if shutil.which("bash") and sys.platform != "win32":
             r = subprocess.run(["bash", "-n", str(out / "aur/PKGBUILD")], capture_output=True, text=True)
             assert r.returncode == 0, r.stderr
 

@@ -8,14 +8,14 @@ un **installer** e una versione **portatile**.
 | Sistema | Installer | Portatile |
 |---|---|---|
 | Windows 10/11 (Intel/AMD 64 bit) | `PozzoLauncher-<versione>-windows-x64-setup.exe` | `PozzoLauncher-<versione>-windows-x64.zip` |
-| Windows 11 su ARM (Snapdragon) | `PozzoLauncher-<versione>-windows-arm64-setup.exe` | `PozzoLauncher-<versione>-windows-arm64.zip` |
 | macOS 11+ (Apple Silicon) | `PozzoLauncher-<versione>-macos-arm64.dmg` | `PozzoLauncher-<versione>-macos-arm64.zip` |
 | macOS 11+ (Intel) | `PozzoLauncher-<versione>-macos-x64.dmg` | `PozzoLauncher-<versione>-macos-x64.zip` |
 | Linux (Intel/AMD 64 bit) | `pozzo_<versione>_amd64.deb` | `PozzoLauncher-<versione>-linux-x64.tar.gz` |
-| Linux (ARM 64 bit) | `pozzo_<versione>_arm64.deb` | `PozzoLauncher-<versione>-linux-arm64.tar.gz` |
+| Linux (ARM 64 bit, glibc 2.39+: Ubuntu 24.04, Debian 13 o più recenti) | `pozzo_<versione>_arm64.deb` | `PozzoLauncher-<versione>-linux-arm64.tar.gz` |
 
-Su **Windows ARM** i torrent non si scaricano dall'app (la libreria che li gestisce non esiste per ARM): Pozzo li
-passa al client torrent del sistema. Il controller virtuale per il telefono (ViGEm) è solo per Windows x64.
+Su **Windows 11 su ARM** (Snapdragon) si installa la versione x64, che Windows esegue in emulazione: una versione
+ARM nativa arriverà più avanti. Gli emulatori installati da Pozzo sono comunque quelli ARM, quando esistono. Il
+controller virtuale per il telefono (ViGEm) funziona solo sui PC x64.
 
 Gli emulatori installati dalle impostazioni sono sempre quelli per il processore del PC. Un emulatore che non
 pubblica una build per il tuo processore resta in elenco con il pulsante **Installa** disattivato e la scritta
