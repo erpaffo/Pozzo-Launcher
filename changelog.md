@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.20.0 (2026-11-18)
+### Aggiunto
+
+- **Mod per i giochi PC**: per Valheim, Risk of Rain 2 e Lethal Company installati, la scheda del gioco cerca le mod su Thunderstore e le installa con le loro dipendenze (BepInEx nella cartella del gioco, plugin in `BepInEx/plugins/`). Prima di installare si vede un'anteprima con le dipendenze e i file del gioco che verranno sostituiti; le mod si attivano, disattivano e rimuovono, e alla rimozione i file originali tornano al loro posto. Una dipendenza si toglie solo quando nessun'altra mod la usa. Limiti: solo mod BepInEx, niente modifiche con il gioco aperto; Nexus Mods e gli altri siti restano un link (il download diretto da Nexus richiede l'account Premium).
+- **Filtri a scelta multipla**: nella libreria Scoperta, Genere e Decennio si scelgono in più voci insieme, da menu con caselle. Decennio mostra i giochi di uno qualsiasi dei decenni scelti (es. anni 2000, 2010 e 2020); Genere ha l'interruttore «Almeno uno» o «Tutti» (Azione + GDR = action RPG); le voci di Scoperta valgono tutte insieme (es. Brevi + Mai giocati), con l'ordinamento della prima. I filtri salvati ricordano le scelte multiple e quelli salvati prima continuano a funzionare.
+- **Importatore ES-DE**: la libreria si importa anche da ES-DE, da un `gamelist.xml` o dalla cartella `gamelists/` (ogni console diventa una raccolta), con preferiti e ultima partita.
+
+### Cambiato
+
+- **Sicurezza, Content Security Policy attiva**: l'app non esegue più script inline né gestori come `onclick=` e `onerror=` (prima la regola era solo segnalata). «Gioca nel browser» ha una regola sua che permette WebAssembly a EmulatorJS e Ruffle. Le estensioni di terzi che usano gestori inline vanno aggiornate: la guida estensioni spiega come (per le immagini bastano gli attributi `data-onerr` e `data-fb`).
+- **Firma degli aggiornamenti**: quando la firma del manifest è attiva, la pubblicazione di una release fallisce se manca la chiave, invece di uscire senza firma (i client l'avrebbero rifiutata). Il manuale per sviluppatori spiega l'attivazione in tre passi.
+- **Mod dei port**: l'elenco delle mod di un port usa le stesse rotte delle mod dei giochi e mostra solo quelle adatte al gioco e alla console.
+- **Controlli del codice**: ruff e bandit bloccano la CI come pip-audit; le 88 segnalazioni di bandit sono state chiuse.
+
+### Corretto
+
+- **Scheda del gioco chiusa**: nei layout a finestra (modale, cockpit, editoriale) la scheda chiusa restava invisibile al centro dello schermo e bloccava i clic su filtri e copertine sotto, oltre a essere raggiungibile con Tab.
+
 ## 0.19.2 (2026-11-16)
 ### Aggiunto
 
