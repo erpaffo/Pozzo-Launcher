@@ -27,7 +27,7 @@ async function renderWishlist(pv) {
   const money = (v, cur = "EUR") => (v == null ? "—" : v === 0 ? t("h.wl.free") : v.toLocaleString(GSI18n.lang, { style: "currency", currency: cur || "EUR" }));
   // header.jpg esiste per ogni gioco Steam; senza codice Steam (o se manca) si usa la copertina salvata alla ricerca
   const steamImg = (w) => remoteImg(w.steam_appid ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${w.steam_appid}/header.jpg` : w.cover);
-  const imgTag = (w) => (steamImg(w) ? `<img src="${steamImg(w)}" alt="" data-fb="${w.steam_appid && w.cover ? remoteImg(w.cover) : ""}" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=''}else this.remove()">` : "");
+  const imgTag = (w) => (steamImg(w) ? `<img src="${steamImg(w)}" alt="" data-fb="${w.steam_appid && w.cover ? remoteImg(w.cover) : ""}" data-onerr="remove">` : "");
   const s = d.settings;
   pv.innerHTML = `<div class="page" data-view="wishlist">
     <div class="page-head"><div><h2>♡ ${t("h.wl.title")}</h2>
@@ -72,7 +72,7 @@ async function renderWishlist(pv) {
     tmr = setTimeout(async () => {
       let r;
       try { r = await api("/api/wishlist/search", { body: { q } }); } catch (err) { return toast(err.message, true); }
-      $("#wl-res").innerHTML = r.results.map((x, i) => `<div class="wl-hit" data-i="${i}">${x.cover ? `<img src="${remoteImg(x.cover)}" alt="" onerror="this.remove()">` : ""}<span>${esc(x.title)}</span><b>＋</b></div>`).join("")
+      $("#wl-res").innerHTML = r.results.map((x, i) => `<div class="wl-hit" data-i="${i}">${x.cover ? `<img src="${remoteImg(x.cover)}" alt="" data-onerr="remove">` : ""}<span>${esc(x.title)}</span><b>＋</b></div>`).join("")
         || `<div class="muted small" style="padding:8px">${t("h.wl.noResults")}</div>`;
       $("#wl-res").onclick = async (ev) => {
         const h = ev.target.closest(".wl-hit");
@@ -266,7 +266,7 @@ async function renderTop(pv) {
   const pct = (x) => Math.round(x * 100);
   const row = (t, i) => `<div class="top-row" data-id="${t.id}">
       <span class="top-n">${i + 1}</span>
-      <span class="top-cv">${t.id ? `<img loading="lazy" src="/img/${t.id}/cover?w=120" alt="" onerror="this.remove()">` : ""}</span>
+      <span class="top-cv">${t.id ? `<img loading="lazy" src="/img/${t.id}/cover?w=120" alt="" data-onerr="remove">` : ""}</span>
       <span class="top-t"><b>${esc(t.title)}</b>
         <span class="muted small">${[glob ? platName(t.platform) : "", t.year, t.also?.length ? window.t("h.top.alsoOn", {list: t.also.map(platName).join(", ")}) : ""].filter(Boolean).map(esc).join(" · ")}</span>
         <span class="muted small">${[t.critics != null ? window.t("h.top.critic", {p: pct(t.critics)}) : "", t.rating != null ? window.t("h.top.players", {p: pct(t.rating)}) + (t.votes ? window.t("h.top.votes", {n: t.votes.toLocaleString(GSI18n.lang)}) : "") : "", t.sources.join(", ")].filter(Boolean).map(esc).join(" · ")}</span></span>

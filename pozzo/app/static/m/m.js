@@ -78,7 +78,7 @@ function decode(lib) {
 function card(g) {
   const tag = g.store ? (STORE_SHORT[g.store] || "PC") : (SHORT[g.platform] || g.platform.toUpperCase());
   return `<div class="card" data-id="${g.id}"><div class="cv" style="--h:${hue(g.title)}"><div class="ph">${esc(g.title)}</div>`
-    + (g.cover ? `<img loading="lazy" src="/img/${g.id}/cover?w=260" alt="" onerror="this.remove()">` : "")
+    + (g.cover ? `<img loading="lazy" src="/img/${g.id}/cover?w=260" alt="" data-onerr="remove">` : "")
     + `<span class="tag">${esc(tag)}</span></div><div class="t">${esc(g.title)}</div></div>`;
 }
 
@@ -149,7 +149,7 @@ async function openGame(id) {
   const box = $(".sheet-box");
   $("#sheet").hidden = false;
   box.innerHTML = `<div class="g-head">${g && g.cover
-    ? `<img src="/img/${id}/cover?w=300" alt="" onerror="this.remove()">`
+    ? `<img src="/img/${id}/cover?w=300" alt="" data-onerr="remove">`
     : `<div class="g-nocover">${esc(g ? g.title : "")}</div>`}<div><h2>${esc(g ? g.title : "")}</h2>
     <div class="muted" id="g-meta">…</div></div></div><div class="g-btns" id="g-btns"></div><div class="g-desc" id="g-desc"></div>`;
   let d;

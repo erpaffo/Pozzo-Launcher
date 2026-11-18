@@ -66,14 +66,14 @@ const SETUP = (() => {
           <button class="btn" id="su-pick">📁 ${t("b.common.pick")}</button><button class="btn" id="su-check">${t("b.common.check")}</button></div>
         ${v.romsOk ? (v.platforms.length
           ? `<p class="su-ok">✓ ${v.platforms.length} ${v.platforms.length === 1 ? t("b.setup.roms.foundOne") : t("b.setup.roms.foundMany")}</p>
-             <div class="su-plats">${v.platforms.map((p) => `<span class="su-chip"><img src="/icons/platform/${encodeURIComponent(p.id)}" alt="" onerror="this.remove()">${esc(p.name)}</span>`).join("")}</div>`
+             <div class="su-plats">${v.platforms.map((p) => `<span class="su-chip"><img src="/icons/platform/${encodeURIComponent(p.id)}" alt="" data-onerr="remove">${esc(p.name)}</span>`).join("")}</div>`
           : `<p class="su-warn">⚠ ${t("b.setup.roms.none")}</p>`) : ""}
         <label class="chk su-skip"><input type="checkbox" id="su-noroms"${v.noRoms ? " checked" : ""}> ${t("b.setup.roms.noRoms")}</label>`;
       case 2: return `<h2>${t("b.setup.stores.title")}</h2>
         <p class="muted">${t("b.setup.stores.help")}</p>
         <div class="su-stores">${st.stores.map((s) => `<label class="su-store${s.detected ? "" : " off"}">
           <input type="checkbox" data-store="${esc(s.id)}"${v.stores[s.id] ? " checked" : ""}${s.detected ? "" : " disabled"}>
-          <img src="/icons/store/${esc(s.id)}" alt="" onerror="this.remove()"><span><b>${esc(s.name)}</b>
+          <img src="/icons/store/${esc(s.id)}" alt="" data-onerr="remove"><span><b>${esc(s.name)}</b>
           <small class="muted">${s.detected ? t("b.setup.stores.found") : t("b.onb.stores.notFound")}</small></span></label>`).join("")}</div>`;
       case 3: return `<h2>${t("b.setup.step.online")} <span class="muted small">${t("b.setup.online.optional")}</span></h2>
         <p class="muted">${t("b.setup.online.help")}</p>

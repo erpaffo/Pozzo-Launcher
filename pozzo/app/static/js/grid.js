@@ -26,8 +26,11 @@ function layout() {
   $("#empty").innerHTML = S.search ? esc(t("h.grid.noSearch", {q: S.search}))
     : !$("#loadbar").hidden ? ""
     : !S.games.length ? `<div class="empty-lib"><b>${t("h.grid.emptyLib")}</b><p class="muted">${t("h.grid.emptyHint")}</p>
-        <button class="btn primary" onclick="SETUP.open(true).then(() => reload(true))">🧭 ${t("h.grid.wizard")}</button></div>`
+        <button class="btn primary" data-wizard>🧭 ${t("h.grid.wizard")}</button></div>`
     : t("h.grid.noView");
+  // niente onclick inline (CSP): il gestore si aggancia dopo il render
+  const wz = $("#empty").querySelector("[data-wizard]");
+  if (wz) wz.onclick = () => SETUP.open(true).then(() => reload(true));
   skeletonSync();
 }
 
@@ -113,8 +116,7 @@ function loadCovers() {
 
 function platIcon(pid) {
   // immagine della console (cache locale); se manca, il pallino colorato di prima
-  const dot = `<span class="plat-dot" style="background:hsl(${hue(pid)} 60% 55%)"></span>`;
-  return `<img class="pico" src="/icons/platform/${encodeURIComponent(pid)}" alt="" loading="lazy" onerror="this.outerHTML='${dot.replace(/"/g, "&quot;")}'">`;
+  return `<img class="pico" src="/icons/platform/${encodeURIComponent(pid)}" alt="" loading="lazy" data-onerr="text" data-onerr-class="plat-dot" data-onerr-style="background:hsl(${hue(pid)} 60% 55%)">`;
 }
 
 function hue(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }

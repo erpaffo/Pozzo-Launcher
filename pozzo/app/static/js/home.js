@@ -7,7 +7,7 @@ function nfCard(g, why = "") {
   const sc = g.critics != null ? `${t("h.top.critic", {p: Math.round(g.critics * 100)})}` : g.rating != null && g.votes ? `★ ${Math.round(g.rating * 100)}%` : "";
   return `<div class="nf-card${g.store && !g.installed ? " notinst" : ""}" data-id="${g.id}" title="${esc(g.title)}">`
     + `<div class="nf-cv" style="--h:${hue(g.title)}"><span class="nf-ph">${esc(g.title)}</span>`
-    + (g.cover ? `<img loading="lazy" src="/img/${g.id}/cover?w=300" alt="" onerror="this.remove()">` : "")
+    + (g.cover ? `<img loading="lazy" src="/img/${g.id}/cover?w=300" alt="" data-onerr="remove">` : "")
     + `<span class="nf-tag">${esc(tag)}</span>${g.players >= 2 ? `<span class="nf-pl">👥 ${g.players}</span>` : ""}</div>`
     + `<div class="nf-info"><b>${esc(g.title)}</b><span>${esc([g.year, why || sc].filter(Boolean).join(" · "))}</span></div></div>`;
 }
@@ -68,7 +68,7 @@ function collCard(x) {
   const slug = encodeURIComponent(x.coll.slug);
   return `<div class="nf-coll" data-slug="${esc(x.coll.slug)}" title="${esc(x.coll.name)}">
     <div class="nfc-bg" style="--h:${hue(x.coll.name)};background-image:url('/coll-img/${slug}/cover?w=640')"></div>
-    <img class="nfc-icon" src="/coll-img/${slug}/icon?w=256" alt="" loading="lazy" onerror="this.remove()">
+    <img class="nfc-icon" src="/coll-img/${slug}/icon?w=256" alt="" loading="lazy" data-onerr="remove">
     <div class="nfc-txt"><b>${esc(x.coll.name)}</b><span>${esc(x.why || "")}</span></div>
     ${x.played ? `<div class="nfc-prog"><i style="width:${Math.round((100 * x.played) / x.games.length)}%"></i></div>` : ""}</div>`;
 }
@@ -102,7 +102,7 @@ function resumeHtml(items) {
   const [top, ...rest] = items;
   const left = resumeLeftText(top.remaining_secs), save = resumeSaveText(top.save);
   return `<article class="resume-hero" style="--h:${hue(top.title)}">
-      <div class="resume-cover"><img src="/img/${top.id}/cover?w=640" alt="" loading="lazy" onerror="this.remove()"></div>
+      <div class="resume-cover"><img src="/img/${top.id}/cover?w=640" alt="" loading="lazy" data-onerr="remove"></div>
       <div class="resume-body">
         <div class="shelves-kicker">Riprendi</div>
         <h3>${esc(top.title)}</h3>

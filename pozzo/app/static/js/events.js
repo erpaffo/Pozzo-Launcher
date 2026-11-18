@@ -872,6 +872,22 @@ function bind() {
       if (b.dataset.emuInst) await api("/api/emulators/install", { body: { emu: b.dataset.emuInst, folder: $("#emu-folder").value.trim() } });
       else await api("/api/emulators/cores", { body: {} });
     } catch (err) { return toast(err.message, true); }
+  // ricerca emulatori già installati e "usa" sui risultati (prima onclick inline, vietato dalla CSP)
+  $("#emu-scan").onclick = async (e) => {
+    const b = e.currentTarget, box = $("#emu-found");
+    b.disabled = true; box.textContent = t("j.emu.scan.searching");
+    try {
+      const d = await api("/api/emulators/detected");
+      window._emuFound = d.found;
+      const k = Object.keys(d.found);
+      box.innerHTML = k.length ? k.map((n) => `<div class="row"><span class="grow"><b>${esc(n)}</b> <span class="muted small">${esc(d.found[n].path)} (${esc(d.found[n].source)})</span></span><button class="btn" data-e="${esc(n)}">${t("j.emu.scan.use")}</button></div>`).join("") : t("j.emu.scan.none");
+    } catch (err) { box.textContent = err.message; }
+    b.disabled = false;
+  };
+  $("#emu-found").onclick = (e) => {
+    const b = e.target.closest("[data-e]");
+    if (b) (async () => { const x = collectEmu(); x.emulators[b.dataset.e] = window._emuFound[b.dataset.e].path; await saveEmu(x); })();
+  };
     followEmuJob();
   });
   $("#emu-add").onclick = async (e) => {

@@ -486,7 +486,7 @@ async function loadRA(d, force = false) {
       <a href="#" data-open="${esc(r.url)}" class="muted small">apri ↗</a> <a href="#" id="ra-refresh" class="muted small">↻</a></div>
     <div class="ra-bar"><span style="width:${pct}%"></span></div>
     <div class="ra-list">${g.achievements.map((a) => `<div class="ra-a${a.unlocked ? " on" : ""}" title="${esc(a.description)}${a.date_earned ? " · " + esc(a.date_earned) : ""}">
-      ${a.badge_url ? `<img loading="lazy" src="${remoteImg(a.unlocked ? a.badge_url : a.badge_locked_url)}" alt="" onerror="this.remove()">` : ""}
+      ${a.badge_url ? `<img loading="lazy" src="${remoteImg(a.unlocked ? a.badge_url : a.badge_locked_url)}" alt="" data-onerr="remove">` : ""}
       <span><b>${esc(a.title)}</b> <span class="muted small">${a.points} pt${a.unlocked_hardcore ? " · hardcore" : ""}</span><br><span class="muted small">${esc(a.description)}</span></span></div>`).join("")}</div>`;
   box.onclick = (e) => {
     if (e.target.id === "ra-refresh") { e.preventDefault(); loadRA(d, true); }
@@ -510,7 +510,7 @@ async function loadAch(d, force = false) {
   box.innerHTML = head(`<span class="muted small">${g.unlocked}/${g.total} · ${pct}%</span> <a href="#" id="ach-refresh" class="muted small">↻</a>`) + `
     <div class="ra-bar"><span style="width:${pct}%"></span></div>
     <div class="ra-list">${g.items.map((a) => `<div class="ra-a${a.unlocked ? " on" : ""}" title="${esc(a.description)}">
-      ${a.icon ? `<img loading="lazy" src="${remoteImg(a.icon)}" alt="" onerror="this.remove()">` : ""}
+      ${a.icon ? `<img loading="lazy" src="${remoteImg(a.icon)}" alt="" data-onerr="remove">` : ""}
       <span><b>${esc(a.name)}</b>${a.rarity_pct != null ? ` <span class="muted small">${t("f.ach.rarity", { p: a.rarity_pct })}</span>` : ""}
         ${a.unlocked_at ? ` <span class="muted small">· ${new Date(a.unlocked_at * 1000).toLocaleDateString(GSI18n.lang)}</span>` : ""}<br><span class="muted small">${esc(a.description)}</span></span></div>`).join("")}</div>`;
   box.onclick = (e) => { if (e.target.id === "ach-refresh") { e.preventDefault(); loadAch(d, true); } };

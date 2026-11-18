@@ -33,9 +33,9 @@ async function renderFree(pv, force = false) {
       <div class="free-grid" id="free-rows"></div></div>`;
     // schede come in .free-grid (minmax 170px, gap 16px): si disegnano solo quelle visibili
     vlist(pv, $("#free-rows", pv), items, (i) => `<div class="free-card${i.owned || i.claimed ? " owned" : ""}" data-n="${d.items.indexOf(i)}">
-        <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(i.cover)}" alt="" onerror="this.remove()">` : ""}
+        <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(i.cover)}" alt="" data-onerr="remove">` : ""}
           <span class="fc-kind k-${fold(i.kind).replace(/[^a-z]+/g, "")}">${esc(t(FREE_KIND[i.kind] || i.kind))}</span>
-          ${i.drm && i.drm !== "none" ? `<img class="fc-drm" src="/icons/store/${esc(({ amazon: "amazon", epic: "epic", steam: "steam", gog: "gog", battlenet: "battlenet" })[i.drm] || "manual")}" alt="" onerror="this.remove()">` : ""}
+          ${i.drm && i.drm !== "none" ? `<img class="fc-drm" src="/icons/store/${esc(({ amazon: "amazon", epic: "epic", steam: "steam", gog: "gog", battlenet: "battlenet" })[i.drm] || "manual")}" alt="" data-onerr="remove">` : ""}
           ${i.owned ? `<span class="fc-owned">✓ ${t("i.free.owned")}</span>` : i.claimed ? `<span class="fc-owned">✓ ${t("i.free.claimed")}</span>` : i.new ? `<span class="fc-new">${t("i.free.new")}</span>` : ""}
           ${i.wished && !i.owned ? `<span class="fc-wish" title="${t("i.free.wishTitle")}">♡</span>` : ""}</div>
         <div class="fc-info"><b title="${esc(i.full_title || i.title)}">${esc(i.title)}</b>
@@ -123,8 +123,7 @@ async function renderPorts(pv, force = false) {
       && (!PORTS_F.mine || (PORTS_F.mine === "rom" ? i.roms.length : PORTS_F.mine === "inst" ? i.installed : i.installed?.update))
       && (!q || fold(`${i.name} ${i.project} ${i.developer} ${i.tags.join(" ")}`).includes(q)));
     vlist(pv, $("#pt-grid", pv), items, (i) => `<div class="free-card" data-slug="${esc(i.slug)}">
-      <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(gridThumb(i.cover))}" data-full="${esc(remoteImg(i.cover))}" alt=""
-          onerror="if (this.dataset.full && this.src.indexOf('thumb') > 0) { this.src = this.dataset.full; this.dataset.full = '' } else this.remove()">` : ""}
+      <div class="fc-cover">${i.cover ? `<img loading="lazy" src="${remoteImg(gridThumb(i.cover))}" ${gridThumb(i.cover) !== i.cover ? `data-fb="${esc(remoteImg(i.cover))}"` : ""} alt="" data-onerr="remove">` : ""}
         <span class="fc-kind">${esc((i.type && i.type !== "port" ? [t(PORT_KIND[i.type] || i.type)] : []).concat(i.consoles.map((c) => d.consoles[c] || c)).join(" · ") || t(PORT_KIND.port))}</span>
         ${i.installed?.update ? `<span class="fc-new">⬆ ${esc(i.installed.latest)}</span>` : i.installed ? `<span class="fc-owned">✓ ${t("i.common.installed")}</span>` : ""}
         ${i.roms.length ? `<span class="fc-wish pt-rom" title="${t("i.ports.hasRomTitle", { list: esc(i.roms.map((r) => r.title).join(", ")) })}">🎮 ROM</span>`
@@ -232,7 +231,7 @@ async function renderPort(pv, slug) {
   const romFile = (r) => r.file.split(/[\\/]/).pop();
   pv.innerHTML = `<div class="page port-page">
     <p><button class="btn" id="pt-back">← ${t("i.ports.title")}</button></p>
-    ${i.hero ? `<div class="pt-hero"><img src="${remoteImg(i.hero)}" alt="" onerror="this.parentNode.remove()"></div>` : ""}
+    ${i.hero ? `<div class="pt-hero"><img src="${remoteImg(i.hero)}" alt="" data-onerr="parent"></div>` : ""}
     <h2>${esc(i.name)}</h2>
     <p class="muted">${esc([i.type && i.type !== "port" ? t(PORT_KIND[i.type]) : "", i.project !== i.name ? i.project : "", i.consoles.map(cname).join(", "), i.developer, inst ? `${t("i.ports.installedVer", { v: inst.version })}${inst.sha256 ? ` ✓ ${t("i.ports.verified")}` : ""}` : i.version ? t("i.ports.latestVer", { v: i.version }) : ""].filter(Boolean).join(" · "))}</p>
     ${i.broken ? `<p class="warn small">⚠ ${t(i.broken === 1 ? "i.ports.broken1" : "i.ports.brokenN", { n: i.broken })}</p>` : ""}

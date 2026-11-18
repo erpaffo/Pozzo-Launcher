@@ -17,7 +17,7 @@ export default function (gs) {
           by.get(k).push(v);
         }
         return [...by].map(([k, vs]) => `<h4>${k}</h4><ul class="cu-list">${vs.map((v) => `<li>
-            <img src="${gs.esc(v.copertina || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+            <img src="${gs.esc(v.copertina || "")}" alt="" loading="lazy" data-onerr="hide">
             <div><b>${gs.esc(v.titolo)}</b>
               <div class="muted small">${new Date(v.data + "T00:00:00").toLocaleDateString("it", { day: "numeric", month: "long" })}
                 ${v.giorni === 0 ? " · <b>oggi</b>" : v.giorni === 1 ? " · domani" : ` · tra ${v.giorni} giorni`}</div>

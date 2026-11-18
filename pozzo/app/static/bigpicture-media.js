@@ -140,7 +140,7 @@
     const cardHtml = (c, r, i) => {
       const img = safeUrl(c.poster);
       return `<div class="bpm-card${c.seen ? " seen" : ""}" data-r="${r}" data-i="${i}" style="--h:${hue(c.label)}"><div class="bpm-cv"><div class="bpm-ph">${esc(c.label)}</div>`
-        + (img ? `<img loading="lazy" decoding="async" src="${esc(img)}" alt="" onerror="this.remove()">` : "")
+        + (img ? `<img loading="lazy" decoding="async" src="${esc(img)}" alt="" data-onerr="remove">` : "")
         + (c.pct ? `<span class="bpm-bar"><i style="width:${c.pct}%"></i></span>` : "") + `</div><div class="bpm-lbl">${esc(c.label)}</div>`
         + (c.sub ? `<div class="bpm-sub">${esc(c.sub)}</div>` : "") + `</div>`;
     };
@@ -221,7 +221,7 @@
         tab: "videos", title: s.title, navFocus: null, hints: [["a", "Riproduci"], ["b", "Indietro"], ["lb", "Stagione"], ["rb", "Stagione"]],
         render(el) {
           const img = safeUrl(s.poster);
-          el.innerHTML = `<div class="bpm bpm-series"><div class="bpm-side">${img ? `<img src="${esc(img)}" alt="" onerror="this.remove()">` : ""}<h1>${esc(s.title)}</h1>`
+          el.innerHTML = `<div class="bpm bpm-series"><div class="bpm-side">${img ? `<img src="${esc(img)}" alt="" data-onerr="remove">` : ""}<h1>${esc(s.title)}</h1>`
             + `<p>${s.count != null ? s.count + " episodi" : "Serie"}</p></div><div class="bpm-main"><div class="bpm-seasons">`
             + s.seasons.map((x, i) => `<span class="bpm-season${i === si ? " on" : ""}">Stagione ${x.season}</span>`).join("")
             + `</div><div class="bpm-eps">` + eps().map((e, i) => `<div class="bpm-ep${e.seen ? " seen" : ""}" data-i="${i}"><b>${e.episode ?? i + 1}</b><span class="t">${esc(e.title || epTag(e))}</span>`

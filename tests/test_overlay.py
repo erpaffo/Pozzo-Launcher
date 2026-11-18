@@ -1,6 +1,7 @@
 """Overlay in gioco: impostazioni, coda degli avvisi, rotte (la finestra nativa non si prova)."""
 
 import types
+from pathlib import Path
 
 import pytest
 
@@ -65,7 +66,9 @@ def test_routes(monkeypatch):
     assert c.post("/api/overlay/settings", json={"sound": "classic"}).json()["settings"]["sound"] == "classic"
     assert saved and cfg.app["overlay"]["sound"] == "classic"
     assert c.post("/api/overlay/settings", json={"hotkey": "zz+zz"}).status_code == 400
-    assert "showToast" in c.get("/overlay/toast").text
+    # il codice del toast e' in un file a se' (CSP: niente script inline)
+    assert '<script src="/static/overlay-toast.js"></script>' in c.get("/overlay/toast").text
+    assert "window.showToast" in (Path(R.__file__).parents[1] / "static" / "overlay-toast.js").read_text(encoding="utf-8")
     assert "ov-card" in c.get("/overlay").text
     assert "h-time" in c.get("/overlay/hud").text
     assert st["emu"] is None  # nessun emulatore in esecuzione: la scheda non compare

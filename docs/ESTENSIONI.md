@@ -470,3 +470,12 @@ Nella vista Media il pannello **Sorgenti** raccoglie in un posto solo cartelle l
 ### Sicurezza
 
 Un plugin con `backend.py` gira con gli stessi permessi dell'app: può leggere e scrivere file e avviare programmi. Installa solo plugin di cui ti fidi e di cui puoi leggere il codice.
+
+### Content Security Policy
+
+L'app applica una Content Security Policy: il browser esegue solo gli script che arrivano da file e ignora i gestori inline. Per la tua estensione:
+
+- nell'HTML generato niente `<script>` e niente `onclick=`, `onchange=`, `onerror=` e simili: usa `addEventListener` oppure la delega su un contenitore (un ascoltatore sul genitore che controlla `e.target`).
+- per le immagini che possono rompersi usa `data-onerr="remove"`, `"hide"` (lascia lo spazio), `"parent"` (toglie il contenitore) o `"text"`; con `data-fb="url"` riprova una volta con un altro indirizzo.
+- con `"text"` il testo va in `data-onerr-text`, il tag in `data-onerr-tag` (predefinito `span`), la classe in `data-onerr-class` e lo stile in `data-onerr-style`.
+- dalla prossima versione le estensioni che usano gestori inline smettono di funzionare: aggiornale prima del rilascio.

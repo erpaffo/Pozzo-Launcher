@@ -6,19 +6,19 @@
     const tag = g.store ? (STORE_SHORT[g.store] || "PC") : (SHORT[g.platform] || g.platform.toUpperCase());
     return `<div class="card${g.store && !g.installed ? " notinst" : ""}" data-i="${i}" ${extra}>`
       + `<div class="cv" style="--h:${hueOf(g.title)}"><div class="ph">${esc(g.title)}</div>`
-      + (g.cover ? `<img loading="lazy" decoding="async" src="/img/${g.id}/cover?w=300" onerror="this.remove()">` : "")
+      + (g.cover ? `<img loading="lazy" decoding="async" src="/img/${g.id}/cover?w=300" data-onerr="remove">` : "")
       + `<span class="tag">${esc(tag)}</span>${score ? `<span class="score">${esc(score)}</span>` : ""}</div><div class="lbl">${esc(g.title)}</div></div>`;
   }
 
   function classicTextCard(label, sub, i, hueKey, img, it = {}) {
     if (it.art) {  // collezione: copertina a tutto riquadro + logo
       return `<div class="card tile-text coll-card" data-i="${i}"><div class="cv" style="--h:${hueOf(hueKey || label)}">`
-        + `<img class="art" src="${it.art}" alt="" loading="lazy" onerror="this.remove()">`
-        + (it.icon ? `<img class="logo" src="${it.icon}" alt="" loading="lazy" onerror="this.remove()">` : "")
+        + `<img class="art" src="${it.art}" alt="" loading="lazy" data-onerr="remove">`
+        + (it.icon ? `<img class="logo" src="${it.icon}" alt="" loading="lazy" data-onerr="remove">` : "")
         + `<div class="txt">${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></div>`;
     }
     return `<div class="card tile-text${img ? " with-img" : ""}" data-i="${i}"><div class="cv" style="--h:${hueOf(hueKey || label)}">`
-      + (img ? `<img class="sys" src="${img}" alt="" loading="lazy" onerror="this.remove()">` : "")
+      + (img ? `<img class="sys" src="${img}" alt="" loading="lazy" data-onerr="remove">` : "")
       + `<div class="txt">${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ""}</div></div></div>`;
   }
 
@@ -42,7 +42,7 @@
     const save = when ? t("c.resume.save", { when }) : "";
     return `<div class="card resume-card" data-i="${i}" style="--h:${hueOf(r.title || "")}">`
       + `<div class="rc-cover"><div class="ph">${esc(r.title || "")}</div>`
-      + (r.cover ? `<img loading="lazy" decoding="async" src="/img/${r.id}/cover?w=400" onerror="this.remove()">` : "")
+      + (r.cover ? `<img loading="lazy" decoding="async" src="/img/${r.id}/cover?w=400" data-onerr="remove">` : "")
       + `</div><div class="rc-body"><h3>${esc(r.title || "")}</h3>`
       + (left ? `<p class="rc-meta">${esc(left)}</p>` : "") + (save ? `<p class="rc-meta">${esc(save)}</p>` : "") + `</div></div>`;
   }
@@ -140,7 +140,7 @@
           hero.innerHTML = `<h1>${esc(g.title)}</h1><div class="meta">${esc([g.store ? STORE_SHORT[g.store] : platName(g.platform), g.year, g.dev].filter(Boolean).join("  ·  "))}</div>`;
           setBackground(g.id);
           detail(g.id).then((d) => {
-            if (d && d.media.logo && this.current() === g) hero.innerHTML = `<img class="logo-img" src="${d.media.logo}?w=700" onerror="this.outerHTML='<h1>${esc(g.title).replace(/'/g, "")}</h1>'">`
+            if (d && d.media.logo && this.current() === g) hero.innerHTML = `<img class="logo-img" src="${d.media.logo}?w=700" data-onerr="text" data-onerr-tag="h1" data-onerr-text="${esc(g.title)}">`
               + `<div class="meta">${esc([d.store_name || d.platform_name, d.year, d.developer].filter(Boolean).join("  ·  "))}</div>`;
           });
         } else {
@@ -227,7 +227,7 @@
           [t("c.fact.rating"), d.rating != null ? `${(d.rating * 5).toFixed(1)} / 5${d.rating_count ? ` (${t("c.game.votes", { n: d.rating_count.toLocaleString(GSI18n.lang) })})` : ""}` : ""],
           [t("c.fact.critics"), d.rating_critics != null ? `${Math.round(d.rating_critics * 100)} / 100` : ""]].filter(([, v]) => v);
         el.innerHTML = `<div class="bp-game"><div class="big-cover">${d.media.cover ? `<img src="${d.media.cover}?w=700">` : ""}</div>
-          <div class="info">${d.media.logo ? `<img class="logo-img" src="${d.media.logo}?w=700" onerror="this.replaceWith(Object.assign(document.createElement('h1'),{textContent:${JSON.stringify(d.title)}}))">` : `<h1>${esc(d.title)}</h1>`}
+          <div class="info">${d.media.logo ? `<img class="logo-img" src="${d.media.logo}?w=700" data-onerr="text" data-onerr-tag="h1" data-onerr-text="${esc(d.title)}">` : `<h1>${esc(d.title)}</h1>`}
           <div class="meta">${esc([pc ? d.store_name : d.platform_name, d.year].filter(Boolean).join("  ·  "))}
             ${pc ? (d.installed ? " · " + t("c.game.installed") : " · " + t("c.game.notinstalled")) : d.emulator ? " · " + esc(d.emulator) : " · " + t("c.game.noemulator")}</div>
           <div class="bp-actions">${this.buttons.map((b, i) => `<div class="bp-btn ${b.cls || ""}${b.disabled ? " disabled" : ""}" data-i="${i}">${esc(b.label)}</div>`).join("")}</div>

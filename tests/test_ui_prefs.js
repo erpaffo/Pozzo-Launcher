@@ -206,20 +206,22 @@ const GOOD = { bg: "#0f1115", "bg-2": "#151821", "bg-3": "#1c2030", panel: "#171
   assert.match(app, /--space-scale: 1;/); assert.match(bp, /--space-scale: 1;/);
   assert.match(app, /data-ui-density="compact"\] \{ --space-scale: \.7; \}/);
   assert.match(app, /--nav-pad: calc\(6px \* var\(--space-scale\)\)/);
+  // ui-boot.js e' un file a se' (CSP: niente script inline), caricato sincrono nell'head prima dei CSS
+  const boot = read("ui-boot.js");
   for (const f of ["index.html", "bigpicture.html"]) {
     const h = read(f), head = h.slice(0, h.indexOf("</head>"));
+    assert.ok(/<script src="\/static\/ui-boot\.js(\?[^"]*)?"><\/script>/.test(head), f + ": ui-boot.js senza defer/async");
     assert.ok(head.indexOf("ui-boot") > 0 && head.indexOf("ui-boot") < head.indexOf("<link rel=\"stylesheet\""), f + ": bootstrap nell'head prima dei CSS");
     // stesso risultato di GSUi.applyPrefs per zoom, densita' e valori non validi
     for (const [ui, zoom, dens] of [[{ zoom: 125, density: "compact" }, "125", "compact"], [{ zoom: 100 }, undefined, undefined], [{ zoom: 87 }, undefined, undefined],
       [{ zoom: "110" }, undefined, undefined], [{ zoom: 90, density: "x" }, "90", undefined]]) {
       const root = { dataset: {}, style: { setProperty() {} } };
-      const code = head.match(/<script>([\s\S]*?)<\/script>/)[1];
-      vm.runInNewContext(code, { document: { documentElement: root }, localStorage: { getItem: () => JSON.stringify(ui) }, JSON });
+      vm.runInNewContext(boot, { document: { documentElement: root }, localStorage: { getItem: () => JSON.stringify(ui) }, JSON });
       assert.equal(root.dataset.uiZoom === undefined ? undefined : String(root.dataset.uiZoom), zoom, JSON.stringify(ui));
       assert.equal(root.dataset.uiDensity, dens);
     }
     const bad = { dataset: {}, style: { setProperty() {} } };
-    vm.runInNewContext(head.match(/<script>([\s\S]*?)<\/script>/)[1], { document: { documentElement: bad }, localStorage: { getItem() { throw new Error("no storage"); } }, JSON });
+    vm.runInNewContext(boot, { document: { documentElement: bad }, localStorage: { getItem() { throw new Error("no storage"); } }, JSON });
     assert.deepEqual(bad.dataset, {});
   }
   for (const id of ["ui-zoom", "ui-density", "ui-idle", "te-save", "te-export", "te-import"]) assert.ok(aspetto.includes(`id="${id}"`), id);

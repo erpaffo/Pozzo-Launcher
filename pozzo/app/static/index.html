@@ -2,7 +2,8 @@
 <html lang="it" data-mode="desktop" data-v="{{v}}">
 <head>
 <meta charset="utf-8">
-<script>/* ui-boot: come GSUi.applyPrefs (core.js), ma prima del primo disegno */try{var u=JSON.parse(localStorage.getItem("gs.ui")),r=document.documentElement;if(u&&typeof u==="object"){if(typeof u.zoom==="number"&&u.zoom>=90&&u.zoom<=125&&u.zoom%5===0&&u.zoom!==100){r.dataset.uiZoom=u.zoom;r.style.setProperty("--ui-zoom",u.zoom/100)}if(u.density==="compact")r.dataset.uiDensity="compact"}}catch(e){}</script>
+<script src="/static/ui-boot.js"></script>
+<script src="/static/imgfallback.js?v={{v}}"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pozzo Launcher</title>
 <link rel="icon" href="/m/static/icon.png">

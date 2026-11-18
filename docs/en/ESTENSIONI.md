@@ -451,3 +451,12 @@ In the Media view, the **Sources** panel consolidates local folders, Jellyfin/Pl
 ### Security
 
 A plugin containing `backend.py` runs with full application privileges: it can read and write files and launch system processes. Only install plugins from trusted sources whose code you have reviewed.
+
+### Content Security Policy
+
+The app enforces a Content Security Policy: the browser runs only scripts loaded from files and ignores inline handlers. In your extension:
+
+- in generated HTML, no `<script>` and no `onclick=`, `onchange=`, `onerror=` or similar: use `addEventListener` or event delegation on a parent element (a listener on the parent that checks `e.target`).
+- for images that may break, use `data-onerr="remove"`, `"hide"` (keeps the space), `"parent"` (removes the container) or `"text"`; with `data-fb="url"` it retries once with another address.
+- with `"text"`, the text goes in `data-onerr-text`, the tag in `data-onerr-tag` (default `span`), the class in `data-onerr-class` and the style in `data-onerr-style`.
+- from the next release, extensions that use inline handlers stop working: update them before release.

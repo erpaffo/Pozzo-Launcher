@@ -15,6 +15,7 @@ from .images import file_response
 MIME = {".js": "text/javascript", ".css": "text/css", ".wasm": "application/wasm", ".json": "application/json",
         ".data": "application/octet-stream"}
 STRINGS = ("preparing", "downloading", "error", "noBios")
+CSP_PLAY = "script-src 'self' blob: 'wasm-unsafe-eval'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
 
 
 def build_router(ctx) -> APIRouter:
@@ -44,7 +45,8 @@ def build_router(ctx) -> APIRouter:
                  "t": {k: I.tr("w.play." + k) for k in STRINGS}}
         html = (STATIC / "play.html").read_text(encoding="utf-8").replace(
             "__PLAY__", json.dumps(cfgjs).replace("</", "<\\/")).replace("__TITLE__", g["title"].replace("<", "&lt;"))
-        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
+        # CSP propria: Ruffle ed EmulatorJS compilano WebAssembly ed EmulatorJS carica i core da URL blob:
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache", "Content-Security-Policy": CSP_PLAY})
 
     @router.get("/api/play/{gid}/status")
     def play_status(gid: int):

@@ -54,7 +54,7 @@ export default function (gs) {
         const hrs = g.hltb != null ? `⏱ circa ${String(Math.round(g.hltb * 10) / 10).replace(".", ",")} h` : "durata non nota";
         const last = g.grp.last ? `ultima volta il ${new Date(g.grp.last * 1000).toLocaleDateString("it")}` : "mai avviato";
         $("#ss-out").innerHTML = `<div class="ss-card">
-            <img class="ss-cover" src="/img/${g.id}/cover?w=300" alt="" onerror="this.style.visibility='hidden'">
+            <img class="ss-cover" src="/img/${g.id}/cover?w=300" alt="" data-onerr="hide">
             <div class="ss-info"><h2>${gs.esc(g.title)}</h2>
               <p class="muted">${gs.esc(g.store ? g.store.toUpperCase() : lib.plats.get(g.platform)?.name || g.platform)}${g.year ? " · " + g.year : ""}
                 ${g.genres ? " · " + gs.esc(g.genres) : ""}</p>

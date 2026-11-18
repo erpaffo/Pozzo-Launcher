@@ -56,6 +56,8 @@ def test_rom_solo_della_libreria(tmp_path):
     assert api.get("/play-assets/altro/x.js").status_code == 404
     page = api.get("/play/901")
     assert page.status_code == 200 and "Gioco 901" in page.text and '"core": "fceumm"' in page.text
+    # CSP propria della pagina di gioco (WebAssembly e core da blob:), non quella generale dell'app
+    assert "'wasm-unsafe-eval'" in page.headers["content-security-policy"]
     assert api.get("/play/902").status_code == 403
     assert "nes" in api.get("/api/webplay/platforms").json()["platforms"]
 

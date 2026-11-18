@@ -40,7 +40,7 @@
       "base": "calendario-uscite/",
       "files": {
         "backend.py": "c9d9105fb8e864b0e1bb517f431b05f8599758f8faf8e694d30bdf88131c2e61",
-        "frontend.js": "763cded618d1ea2585ae32eabbb6dab83f8399a87a42e8cc4b51531e3b38ecfd",
+        "frontend.js": "e98f2550d8838bfca4c923479e1f6931bc1807802dbace0f72e9f9429e683807",
         "plugin.toml": "96f401ced831dc79c4623e032ead2218a9c96cde3e9da5d1b685ca2bb191dba7",
         "screenshot.png": "b17803efdfd138d206a95400dc1400ce0245ab449e45bd5866f27c283683098e",
         "style.css": "d0dbe66bd6e494de9946a9740e869aacef24b0f71267af9a3f509092fab8ab01"
@@ -474,11 +474,11 @@
       "min_app": "0.15.0",
       "base": "ricette-web/",
       "files": {
-        "RECIPE.md": "37677b659b25fed6f6f2fbde4428f1d918217da7512b38445a7676aa82d40d9f",
         "backend.py": "cc4dec31f179ed968d9ad1bb598ec6bd2337616bf9c42a02bcd9a7ab813b71ce",
         "frontend.js": "75938f7274435a01cddfaa1b380cc670e86f402685d449acaa212f516509fd85",
         "kodi_bridge.py": "3a9ffcf92a9952582e81c2971133e1a8aa298ea666e54b29fd7aeca1789e7653",
         "plugin.toml": "99acb48e81fda020b024151d8a30584e36c98bd89845976e99afb081d10755e5",
+        "RECIPE.md": "37677b659b25fed6f6f2fbde4428f1d918217da7512b38445a7676aa82d40d9f",
         "recipe.toml": "fbc9e5bcff5a6c6e59f461b22a7d9f90b56380cf20d14dfe68b3198346205b5d",
         "recipes-podcast.toml": "8da44a25708fc6c63c15302b96dff3ac6ea1998e03c9e4c14216144413ee62f7",
         "style.css": "18cc696fe5bd911dca1e1158de9d1d1b927da1c627618a2f289ead3aabf0661b"
@@ -604,7 +604,7 @@
       "min_app": "0.7.1",
       "base": "stasera/",
       "files": {
-        "frontend.js": "6e43bb3c82df820a4bb667ddaccb5c07ed6f269bfbcc2595fa773e07e97370ee",
+        "frontend.js": "203b1a74b23b9466f1d2eb35789a313d5b28fb9fb0284df20c49c423f45e4e4a",
         "logica.js": "f3dbc76c814a0574a427304b96400479b0f618da4413113173009c0a9135b68a",
         "plugin.toml": "c86417cbcf172046a895f2f80d5e7efe409d7c114390322d46c8b383ae5705dd",
         "screenshot.png": "535916af1fe97dd50a86d22c72d0a6db8ad84eacb070201d17a24f56bdcad731",

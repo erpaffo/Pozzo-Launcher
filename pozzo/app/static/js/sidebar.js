@@ -122,7 +122,7 @@ function renderSidebar() {
   $("#store-list").innerHTML = (pcTotal ? `<a class="nav-item" data-view="store" data-id="all"><span class="ico">${platIcon("windows")}</span>`
     + `<span class="lbl">${t("h.nav.allPc")}</span><span class="cnt" title="${t("h.nav.instTotal")}">${pcInst} / ${pcTotal}</span></a>` : "")
     + S.stores.filter((x) => st.get(x.id)?.total).map((x) => `<a class="nav-item" data-view="store" data-id="${esc(x.id)}">`
-      + `<span class="ico"><img class="pico" src="/icons/store/${esc(x.id)}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${STORE_ICON[x.id] || "•"}'))"></span><span class="lbl">${esc(x.name)}</span>`
+      + `<span class="ico"><img class="pico" src="/icons/store/${esc(x.id)}" alt="" loading="lazy" data-onerr="text" data-onerr-text="${STORE_ICON[x.id] || "•"}"></span><span class="lbl">${esc(x.name)}</span>`
       + `<span class="cnt" title="${t("h.nav.instTotal")}">${st.get(x.id).inst} / ${st.get(x.id).total}</span></a>`).join("")
     || `<div class="muted small" style="padding:6px 8px">${t("h.nav.noStore")}</div>`;
   // Store estensioni sempre in cima alla sezione e non considerato tra i plugin ordinabili/preferiti
@@ -272,7 +272,7 @@ async function saveSmart(remove = false) {
 
 function collIcon(slug) {
   // icona della collezione (logo da Wikipedia o dei suoi giochi); se manca, il simbolo di prima
-  return `<img class="pico coll-ico" src="/coll-img/${encodeURIComponent(slug)}/icon?w=64" alt="" loading="lazy" onerror="this.outerHTML='❖'">`;
+  return `<img class="pico coll-ico" src="/coll-img/${encodeURIComponent(slug)}/icon?w=64" alt="" loading="lazy" data-onerr="text" data-onerr-text="❖">`;
 }
 
 function renderCollBanner() {
@@ -282,7 +282,7 @@ function renderCollBanner() {
   if (!c) return;
   const slug = encodeURIComponent(c.slug);
   b.innerHTML = `<div class="cb-bg" style="background-image:url('/coll-img/${slug}/cover?w=1600')"></div>
-    <div class="cb-content"><img class="cb-icon" src="/coll-img/${slug}/icon?w=256" alt="" onerror="this.remove()">
+    <div class="cb-content"><img class="cb-icon" src="/coll-img/${slug}/icon?w=256" alt="" data-onerr="remove">
       <div><div class="cb-kicker">${c.custom ? t("h.coll.yours") : t("h.coll.coll")}</div><h2>${esc(c.name)}</h2>
       <div class="muted">${S.items.length.toLocaleString(GSI18n.lang)} ${S.items.length === 1 ? t("h.game.one") : t("h.game.many")}</div></div></div>`;
 }

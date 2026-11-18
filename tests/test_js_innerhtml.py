@@ -514,7 +514,7 @@ def selftest():
 
 
 def test_csp_header():
-    """CSP in sola segnalazione su ogni risposta (enforce non ancora possibile: script inline e onclick= nei template)."""
+    """CSP attiva su ogni risposta (gli inline sono vietati da test_csp_inline.py)."""
     import tempfile
     sys.path.insert(0, str(ROOT))
     sys.path.insert(0, str(ROOT / "tests"))
@@ -526,11 +526,11 @@ def test_csp_header():
     rom.write_bytes(b"x" * 100)
     make_library(tmp, rom)
     with TestClient(create_app(tmp_cfg(tmp, rom)), base_url=BASE) as c:
-        for url in ("/", "/static/core.js", "/api/v1/ping" if False else "/"):
+        for url in ("/", "/static/core.js"):
             h = c.get(url).headers
-            csp = h.get("content-security-policy-report-only", "")
-            assert "script-src 'self'" in csp and "object-src 'none'" in csp and "base-uri 'self'" in csp, (url, csp)
-            assert "content-security-policy" not in h, "enforce non previsto finche' ci sono inline script"
+            csp = h.get("content-security-policy", "")
+            assert csp == "script-src 'self'; object-src 'none'; base-uri 'self'", (url, csp)
+            assert "content-security-policy-report-only" not in h
 
 
 def main():

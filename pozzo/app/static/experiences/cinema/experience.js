@@ -4,7 +4,7 @@
   const genresOf = (g) => String(g.genres || "").split(", ").map((x) => x.trim()).filter(Boolean);
 
   const card = (g) => `<button type="button" class="cnx-card" data-cnx-id="${esc(g.id)}" aria-label="${esc(g.title)}">`
-    + `<img src="${cover(g)}" alt="" loading="lazy" onerror="this.remove()">`
+    + `<img src="${cover(g)}" alt="" loading="lazy" data-onerr="remove">`
     + `<span class="cnx-card-t">${esc(g.title)}</span></button>`;
 
   const rail = (title, items) => items.length

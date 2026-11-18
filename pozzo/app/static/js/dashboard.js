@@ -238,7 +238,7 @@ const builtInWidgets = [
 
       return `<div class="gs-resume-card" style="--h:${hue(top.title)}">
         <div class="gs-resume-cover">
-          <img src="/img/${encodeURIComponent(String(top.id))}/cover?w=640" alt="" loading="lazy" decoding="async" onerror="this.remove()">
+          <img src="/img/${encodeURIComponent(String(top.id))}/cover?w=640" alt="" loading="lazy" decoding="async" data-onerr="remove">
         </div>
         <div class="gs-resume-info">
           <div class="shelves-kicker">${t("g.dash.resume.title")}</div>
@@ -265,7 +265,7 @@ const builtInWidgets = [
 
       const appsHtml = visibleApps.map((g) => {
         return `<button class="btn gs-app-tile" type="button" data-app-launch="${esc(String(g.id))}" data-shelf-game="${esc(String(g.id))}" title="${esc(g.title)}">
-          <img class="gs-app-icon" src="/img/${encodeURIComponent(String(g.id))}/icon" alt="" loading="lazy" decoding="async" onerror="this.remove()">
+          <img class="gs-app-icon" src="/img/${encodeURIComponent(String(g.id))}/icon" alt="" loading="lazy" decoding="async" data-onerr="remove">
           <span class="gs-app-title">${esc(g.title)}</span>
         </button>`;
       }).join("");
