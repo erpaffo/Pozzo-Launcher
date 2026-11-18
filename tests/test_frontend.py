@@ -572,7 +572,8 @@ def test_updates():
 
     launched, quits = [], []
     saved = (httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach,
-             updates._update_work_dir)
+             updates._update_work_dir, updates.PUBKEY)
+    updates.PUBKEY = ""  # release finta senza manifest: qui si prova il percorso senza firma (la firma: test_update_signature)
     httpx.get = lambda url, **k: httpx.Response(200, json={"tag_name": "v99.0.0", "assets": assets},
                                                 request=httpx.Request("GET", url))
     httpx.stream = lambda method, url, **k: Stream(url)
@@ -601,7 +602,7 @@ def test_updates():
             c.close()
     finally:
         (httpx.get, httpx.stream, updates.install_kind, updates.app_dir, updates._detach,
-         updates._update_work_dir) = saved
+         updates._update_work_dir, updates.PUBKEY) = saved
     print("ok  aggiornamento dall'app: download verificato, script di sostituzione, niente dati cancellati")
 
 

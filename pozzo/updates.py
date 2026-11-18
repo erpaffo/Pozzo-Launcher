@@ -182,7 +182,7 @@ def swap_script(tmp: Path, src: Path, dst: Path, pid: int) -> list[str]:
 
 # Chiave pubblica Ed25519 (32 byte grezzi in base64) con cui e' firmato il manifest di aggiornamento.
 # Vuota = firma non ancora attivata: la verifica e' saltata (e lo dice il log). Generala con tools/sign_manifest.py keygen.
-PUBKEY = ""
+PUBKEY = "mR5Dg7TVEuwFe1arlj+XgBrsmS64aIqMun5Y0zlJFN4="
 
 
 class SignatureError(ValueError):

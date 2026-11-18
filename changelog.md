@@ -10,7 +10,7 @@
 ### Cambiato
 
 - **Sicurezza, Content Security Policy attiva**: l'app non esegue più script inline né gestori come `onclick=` e `onerror=` (prima la regola era solo segnalata). «Gioca nel browser» ha una regola sua che permette WebAssembly a EmulatorJS e Ruffle. Le estensioni di terzi che usano gestori inline vanno aggiornate: la guida estensioni spiega come (per le immagini bastano gli attributi `data-onerr` e `data-fb`).
-- **Firma degli aggiornamenti**: quando la firma del manifest è attiva, la pubblicazione di una release fallisce se manca la chiave, invece di uscire senza firma (i client l'avrebbero rifiutata). Il manuale per sviluppatori spiega l'attivazione in tre passi.
+- **Aggiornamenti firmati**: da questa versione l'app controlla la firma Ed25519 del manifest di aggiornamento e rifiuta un aggiornamento senza firma valida, anche se il file arriva da un indirizzo manomesso. La protezione vale per gli aggiornamenti dalla 0.20.0 in poi. La pubblicazione di una release fallisce se manca la chiave di firma, invece di uscire senza firma. Il manuale per sviluppatori spiega come funziona.
 - **Mod dei port**: l'elenco delle mod di un port usa le stesse rotte delle mod dei giochi e mostra solo quelle adatte al gioco e alla console.
 - **Controlli del codice**: ruff e bandit bloccano la CI come pip-audit; le 88 segnalazioni di bandit sono state chiuse.
 
