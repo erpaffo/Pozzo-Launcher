@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -13,8 +14,13 @@ os.environ.setdefault("POZZO_NO_SAMPLE", "1")  # niente gioco d'esempio nei test
 @pytest.fixture
 def tmp():
     # cartella breve come negli script: alcuni test misurano la lunghezza del percorso
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
+    # rmtree(ignore_errors): TemporaryDirectory(ignore_cleanup_errors) su Windows/3.12 lascia passare un PermissionError
+    # se un file (es. cache.db-shm di SQLite) e' ancora aperto da un thread che sta chiudendo
+    d = tempfile.mkdtemp()
+    try:
         yield Path(d)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @pytest.fixture

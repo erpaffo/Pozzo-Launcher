@@ -215,8 +215,9 @@ def test_rotte(tmp):
 def test_debridlink_sblocca_e_verifica():
     fn = D.resolver(lambda: {"debridlink": {"enabled": True, "key": "DL"}})
     assert fn(HOSTER) == ("https://dl.example/gioco.bin", "debridlink")
-    assert D.account("debridlink", "DL") == {"ok": True, "error": "", "user": "ciro", "premium": True,
-                                             "expires": D.account("debridlink", "DL")["expires"]}
+    # una sola chiamata: expires e' time.time() + secondi rimasti, due chiamate possono cadere in secondi diversi
+    acc = D.account("debridlink", "DL")
+    assert acc == {"ok": True, "error": "", "user": "ciro", "premium": True, "expires": acc["expires"]} and acc["expires"]
     bad = D.account("debridlink", "NO")
     assert bad["ok"] is False and bad["error"]
 

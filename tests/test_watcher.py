@@ -272,7 +272,10 @@ def test_cartelle_console_in_cache(env, monkeypatch):
     (env.roms / "gba" / "nuovo.gba").write_bytes(b"y" * 10)  # ROM in una console gia' nota
     settle(w, clk, 3)
     assert calls == [("gba", ["nuovo.gba"], False)] and n["walk"] == 1
+    st = env.roms.stat()
     (env.roms / "psx").mkdir()  # console nuova: cambia il mtime della radice
+    # il filesystem puo' aggiornarlo in ritardo sotto carico: lo si sposta a mano per non dipendere dai suoi tempi
+    os.utime(env.roms, ns=(st.st_atime_ns, max(env.roms.stat().st_mtime_ns, st.st_mtime_ns + 1_000_000_000)))
     w.tick()
     assert n["walk"] == 2 and str(env.roms / "psx") in w._folders
     (env.roms / "altro" / "n64").mkdir(parents=True)  # annidata: la vede la rete di sicurezza

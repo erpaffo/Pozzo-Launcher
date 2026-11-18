@@ -48,7 +48,12 @@ def swarm(tmp):
 def _mgr(tmp, **dl):
     cfg = SimpleNamespace(cache=tmp / "cache", app={"downloads": {"dir": str(tmp / "out"), **dl,
                                                        "discovery": {"dht": False, "pex": False, "lsd": False, "upnp": False}}})
-    return Manager(cfg, client_factory=net.make_client, save=lambda new: None)
+    m = Manager(cfg, client_factory=net.make_client, save=lambda new: None)
+    _MGRS.append(m)
+    return m
+
+
+_MGRS: list = []  # per il registro dei download quando un'attesa scade
 
 
 def _wait(cond, timeout=150):  # largo: con molti test in parallelo o su runner lenti 60 s non bastavano
@@ -57,6 +62,9 @@ def _wait(cond, timeout=150):  # largo: con molti test in parallelo o su runner 
         if cond():
             return True
         time.sleep(0.05)
+    for m in _MGRS[-2:]:  # stampato da pytest solo se il test fallisce: dice dove si e' fermato il download
+        for t in list(m.tasks.values()):
+            print(t.id, t.status, t.options, [l["msg"] for l in t.log_after(0)[0]][-15:])
     return False
 
 
