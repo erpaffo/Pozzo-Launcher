@@ -2425,3 +2425,9 @@ table.emu-inst td { vertical-align: middle; }
 html:not([data-motion="off"]) .emu-more::before { transition: transform 150ms ease-out; }
 tr.xe-row { display: none; }
 tr[data-open] + tr.xe-row { display: table-row; }
+
+/* mod dei giochi della libreria */
+.d-mod-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.d-mod-row > div { flex: 1; min-width: 0; }
+.d-gm-ic { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+.d-gm-q { width: 100%; margin: 8px 0; }

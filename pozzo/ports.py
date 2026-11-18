@@ -35,6 +35,7 @@ import httpx
 from . import __version__
 from . import config as C
 from . import platforms as P
+from . import mods as M
 from .matching import normalize
 
 API = ("https://api.quiverlauncher.com/api/v1", "https://famous-wildebeest-660.convex.site/api/v1")
@@ -46,7 +47,6 @@ UA = {"User-Agent": f"PozzoLauncher/{__version__} (+https://github.com/erpaffo/P
 # id console di Quiver -> id di platforms.py (gli altri coincidono; "pc", "mobile" non hanno ROM)
 CONSOLES = {"gcn": "gc", "ps1": "psx", "og xbox": "xbox", "x360": "xbox360", "gen": "megadrive", "sms": "mastersystem",
             "gg": "gamegear", "32x": "sega32x", "vb": "virtualboy", "ami": "amiga"}
-MOD_META = {"manifest.json", "icon.png", "readme.md", "changelog.md", "license", "license.md", "license.txt"}
 # Port che compilano il gioco dentro la propria cartella: il percorso deve restare corto, altrimenti il
 # compilatore di Windows non apre i file. Il limite e' la lunghezza massima della cartella del port:
 # SMS Launcher costruisce "SMS-Launcher-Portable" accanto all'exe e si ferma a 92 caratteri (0.1.68).
@@ -823,114 +823,21 @@ def setup_rom(folder: Path, sf: dict, src: Path, member: str = "") -> Path:
 
 # ---------------------------------------------------------------- mod (8.9)
 
-MOD_MAX_DOWNLOAD = 512 << 20  # 512 MB: una mod piu' grande e' quasi sempre un pacchetto sbagliato
-# host da cui si accettano download e pagine; Nexus non c'e': senza chiave API dell'utente niente scraping
-MOD_HOSTS = {"thunderstore": "thunderstore.io", "gamebanana": "gamebanana.com", "moddb": "moddb.com"}
-_LINK = re.compile(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', re.S | re.I)
+MOD_MAX_DOWNLOAD, MOD_HOSTS, _host_ok = M.MOD_MAX_DOWNLOAD, M.MOD_HOSTS, M.host_ok
+parse_thunderstore, parse_mod_page = M.parse_thunderstore, M.parse_mod_page
+_mod_download, _extract_mod_zip = M.download, M.extract_files
 
 
-def _host_ok(url: str, provider: str) -> bool:
-    m = re.match(r"https://([^/:]+)", url or "")
-    host = MOD_HOSTS.get(provider)
-    return bool(m and host) and (m.group(1) == host or m.group(1).endswith("." + host))
-
-
-def parse_thunderstore(raw: list) -> list[dict]:
-    return [{"provider": "thunderstore", "id": p["full_name"], "name": p["name"].replace("_", " "),
-             "owner": p.get("owner") or "", "description": v.get("description") or "", "icon": v.get("icon") or "",
-             "version": v.get("version_number") or "", "url": v.get("download_url") or "",
-             "sha256": (v.get("sha256") or "").lower(), "page": p.get("package_url") or "",
-             "downloads": sum(x.get("downloads") or 0 for x in p["versions"]), "nsfw": p.get("has_nsfw_content")}
-            for p in raw or [] if p.get("versions") and not p.get("is_deprecated") for v in [p["versions"][0]]]
-
-
-def parse_mod_page(url: str, provider: str, html: str) -> list[dict]:
-    """Mod elencate in una pagina pubblica di GameBanana o ModDB: solo link alla pagina (il download si fa da li')."""
-    out: dict[str, dict] = {}
-    for href, text in _LINK.findall(html or ""):
-        if not _host_ok(href, provider):
-            continue
-        name = re.sub(r"<[^>]+>|\s+", " ", text).strip()
-        if provider == "gamebanana":
-            m = re.search(r"/(?:mods|dl)/(\d+)", href)
-            mid = m and f"gamebanana-{m.group(1)}"
-        elif provider == "moddb":
-            m = re.search(r"/mods/([^/]+)/downloads", href)
-            mid = m and f"moddb-{m.group(1)}"
-        else:
-            mid = None
-        if mid and mid not in out:
-            out[mid] = {"provider": provider, "id": mid, "name": name or mid, "page": href, "url": "",
-                        "version": "", "description": "", "downloads": 0, "source": url}
-    return list(out.values())
+def _plat(c: str) -> str:
+    return platform_of(c) or c
 
 
 def mod_matches(item: dict, games: list[str], consoles: list[str]) -> bool:
-    """Prudente: la mod vale solo se il gioco coincide (titolo normalizzato) e la piattaforma, se dichiarata, e' tra quelle del port."""
-    plat = item.get("platform")
-    if plat and (platform_of(plat) or plat) not in {platform_of(c) or c for c in consoles or []}:
-        return False
-    return bool(item.get("game")) and normalize(item["game"]) in {normalize(g) for g in games or [] if g}
+    return M.mod_matches(item, games, consoles, _plat)
 
 
 def mod_list(cache, mods: dict, games: list[str] = (), consoles: list[str] = ()) -> list[dict]:
-    """Mod da Thunderstore (con download) e dalle pagine di GameBanana/ModDB (solo link); elenchi in cache 12 ore."""
-    out = []
-    for s in mods.get("sources") or []:
-        src, provider = s.get("sourceUrl") or "", s.get("provider")
-        m = re.search(r"thunderstore\.io/c/([^/]+)", src)
-        if provider == "thunderstore" and m:
-            key, url, parse = "ports:ts:" + m.group(1), f"https://thunderstore.io/c/{m.group(1)}/api/v1/package/", parse_thunderstore
-        elif provider in ("gamebanana", "moddb") and _host_ok(src, provider):
-            key, url, parse = f"ports:{provider}:{src}", src, None
-        else:
-            continue
-        pk = cache.kv_get(key, max_age=RELEASE_TTL)
-        if pk is None:
-            try:
-                pk = parse(_get(url)) if parse else parse_mod_page(src, provider, _get_text(url))
-                cache.kv_set(key, pk)
-            except (httpx.HTTPError, ValueError, RuntimeError):
-                pk = cache.kv_get(key) or []
-        out += [x for x in pk if "game" not in x or mod_matches(x, games, consoles)]
-    return sorted(out, key=lambda x: -(x.get("downloads") or 0))
-
-
-def _get_text(url: str) -> str:
-    r = httpx.get(url, headers=UA, timeout=httpx.Timeout(20, connect=8), follow_redirects=True)
-    r.raise_for_status()
-    return r.text[:2_000_000]
-
-
-def _mod_download(url: str, dest: Path, provider: str, max_bytes: int = MOD_MAX_DOWNLOAD):
-    """Download di una mod: solo https dall'host della fonte, interrotto oltre max_bytes."""
-    if not _host_ok(url, provider):
-        raise ValueError("indirizzo della mod non consentito")
-    with httpx.stream("GET", url, headers=UA, timeout=httpx.Timeout(60, connect=10), follow_redirects=True) as r:
-        r.raise_for_status()
-        if not _host_ok(str(r.url), provider):
-            raise ValueError("la mod rimanda a un altro sito: download rifiutato")
-        done = 0
-        with open(dest, "wb") as f:
-            for b in r.iter_bytes(1 << 20):
-                done += len(b)
-                if done > max_bytes:
-                    raise ValueError("mod troppo grande")
-                f.write(b)
-
-
-def _extract_mod_zip(archive: Path, out: Path) -> list[str]:
-    """Estrae la mod in out; rifiuta percorsi che escono dalla cartella. Ritorna i file (relativi, con /)."""
-    files = []
-    with zipfile.ZipFile(archive) as z:
-        members = [i for i in z.infolist() if not i.is_dir() and Path(i.filename).name.lower() not in MOD_META]
-        targets = [_inside(out, i.filename) for i in members]  # prima si controllano tutti, poi si scrive
-        for i, dst in zip(members, targets):
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(i) as f, open(dst, "wb") as w:
-                shutil.copyfileobj(f, w)
-            files.append(dst.relative_to(out.resolve()).as_posix())
-    return files
+    return M.mod_list(cache, mods, games, consoles, _plat)
 
 
 def _bps_num(p: bytes, i: int) -> tuple[int, int]:
@@ -1002,96 +909,26 @@ def apply_patch_copy(source: Path, dest: Path, patch: Path):
     os.replace(tmp, dest)
 
 
-def _mod_store(cfg, slug: str, mod_id: str) -> Path:
-    """Cartella con l'archivio della mod e il backup dei file del port che sostituisce."""
-    return ports_dir(cfg) / ".mods" / re.sub(r"[^\w.-]+", "_", slug) / re.sub(r"[^\w.-]+", "_", mod_id)
-
-
-def _mod_apply(folder: Path, target: Path, archive: Path) -> list[str]:
-    rel = target.relative_to(folder.resolve()).as_posix()
-    return [f"{rel}/{f}" for f in _extract_mod_zip(archive, target)]
-
-
-def _mod_unapply(folder: Path, record: dict, store: Path):
-    """Toglie i file della mod e rimette quelli originali salvati nel backup."""
-    for f in record.get("files") or []:
-        _inside(folder, f).unlink(missing_ok=True)
-    backup = store / "backup.zip"
-    if backup.is_file():
-        with zipfile.ZipFile(backup) as z:
-            for i in z.infolist():
-                dst = _inside(folder, i.filename)
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                with z.open(i) as f, open(dst, "wb") as w:
-                    shutil.copyfileobj(f, w)
+def _mod_dest(cfg, slug: str) -> tuple[dict, "M.Dest"]:
+    m = all_installed(cfg).get(slug)
+    if not m:
+        raise KeyError(slug)
+    base = ports_dir(cfg)
+    return m, M.Dest(Path(m["folder"]), (m.get("mods") or {}).get("path") or "mods",
+                     base / ".mods" / re.sub(r"[^\w.-]+", "_", slug), base,
+                     lambda: all_installed(cfg).get(slug, {}).get("installed_mods") or {},
+                     lambda mods: set_manifest(cfg, slug, installed_mods=mods))
 
 
 def install_mod(cfg, slug: str, mod: dict) -> dict:
-    m = all_installed(cfg).get(slug)
-    if not m:
-        raise KeyError(slug)
-    provider, url = mod.get("provider") or "thunderstore", str(mod.get("url") or "")
-    if not _host_ok(url, provider):
-        raise ValueError("mod non valida")
-    folder = Path(m["folder"])
-    target = _inside(folder, (m.get("mods") or {}).get("path") or "mods")
-    store = _mod_store(cfg, slug, mod["id"])
-    shutil.rmtree(store, ignore_errors=True)
-    store.mkdir(parents=True)
-    try:
-        archive = store / "mod.zip"
-        _mod_download(url, archive, provider)
-        want = (mod.get("sha256") or "").lower()
-        if want and _sha256(archive) != want:
-            raise RuntimeError("la mod scaricata non corrisponde al checksum: download rifiutato")
-        with zipfile.ZipFile(archive) as z:  # backup dei file del port che la mod sostituira'
-            names = [i.filename for i in z.infolist() if not i.is_dir() and Path(i.filename).name.lower() not in MOD_META]
-        replaced = [p for p in (_inside(target, n) for n in names) if p.is_file()]
-        if replaced:
-            with zipfile.ZipFile(store / "backup.zip", "w", zipfile.ZIP_DEFLATED) as z:
-                for p in replaced:
-                    z.write(p, p.relative_to(folder.resolve()).as_posix())
-        files = _mod_apply(folder, target, archive)
-    except Exception:
-        shutil.rmtree(store, ignore_errors=True)
-        raise
-    mods = dict(m.get("installed_mods") or {})
-    mods[mod["id"]] = {"name": mod.get("name") or mod["id"], "version": mod.get("version") or "", "files": files,
-                       "enabled": True, "provider": provider, "download_url": url,
-                       "backup": (store / "backup.zip").relative_to(ports_dir(cfg)).as_posix()}
-    return set_manifest(cfg, slug, installed_mods=mods)
+    # download risolto a ogni chiamata: i test lo sostituiscono su questo modulo
+    return M.install(_mod_dest(cfg, slug)[1], mod, lambda *a, **k: _mod_download(*a, **k))
 
 
 def set_mod_enabled(cfg, slug: str, mod_id: str, enabled: bool) -> dict:
-    m = all_installed(cfg).get(slug)
-    if not m:
-        raise KeyError(slug)
-    mods = dict(m.get("installed_mods") or {})
-    record = dict(mods[mod_id])  # KeyError: mod non installata
-    if record.get("enabled", True) == enabled:
-        return m
-    folder, store = Path(m["folder"]), _mod_store(cfg, slug, mod_id)
-    if enabled:
-        if not (store / "mod.zip").is_file():
-            raise ValueError("archivio della mod mancante: reinstallala")
-        target = _inside(folder, (m.get("mods") or {}).get("path") or "mods")
-        record["files"] = _mod_apply(folder, target, store / "mod.zip")
-    else:
-        _mod_unapply(folder, record, store)
-    record["enabled"] = enabled
-    mods[mod_id] = record
-    return set_manifest(cfg, slug, installed_mods=mods)
+    m, dest = _mod_dest(cfg, slug)
+    return M.set_enabled(dest, mod_id, enabled) or m
 
 
 def remove_mod(cfg, slug: str, mod_id: str) -> dict:
-    m = all_installed(cfg).get(slug)
-    if not m:
-        raise KeyError(slug)
-    folder = Path(m["folder"])
-    mods = dict(m.get("installed_mods") or {})
-    record = mods.pop(mod_id, None) or {}
-    store = _mod_store(cfg, slug, mod_id)
-    if record.get("enabled", True):
-        _mod_unapply(folder, record, store)
-    shutil.rmtree(store, ignore_errors=True)
-    return set_manifest(cfg, slug, installed_mods=mods)
+    return M.remove(_mod_dest(cfg, slug)[1], mod_id)

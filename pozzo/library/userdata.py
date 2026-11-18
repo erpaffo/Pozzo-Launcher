@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS manual_games(id INTEGER PRIMARY KEY AUTOINCREMENT, ti
 CREATE TABLE IF NOT EXISTS media_overrides(key TEXT, kind TEXT, path TEXT, PRIMARY KEY(key, kind));
 -- correzione manuale del match dei metadati (JSON), per chiave del gioco: vince su scansioni e scraping
 CREATE TABLE IF NOT EXISTS match_overrides(key TEXT PRIMARY KEY, data TEXT);
+-- mod installate nella cartella del gioco (JSON, come installed_mods dei port): i file sono sul disco di questo PC
+CREATE TABLE IF NOT EXISTS game_mods(key TEXT PRIMARY KEY, data TEXT);
 """
 DELETED = "__deleted__"
 
@@ -182,6 +184,20 @@ class UserData:
                 else:
                     self.db.execute("DELETE FROM game_profiles WHERE key=?", (k,))
             self.db.commit()
+
+    # ------------------------------------------------------------ mod dei giochi PC
+    def game_mods(self, key: str) -> dict:
+        import json
+        r = self._q("SELECT data FROM game_mods WHERE key=?", (key,))
+        return json.loads(r[0][0]) if r else {}
+
+    def set_game_mods(self, key: str, mods: dict) -> dict:
+        import json
+        if mods:
+            self._exec("INSERT OR REPLACE INTO game_mods VALUES(?, ?)", (key, json.dumps(mods)))
+        else:
+            self._exec("DELETE FROM game_mods WHERE key=?", (key,))
+        return mods
 
     # ------------------------------------------------------------ correzione manuale del match
     def match_overrides(self) -> dict[str, dict]:

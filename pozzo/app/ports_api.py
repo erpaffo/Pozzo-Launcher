@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import threading
 import time
-import zipfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -330,39 +329,6 @@ def register(app, cfg, lib, launcher, start_store_job):
         except ValueError as e:
             raise HTTPException(400, str(e))
         return {"path": str(dst), "from": str(hit[0]) + (f" › {hit[1]}" if hit[1] else "")}
-
-    @app.get("/api/ports/{slug}/mods")
-    def api_port_mods(slug: str):
-        from ..cache import Cache
-        m = _port_or_404(slug)
-        c = Cache(cfg.cache)
-        try:
-            items = PT.mod_list(c, m.get("mods") or {})
-        finally:
-            c.close()
-        links = [{"provider": s.get("provider"), "url": s.get("sourceUrl")} for s in (m.get("mods") or {}).get("sources") or []]
-        return {"items": items, "links": links, "installed": m.get("installed_mods") or {}}
-
-    @app.post("/api/ports/{slug}/mods")
-    def api_port_mod_add(slug: str, body: dict = Body(...)):
-        from ..cache import Cache
-        m = _port_or_404(slug)
-        c = Cache(cfg.cache)
-        try:
-            mod = next((x for x in PT.mod_list(c, m.get("mods") or {}) if x["id"] == body.get("id")), None)
-        finally:
-            c.close()
-        if not mod:
-            raise HTTPException(404, "Mod non trovata")
-        try:
-            return PT.install_mod(cfg, slug, mod).get("installed_mods")
-        except (ValueError, OSError, zipfile.BadZipFile) as e:
-            raise HTTPException(400, f"Mod non installata: {e}")
-
-    @app.delete("/api/ports/{slug}/mods/{mod_id:path}")
-    def api_port_mod_del(slug: str, mod_id: str):
-        _port_or_404(slug)
-        return PT.remove_mod(cfg, slug, mod_id).get("installed_mods")
 
     @app.post("/api/ports-settings")
     def api_ports_settings(body: dict = Body(...)):

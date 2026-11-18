@@ -143,8 +143,23 @@ GitHub API rate limits.
 
 ### Mods and Saves
 
-- **Mods** via Thunderstore: install and manage directly from the port page. GameBanana is linked externally.
+- **Mods** for ports via Thunderstore: install and manage directly from the port page. GameBanana is linked externally.
 - Port **saves** integrate seamlessly into per-game save versioning (see [Playing Games](giocare.md#save-management)).
+
+## Game Mods (PC)
+
+For installed PC games with a Thunderstore community (for now Valheim, Risk of Rain 2 and Lethal Company), the game page shows its mods.
+
+- **Preview**: before installing, see the dependencies to install and the files that would be overwritten.
+- **Install**: the mod is installed with its dependencies, in the BepInEx layout: the loader in the game folder, plugins in `BepInEx/plugins/<Author-Name>/`.
+- **Enable, disable, remove**: from the same page. Overwritten files are saved and restored on removal. A dependency is removed only when no other mod uses it.
+
+Limits:
+
+- Not installable while the game is running.
+- BepInEx mods only.
+- Dependencies are always installed at their latest version.
+- **Nexus Mods** and other sites stay as links: a direct download from Nexus requires a Premium account.
 
 ## Friends
 

@@ -337,12 +337,12 @@ async function renderPort(pv, slug) {
 async function portMods(pv, slug, t) {
   const enc = encodeURIComponent(slug), box = $("#pt-mods", pv);
   try {
-    if (t.dataset.mod) { t.disabled = true; await api(`/api/ports/${enc}/mods`, { body: { id: t.dataset.mod } }); toast(window.t("i.ports.modInstalled")); }
-    if (t.dataset.modDel) { await api(`/api/ports/${enc}/mods/${encodeURIComponent(t.dataset.modDel)}`, { method: "DELETE" }); toast(window.t("i.ports.modRemoved")); }
+    if (t.dataset.mod) { t.disabled = true; await api(`/api/mods/${enc}/install`, { body: { id: t.dataset.mod } }); toast(window.t("i.ports.modInstalled")); }
+    if (t.dataset.modDel) { await api(`/api/mods/${enc}/${encodeURIComponent(t.dataset.modDel)}`, { method: "DELETE" }); toast(window.t("i.ports.modRemoved")); }
   } catch (err) { t.disabled = false; return toast(err.message, true); }
   box.innerHTML = `<p class="muted">${window.t("i.ports.loadingMods")}</p>`;
   let r;
-  try { r = await api(`/api/ports/${enc}/mods`); } catch (err) { box.innerHTML = `<p class="muted">${esc(err.message)}</p>`; return; }
+  try { r = await api(`/api/mods/${enc}`); } catch (err) { box.innerHTML = `<p class="muted">${esc(err.message)}</p>`; return; }
   box.innerHTML = `${r.links.map((l) => `<a href="#" class="small" data-open="${esc(l.url)}">${esc(l.provider)} ↗</a>`).join(" · ")}
     ${r.items.filter((x) => !x.nsfw).slice(0, 60).map((x) => `<div class="sv-row"><span><b>${esc(x.name)}</b> <span class="muted small">${esc(x.owner)} · ${esc(x.version)}</span><br>
       <span class="muted small">${esc(x.description)}</span></span>

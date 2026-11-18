@@ -1,5 +1,6 @@
 """Siti di mod per i titoli famosi: tabella curata, corrispondenza per titolo e console, rotta. Nessuna rete."""
 
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -18,6 +19,8 @@ def test_dati_validi():
     for g in t["games"]:
         assert g["aliases"] and g["sites"], g["name"]
         assert all(p in P.PLATFORMS for p in g["platforms"]), f"console sconosciuta in {g['name']}"
+        if "thunderstore" in g:  # slug della community: thunderstore.io/c/<slug>/
+            assert re.fullmatch(r"[a-z0-9-]+", g["thunderstore"]) and "windows" in g["platforms"], g["name"]
         for s in g["sites"]:
             sid, url = (s, "x") if isinstance(s, str) else (s["site"], s["url"])
             assert sid in t["sites"] and url.startswith(("x", "https://")), g["name"]
@@ -35,6 +38,8 @@ def test_corrispondenza():
     assert modsites.sites_for("", "Super Mario 64", platform="n64")[0]["site"] == "romhacking", "vale anche il nome del DAT"
     valheim = modsites.sites_for("Valheim", platform="windows")
     assert valheim[1]["url"] == "https://thunderstore.io/c/valheim/", "indirizzo fisso al posto della ricerca"
+    assert modsites.thunderstore_for("Valheim", platform="windows") == "valheim"
+    assert modsites.thunderstore_for("Skyrim", platform="windows") == "", "solo Nexus: niente installazione"
 
 
 def test_rotta(tmp):

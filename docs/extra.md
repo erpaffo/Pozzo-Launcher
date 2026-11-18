@@ -143,8 +143,23 @@ limite di richieste a GitHub.
 
 ### Mod e salvataggi
 
-- **Mod** da Thunderstore: installa e rimuovi dalla pagina del port. GameBanana è disponibile solo come link.
+- **Mod** dei port da Thunderstore: installa e rimuovi dalla pagina del port. GameBanana è disponibile solo come link.
 - I **salvataggi** del port entrano nelle copie dei salvataggi per gioco (vedi [Giocare](giocare.md#salvataggi)).
+
+## Mod per i giochi PC
+
+Per i giochi PC installati che hanno una community su Thunderstore (per ora Valheim, Risk of Rain 2 e Lethal Company), la scheda del gioco mostra le mod.
+
+- **Anteprima**: prima di installare vedi le dipendenze da installare e i file che verrebbero sovrascritti.
+- **Installa**: la mod si installa con le sue dipendenze, nel layout BepInEx: il loader nella cartella del gioco, i plugin in `BepInEx/plugins/<Autore-Nome>/`.
+- **Attiva, disattiva, rimuovi**: dalla stessa scheda. I file sovrascritti vengono salvati e ripristinati alla rimozione. Una dipendenza si rimuove solo quando nessun'altra mod la usa.
+
+Limiti:
+
+- Non si installa con il gioco aperto.
+- Solo mod BepInEx.
+- Le dipendenze si installano sempre all'ultima versione.
+- **Nexus Mods** e gli altri siti restano un link: il download diretto da Nexus richiede l'account Premium.
 
 ## Amici
 

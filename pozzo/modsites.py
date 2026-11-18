@@ -25,17 +25,25 @@ def _table() -> dict:
     return table
 
 
-def sites_for(*titles: str, platform: str) -> list[dict]:
-    """Siti di mod del primo gioco in tabella che corrisponde a uno dei titoli (nome, nome del DAT...) su quella console.
+def _game(titles, platform: str) -> dict | None:
+    """Primo gioco in tabella che corrisponde a uno dei titoli (nome, nome del DAT...) su quella console.
     Corrisponde se il titolo normalizzato è l'alias o comincia con l'alias (es. «... Special Edition», «... (USA)»)."""
-    table = _table()
     names = [n for n in (normalize(t) for t in titles if t) if n]
-    for game in table["games"]:
-        if platform not in game["platforms"]:
-            continue
-        if any(n == a or n.startswith(a + " ") for n in names for a in game["_alias"]):
-            return [_link(table["sites"], game, site) for site in game["sites"]]
-    return []
+    for game in _table()["games"]:
+        if platform in game["platforms"] and any(n == a or n.startswith(a + " ") for n in names for a in game["_alias"]):
+            return game
+    return None
+
+
+def sites_for(*titles: str, platform: str) -> list[dict]:
+    """Siti di mod del gioco in tabella che corrisponde a uno dei titoli su quella console."""
+    game = _game(titles, platform)
+    return [_link(_table()["sites"], game, site) for site in game["sites"]] if game else []
+
+
+def thunderstore_for(*titles: str, platform: str) -> str:
+    """Community Thunderstore del gioco (es. "valheim"), "" se le sue mod non si installano da qui."""
+    return ((_game(titles, platform) or {}).get("thunderstore")) or ""
 
 
 def _link(sites: dict, game: dict, site) -> dict:
