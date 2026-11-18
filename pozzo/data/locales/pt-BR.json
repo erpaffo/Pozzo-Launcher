@@ -2902,6 +2902,7 @@
  "k.lib.rom.hint": "— os consoles são reconhecidos pelo nome da pasta. O scraping consulta apenas os jogos nunca buscados antes, por isso é rápido também em bibliotecas grandes.",
  "k.lib.scan.mode_tip": "O que buscar",
  "k.lib.sch.p": "Funciona enquanto o app estiver aberto (mesmo minimizado). Respeita os limites: se uma cota acabar, retoma no dia seguinte.",
+ "k.lib.imp.fmtEsde": "ES-DE (gamelist.xml ou pasta gamelists)",
  "k.lib.setup.btn": "🧭 Configuração guiada",
  "k.lib.setup.tip": "Pasta de ROMs, lojas de PC e contas das fontes, passo a passo",
  "k.lib.watch.chk": "Adicionar sozinho os jogos que eu copiar para as pastas de ROMs",

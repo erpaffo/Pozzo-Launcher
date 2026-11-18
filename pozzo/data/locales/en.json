@@ -2902,6 +2902,7 @@
  "k.lib.rom.hint": "— consoles are recognized from the folder name. Scraping only queries games never searched before, so it's fast even on large libraries.",
  "k.lib.scan.mode_tip": "What to search for",
  "k.lib.sch.p": "Runs while the app is open (even when minimized to the tray). Respects limits: if a quota runs out, it resumes the next day.",
+ "k.lib.imp.fmtEsde": "ES-DE (gamelist.xml or gamelists folder)",
  "k.lib.setup.btn": "🧭 Setup wizard",
  "k.lib.setup.tip": "ROM folder, PC stores, and source accounts, step by step",
  "k.lib.watch.chk": "Automatically add games I copy into the ROM folders",

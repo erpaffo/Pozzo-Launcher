@@ -2902,6 +2902,7 @@
  "k.lib.rom.hint": "— les consoles sont reconnues d'après le nom du dossier. Le scraping n'interroge que les jeux jamais recherchés auparavant, il est donc rapide même sur les grandes bibliothèques.",
  "k.lib.scan.mode_tip": "Quoi rechercher",
  "k.lib.sch.p": "Fonctionne tant que l'application est ouverte (même réduite dans la barre d'icônes). Respecte les limites : si un quota est épuisé, reprend le lendemain.",
+ "k.lib.imp.fmtEsde": "ES-DE (gamelist.xml ou dossier gamelists)",
  "k.lib.setup.btn": "🧭 Configuration guidée",
  "k.lib.setup.tip": "Dossier ROM, stores PC et comptes des sources, étape par étape",
  "k.lib.watch.chk": "Ajouter automatiquement les jeux que je copie dans les dossiers ROM",

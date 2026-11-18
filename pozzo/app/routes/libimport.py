@@ -1,4 +1,4 @@
-"""Importa la libreria da altri launcher (Playnite, LaunchBox, Lutris, Heroic, Pegasus, Steam ROM Manager, RetroArch): vedi pozzo/importers."""
+"""Importa la libreria da altri launcher (Playnite, LaunchBox, Lutris, Heroic, Pegasus, Steam ROM Manager, RetroArch, ES-DE): vedi pozzo/importers."""
 
 from __future__ import annotations
 

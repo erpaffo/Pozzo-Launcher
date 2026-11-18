@@ -234,7 +234,7 @@ The displayed score aggregates all sources weighted by **number of votes** (Baye
 
 ## Importing from another launcher
 
-Under **Settings, Library, "Import from another launcher"** pick the format and the file (or folder). Formats: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` or `userConfigurations.json`) and **RetroArch** (a `.lpl` playlist or the `playlists` folder: each playlist becomes a collection, `content_favorites` becomes favorites).
+Under **Settings, Library, "Import from another launcher"** pick the format and the file (or folder). Formats: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` or `userConfigurations.json`) and **RetroArch** (a `.lpl` playlist or the `playlists` folder: each playlist becomes a collection, `content_favorites` becomes favorites) and **ES-DE** (a `gamelist.xml` or the `gamelists` folder: each console becomes a collection, `<favorite>` becomes favorites, `<lastplayed>` the last played date; games are matched by title).
 
 Before writing anything Pozzo shows a **preview**: how many games are **new**, **already present** and **ignored** (no match and no executable), plus the favorites, playtimes and collections that would be added. It only imports after you confirm. It never copies game files, never deletes anything and **never imports scripts or commands** from the other launcher: it counts them and warns you.
 

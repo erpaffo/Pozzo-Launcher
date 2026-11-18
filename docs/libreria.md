@@ -289,7 +289,7 @@ più di 5,0 con 2 voti. Il voto della **critica** (Metacritic o IGDB) è mostrat
 
 ## Importare da un altro launcher
 
-In **Impostazioni, Libreria, «Importa da un altro launcher»** scegli il formato e il file (o la cartella). Formati: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` oppure `userConfigurations.json`) e **RetroArch** (una playlist `.lpl` o la cartella `playlists`: ogni playlist diventa una raccolta, `content_favorites` i preferiti).
+In **Impostazioni, Libreria, «Importa da un altro launcher»** scegli il formato e il file (o la cartella). Formati: Playnite (JSON), LaunchBox, Lutris, Heroic, Pegasus, **Steam ROM Manager** (`shortcuts.vdf` oppure `userConfigurations.json`) e **RetroArch** (una playlist `.lpl` o la cartella `playlists`: ogni playlist diventa una raccolta, `content_favorites` i preferiti) e **ES-DE** (un `gamelist.xml` o la cartella `gamelists`: ogni console diventa una raccolta, `<favorite>` i preferiti, `<lastplayed>` l'ultimo avvio; i giochi si abbinano per titolo).
 
 Prima di scrivere, Pozzo mostra un'**anteprima**: quanti giochi sono **nuovi**, quanti **già presenti** e quanti **ignorati** (non abbinabili e senza eseguibile), più preferiti, tempi di gioco e raccolte che verrebbero aggiunti. Solo dopo la tua conferma importa. Non copia mai file di gioco, non cancella nulla e **non importa mai script o comandi** dell'altro launcher: li conta e ti avvisa.
 

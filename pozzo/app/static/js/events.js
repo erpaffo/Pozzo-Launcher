@@ -590,7 +590,7 @@ function bind() {
   });
   $("#scan-plan").onclick = showPlan;
   $("#imp-go").onclick = async () => {
-    const fmt = $("#imp-fmt").value, dir = fmt === "heroic" || (fmt === "launchbox" || fmt === "retroarch") && confirm(t("k.lib.imp.pickFolder"));
+    const fmt = $("#imp-fmt").value, dir = fmt === "heroic" || (fmt === "launchbox" || fmt === "retroarch" || fmt === "esde") && confirm(t("k.lib.imp.pickFolder"));
     const p = window.pywebview?.api ? await pickPath(dir ? "folder" : "file") : prompt(t("k.lib.imp.pathPrompt"));
     if (!p) return;
     try {

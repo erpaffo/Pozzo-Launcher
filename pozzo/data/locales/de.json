@@ -2902,6 +2902,7 @@
  "k.lib.rom.hint": "— die Konsolen werden am Ordnernamen erkannt. Das Scraping fragt nur Spiele ab, die noch nie gesucht wurden, daher ist es auch bei großen Bibliotheken schnell.",
  "k.lib.scan.mode_tip": "Wonach suchen",
  "k.lib.sch.p": "Läuft, solange die App geöffnet ist (auch minimiert). Beachte die Limits: Ist ein Kontingent aufgebraucht, geht es am nächsten Tag weiter.",
+ "k.lib.imp.fmtEsde": "ES-DE (gamelist.xml oder Ordner gamelists)",
  "k.lib.setup.btn": "🧭 Geführte Einrichtung",
  "k.lib.setup.tip": "ROM-Ordner, PC-Stores und Konten der Quellen, Schritt für Schritt",
  "k.lib.watch.chk": "Spiele, die du in die ROM-Ordner kopierst, automatisch hinzufügen",

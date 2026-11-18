@@ -313,5 +313,38 @@ def parse_retroarch(path) -> list[dict]:
     return list(merged.values())[:MAX_GAMES]
 
 
+# ------------------------------------------------------------------ ES-DE
+def parse_esde(path) -> list[dict]:
+    """`gamelist.xml` di ES-DE, o la cartella `gamelists` (una sottocartella per console: ogni console e' una raccolta).
+    Il collegamento ai giochi e' per titolo (`name`, o il nome file di `path`): nessun tempo di gioco, comandi mai importati."""
+    p = Path(str(path or "").strip().strip('"'))
+    if p.is_dir():
+        p = _folder(p)
+        files = sorted(f for f in p.glob("*/gamelist.xml") if not f.is_symlink())
+        if not files:
+            raise ImportError_("format")
+    else:
+        files = [safe_file(p, (".xml",))]
+    merged: dict[str, dict] = {}
+    for f in files:
+        coll = [f.parent.name] if len(files) > 1 or p.is_dir() else []
+        for g in _xml(f).iter("game"):
+            t = (g.findtext("name") or "").strip() or Path((g.findtext("path") or "").strip()).stem
+            if not t:
+                continue
+            try:
+                last = datetime.strptime((g.findtext("lastplayed") or "").strip(), "%Y%m%dT%H%M%S").timestamp()
+            except (ValueError, OverflowError, OSError):
+                last = 0.0
+            r = merged.setdefault(t.lower(), _rec(t))
+            r["favorite"] |= (g.findtext("favorite") or "").strip().lower() == "true"
+            r["last_played"] = max(r["last_played"], last)
+            r["collections"] += [c for c in coll if c not in r["collections"]]
+            if len(merged) >= MAX_GAMES:
+                return list(merged.values())
+    return list(merged.values())
+
+
 PARSERS = {"playnite": parse_playnite, "launchbox": parse_launchbox, "lutris": parse_lutris,
-           "heroic": parse_heroic, "pegasus": parse_pegasus, "srm": parse_srm, "retroarch": parse_retroarch}
+           "heroic": parse_heroic, "pegasus": parse_pegasus, "srm": parse_srm, "retroarch": parse_retroarch,
+           "esde": parse_esde}
