@@ -30,7 +30,7 @@ def build_router(ctx) -> APIRouter:
         if not rel:
             return None
         if rel.startswith("url:"):
-            h = hashlib.sha1(rel[4:].encode()).hexdigest()
+            h = hashlib.sha1(rel[4:].encode(), usedforsecurity=False).hexdigest()
             return next(iter((Path(cfg.cache) / "media" / "net").glob(f"{h}.*")), None)
         p = Path(cfg.cache) / rel
         return p if p.exists() else None

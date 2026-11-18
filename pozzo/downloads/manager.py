@@ -221,8 +221,8 @@ def _port_ok(p: int) -> bool:
     libtorrent non ci ascolterebbe)."""
     try:
         with socket.socket() as a, socket.socket(type=socket.SOCK_DGRAM) as b:
-            a.bind(("0.0.0.0", p))
-            b.bind(("0.0.0.0", p))
+            a.bind(("0.0.0.0", p))  # nosec B104 - ascolto su LAN voluto (telefono/torrent/UPnP)
+            b.bind(("0.0.0.0", p))  # nosec B104 - ascolto su LAN voluto (telefono/torrent/UPnP)
         return True
     except OSError:
         return False

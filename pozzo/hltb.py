@@ -92,7 +92,7 @@ def targets(cache_folder, with_keys: bool = False) -> list:
         try:
             cols = {c[1] for c in ud.execute("PRAGMA table_info(user_games)")}
             cond = "playtime > 0 OR favorite = 1" + (" OR (status IS NOT NULL AND status != '')" if "status" in cols else "")
-            mine = {k for (k,) in ud.execute(f"SELECT key FROM user_games WHERE {cond}")}
+            mine = {k for (k,) in ud.execute(f"SELECT key FROM user_games WHERE {cond}")}  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         finally:
             ud.close()
     rows.sort(key=lambda r: (r[2] not in mine and not r[6], -(r[6] or 0), -(r[5] or 0)))

@@ -252,7 +252,7 @@ class Sunshine:
         import httpx
         self.base, self.pin, self.on_pin, self._checked = base, (pin or "").lower() or None, on_pin, False
         # la verifica vera e' in _verify (impronta); la catena autofirmata non puo' essere validata
-        self.c = httpx.Client(base_url=base, auth=(user, password), verify=False, timeout=15)
+        self.c = httpx.Client(base_url=base, auth=(user, password), verify=False, timeout=15)  # nosec B501 - certificato autofirmato di Sunshine in locale
         self.c.event_hooks["request"].append(lambda _req: self._verify())
 
     @classmethod

@@ -1321,7 +1321,7 @@ class Launcher:
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         for cmd in filter(None, cmds if when == "before" else cmds[::-1]):
             try:
-                p = subprocess.Popen(cmd, shell=True, env=env, creationflags=flags)
+                p = subprocess.Popen(cmd, shell=True, env=env, creationflags=flags)  # nosec B602 - comando definito dall'utente
                 try:
                     # prima del gioco si aspetta poco: uno script che non finisce (es. un tracker) resta in
                     # esecuzione e il gioco parte lo stesso

@@ -137,7 +137,7 @@ def build_router(ctx) -> APIRouter:
                 if ext and ext not in ("webm", "mp4"):
                     folder = Path(cfg.cache) / "media" / "user"
                     folder.mkdir(parents=True, exist_ok=True)
-                    dest = folder / f"{hashlib.sha1(r.content).hexdigest()}.{ext}"
+                    dest = folder / f"{hashlib.sha1(r.content, usedforsecurity=False).hexdigest()}.{ext}"
                     dest.write_bytes(r.content)
                     ov["cover"] = dest.relative_to(cfg.cache).as_posix()
                     for k in keys:

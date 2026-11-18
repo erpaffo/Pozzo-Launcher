@@ -156,7 +156,7 @@ def fresh(cache, keys: list[str], source: str, max_age: float = MAX_AGE) -> set[
     since = time.time() - max_age
     for i in range(0, len(keys), 900):
         chunk = keys[i:i + 900]
-        q = f"SELECT key FROM lookups WHERE source=? AND ts>? AND key IN ({','.join('?' * len(chunk))})"
+        q = f"SELECT key FROM lookups WHERE source=? AND ts>? AND key IN ({','.join('?' * len(chunk))})"  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         out.update(k for (k,) in cache.db.execute(q, [source, since, *chunk]))
     return out
 

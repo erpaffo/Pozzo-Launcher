@@ -496,7 +496,7 @@ def create_app(cfg) -> FastAPI:
 
     def _phone_start():
         # riaperto subito dopo la chiusura: la porta e' ancora della copia che sta uscendo, si aspetta che la lasci
-        host, port = phone_hub.conf.get("host") or "0.0.0.0", int(phone_hub.conf["port"])
+        host, port = phone_hub.conf.get("host") or "0.0.0.0", int(phone_hub.conf["port"])  # nosec B104 - ascolto su LAN voluto (telefono/torrent/UPnP)
         for _ in range(30):
             if stop.is_set() or _port_free(port, host):
                 break
@@ -682,7 +682,7 @@ def _focus_running_window(port: int) -> bool:
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{port}/api/focus", data=b"{}", method="POST",
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=3) as r:
+        with urllib.request.urlopen(req, timeout=3) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
             return bool(_json.loads(r.read()).get("window"))
     except Exception:
         return False
@@ -691,7 +691,7 @@ def _focus_running_window(port: int) -> bool:
 def _is_pozzo(port: int) -> bool:
     import urllib.request
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status", timeout=2) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status", timeout=2) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
             return b"build_stats" in r.read(400)
     except Exception:
         return False
@@ -776,7 +776,7 @@ def run(cfg, port: int = 8765, browser: bool = False, bigpicture: bool = False):
                                              data=_json.dumps({"code": done["code"]}).encode(),
                                              headers={"Content-Type": "application/json"}, method="POST")
                 try:
-                    with urllib.request.urlopen(req, timeout=60) as r:
+                    with urllib.request.urlopen(req, timeout=60) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
                         return {"ok": True, **_json.loads(r.read())}
                 except Exception as e:
                     return {"ok": False, "error": str(getattr(e, "read", lambda: b"")().decode() or e)}

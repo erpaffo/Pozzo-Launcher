@@ -26,7 +26,7 @@ def parse(data: bytes) -> list[dict]:
     if re.search(rb"<!(DOCTYPE|ENTITY)", data[:4096], re.I):  # niente entita' (billion laughs): nei feed veri non servono
         raise ValueError("Feed con DOCTYPE/ENTITY rifiutato")
     try:
-        root = ET.fromstring(data)
+        root = ET.fromstring(data)  # nosec B314 - expat>=2.4 non risolve entita' esterne, file/feed scelti dall'utente
     except ET.ParseError as e:
         raise ValueError(f"Feed non valido: {e}")
     out = []

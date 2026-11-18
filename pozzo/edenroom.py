@@ -8,7 +8,6 @@ oppure con `eden --room`; senza --token/--web-api-url resta privata. L'ingresso 
 from __future__ import annotations
 
 import atexit
-import os
 import re
 import subprocess
 import sys

@@ -6,7 +6,6 @@ l'ultimo volume e' arrivato: ogni volume e' un download a se', quindi ognuno ril
 from __future__ import annotations
 
 import re
-import shutil
 import threading
 import time
 from pathlib import Path

@@ -353,7 +353,7 @@ class PhoneHub:
         except Exception as e:
             self.error = f"Certificato HTTPS non creato: {e}"
             return False
-        config = uvicorn.Config(PhoneGate(app, self), host=self.conf.get("host") or "0.0.0.0", port=self.conf["port"],
+        config = uvicorn.Config(PhoneGate(app, self), host=self.conf.get("host") or "0.0.0.0", port=self.conf["port"],  # nosec B104 - ascolto su LAN voluto (telefono/torrent/UPnP)
                                 log_level="warning",
                                 ssl_certfile=str(crt), ssl_keyfile=str(key), lifespan="off", ws_ping_interval=10)
         self.server = uvicorn.Server(config)
@@ -591,7 +591,7 @@ class PhoneHub:
         import ipaddress
         out = []
         host = str(self.conf.get("host") or "").strip()
-        if host and host not in ("0.0.0.0", "::", "localhost"):
+        if host and host not in ("0.0.0.0", "::", "localhost"):  # nosec B104 - ascolto su LAN voluto (telefono/torrent/UPnP)
             try:
                 a = ipaddress.ip_address(host)
                 if not (a.is_private or a.is_loopback or a.is_link_local):

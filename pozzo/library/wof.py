@@ -102,7 +102,7 @@ def build_index(raw: list) -> dict:
 
 def _download() -> list:
     req = urllib.request.Request(DB_URL, headers={"User-Agent": "Pozzo"})
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
         return json.loads(r.read().decode("utf-8-sig"))
 
 

@@ -408,7 +408,7 @@ def page_url(base_url: str, page: int, kind: str = "type_a") -> str:
 
 
 def catalog_key(platform: str, url: str) -> str:
-    return f"catalog:{platform}:{hashlib.sha1(url.encode()).hexdigest()[:12]}"
+    return f"catalog:{platform}:{hashlib.sha1(url.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
 
 def entry_stem(item: CatalogItem, exts: set[str] | None = None) -> str:

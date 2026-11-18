@@ -76,7 +76,7 @@ class Game:
         if self.crc:
             ident = f"{self.crc}:{self.inner_size or self.size}"
         else:
-            ident = hashlib.sha1(f"{self.stem.lower()}:{self.size}".encode()).hexdigest()[:16]
+            ident = hashlib.sha1(f"{self.stem.lower()}:{self.size}".encode(), usedforsecurity=False).hexdigest()[:16]
         return f"{self.platform.id}/{ident}"
 
     @property
@@ -163,7 +163,7 @@ def _hash_job(args: tuple[str, str, bool, int, int]) -> dict:
                     out["inner_name"] = i.filename
                     out["inner_size"] = i.file_size
                     if full and i.file_size <= max_bytes:
-                        md5, sha1 = hashlib.md5(), hashlib.sha1()
+                        md5, sha1 = hashlib.md5(usedforsecurity=False), hashlib.sha1(usedforsecurity=False)
                         with z.open(i) as f:
                             while b := f.read(CHUNK):
                                 md5.update(b)
@@ -173,8 +173,8 @@ def _hash_job(args: tuple[str, str, bool, int, int]) -> dict:
         if os.path.getsize(path) > max_bytes:
             return out
         crc = crc_nh = 0
-        md5 = hashlib.md5() if full else None
-        sha1 = hashlib.sha1() if full else None
+        md5 = hashlib.md5(usedforsecurity=False) if full else None
+        sha1 = hashlib.sha1(usedforsecurity=False) if full else None
         first = True
         with open(path, "rb", buffering=0) as f:
             while b := f.read(CHUNK):

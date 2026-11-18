@@ -117,7 +117,7 @@ class LaunchBoxDB(BulkDB):
 
         with zipfile.ZipFile(raw) as z:
             with z.open("Metadata.xml") as f:
-                for _, el in ET.iterparse(f, events=("end",)):
+                for _, el in ET.iterparse(f, events=("end",)):  # nosec B314 - expat>=2.4 non risolve entita' esterne, file/feed scelti dall'utente
                     tag = el.tag
                     if tag == "Game":
                         t = lambda k: (el.findtext(k) or "").strip() or None  # noqa: E731
@@ -146,7 +146,7 @@ class LaunchBoxDB(BulkDB):
             if "Files.xml" in z.namelist():
                 rows = []
                 with z.open("Files.xml") as f:
-                    for _, el in ET.iterparse(f, events=("end",)):
+                    for _, el in ET.iterparse(f, events=("end",)):  # nosec B314 - expat>=2.4 non risolve entita' esterne, file/feed scelti dall'utente
                         if el.tag == "File":
                             pid = PLATFORMS.get(el.findtext("Platform") or "")
                             if pid:
@@ -232,7 +232,7 @@ class LaunchBoxDB(BulkDB):
         rows = [dict(zip(self._cols, ix["rows"][i])) for i in dict.fromkeys(ids) if i in ix["rows"]]
         if len(rows) < len(set(ids)):  # SteamAppId di un'altra console: non e' nell'indice
             cols = [d[0] for d in c.execute("SELECT * FROM games LIMIT 0").description]
-            rows = [dict(zip(cols, r)) for r in c.execute(f"SELECT * FROM games WHERE id IN ({','.join('?' * len(ids))})", ids)]
+            rows = [dict(zip(cols, r)) for r in c.execute(f"SELECT * FROM games WHERE id IN ({','.join('?' * len(ids))})", ids)]  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         if year:
             rows.sort(key=lambda r: (abs(int((r["release"] or "0")[:4] or 0) - year) if r["release"] else 99, -(r["rating_count"] or 0)))
         else:

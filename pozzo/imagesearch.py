@@ -22,7 +22,6 @@ from urllib.parse import quote, urljoin, urlsplit
 import httpx
 
 from .downloads.hosts import assert_public
-from .net import UA
 
 MAX_BYTES = 15 * 1024 * 1024
 MIN_SIDE = 100  # sotto, di solito e' un'icona o un pixel di tracciamento

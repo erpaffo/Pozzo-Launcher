@@ -128,7 +128,7 @@ def purge_keys(cache, keys: list[str], keep: tuple = ("libretro",)):
         chunk = keys[i:i + 400]
         kmarks = ",".join("?" * len(chunk))
         for tbl in ("resources", "lookups"):
-            cache.db.execute(f"DELETE FROM {tbl} WHERE key IN ({kmarks}) AND source NOT IN ({marks})", [*chunk, *keep])
+            cache.db.execute(f"DELETE FROM {tbl} WHERE key IN ({kmarks}) AND source NOT IN ({marks})", [*chunk, *keep])  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
     cache.commit()
 
 
@@ -428,7 +428,7 @@ async def scrape(cfg, cache, games: list[Game], sources: list[str], refresh: boo
 async def _scrape(cfg, cache, games: list[Game], sources: list[str], refresh: bool, progress, log,
                   retry_missing: bool = False):
     from . import net
-    from .policy import DEFAULTS, Ledger, policy_for
+    from .policy import Ledger
     ledger = Ledger(cache.folder / "cache.db")
     # cache delle risposte: con "riscarica tutto" si ignorano le risposte salvate (ma si aggiornano)
     net.HTTP_CACHE = net.HttpCache(cache.folder / "cache.db", enabled=True)
@@ -448,7 +448,7 @@ async def _scrape(cfg, cache, games: list[Game], sources: list[str], refresh: bo
 def guard_source(src, cfg, ledger, log):
     """Applica le regole (ritmo, budget, pause su errori) a tutti i limitatori di una fonte."""
     from .net import RateLimiter
-    from .policy import DEFAULTS, policy_for
+    from .policy import policy_for
     for attr, lim in vars(src).items():
         if not isinstance(lim, RateLimiter) or lim.policy is not None:
             continue

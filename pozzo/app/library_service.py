@@ -76,7 +76,7 @@ class Library:
         db = sqlite3.connect(self.path)
         db.row_factory = sqlite3.Row
         cols = ", ".join(self.DETAIL_SQL.get(c, c) for c in (r[1] for r in db.execute("PRAGMA table_info(games)")))
-        games = [dict(r) for r in db.execute(f"SELECT {cols} FROM games" + ("" if online else " WHERE store IS NOT 'online'"))]
+        games = [dict(r) for r in db.execute(f"SELECT {cols} FROM games" + ("" if online else " WHERE store IS NOT 'online'"))]  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         pool: dict[str, str] = {}
         share = pool.setdefault
         for g in games:
@@ -114,7 +114,7 @@ class Library:
         db.row_factory = sqlite3.Row
         try:
             cols = ", ".join(self.DETAIL_SQL.get(c, c) for c in (r[1] for r in db.execute("PRAGMA table_info(games)")))
-            new = [dict(r) for k in keys if (r := db.execute(f"SELECT {cols} FROM games WHERE key=?", (k,)).fetchone())]
+            new = [dict(r) for k in keys if (r := db.execute(f"SELECT {cols} FROM games WHERE key=?", (k,)).fetchone())]  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             for g in new:
                 g["genres"], g["files"] = json.loads(g["genres"] or "[]"), json.loads(g["files"] or "[]")
                 g["media"] = json.loads(g["media"] or "{}")
@@ -171,7 +171,7 @@ class Library:
                 self._url_keys = keys
             for url, meta in found.items():
                 g = self.by_key.get(self._url_keys.get(url))
-                row = g and db.execute(f"SELECT {', '.join(cols)} FROM games WHERE id=?", (g["id"],)).fetchone()
+                row = g and db.execute(f"SELECT {', '.join(cols)} FROM games WHERE id=?", (g["id"],)).fetchone()  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                 if not row:
                     continue
                 e = dict(zip(cols, row))
@@ -180,7 +180,7 @@ class Library:
                 apply_store_meta(e, meta)
                 if json.dumps(e, sort_keys=True) == before:
                     continue
-                db.execute(f"UPDATE games SET {', '.join(c + '=?' for c in cols)} WHERE id=?",
+                db.execute(f"UPDATE games SET {', '.join(c + '=?' for c in cols)} WHERE id=?",  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                            (*(json.dumps(e[c], ensure_ascii=False) if c in ("genres", "media") else e[c] for c in cols),
                             g["id"]))
                 with self.lock:
@@ -207,7 +207,7 @@ class Library:
             # library.db di una versione vecchia puo' non avere una colonna (md5/sha1): si leggono quelle presenti
             have = {r[1] for r in db.execute("PRAGMA table_info(games)")}
             keys = [k for k in self.DETAIL_SQL if k in have]
-            row = db.execute(f"SELECT {', '.join(keys)} FROM games WHERE id=?", (gid,)).fetchone() if keys else None
+            row = db.execute(f"SELECT {', '.join(keys)} FROM games WHERE id=?", (gid,)).fetchone() if keys else None  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             if row:
                 out.update(zip(keys, row))
         except sqlite3.OperationalError:

@@ -99,7 +99,7 @@ class Cache:
         out: dict[str, dict[str, dict[str, str]]] = {}
         for i in range(0, len(keys), 900):
             chunk = keys[i:i + 900]
-            q = f"SELECT key, source, field, value FROM resources WHERE key IN ({','.join('?' * len(chunk))})"
+            q = f"SELECT key, source, field, value FROM resources WHERE key IN ({','.join('?' * len(chunk))})"  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             for key, source, field, value in self.db.execute(q, chunk):
                 out.setdefault(key, {}).setdefault(source, {})[field] = value
         return out
@@ -113,8 +113,8 @@ class Cache:
             cond.append("key LIKE ?")
             args.append(platform + "/%")
         where = (" WHERE " + " AND ".join(cond)) if cond else ""
-        self.db.execute("DELETE FROM resources" + where, args)
-        self.db.execute("DELETE FROM lookups" + where, args)
+        self.db.execute("DELETE FROM resources" + where, args)  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
+        self.db.execute("DELETE FROM lookups" + where, args)  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         self.commit()
 
     # ------------------------------------------------------------ lookups
@@ -122,7 +122,7 @@ class Cache:
         out = {}
         for i in range(0, len(keys), 900):
             chunk = keys[i:i + 900]
-            q = f"SELECT key, status FROM lookups WHERE source=? AND key IN ({','.join('?' * len(chunk))})"
+            q = f"SELECT key, status FROM lookups WHERE source=? AND key IN ({','.join('?' * len(chunk))})"  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             out.update(dict(self.db.execute(q, [source, *chunk])))
         return out
 

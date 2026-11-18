@@ -15,7 +15,6 @@ from __future__ import annotations
 import json
 import os
 import time
-from pathlib import Path
 
 import httpx
 
@@ -142,7 +141,7 @@ class Client:
         Il token va nell'URL perche' qui si legge un flusso continuo; `httpx` manda anche l'intestazione."""
         url = f"{self.base_url}/api/v1/events"
         params = {"token": self.token} if self.token else None
-        with httpx.stream("GET", url, params=params, headers=self._headers(), timeout=None) as r:
+        with httpx.stream("GET", url, params=params, headers=self._headers(), timeout=None) as r:  # nosec B113 - stream SSE: nessun timeout di lettura voluto
             if r.status_code >= 400:
                 raise ApiError(r.status_code, "Eventi non disponibili")
             kind = ""

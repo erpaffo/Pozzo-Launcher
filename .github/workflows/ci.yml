@@ -55,8 +55,8 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
 
-  # Lint e sicurezza: pip-audit blocca; ruff e bandit restano informativi finché le violazioni esistenti non sono
-  # ripulite. Il job non deve avere continue-on-error, altrimenti anche pip-audit non fa fallire il workflow.
+  # Lint e sicurezza: ruff, bandit e pip-audit bloccano tutti. Il job non deve avere continue-on-error, altrimenti
+  # il workflow non fallisce.
   lint:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -72,13 +72,11 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Ruff (regole minime, vedi pyproject.toml)
-        continue-on-error: true
         env:
           PYTHONUTF8: "1"
         run: ruff check pozzo
 
       - name: Bandit (sicurezza, solo severità media/alta)
-        continue-on-error: true
         run: bandit -ll -r pozzo -x pozzo/vendor
 
       - name: pip-audit (vulnerabilità nelle dipendenze)

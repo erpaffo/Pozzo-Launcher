@@ -258,7 +258,7 @@ def game_saves(emulator: str, exe: str | None, *, rom_stem: str = "", title_id: 
 
 # ------------------------------------------------------------ indice per gioco (percorsi manuali, versioni fissate, note)
 def folder(cfg, key: str) -> Path:
-    return Path(cfg.cache) / "saves" / hashlib.sha1(key.encode()).hexdigest()[:16]
+    return Path(cfg.cache) / "saves" / hashlib.sha1(key.encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 def _index(cfg, key: str) -> dict:
@@ -373,7 +373,7 @@ def _entry(drives: dict, key: str) -> str:
 
 
 def _sha1(f: Path) -> str:
-    h = hashlib.sha1()
+    h = hashlib.sha1(usedforsecurity=False)
     with open(f, "rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
@@ -421,7 +421,7 @@ def _mapping(d: Path | None, name: str = "") -> dict:
             if hit and hit[0] == sig:
                 m = copy.deepcopy(hit[1])
             else:
-                m = yaml.load(p.read_text(encoding="utf-8"), getattr(yaml, "CSafeLoader", yaml.SafeLoader))
+                m = yaml.load(p.read_text(encoding="utf-8"), getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # nosec B506 - Loader sicuro (CSafeLoader/SafeLoader)
                 if len(_MAPS) > 16:
                     _MAPS.clear()
                 _MAPS[str(p)] = (sig, copy.deepcopy(m))
@@ -475,7 +475,7 @@ def _store(cfg, key: str, title: str, files: dict[str, tuple[Path | None, bytes 
                 meta[k] = {"hash": _sha1(src), "size": src.stat().st_size}
             else:
                 z.writestr(_entry(m["drives"], k), data)
-                meta[k] = {"hash": hashlib.sha1(data).hexdigest(), "size": len(data)}
+                meta[k] = {"hash": hashlib.sha1(data, usedforsecurity=False).hexdigest(), "size": len(data)}
     tmp.replace(d / name)
     m["backups"].append({"name": name, "when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(when)), "os": _os(),
                          "files": meta, "registry": {"hash": None}, "children": []})

@@ -126,7 +126,7 @@ class UserData:
 
     def set_flag(self, key: str, field: str, value):
         assert field in ("favorite", "hidden", "preferred", "status", "last_played", "note", "my_rating")
-        self._exec(f"INSERT INTO user_games(key, {field}) VALUES(?, ?) "
+        self._exec(f"INSERT INTO user_games(key, {field}) VALUES(?, ?) "  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                    f"ON CONFLICT(key) DO UPDATE SET {field}=excluded.{field}", (key, value))
         self._stamp("game", key, field)
 
@@ -225,7 +225,7 @@ class UserData:
                  "low", "currency", "checked", "alert", "seen", "key_price", "key_low", "key_url", "aks", "aks_checked", "cover")
 
     def wishlist(self) -> list[dict]:
-        cur = self._q(f"SELECT {', '.join(self.WISH_COLS)} FROM wishlist ORDER BY title COLLATE NOCASE")
+        cur = self._q(f"SELECT {', '.join(self.WISH_COLS)} FROM wishlist ORDER BY title COLLATE NOCASE")  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         return [dict(zip(self.WISH_COLS, r)) for r in cur]
 
     def wish_add(self, wid: str, title: str, steam_appid: str = "", itad_id: str = "", target: float | None = None,
@@ -241,7 +241,7 @@ class UserData:
     def wish_update(self, wid: str, **f):
         f = {k: v for k, v in f.items() if k in self.WISH_COLS and k != "id"}
         if f:
-            self._exec(f"UPDATE wishlist SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), wid))
+            self._exec(f"UPDATE wishlist SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), wid))  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             if f.keys() & {"title", "target"}:  # scelte dell'utente (i prezzi si riscaricano su ogni PC)
                 self._stamp("wish", wid, "")
 

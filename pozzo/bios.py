@@ -90,7 +90,7 @@ def _cartelle(console_id: str, folder: str | None) -> list[Path]:
 
 def _hash(path: Path) -> tuple[str, str]:
     """(sha1, md5) del file, letto a blocchi da 1 MiB. Solleva OSError se non si legge."""
-    s1, m5 = hashlib.sha1(), hashlib.md5()
+    s1, m5 = hashlib.sha1(usedforsecurity=False), hashlib.md5(usedforsecurity=False)
     with open(path, "rb") as f:
         for blocco in iter(lambda: f.read(1 << 20), b""):
             s1.update(blocco)

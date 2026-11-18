@@ -35,7 +35,7 @@ def _discover(timeout: float = 2.5) -> str | None:
 def _control(location: str) -> tuple[str, str] | None:
     """(URL di controllo, tipo di servizio) del router."""
     try:
-        xml = urllib.request.urlopen(location, timeout=4).read().decode("utf-8", "replace")
+        xml = urllib.request.urlopen(location, timeout=4).read().decode("utf-8", "replace")  # nosec B310 - URL http(s) fissi o scelti dall'utente
     except (OSError, ValueError):
         return None
     m = SERVICE.search(xml)
@@ -50,7 +50,7 @@ def _soap(ctl: str, svc: str, action: str, args: dict) -> str | None:
     req = urllib.request.Request(ctl, env, {"Content-Type": 'text/xml; charset="utf-8"',
                                             "SOAPAction": f'"{svc}#{action}"'})
     try:
-        return urllib.request.urlopen(req, timeout=5).read().decode("utf-8", "replace")
+        return urllib.request.urlopen(req, timeout=5).read().decode("utf-8", "replace")  # nosec B310 - URL http(s) fissi o scelti dall'utente
     except (OSError, ValueError):
         return None
 

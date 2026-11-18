@@ -115,7 +115,7 @@ class Shots:
                 if not keys:
                     return []
                 q = ",".join("?" * len(keys))
-                rows = self.db.execute(f"SELECT id, key, file, taken, source, w, h, kind FROM screenshots WHERE key IN ({q}) "
+                rows = self.db.execute(f"SELECT id, key, file, taken, source, w, h, kind FROM screenshots WHERE key IN ({q}) "  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                                        "ORDER BY taken DESC", keys).fetchall()
         return [{"id": r[0], "key": r[1], "file": r[2], "taken": r[3], "source": r[4], "w": r[5], "h": r[6], "kind": r[7]}
                 for r in rows]

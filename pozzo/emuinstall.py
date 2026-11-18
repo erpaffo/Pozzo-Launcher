@@ -325,13 +325,13 @@ def _unpack(arc: Path, out: Path, name: str) -> None:
     elif n.endswith(".7z"):
         import py7zr
         with py7zr.SevenZipFile(arc) as z:
-            z.extractall(out)
+            z.extractall(out)  # nosec B202 - estrazione di archivi scelti dall'utente, i path sono validati dalla libreria
     elif re.search(r"\.tar(\.\w+)?$|\.tgz$", n):
         with tarfile.open(arc) as t:
             t.extractall(out, filter="data")
     elif n.endswith(".zip"):  # Linux: dentro c'e' l'AppImage, i permessi si rimettono sotto
         with zipfile.ZipFile(arc) as z:
-            z.extractall(out)
+            z.extractall(out)  # nosec B202 - estrazione di archivi scelti dall'utente, i path sono validati dalla libreria
     else:  # AppImage
         shutil.copy2(arc, out / Path(name).name)
     root = out.resolve()

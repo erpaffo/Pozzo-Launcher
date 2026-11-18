@@ -2,6 +2,8 @@
 
 [tool.ruff]
 target-version = "py312"
+# codice di terzi copiato così com'è: non si tocca (anche bandit lo esclude con -x)
+extend-exclude = ["pozzo/vendor"]
 
 # Stesse regole minime del job "lint" (ruff check pozzo): errori veri, non stile.
 [tool.ruff.lint]

@@ -52,7 +52,7 @@ def _load_index(cfg, pid: str):
                 import urllib.request
                 from urllib.parse import quote
                 rel = f"metadat/redump/{system}.dat"
-                with urllib.request.urlopen(L.RAW + quote(rel), timeout=15) as r:
+                with urllib.request.urlopen(L.RAW + quote(rel), timeout=15) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
                     data = r.read()
                 f = Path(cfg.cache) / "libretro" / rel
                 f.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +67,7 @@ def _hash_files(files: list[Path], progress, cancel) -> list[dict]:
     total = sum(f.stat().st_size for f in files) or 1
     done, out = 0, []
     for f in files:
-        crc, md5, sha1 = 0, hashlib.md5(), hashlib.sha1()
+        crc, md5, sha1 = 0, hashlib.md5(usedforsecurity=False), hashlib.sha1(usedforsecurity=False)
         with open(f, "rb") as fh:
             while chunk := fh.read(CHUNK):
                 if cancel.is_set():

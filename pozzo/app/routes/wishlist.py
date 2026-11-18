@@ -9,7 +9,7 @@ import time
 
 from fastapi import APIRouter, Body, HTTPException
 
-from ... import config as C, i18n as I, profilecfg as PC, stores as STORES
+from ... import i18n as I, profilecfg as PC, stores as STORES
 from ...matching import normalize
 
 

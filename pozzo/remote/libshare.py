@@ -60,7 +60,7 @@ def shared(cfg, g: dict) -> bool:
 
 def ref(g: dict) -> str:
     """Identificativo stabile del gioco (il numero cambia a ogni ricostruzione della libreria)."""
-    return hashlib.sha1(str(g["key"]).encode()).hexdigest()[:12]
+    return hashlib.sha1(str(g["key"]).encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def _link(p: Path) -> bool:

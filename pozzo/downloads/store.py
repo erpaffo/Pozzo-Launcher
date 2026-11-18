@@ -23,7 +23,7 @@ class Store:
         """Quali `ids` del feed sono gia' stati visti (per non accodarli due volte)."""
         with self.lock:
             return {r[0] for i in range(0, len(ids), 500) for r in self.db.execute(
-                f"SELECT item FROM rss_seen WHERE feed=? AND item IN ({','.join('?' * len(ids[i:i + 500]))})", [feed, *ids[i:i + 500]])}
+                f"SELECT item FROM rss_seen WHERE feed=? AND item IN ({','.join('?' * len(ids[i:i + 500]))})", [feed, *ids[i:i + 500]])}  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
 
     def rss_mark(self, feed: str, ids: list[str], keep: int = 5000):
         with self.lock, self.db:

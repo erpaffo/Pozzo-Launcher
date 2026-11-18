@@ -75,7 +75,7 @@ def apply(cfg, pairs, log=print):
         db = dbs[db_name]
         try:
             for old, new, _, _ in pairs:
-                db.execute(f"UPDATE OR REPLACE {table} SET key=? WHERE key=?", (new, old))
+                db.execute(f"UPDATE OR REPLACE {table} SET key=? WHERE key=?", (new, old))  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         except sqlite3.OperationalError:
             pass  # tabella non ancora creata (o non di questo database)
     for name in ("userdata.db", *profiles):  # ore delle modifiche per la sincronizzazione tra PC

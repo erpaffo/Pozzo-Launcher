@@ -146,7 +146,7 @@ class HttpCache:
                            (content.decode("utf-8", "replace") if isinstance(content, bytes) else None),
                            {k: v for k, v in sorted((data or {}).items()) if k.lower() not in SECRET_PARAMS}],
                           sort_keys=True, default=str)
-        return hashlib.sha1(raw.encode()).hexdigest()
+        return hashlib.sha1(raw.encode(), usedforsecurity=False).hexdigest()
 
     def get(self, key: str, ttl: float):
         if not self.enabled:
@@ -179,7 +179,7 @@ class HttpCache:
         if key is not None:
             cond.append("key=?")
             args.append(key)
-        n = self.db.execute("DELETE FROM http_cache" + (" WHERE " + " AND ".join(cond) if cond else ""), args).rowcount
+        n = self.db.execute("DELETE FROM http_cache" + (" WHERE " + " AND ".join(cond) if cond else ""), args).rowcount  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         self.db.commit()
         return n
 
@@ -190,13 +190,13 @@ class HttpCache:
     def stats(self) -> dict[str, dict]:
         """{fonte: {rows, bytes, expired}}."""
         cond, args = self._expired_sql()
-        q = (f"SELECT COALESCE(source, ''), COUNT(*), COALESCE(SUM(LENGTH(body)), 0), SUM(CASE WHEN {cond} THEN 1 ELSE 0 END) "
+        q = (f"SELECT COALESCE(source, ''), COUNT(*), COALESCE(SUM(LENGTH(body)), 0), SUM(CASE WHEN {cond} THEN 1 ELSE 0 END) "  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
              "FROM http_cache GROUP BY 1")
         return {s or "altro": {"rows": n, "bytes": b, "expired": e or 0} for s, n, b, e in self.db.execute(q, args)}
 
     def purge_expired(self) -> int:
         cond, args = self._expired_sql()
-        n = self.db.execute("DELETE FROM http_cache WHERE " + cond, args).rowcount
+        n = self.db.execute("DELETE FROM http_cache WHERE " + cond, args).rowcount  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
         self.db.commit()
         return n
 

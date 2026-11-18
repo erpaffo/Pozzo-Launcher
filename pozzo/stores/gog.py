@@ -13,7 +13,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import quote
 
 from .. import noclient as NC
 from .. import profilecfg as PC

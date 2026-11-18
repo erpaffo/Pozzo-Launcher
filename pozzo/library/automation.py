@@ -107,7 +107,7 @@ def env_for(event: str, key: str, title: str, platform: str, exe: str | None, **
 def run(cmd: str, cwd: str | None, env: dict, wait: bool) -> str | None:
     """Esegue il comando; ritorna il testo dell'errore o None. Con wait aspetta la fine (max WAIT_MAX s)."""
     try:
-        p = subprocess.Popen(cmd, shell=True, cwd=cwd or None, env=env, creationflags=_NOWIN)
+        p = subprocess.Popen(cmd, shell=True, cwd=cwd or None, env=env, creationflags=_NOWIN)  # nosec B602 - comando definito dall'utente
     except Exception as e:
         return f"{type(e).__name__}: {e}"
     if not wait:

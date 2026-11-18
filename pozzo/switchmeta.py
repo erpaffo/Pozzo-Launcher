@@ -60,7 +60,7 @@ def load_keys(configured: str = "") -> dict[str, bytes]:
 
 
 def _ecb_dec(key: bytes, data: bytes) -> bytes:
-    d = Cipher(algorithms.AES(key), modes.ECB()).decryptor()
+    d = Cipher(algorithms.AES(key), modes.ECB()).decryptor()  # nosec B305 - il formato Switch impone AES-ECB
     return d.update(data) + d.finalize()
 
 

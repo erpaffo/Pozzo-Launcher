@@ -402,7 +402,7 @@ def _catalog_to_store_game(item: CatalogItem, console_pid: str, meta: dict | Non
     per Switch il Title ID dice se la voce e' il gioco, un aggiornamento o una DLC. `url` e' l'elenco
     dello store: un catalogo di schede e-Reader e' tutto DLC.
     """
-    from ..scanner import clean_title, regions_of
+    from ..scanner import regions_of
 
     name = item["name"]
     stem = entry_stem(item, _platform_exts(console_pid))
@@ -412,7 +412,7 @@ def _catalog_to_store_game(item: CatalogItem, console_pid: str, meta: dict | Non
         content = storekind.switch_kind(meta.get("title_id") or "")
     content = content or storekind.catalog_kind(name, title, item.get("size"), console_pid, url)
     return {
-        "key": f"{console_pid}/net:{hashlib.sha1(item['url'].encode()).hexdigest()[:16]}",
+        "key": f"{console_pid}/net:{hashlib.sha1(item['url'].encode(), usedforsecurity=False).hexdigest()[:16]}",
         "pid": console_pid,
         "name": name,
         "title": title,
@@ -793,7 +793,7 @@ def _share_metadata(merged: dict, groups: dict, primary: set, res: dict) -> dict
 
 # ---------------------------------------------------------------- build
 
-INSERT_GAME = ("INSERT INTO games(key, platform, title, sort_title, year, release_date, developer, publisher,"
+INSERT_GAME = ("INSERT INTO games(key, platform, title, sort_title, year, release_date, developer, publisher,"  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                " genres, players, rating, description, region, found, files, media, video_url, canonical,"
                " crc, origin, grp, is_primary, store, installed, launch, install_uri, page, store_playtime,"
                " install_dir, rating_count, rating_critics, ratings, size, store_pages, content, md5, sha1) VALUES("

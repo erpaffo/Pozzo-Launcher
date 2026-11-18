@@ -36,7 +36,7 @@ def dest_root(settings: dict) -> Path:
 
 
 def _id(p: Path) -> str:
-    return hashlib.sha1(str(p).lower().encode()).hexdigest()[:12]
+    return hashlib.sha1(str(p).lower().encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def find_setup(folder: Path) -> Path | None:

@@ -16,7 +16,6 @@ import socket
 import struct
 import sys
 import threading
-import time
 import uuid
 from pathlib import Path
 
@@ -35,7 +34,7 @@ def pipe_paths(count: int = 10) -> list[str]:
     """Percorsi possibili dei canali di Discord (il primo libero è quello giusto)."""
     if sys.platform == "win32":
         return [rf"\\?\pipe\discord-ipc-{i}" for i in range(count)]
-    base = os.environ.get("XDG_RUNTIME_DIR") or os.environ.get("TMPDIR") or "/tmp"
+    base = os.environ.get("XDG_RUNTIME_DIR") or os.environ.get("TMPDIR") or "/tmp"  # nosec B108 - percorso del socket IPC di Discord
     return [str(Path(base) / f"discord-ipc-{i}") for i in range(count)]
 
 

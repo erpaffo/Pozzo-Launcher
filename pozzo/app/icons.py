@@ -130,7 +130,7 @@ class Icons:
     def site(self, url: str, key: str | None = None, badge: tuple[str, str] | None = None) -> Path | None:
         """Icona di un sito (store PC o store online di una console)."""
         host = urlparse(url).netloc or url
-        key = key or "site_" + hashlib.sha1(host.encode()).hexdigest()[:12]
+        key = key or "site_" + hashlib.sha1(host.encode(), usedforsecurity=False).hexdigest()[:12]
         hit = self._cached(key)
         if hit and hit.suffix != ".none":
             return hit

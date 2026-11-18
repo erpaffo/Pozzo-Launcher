@@ -138,7 +138,7 @@ def parse_xml(source) -> dict:
     if isinstance(source, (str, bytes)) and (source.lstrip()[:1] in ("<", b"<")):
         source = io.StringIO(source.decode("utf-8") if isinstance(source, bytes) else source)
     version, games, titles = "", {}, {}
-    for _event, elem in ET.iterparse(source, events=("end",)):
+    for _event, elem in ET.iterparse(source, events=("end",)):  # nosec B314 - expat>=2.4 non risolve entita' esterne, file/feed scelti dall'utente
         if elem.tag == "SwitchTDB":
             version = elem.get("version") or ""
             continue
@@ -190,7 +190,7 @@ class GameTDB:
         tmp = self.folder / "switchtdb.zip.part"
         try:
             req = urllib.request.Request(TDB_ZIP, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:
+            with urllib.request.urlopen(req, timeout=60) as r, open(tmp, "wb") as f:  # nosec B310 - URL http(s) fissi o scelti dall'utente
                 shutil.copyfileobj(r, f)
             with zipfile.ZipFile(tmp) as z:
                 names = [n for n in z.namelist() if n.lower().endswith(".xml")]

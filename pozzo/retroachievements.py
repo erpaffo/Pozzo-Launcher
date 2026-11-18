@@ -402,7 +402,7 @@ def rom_hash(path: Path, platform_id: str) -> str | None:
     pid = (platform_id or "").strip().lower()
     path = Path(path)
     if pid in _ARCADE_NAME_MD5:
-        return hashlib.md5(path.stem.encode("ascii", "ignore")).hexdigest().lower()
+        return hashlib.md5(path.stem.encode("ascii", "ignore"), usedforsecurity=False).hexdigest().lower()
     if not path.is_file() or path.suffix.lower() in (".zip", ".7z"):
         return None
     try:
@@ -411,27 +411,27 @@ def rom_hash(path: Path, platform_id: str) -> str | None:
         return None
 
     if pid in _RAW_MD5_CONSOLES:
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     if pid == "nes":
         if data[:4] == b"NES\x1a" and len(data) > 16:
             data = data[16:]
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     if pid == "fds":
         if data[:4] == b"FDS\x1a" and len(data) > 16:
             data = data[16:]
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     if pid in ("snes", "pcengine"):
         if len(data) > 512 and (len(data) % 1024) == 512:
             data = data[512:]
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     if pid == "atari7800":
         if len(data) > 128 and data[1:10] == b"ATARI7800":
             data = data[128:]
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     if pid == "atarilynx":
         if len(data) > 64 and data[:4] == b"LYNX":
             data = data[64:]
-        return hashlib.md5(data).hexdigest().lower()
+        return hashlib.md5(data, usedforsecurity=False).hexdigest().lower()
     return None
 
 

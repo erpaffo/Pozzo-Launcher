@@ -18,7 +18,6 @@ from .. import matching
 from ..matching import normalize
 from ..net import RateLimiter, download_media, make_client, request
 from .amazon import Amazon
-from .base import StoreGame
 from .battlenet import BattleNet
 from .epic import Epic
 from .gog import Gog

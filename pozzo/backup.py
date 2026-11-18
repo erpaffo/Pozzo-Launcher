@@ -207,7 +207,7 @@ def _counts(db: Path) -> dict:
     try:
         for t in out:
             try:
-                out[t] = con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                out[t] = con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
             except sqlite3.Error:
                 pass
     finally:

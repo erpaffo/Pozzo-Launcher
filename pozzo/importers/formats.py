@@ -75,7 +75,7 @@ def _xml(path) -> ET.Element:
     if re.search(rb"<!(DOCTYPE|ENTITY)", raw, re.I):  # ElementTree non e' protetto da entita' ricorsive
         raise ImportError_("xml")
     try:
-        return ET.fromstring(raw)
+        return ET.fromstring(raw)  # nosec B314 - expat>=2.4 non risolve entita' esterne, file/feed scelti dall'utente
     except ET.ParseError as e:
         raise ImportError_("xml") from e
 

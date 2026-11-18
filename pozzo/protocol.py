@@ -119,7 +119,7 @@ def forward(url: str, port: int = 8765) -> bool:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=3) as r:
+        with urllib.request.urlopen(req, timeout=3) as r:  # nosec B310 - URL http(s) fissi o scelti dall'utente
             return json.loads(r.read().decode("utf-8")).get("ok") is True
     except Exception:
         return False

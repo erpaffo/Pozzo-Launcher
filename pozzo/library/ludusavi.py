@@ -72,7 +72,7 @@ def update(cfg, force: bool = False) -> bool:
         r = httpx.get(URL, timeout=httpx.Timeout(120, connect=15), follow_redirects=True)
         r.raise_for_status()
         loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
-        small = reduce(yaml.load(r.text, Loader=loader))
+        small = reduce(yaml.load(r.text, Loader=loader))  # nosec B506 - Loader sicuro (CSafeLoader/SafeLoader)
         out.parent.mkdir(parents=True, exist_ok=True)
         tmp = out.with_suffix(".part")
         tmp.write_text(json.dumps(small, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

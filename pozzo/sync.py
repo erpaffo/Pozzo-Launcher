@@ -242,7 +242,7 @@ def merge(ud: UserData, b: dict) -> dict:
                 if f not in GAME_FIELDS:
                     continue
                 if _newer(rt, st.get(("game", key, f), 0), lg.get(f), val):
-                    db.execute(f"INSERT INTO user_games(key, {f}) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET {f}=excluded.{f}",
+                    db.execute(f"INSERT INTO user_games(key, {f}) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET {f}=excluded.{f}",  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                                (key, val))
                     stamps.append(("game", key, f, rt))
                     n["games"] += 1
@@ -284,7 +284,7 @@ def merge(ud: UserData, b: dict) -> dict:
             lt = max(st.get(("wish", wid, ""), 0), st.get(("wish", wid, DELETED), 0))
             if w["t"] > lt or (w["t"] == lt == 0 and wid not in lwish):
                 vals = [w.get(k) for k in WISH_FIELDS]
-                db.execute(f"INSERT INTO wishlist(id, {', '.join(WISH_FIELDS)}) VALUES(?{', ?' * len(WISH_FIELDS)}) "
+                db.execute(f"INSERT INTO wishlist(id, {', '.join(WISH_FIELDS)}) VALUES(?{', ?' * len(WISH_FIELDS)}) "  # nosec B608 - solo nomi/placeholder fissi, valori via parametri
                            f"ON CONFLICT(id) DO UPDATE SET {', '.join(f'{k}=excluded.{k}' for k in WISH_FIELDS)}",
                            (wid, *vals))
                 stamps.append(("wish", wid, "", w["t"]))

@@ -30,7 +30,7 @@ def build_router(ctx) -> APIRouter:
 
     # ------------------------------------------------------------ immagini
     def _thumb(src: Path, w: int) -> Path:
-        h = hashlib.sha1(f"{src}:{src.stat().st_mtime_ns}".encode()).hexdigest()[:20]
+        h = hashlib.sha1(f"{src}:{src.stat().st_mtime_ns}".encode(), usedforsecurity=False).hexdigest()[:20]
         out = thumbs_dir / str(w) / f"{h}.webp"
         if out.exists():
             return out
@@ -62,7 +62,7 @@ def build_router(ctx) -> APIRouter:
         """Salva i byte (gia' verificati) nella cache dell'app e li sceglie come immagine dell'utente."""
         folder = Path(cfg.cache) / "media" / "user"
         folder.mkdir(parents=True, exist_ok=True)
-        dest = folder / f"{hashlib.sha1(data).hexdigest()}.{ext}"
+        dest = folder / f"{hashlib.sha1(data, usedforsecurity=False).hexdigest()}.{ext}"
         dest.write_bytes(data)
         if ext in ("png", "jpg", "bmp"):
             try:
@@ -246,7 +246,7 @@ def build_router(ctx) -> APIRouter:
         # ricontrollare. L'ETag identifica il FILE (percorso + data + dimensione): se e' lo stesso si
         # risponde 304 e il browser usa la sua copia, altrimenti riceve l'immagine giusta.
         st = src.stat()
-        etag = '"' + hashlib.sha1(f"{rel}:{st.st_mtime_ns}:{st.st_size}:{w}".encode()).hexdigest()[:20] + '"'
+        etag = '"' + hashlib.sha1(f"{rel}:{st.st_mtime_ns}:{st.st_size}:{w}".encode(), usedforsecurity=False).hexdigest()[:20] + '"'
         headers = {"Cache-Control": "no-cache", "ETag": etag}
         if request.headers.get("if-none-match") == etag:
             return Response(status_code=304, headers=headers)
@@ -268,7 +268,7 @@ def build_router(ctx) -> APIRouter:
     def _remote_cached(url_: str) -> str | None:
         """Immagine remota gia' scaricata (percorso relativo alla cache) o None. Niente glob: la cartella ha
         decine di migliaia di file e la griglia ne chiede decine al secondo."""
-        h = hashlib.sha1(url_.encode()).hexdigest()
+        h = hashlib.sha1(url_.encode(), usedforsecurity=False).hexdigest()
         folder = Path(cfg.cache) / "media" / "net"
         hit = next((p for p in (folder / f"{h}.{e}" for e in remote_exts) if p.exists()), None)
         return hit.relative_to(cfg.cache).as_posix() if hit else None
@@ -276,7 +276,7 @@ def build_router(ctx) -> APIRouter:
     def _fetch_remote(url_: str) -> str | None:
         from ...net import sniff
         from urllib.parse import urlparse
-        h = hashlib.sha1(url_.encode()).hexdigest()
+        h = hashlib.sha1(url_.encode(), usedforsecurity=False).hexdigest()
         folder = Path(cfg.cache) / "media" / "net"
         hit = _remote_cached(url_)
         if hit:
