@@ -14,7 +14,14 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # a mano (Actions > Release > Run workflow): scegli il tag in «Use workflow from» per pubblicare quella release;
+  # con skip_tests salta i test (lunghi), la build e la pubblicazione restano uguali
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: "Salta i test (pubblica comunque build e release se il ref e' un tag v*)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -55,6 +62,7 @@ jobs:
   # i test girano in parallelo alla build (3 parti per sistema); la release parte solo se sono tutti verdi
   test:
     needs: version
+    if: ${{ !inputs.skip_tests }}
     name: test ${{ matrix.name }} (${{ matrix.shard }}/3)
     runs-on: ${{ matrix.os }}
     strategy:
@@ -280,8 +288,8 @@ jobs:
 
   release:
     # parte anche se una build e' fallita: si pubblicano le piattaforme riuscite (vedi «Piattaforme mancanti»)
-    # (ma solo con i test verdi)
-    if: ${{ !cancelled() && needs.test.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
+    # (ma solo con i test verdi, o saltati a mano con skip_tests)
+    if: ${{ !cancelled() && (needs.test.result == 'success' || needs.test.result == 'skipped') && startsWith(github.ref, 'refs/tags/v') }}
     needs: [version, test, build]
     runs-on: ubuntu-latest
     steps:
