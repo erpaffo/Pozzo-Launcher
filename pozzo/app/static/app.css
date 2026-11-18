@@ -173,6 +173,9 @@ label.icon-btn input { margin: 0; }
 /* ---------------- pannello dettaglio */
 #detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 92vw); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -20px 0 50px rgba(0,0,0,.5); transform: translateX(105%); transition: transform .18s ease; z-index: 20; overflow-y: auto; scrollbar-width: thin; }
 #detail.open { transform: none; }
+/* chiuso: nei layout a finestra resta al centro con opacity 0 e copriva toolbar e griglia (clic e Tab).
+   visibility si anima con le altre proprieta': resta visibile fino alla fine della dissolvenza */
+#detail:not(.open) { visibility: hidden; pointer-events: none; transition-property: opacity, transform, visibility; }
 html[data-detail-modal="true"] #app::after,
 html:has(#detail.open[data-modal-layout="cockpit"]) #app::after,
 html:has(#detail.open[data-modal-layout="editorial"]) #app::after {
