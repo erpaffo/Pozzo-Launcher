@@ -164,12 +164,12 @@ async function saveFilters(items) {
 }
 function currentFilter() {
   const v = S.view || {}, view = ["all", "platform", "store", "status"].includes(v.type) ? { type: v.type, id: v.id || "" } : undefined;
-  return { disc: { ...S.disc }, lang: S.langFilter, sort: S.sort, group: S.group, search: S.search, inst: S.instFilter, ...(view ? { view } : {}) };
+  return { disc: (({ preset, genre, decade, genreMode }) => ({ preset: [...preset], genre: [...genre], decade: [...decade], genreMode }))(discNorm(S.disc)), lang: S.langFilter, sort: S.sort, group: S.group, search: S.search, inst: S.instFilter, ...(view ? { view } : {}) };
 }
 function applyFilter(f) {
   // la console/lo store/lo stato salvati: si cambia vista prima, gli altri filtri la rinfrescano
   if (f.view && JSON.stringify(f.view) !== JSON.stringify({ type: S.view.type, id: S.view.id || "" })) setView(f.view.id ? f.view : { type: f.view.type });
-  S.disc = { preset: "", genre: "", decade: "", ...f.disc }; store.set("disc", S.disc);
+  S.disc = discNorm(f.disc); store.set("disc", S.disc);
   S.langFilter = f.lang || ""; store.set("language", S.langFilter);
   if (f.sort) { S.sort = f.sort; store.set("sorts", { ...store.get("sorts", {}), [S.view.type]: S.sort }); }
   S.group = f.group || ""; store.set("group", S.group);
@@ -325,14 +325,38 @@ function setDrawer(open, restoreFocus = true) {
   else if (restoreFocus) toggle.focus();
 }
 
+// Tendine a scelta multipla (details + caselle): gli id #disc-* restano sull'elemento principale
 function renderDiscTools() {
-  const f = S.disc, opt = (v, l, sel, t = "") => `<option value="${esc(v)}"${String(v) === String(sel) ? " selected" : ""}${t ? ` title="${esc(t)}"` : ""}>${esc(l)}</option>`;
-  const nCrit = S.games.filter((g) => g.critics != null).length;
-  $("#disc-preset").innerHTML = PRESETS.map((p) => opt(p.id, p.id === "critics" ? t("h.disc.withScore", {l: p.label, n: nCrit}) : p.label, f.preset, p.hint)).join("");
-  $("#disc-genre").innerHTML = opt("", t("h.disc.allGenres"), f.genre) + genreList(S.games).map((x) => opt(x.id, x.label, f.genre)).join("");
-  $("#disc-decade").innerHTML = opt("", t("h.disc.allYears"), f.decade) + decadeList(S.games).map((d) => opt(d, t("h.disc.decade", {y: String(d).slice(2), full: d}), f.decade)).join("");
-  for (const k of ["preset", "genre", "decade"]) $(`#disc-${k}`).classList.toggle("on", !!f[k]);
-  $("#disc-reset").hidden = !(f.preset || f.genre || f.decade);
+  const f = discNorm(S.disc), nCrit = S.games.filter((g) => g.critics != null).length;
+  const chk = (k, v, l, hint = "") => `<label class="msel-opt"${hint ? ` title="${esc(hint)}"` : ""}><input type="checkbox" value="${esc(v)}"${f[k].includes(String(v)) ? " checked" : ""}> <span>${esc(l)}</span></label>`;
+  const modes = ["any", "all"].map((m) => `<label class="msel-opt"><input type="radio" name="disc-genre-mode" data-mode="${m}"${f.genreMode === m ? " checked" : ""}> <span>${esc(t(m === "all" ? "h.disc.modeAll" : "h.disc.modeAny"))}</span></label>`).join("");
+  const body = {
+    preset: PRESETS.filter((p) => p.id).map((p) => chk("preset", p.id, p.id === "critics" ? t("h.disc.withScore", {l: p.label, n: nCrit}) : p.label, p.hint)).join(""),
+    genre: `<div class="msel-mode" role="radiogroup" aria-label="${esc(t("h.disc.modeLabel"))}">${modes}</div>` + genreList(S.games).map((x) => chk("genre", x.id, x.label)).join(""),
+    decade: decadeList(S.games).map((d) => chk("decade", d, t("h.disc.decade", {y: String(d).slice(2), full: d}))).join(""),
+  };
+  const aria = { preset: "a.toolbar.discover", genre: "a.toolbar.genre", decade: "a.toolbar.decade" };
+  for (const k of ["preset", "genre", "decade"]) {
+    const el = $(`#disc-${k}`), open = el.open;
+    el.innerHTML = `<summary aria-label="${esc(t(aria[k]))}"></summary><div class="msel-panel"><button type="button" class="msel-clear">${esc(t("h.disc.clearSel"))}</button>${body[k]}</div>`;
+    el.open = open;
+  }
+  syncDiscTools();
+}
+// Etichette, .on e Azzera dallo stato corrente (senza ridisegnare i pannelli: il focus resta)
+function syncDiscTools() {
+  const f = discNorm(S.disc);
+  const lbl = {
+    preset: () => f.preset.length === 1 ? (PRESETS.find((p) => p.id === f.preset[0])?.label || f.preset[0]) : f.preset.length ? t("h.disc.nPresets", {n: f.preset.length}) : PRESETS[0].label,
+    genre: () => f.genre.length === 1 ? (genreList(S.games).find((x) => x.id === f.genre[0])?.label || f.genre[0]) : f.genre.length ? t("h.disc.nGenres", {n: f.genre.length}) : t("h.disc.allGenres"),
+    decade: () => f.decade.length === 1 ? t("h.disc.decade", {y: f.decade[0].slice(2), full: f.decade[0]}) : f.decade.length ? t("h.disc.nDecades", {n: f.decade.length}) : t("h.disc.allYears"),
+  };
+  for (const k of ["preset", "genre", "decade"]) {
+    const el = $(`#disc-${k}`), sm = el.querySelector("summary");
+    if (sm) sm.textContent = lbl[k]();
+    el.classList.toggle("on", f[k].length > 0);
+  }
+  $("#disc-reset").hidden = !discActive(f);
 }
 
 function renderShopTools() {

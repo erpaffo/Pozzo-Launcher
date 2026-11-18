@@ -13,7 +13,7 @@ const S = {
   instFilter: store.get("instFilter", "all"), stores: [],
   allLocal: store.get("allLocal", false), // Tutti i giochi: solo quelli presenti sul PC, divisi per console
   langFilter: store.get("language", ""),
-  disc: store.get("disc", { preset: "", genre: "", decade: "" }),
+  disc: discNorm(store.get("disc", {})),
   shopF: store.get("shopF", { src: "", plat: "", size: "", hideDlc: false }), shop: [], shopIds: new Set(),
 };
 const usesDrawer = () => GS.experience?.nav !== "sidebar"; // top e none aprono la navigazione come cassetto
@@ -200,7 +200,7 @@ function computeItems() {
   if (S.langFilter) it = it.filter((g) => gameLanguages(g).includes(S.langFilter));
   const d = discover(it, S.disc);
   it = d.items;
-  S.discScore = d.preset.score || null;
+  S.discScore = d.score || d.preset.score || null;
   if (S.search) {
     const toks = fold(S.search).split(/\s+/).filter(Boolean);
     it = it.filter((g) => toks.every((t) => g.q.includes(t)));

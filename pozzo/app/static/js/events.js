@@ -243,13 +243,33 @@ function bind() {
     }, 120);
   });
   $("#sort").value = S.sort;
-  for (const k of ["preset", "genre", "decade"]) {
-    $(`#disc-${k}`).onchange = (e) => { S.disc[k] = e.target.value; store.set("disc", S.disc); e.target.classList.toggle("on", !!e.target.value); $("#disc-reset").hidden = !(S.disc.preset || S.disc.genre || S.disc.decade); refreshGrid(); };
-  }
+  // tendine multiple: il pannello resta aperto mentre si spuntano più voci
+  const mselIds = ["preset", "genre", "decade"].map((k) => $(`#disc-${k}`));
+  const closeMsel = (except) => mselIds.forEach((d) => { if (d !== except) d.open = false; });
+  const tools = $("#disc-preset").closest(".tb-group");
+  tools.addEventListener("change", (e) => {
+    const ms = e.target.closest(".msel"); if (!ms) return;
+    const k = ms.id.slice(5);
+    if (e.target.dataset.mode) S.disc.genreMode = e.target.dataset.mode;
+    else S.disc[k] = [...ms.querySelectorAll('input[type="checkbox"]:checked')].map((i) => i.value);
+    store.set("disc", S.disc); syncDiscTools(); refreshGrid();
+  });
+  tools.addEventListener("click", (e) => {
+    if (!e.target.closest(".msel-clear")) return;
+    const ms = e.target.closest(".msel");
+    S.disc[ms.id.slice(5)] = []; if (ms.id === "disc-genre") S.disc.genreMode = "any";
+    store.set("disc", S.disc); renderDiscTools(); refreshGrid();
+  });
+  for (const d of mselIds) d.addEventListener("toggle", () => { if (d.open) closeMsel(d); });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".msel")) closeMsel(); });
+  document.addEventListener("keydown", (e) => {
+    const d = mselIds.find((x) => x.open); if (e.key !== "Escape" || !d) return;
+    d.open = false; d.querySelector("summary").focus();
+  });
   for (const k of ["src", "plat", "size"]) {
     $(`#shop-${k}`).onchange = (e) => { S.shopF[k] = e.target.value; store.set("shopF", S.shopF); refreshGrid(); };
   }
-  $("#disc-reset").onclick = () => { S.disc.preset = S.disc.genre = S.disc.decade = ""; store.set("disc", S.disc); renderDiscTools(); refreshGrid(); };
+  $("#disc-reset").onclick = () => { S.disc = discNorm({}); store.set("disc", S.disc); renderDiscTools(); refreshGrid(); };
   $("#sort").onchange = (e) => { S.sort = e.target.value; store.set("sorts", { ...store.get("sorts", {}), [S.view.type]: S.sort }); refreshGrid(); };
   $("#group").value = S.group;
   $("#group").onchange = (e) => { S.group = e.target.value; store.set("group", S.group); refreshGrid(); };
@@ -852,6 +872,22 @@ function bind() {
   $("#ln-save").onclick = () => api("/api/app/launch", { body: { before: $("#ln-before").value, after: $("#ln-after").value,
     close_launcher: $("#ln-close").checked, splash: $("#ln-splash").checked } }).then(() => toast(t("g.ev.launch.saved")), (e) => toast(e.message, true));
   $("#emu-folder-pick").onclick = async () => { const p = await pickPath("folder"); if (p) $("#emu-folder").value = p; };
+  // ricerca emulatori già installati e "usa" sui risultati (prima onclick inline, vietato dalla CSP)
+  $("#emu-scan").onclick = async (e) => {
+    const b = e.currentTarget, box = $("#emu-found");
+    b.disabled = true; box.textContent = t("j.emu.scan.searching");
+    try {
+      const d = await api("/api/emulators/detected");
+      window._emuFound = d.found;
+      const k = Object.keys(d.found);
+      box.innerHTML = k.length ? k.map((n) => `<div class="row"><span class="grow"><b>${esc(n)}</b> <span class="muted small">${esc(d.found[n].path)} (${esc(d.found[n].source)})</span></span><button class="btn" data-e="${esc(n)}">${t("j.emu.scan.use")}</button></div>`).join("") : t("j.emu.scan.none");
+    } catch (err) { box.textContent = err.message; }
+    b.disabled = false;
+  };
+  $("#emu-found").onclick = (e) => {
+    const b = e.target.closest("[data-e]");
+    if (b) (async () => { const x = collectEmu(); x.emulators[b.dataset.e] = window._emuFound[b.dataset.e].path; await saveEmu(x); })();
+  };
   $("#emu-detect").onclick = async () => {
     const folder = $("#emu-folder").value.trim();
     if (!folder) return toast(t("g.ev.emu.folder_first"), true);
@@ -872,22 +908,6 @@ function bind() {
       if (b.dataset.emuInst) await api("/api/emulators/install", { body: { emu: b.dataset.emuInst, folder: $("#emu-folder").value.trim() } });
       else await api("/api/emulators/cores", { body: {} });
     } catch (err) { return toast(err.message, true); }
-  // ricerca emulatori già installati e "usa" sui risultati (prima onclick inline, vietato dalla CSP)
-  $("#emu-scan").onclick = async (e) => {
-    const b = e.currentTarget, box = $("#emu-found");
-    b.disabled = true; box.textContent = t("j.emu.scan.searching");
-    try {
-      const d = await api("/api/emulators/detected");
-      window._emuFound = d.found;
-      const k = Object.keys(d.found);
-      box.innerHTML = k.length ? k.map((n) => `<div class="row"><span class="grow"><b>${esc(n)}</b> <span class="muted small">${esc(d.found[n].path)} (${esc(d.found[n].source)})</span></span><button class="btn" data-e="${esc(n)}">${t("j.emu.scan.use")}</button></div>`).join("") : t("j.emu.scan.none");
-    } catch (err) { box.textContent = err.message; }
-    b.disabled = false;
-  };
-  $("#emu-found").onclick = (e) => {
-    const b = e.target.closest("[data-e]");
-    if (b) (async () => { const x = collectEmu(); x.emulators[b.dataset.e] = window._emuFound[b.dataset.e].path; await saveEmu(x); })();
-  };
     followEmuJob();
   });
   $("#emu-add").onclick = async (e) => {

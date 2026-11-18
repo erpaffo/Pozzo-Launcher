@@ -98,9 +98,18 @@ delle impostazioni, in `profiles/`). Non si può cambiare profilo durante una pa
 - **🎲 Gioco a caso**: sceglie un gioco tra quelli mostrati (filtri e ricerca compresi), preferendo quelli avviabili
   subito.
 
+### Più scelte insieme: Scoperta, genere e decennio
+
+Nella barra degli strumenti, i filtri **Scoperta**, **Genere** e **Decennio** aprono un menu a tendina con le caselle. Puoi scegliere più voci insieme:
+
+- **Decennio**: più decenni insieme. Vedi i giochi di uno qualsiasi, per esempio anni 2000, 2010 e 2020.
+- **Genere**: più generi, con l'interruttore **Almeno uno** (il gioco ha uno dei generi scelti) o **Tutti** (il gioco li ha tutti). Con **Tutti**, Azione + GDR trova gli action RPG.
+- **Scoperta**: più voci devono valere tutte insieme, per esempio Brevi + Mai giocati. L'ordinamento è quello della prima voce scelta.
+- Tra filtri diversi valgono tutti insieme. **Azzera** toglie tutto.
+
 ### Filtri salvati
 
-Il **＋** accanto a «Filtri salvati» nella barra laterale salva con un nome la combinazione attuale: la vista (console, store o stato), la ricerca, genere, decennio, lingua, installati, ordine e raggruppamento. Ogni voce si richiama con un clic, si rinomina (✎) o si elimina (✕). I filtri sono **per profilo**: ognuno ha i suoi. Si trovano anche nella palette **Ctrl+K** (gruppo «Filtri salvati») e nel widget «Filtri salvati» della dashboard.
+Il **＋** accanto a «Filtri salvati» nella barra laterale salva con un nome la combinazione attuale: la vista (console, store o stato), la ricerca, genere, decennio, lingua, installati, ordine e raggruppamento. Ricorda anche le scelte multiple. I filtri salvati prima continuano a funzionare. Ogni voce si richiama con un clic, si rinomina (✎) o si elimina (✕). I filtri sono **per profilo**: ognuno ha i suoi. Si trovano anche nella palette **Ctrl+K** (gruppo «Filtri salvati») e nel widget «Filtri salvati» della dashboard.
 
 ### Scopri
 

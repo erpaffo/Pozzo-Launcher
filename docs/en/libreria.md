@@ -72,9 +72,18 @@ The **Main** profile is permanent and cannot be deleted. Deleting another profil
 - **Cover Size**: slider located next to the filters.
 - **🎲 Random Game**: selects a random game from currently visible entries (taking filters and search into account), prioritizing titles that are ready to launch immediately.
 
+### Multiple choices: Discover, genre and decade
+
+In the toolbar, the **Discover**, **Genre** and **Decade** filters open a dropdown with checkboxes. You can pick several entries at once:
+
+- **Decade**: several decades together. You see the games from any of them, for example the 2000s, 2010s and 2020s.
+- **Genre**: several genres, with the **At least one** switch (the game has one of the chosen genres) or **All** (the game has all of them). With **All**, Action + RPG finds action RPGs.
+- **Discover**: several entries must all match, for example Short + Never Played. The sort order is the one of the first entry you chose.
+- Different filters all apply together. **Clear** removes everything.
+
 ### Saved filters
 
-The **＋** next to "Saved filters" in the sidebar saves the current combination under a name: the view (console, store or status), search, genre, decade, language, installed, sort and grouping. Click an entry to apply it, rename it (✎) or delete it (✕). Saved filters are **per profile**. They also appear in the **Ctrl+K** palette ("Saved filters" group) and as a "Saved filters" dashboard widget.
+The **＋** next to "Saved filters" in the sidebar saves the current combination under a name: the view (console, store or status), search, genre, decade, language, installed, sort and grouping. It also remembers multiple choices. Filters saved before still work. Click an entry to apply it, rename it (✎) or delete it (✕). Saved filters are **per profile**. They also appear in the **Ctrl+K** palette ("Saved filters" group) and as a "Saved filters" dashboard widget.
 
 ### Discover
 

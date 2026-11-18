@@ -276,13 +276,26 @@ const PRESETS = [
   { id: "unrated", get label() { return "❔ " + t("b.core.preset.unrated"); }, ok: (g) => g.rating == null && g.critics == null },
 ];
 
-/** Applica preset, genere e decennio; restituisce null come ordine se il preset non ne impone uno. */
+/** Normalizza i filtri Scopri: accetta il formato vecchio (stringhe) e il nuovo (array). */
+function discNorm(f) {
+  f = f || {};
+  const arr = (v, skipEmpty = true) => [...new Set((Array.isArray(v) ? v : [v]).filter((x) => x != null && x !== "").map(String))];
+  return { preset: arr(f.preset), genre: arr(f.genre), decade: arr(f.decade), genreMode: f.genreMode === "all" ? "all" : "any" };
+}
+const discActive = (f) => { const n = discNorm(f); return !!(n.preset.length || n.genre.length || n.decade.length); };
+
+/** Applica preset, generi e decenni (AND tra categorie, OR dentro decenni/generi "any"); l'ordine è del primo preset che ne ha uno. */
 function discover(items, f = {}) {
-  const p = PRESETS.find((x) => x.id === (f.preset || "")) || PRESETS[0];
-  let it = p.ok ? items.filter(p.ok) : items;
-  if (f.genre) it = it.filter((g) => fold(g.genres).split(/\s*,\s*/).includes(f.genre));
-  if (f.decade) it = it.filter((g) => g.year && Math.floor(g.year / 10) * 10 === +f.decade);
-  return { items: it, cmp: p.cmp || null, preset: p };
+  const n = discNorm(f);
+  const ps = n.preset.map((id) => PRESETS.find((x) => x.id === id)).filter(Boolean);
+  let it = items;
+  for (const p of ps) if (p.ok) it = it.filter(p.ok);
+  if (n.genre.length) {
+    const want = n.genre.map(fold), m = n.genreMode === "all" ? "every" : "some";
+    it = it.filter((g) => { const have = fold(g.genres).split(/\s*,\s*/); return want[m]((w) => have.includes(w)); });
+  }
+  if (n.decade.length) it = it.filter((g) => g.year && n.decade.includes(String(Math.floor(g.year / 10) * 10)));
+  return { items: it, cmp: ps.find((p) => p.cmp)?.cmp || null, preset: ps[0] || PRESETS[0], score: ps.find((p) => p.score)?.score || null };
 }
 
 /** Generi piu' comuni (normalizzati), per il filtro. */
