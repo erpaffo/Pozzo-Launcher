@@ -1,0 +1,40 @@
+# Solo a mano: pubblica sui gestori di pacchetti una release GIA' pubblicata, senza build ne' test. Serve a provare
+# che i token (Scoop, Homebrew, winget, AUR) funzionino. Actions > Pubblica sugli store > Run workflow.
+# Attenzione: e' una pubblicazione vera (commit sul bucket/tap, pull request a winget-pkgs).
+
+name: Pubblica sugli store
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag della release gia' pubblicata (vuoto = l'ultima)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - id: t
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT: ${{ inputs.tag }}
+        run: |
+          TAG="$INPUT"
+          [ -n "$TAG" ] || TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release da pubblicare: $TAG" >> "$GITHUB_STEP_SUMMARY"
+
+  stores:
+    name: gestori di pacchetti
+    needs: [tag]
+    uses: ./.github/workflows/_publish-stores.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit

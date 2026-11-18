@@ -1,0 +1,167 @@
+# Pubblica una release GIA' esistente sui gestori di pacchetti (winget, Scoop, AUR, Homebrew). Non costruisce niente:
+# scarica i file della release del tag dato e genera i manifest con tools/package_manifests.py del commit corrente.
+# Lo usano release.yml (dopo la release) e publish-stores.yml (a mano, per provare i token senza rifare build e test).
+# Ogni job salta, senza errori, se manca il suo secret.
+
+name: Pubblica sui gestori di pacchetti
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag della release da pubblicare, es. v0.19.2"
+        type: string
+        required: true
+
+jobs:
+  # manifest di winget, Scoop, AUR e Homebrew con le impronte SHA-256 dei file pubblicati (quelli firmati, se c'e'
+  # la firma Windows). Solo dopo una release riuscita: i manifest puntano ai suoi file.
+  manifests:
+    name: manifest dei gestori di pacchetti
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: File della release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir rel
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir rel \
+            --pattern '*-setup.exe' --pattern '*-windows-*.zip' --pattern '*.dmg' --pattern '*-linux-*.tar.gz'
+          ls -la rel
+
+      - name: Manifest
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          python tools/package_manifests.py "${TAG#v}" rel manifests "$GITHUB_REPOSITORY"
+          find manifests -type f | sort
+          echo "### Manifest dei gestori di pacchetti" >> "$GITHUB_STEP_SUMMARY"
+          find manifests -type f | sort | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-manifests
+          path: manifests/
+          include-hidden-files: true  # .SRCINFO di AUR
+
+  # Pubblicazione: ogni job salta (senza errori) se manca il suo secret. Il repository del gestore e' sempre
+  # dello stesso proprietario di questo (github.repository_owner).
+  publish-aur:
+    name: pubblica su AUR
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: PKGBUILD su aur.archlinux.org
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          [ -n "$AUR_SSH_PRIVATE_KEY" ] || { echo "::notice::AUR_SSH_PRIVATE_KEY assente: AUR saltato"; exit 0; }
+          [ -f pm/aur/PKGBUILD ] || { echo "::warning::nessun PKGBUILD (manca il tar.gz Linux): AUR saltato"; exit 0; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes"
+          git clone ssh://aur@aur.archlinux.org/pozzo-launcher-bin.git aur  # vuoto la prima volta: lo crea il push
+          cp pm/aur/PKGBUILD pm/aur/.SRCINFO aur/
+          cd aur
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && { echo "PKGBUILD gia' aggiornato"; exit 0; }
+          git commit -m "Pozzo Launcher ${TAG#v}"
+          git push origin HEAD:master  # AUR accetta solo master
+
+  publish-homebrew:
+    name: pubblica sul tap Homebrew
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: Cask in <proprietario>/homebrew-tap
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::notice::HOMEBREW_TAP_TOKEN assente: Homebrew saltato"; exit 0; }
+          [ -f pm/homebrew/Casks/pozzo-launcher.rb ] || { echo "::warning::nessun cask (manca il .dmg): Homebrew saltato"; exit 0; }
+          git clone "https://x-access-token:${TOKEN}@github.com/${OWNER}/homebrew-tap.git" tap
+          mkdir -p tap/Casks && cp pm/homebrew/Casks/pozzo-launcher.rb tap/Casks/
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/pozzo-launcher.rb
+          git diff --cached --quiet && { echo "cask gia' aggiornato"; exit 0; }
+          git commit -m "pozzo-launcher ${TAG#v}"
+          git push origin HEAD
+
+  publish-scoop:
+    name: pubblica sul bucket Scoop
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: Manifest in <proprietario>/scoop-bucket
+        env:
+          TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::notice::SCOOP_BUCKET_TOKEN assente: Scoop saltato"; exit 0; }
+          [ -f pm/scoop/pozzo-launcher.json ] || { echo "::warning::nessun manifest (manca lo zip Windows): Scoop saltato"; exit 0; }
+          git clone "https://x-access-token:${TOKEN}@github.com/${OWNER}/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket && cp pm/scoop/pozzo-launcher.json bucket/bucket/
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/pozzo-launcher.json
+          git diff --cached --quiet && { echo "manifest gia' aggiornato"; exit 0; }
+          git commit -m "pozzo-launcher: ${TAG#v}"
+          git push origin HEAD
+
+  # pull request a microsoft/winget-pkgs con wingetcreate (lo strumento ufficiale): crea da solo il fork nel
+  # account del token. La prima versione la rivedono i moderatori di winget, le successive di solito no.
+  publish-winget:
+    name: pull request a winget-pkgs
+    needs: [manifests]
+    if: ${{ !cancelled() && needs.manifests.result == 'success' }}
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: package-manifests
+          path: pm
+      - name: wingetcreate submit
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_TOKEN) { Write-Output "::notice::WINGET_TOKEN assente: winget saltato"; exit 0 }
+          $ver = $env:TAG.TrimStart('v')
+          $dir = "pm/winget/manifests/p/PozzoDev/PozzoLauncher/$ver"
+          if (-not (Test-Path $dir)) { Write-Output "::warning::nessun manifest winget (manca il setup): winget saltato"; exit 0 }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --prtitle "New version: PozzoDev.PozzoLauncher $ver" --token $env:WINGET_TOKEN $dir
+          if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit fallito ($LASTEXITCODE)" }
