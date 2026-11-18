@@ -542,10 +542,10 @@ jobs:
         run: |
           if (-not $env:WINGET_TOKEN) { Write-Output "::notice::WINGET_TOKEN assente: winget saltato"; exit 0 }
           $ver = $env:GITHUB_REF_NAME.TrimStart('v')
-          $dir = "pm/winget/manifests/e/erpaffo/PozzoLauncher/$ver"
+          $dir = "pm/winget/manifests/p/PozzoDev/PozzoLauncher/$ver"
           if (-not (Test-Path $dir)) { Write-Output "::warning::nessun manifest winget (manca il setup): winget saltato"; exit 0 }
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit --prtitle "New version: erpaffo.PozzoLauncher $ver" --token $env:WINGET_TOKEN $dir
+          .\wingetcreate.exe submit --prtitle "New version: PozzoDev.PozzoLauncher $ver" --token $env:WINGET_TOKEN $dir
           if ($LASTEXITCODE -ne 0) { throw "wingetcreate submit fallito ($LASTEXITCODE)" }
 
   # firma Ed25519 del manifest di aggiornamento (opzionale: salta se manca il secret MANIFEST_SIGNING_KEY

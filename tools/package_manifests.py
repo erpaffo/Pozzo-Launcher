@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DESC = "Game library for ROMs and PC games from the stores, with covers and metadata."
 NAME = "pozzo-launcher"  # Scoop, AUR (-bin) e Homebrew: stesso nome ovunque
-WINGET_ID = "erpaffo.PozzoLauncher"
+WINGET_ID = "PozzoDev.PozzoLauncher"
 # librerie del plugin xcb di Qt: le stesse del .deb (release.yml), con i nomi dei pacchetti di Arch
 AUR_DEPENDS = ["libglvnd", "nss", "libxkbcommon-x11", "libxcb", "xcb-util-cursor", "xcb-util-wm", "xcb-util-image",
                "xcb-util-keysyms", "xcb-util-renderutil"]
@@ -58,7 +58,7 @@ def winget(version: str, base: str, repo: str, a: dict) -> dict[str, str]:
     return {
         f"{WINGET_ID}.yaml": head + "DefaultLocale: en-US\nManifestType: version\n" + tail,
         f"{WINGET_ID}.locale.en-US.yaml": head + (
-            "PackageLocale: en-US\nPublisher: erpaffo\n"
+            "PackageLocale: en-US\nPublisher: PozzoDev\n"
             f"PublisherUrl: {home}\nPublisherSupportUrl: {home}/issues\nPackageName: Pozzo Launcher\n"
             f"PackageUrl: {home}\nLicense: MIT\nLicenseUrl: {home}/blob/main/LICENSE\nShortDescription: {DESC}\n"
             "Moniker: pozzo\nTags:\n  - games\n  - rom\n  - emulation\n  - library\n"
@@ -169,7 +169,7 @@ def write(version: str, release: Path, out: Path, repo: str) -> list[str]:
     skipped = []
     files = winget(version, base, repo, a)
     for n, text in files.items():
-        p = out / "winget" / "manifests" / "e" / "erpaffo" / "PozzoLauncher" / version / n
+        p = out / "winget" / "manifests" / "p" / "PozzoDev" / "PozzoLauncher" / version / n
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8")
     if not files:

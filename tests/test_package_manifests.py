@@ -29,12 +29,12 @@ def test_tutte_le_varianti():
         assert PM.write(V, rel, out, "o/r") == []
         sha = PM._sha(rel / f"PozzoLauncher-{V}-windows-arm64-setup.exe")
 
-        inst = (out / "winget/manifests/e/erpaffo/PozzoLauncher" / V / "erpaffo.PozzoLauncher.installer.yaml").read_text()
+        inst = (out / "winget/manifests/p/PozzoDev/PozzoLauncher" / V / "PozzoDev.PozzoLauncher.installer.yaml").read_text()
         assert "Architecture: x64" in inst and "Architecture: arm64" in inst and sha.upper() in inst
         assert "https://github.com/o/r/releases/download/v1.2.3/PozzoLauncher-1.2.3-windows-arm64-setup.exe" in inst
         try:
             import yaml
-            for f in (out / "winget/manifests/e/erpaffo/PozzoLauncher" / V).iterdir():
+            for f in (out / "winget/manifests/p/PozzoDev/PozzoLauncher" / V).iterdir():
                 assert yaml.safe_load(f.read_text())["PackageVersion"] == V, f
         except ImportError:
             pass
@@ -69,7 +69,7 @@ def test_varianti_mancanti():
         names = [f"PozzoLauncher-{V}-windows-x64-setup.exe", f"PozzoLauncher-{V}-macos-arm64.dmg"]
         rel, out = _release(Path(t), names), Path(t) / "out"
         assert sorted(PM.write(V, rel, out, "o/r")) == ["aur", "scoop"], "senza zip e tar.gz: saltati"
-        inst = (out / "winget/manifests/e/erpaffo/PozzoLauncher" / V / "erpaffo.PozzoLauncher.installer.yaml").read_text()
+        inst = (out / "winget/manifests/p/PozzoDev/PozzoLauncher" / V / "PozzoDev.PozzoLauncher.installer.yaml").read_text()
         assert "arm64" not in inst
         cask = (out / "homebrew/Casks/pozzo-launcher.rb").read_text()
         assert "depends_on arch: :arm64" in cask and "arch arm:" not in cask and "macos-arm64.dmg\"\n" in cask
