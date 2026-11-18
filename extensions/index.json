@@ -33,7 +33,7 @@
     {
       "id": "calendario-uscite",
       "name": "Calendario uscite",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Pozzo Launcher",
       "description": "Calendario delle prossime uscite videoludiche con priorità ai titoli della tua lista desideri e ai generi che giochi più spesso, alimentato da RAWG.",
       "min_app": "0.7.1",
@@ -41,7 +41,7 @@
       "files": {
         "backend.py": "c9d9105fb8e864b0e1bb517f431b05f8599758f8faf8e694d30bdf88131c2e61",
         "frontend.js": "e98f2550d8838bfca4c923479e1f6931bc1807802dbace0f72e9f9429e683807",
-        "plugin.toml": "96f401ced831dc79c4623e032ead2218a9c96cde3e9da5d1b685ca2bb191dba7",
+        "plugin.toml": "472a3dc46f21d902a9c9c9be03f5c551e4d7e0987e9af1ab4b04e9671cad058f",
         "screenshot.png": "b17803efdfd138d206a95400dc1400ce0245ab449e45bd5866f27c283683098e",
         "style.css": "d0dbe66bd6e494de9946a9740e869aacef24b0f71267af9a3f509092fab8ab01"
       },
@@ -598,7 +598,7 @@
     {
       "id": "stasera",
       "name": "Cosa gioco stasera?",
-      "version": "1.0",
+      "version": "1.1",
       "author": "Pozzo Launcher",
       "description": "Ti consiglia il titolo ideale dal tuo backlog in base al tempo libero a disposizione (durata HowLongToBeat), al genere e alla console preferita.",
       "min_app": "0.7.1",
@@ -606,7 +606,7 @@
       "files": {
         "frontend.js": "203b1a74b23b9466f1d2eb35789a313d5b28fb9fb0284df20c49c423f45e4e4a",
         "logica.js": "f3dbc76c814a0574a427304b96400479b0f618da4413113173009c0a9135b68a",
-        "plugin.toml": "c86417cbcf172046a895f2f80d5e7efe409d7c114390322d46c8b383ae5705dd",
+        "plugin.toml": "fcccede563f94d18ae02c6093f4f7687ba494adad2c38aac8c41ec533a303989",
         "screenshot.png": "535916af1fe97dd50a86d22c72d0a6db8ad84eacb070201d17a24f56bdcad731",
         "style.css": "07ec9f5e800c2f90259bdb88c3789c708215fd6d4d8beddc7eb8ceb66d49c02a"
       },
