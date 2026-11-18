@@ -165,7 +165,12 @@ class _Handler(BaseHTTPRequestHandler):
         if size < 0 or self.headers.get("Transfer-Encoding"):
             return self._send(411, "failed\r\n")
         if size > MAX_BODY:
-            return self._send(413, "failed\r\n")
+            self._send(413, "failed\r\n")
+            # chiudere con dati non letti manda un RST (Windows): il client vedrebbe "connessione interrotta" e non il 413
+            left = min(size, 4 * MAX_BODY)
+            while left > 0 and (chunk := self.rfile.read(min(left, 65536))):
+                left -= len(chunk)
+            return
         try:
             form = {k: v[0] for k, v in parse_qs(self.rfile.read(size).decode("utf-8", "replace"), max_num_fields=20).items()}
             text = form.get("urls", "") if path == "/flash/add" else decrypt(form.get("crypted", ""), key_from_jk(form.get("jk", "")))

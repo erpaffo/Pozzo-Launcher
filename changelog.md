@@ -16,6 +16,7 @@
 
 ### Corretto
 
+- **Click'n'Load**: un invio di link troppo grande ora riceve la risposta «rifiutato» invece di una connessione interrotta (succedeva su Windows).
 - **Scheda del gioco chiusa**: nei layout a finestra (modale, cockpit, editoriale) la scheda chiusa restava invisibile al centro dello schermo e bloccava i clic su filtri e copertine sotto, oltre a essere raggiungibile con Tab.
 
 ## 0.19.2 (2026-11-16)
