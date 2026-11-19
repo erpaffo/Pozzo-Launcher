@@ -18,14 +18,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # un job per sistema, test in parallelo su tutti i core (-j 0): meno job in coda (macOS soprattutto) e una sola
+  # installazione delle dipendenze per sistema. Prima erano 3 parti per sistema in sequenza (9 job).
   test:
-    name: ${{ matrix.name }} (${{ matrix.shard }}/3)
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20  # un job bloccato non resta appeso fino alla cancellazione
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-22.04]
-        shard: [1, 2, 3]
         include:
           - { os: windows-latest, name: windows }
           - { os: macos-latest, name: macos }
@@ -53,7 +54,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
           PYTHONUNBUFFERED: "1"
-        run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
+        run: python packaging/run_tests.py -j 0
 
   # Lint e sicurezza: ruff, bandit e pip-audit bloccano tutti. Il job non deve avere continue-on-error, altrimenti
   # il workflow non fallisce.

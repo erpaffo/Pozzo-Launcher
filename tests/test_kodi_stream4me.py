@@ -988,12 +988,13 @@ def test_ricerca_generale_interroga_tutti_i_provider_anche_se_uno_fallisce_o_e_l
         if ch == provs[0]:
             raise RuntimeError("provider spento")
         if ch == provs[1]:
-            _t.sleep(1.5)  # oltre la scadenza del test: non deve bloccare gli altri
+            _t.sleep(3.0)  # ben oltre la scadenza del test: non deve bloccare gli altri
         return {"items": [{"id": f"s4me:{ch}:1", "title": "Snatch - Lo strappo (ITA)" if ch == provs[2] else "Altro " + ch,
                            "kind": "film", "poster": "http://p/x.jpg" if ch == provs[2] else "", "url": f"https://{ch}.example/x"}]}
 
     monkeypatch.setattr(kb, "browse_stream4me_channel", finto)
-    monkeypatch.setattr(rw, "_SEARCH_DEADLINE", 0.4)
+    # 1 s: i provider veloci rispondono anche su un runner CI lento (con 0,4 s a volte no: test instabile)
+    monkeypatch.setattr(rw, "_SEARCH_DEADLINE", 1.0)
     res = gs.get("stream4me/browse", channel="all", query="snatch")
     # tutti i provider attivi interrogati (nessun tetto a 6), senza dipendere dall'ordine o dalla cache di altri test
     assert set(provs) <= set(chiamati) and len(chiamati) == len(set(chiamati))

@@ -59,17 +59,17 @@ jobs:
           git push -f origin "$GITHUB_REF_NAME"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-  # i test girano in parallelo alla build (3 parti per sistema); la release parte solo se sono tutti verdi
+  # i test girano accanto alla build (un job per sistema, test in parallelo sui core); la release parte solo se
+  # sono tutti verdi
   test:
     needs: version
     if: ${{ !inputs.skip_tests }}
-    name: test ${{ matrix.name }} (${{ matrix.shard }}/3)
+    name: test ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-22.04]
-        shard: [1, 2, 3]
         include:
           - { os: windows-latest, name: windows-x64 }
           - { os: macos-latest, name: macos-arm64 }
@@ -99,7 +99,7 @@ jobs:
         env:
           PYTHONUTF8: "1"
           PYTHONUNBUFFERED: "1"  # l'output dei test arriva subito: un blocco si vede dove succede
-        run: python packaging/run_tests.py --shard ${{ matrix.shard }}/3
+        run: python packaging/run_tests.py -j 0
 
   # una build per sistema e processore, ognuna sul suo runner (PyInstaller non compila per un'altra CPU).
   # I test girano solo sulle tre x64/arm64 del job test: il codice e' lo stesso, qui la prova di avvio basta.
