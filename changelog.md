@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.20.1 (2026-11-19)
+### Aggiunto
+
+- **DS e 3DS col telefono come touch screen**: nella scheda dei giochi DS e 3DS (sul PC e sul telefono) c'è l'avvio «📱 Telefono come touch screen». Sul PC restano le due finestre dell'emulatore, che Pozzo non mette a schermo intero né in primo piano; sul telefono tutto lo schermo diventa lo schermo inferiore, da toccare col dito (giochi come Pokémon Ranger). Funziona anche se il telefono si collega dopo l'avvio. Nelle impostazioni del controller si sceglie la dimensione e se tenere le proporzioni originali; ⟳ ruota lo schermo per il blocco rotazione dell'iPhone, ⏩ accende l'avanzamento veloce (melonDS su Windows) e la barra in alto si rimpicciolisce. Serve melonDS (DS) oppure Citra, Azahar o Lime3DS (3DS).
+
+### Corretto
+
+- **App del telefono su iPhone**: la pagina non caricava le traduzioni (bloccate dal controllo di accesso del telefono) e si rompeva tutta: libreria vuota o in caricamento infinito, giochi che non partivano, pulsanti del controller fermi, errore «Can't find variable: t». Le sezioni della Home mostravano le chiavi (`k.m.recent_row`) invece dei titoli.
+- **Telefono riaperto dalla schermata Home**: risultava non abbinato, perché Safari non mandava il cookie riaprendo l'app dall'icona.
+- **«Sito non sicuro» anche col profilo installato su iPhone**: il certificato del server durava un giorno più del limite di iOS (825 giorni) e veniva rifiutato, e il controller non si collegava. La CA creata con il vecchio nome GameScraper si rigenera come «Pozzo Launcher CA»: il profilo sul telefono va reinstallato una volta.
+- **Controller Bluetooth collegato al telefono nei giochi DS**: in modalità «Auto» veniva ignorato e restavano i tasti a schermo; su iPhone, tenendo premuto sullo schermo DS Safari non apre più i suoi menu (Salva in Foto, Incolla) né lo zoom.
+
 ## 0.20.0 (2026-11-18)
 ### Aggiunto
 
