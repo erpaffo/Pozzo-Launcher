@@ -194,6 +194,28 @@ l'emulatore a finestre separate, e a fine partita rimette la configurazione com'
 - L'opzione **Il telefono fa da schermo touch nei giochi DS e 3DS** della stessa pagina spegne la funzione: in quel caso
   il PC mostra sempre i due schermi.
 
+### Avviare con «Telefono come touch screen»
+
+Per i giochi che si giocano col pennino (Pokémon Ranger, Kirby: L'oscuro disegno…) c'è un avvio dedicato: nella scheda
+del gioco sul PC **📱 Telefono come touch screen**, sul telefono **📱 Gioca con il telefono come touch screen**.
+
+- Sul PC restano visibili **entrambi gli schermi**, in due finestre normali dell'emulatore: Pozzo non le mette a
+  schermo intero, non le sposta e non le tiene in primo piano. Le sistemi come preferisci (il telefono funziona anche
+  se la finestra dello schermo inferiore è coperta).
+- Sul telefono **tutto lo schermo** diventa lo schermo inferiore, senza tasti: si gioca con un controller (anche quello
+  collegato al telefono) e si tocca col dito. La vista si apre da sola quando parte il gioco.
+- Funziona anche se il telefono si collega dopo l'avvio, e anche con l'opzione automatica spenta. Il pulsante c'è per
+  tutti i giochi DS e 3DS ed è attivo se l'emulatore è melonDS (DS) oppure Citra, Azahar o Lime3DS (3DS).
+- **Dimensione**: nelle impostazioni ⚙ del controller, *Schermo DS* sceglie tra *Tutto lo schermo* e *Proporzioni
+  originali (4:3)*, e *Dimensione dello schermo DS* lo rimpicciolisce (dal 50 al 100%). Valgono solo per quel telefono.
+- **⟳ Ruota**: Safari su iPhone non permette alle pagine di bloccarsi in orizzontale, e il blocco rotazione
+  dell'iPhone blocca solo in verticale. Con il blocco attivo tieni il telefono in orizzontale e tocca ⟳ finché lo
+  schermo è dritto (90° a ogni tocco): i tocchi restano giusti.
+- **⏩ Velocizza** (melonDS su Windows): accende e spegne l'avanzamento veloce. Per la durata della partita Pozzo
+  assegna il comando al tasto Bloc Scorr nella configurazione di melonDS, poi la rimette com'era.
+- **▴** rimpicciolisce la barra in alto a un solo pulsantino, così non copre lo schermo; **▾** la riapre.
+- Tenendo premuto o trascinando sullo schermo, Safari non apre più i suoi menu (*Salva in Foto*, *Incolla*) né lo zoom.
+
 ## Streaming con Sunshine e Moonlight
 
 Per giocare **lontano dal PC** (telefono, tablet, TV, un altro PC) si usano

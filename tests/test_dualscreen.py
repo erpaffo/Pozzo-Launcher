@@ -149,6 +149,72 @@ def test_telefono_collegato_anche_senza_controller():
     print("ok  telefono collegato = controller o app aperta; emulatore non gestito non blocca il gioco")
 
 
+def test_avvio_telefono_come_touch_screen():
+    """«Telefono come touch screen» scelto all'avvio: parte anche senza telefono collegato (si collega dopo) e con
+    l'opzione automatica spenta; sul PC due finestre normali: niente schermo intero, mai spostate ne' in primo piano."""
+    from fastapi.testclient import TestClient
+
+    from pozzo import config
+    from pozzo.app.server import create_app
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:
+        d = Path(t)
+        (d / "melon").mkdir()
+        exe, toml = d / "melon" / "melonDS.exe", d / "melon" / "melonDS.toml"
+        toml.write_text(MELON, encoding="utf-8")
+        cfg = config.Config(cache=d / "cache", output=d / "out")
+        cfg.config_path = d / "config.toml"
+        app = create_app(cfg)
+        with TestClient(app) as c:
+            launcher = app.state.launcher
+            c.post("/api/phone", json={"touchscreen": False})
+            st = {"key": "nds/abc", "emulator_id": "melonds", "exe": str(exe), "phone_touch": True}
+            real = D.supported
+            D.supported = lambda: True
+            try:
+                assert launcher.prelaunch(dict(st)) == [], "scelto all'avvio: niente schermo intero forzato"
+                assert ini_get(toml.read_text(encoding="utf-8"), "Instance0.Window1", "Enabled") == "true"
+                # pulsante ⏩: avanzamento veloce su Bloc Scorr solo per la partita, poi la configurazione torna com'era
+                ff = lambda: ini_get(toml.read_text(encoding="utf-8"), "Instance0.Keyboard", "HK_FastForwardToggle")  # noqa: E731
+                assert ff() == "16777254"
+                r = c.get("/api/running").json()
+                assert r["dual"] is True and r["dual_touch"] is True
+                assert r["dual_ff"] is (sys.platform == "win32")
+                launcher.on_event("game_stopped", {})
+                r = c.get("/api/running").json()
+                assert r["dual_touch"] is False and r["dual_ff"] is False
+                assert ff() is None, "tasto del fast forward tolto a fine partita (prima non c'era)"
+                # emulatore non gestito: si gioca normalmente anche con l'opzione scelta
+                assert launcher.prelaunch({**st, "emulator_id": "retroarch"}) == []
+            finally:
+                D.supported = real
+    s = D.Session(1, on_pc=True)
+    s._place = lambda *a: (_ for _ in ()).throw(AssertionError("finestra spostata o messa in primo piano"))
+    s.hide()
+    s.pip()
+    print("ok  telefono come touch screen scelto all'avvio: forzato, entrambi gli schermi sul PC")
+
+
+def test_finestra_inferiore_riconosciuta_dal_proprietario():
+    """Con «telefono come touch screen» le due finestre sono grandi uguali: lo schermo inferiore e' quella «di
+    proprieta'» della principale, non la piu' piccola (prima il telefono riceveva a volte lo schermo superiore)."""
+    import os
+    import types
+    with mock.patch.object(D, "sys", types.SimpleNamespace(platform="win32")), \
+            mock.patch.object(D, "_windows", lambda pids: [(11, (0, 0, 800, 640)), (22, (900, 0, 1700, 640))]), \
+            mock.patch.object(D, "_owner", lambda h: 11 if h == 22 else None):
+        s = D.Session(os.getpid())
+        s._measure = lambda: None
+        assert s.find() and (s.hwnd, s.main) == (22, 11), (s.hwnd, s.main)
+    # nessuna finestra di proprieta': si torna alla piu' piccola (lo schermo superiore e' a schermo intero)
+    with mock.patch.object(D, "sys", types.SimpleNamespace(platform="win32")), \
+            mock.patch.object(D, "_windows", lambda pids: [(11, (0, 0, 1920, 1080)), (22, (0, 0, 640, 512))]), \
+            mock.patch.object(D, "_owner", lambda h: None):
+        s = D.Session(os.getpid())
+        s._measure = lambda: None
+        assert s.find() and (s.hwnd, s.main) == (22, 11), (s.hwnd, s.main)
+    print("ok  finestra dello schermo inferiore: quella di proprieta' della principale, altrimenti la piu' piccola")
+
+
 def test_server_cycle_and_gate():
     from fastapi.testclient import TestClient
 
@@ -283,6 +349,8 @@ if __name__ == "__main__":
     test_decision_and_geometry()
     test_nomi_emulatore_misti_e_casi_limite()
     test_telefono_collegato_anche_senza_controller()
+    test_avvio_telefono_come_touch_screen()
+    test_finestra_inferiore_riconosciuta_dal_proprietario()
     test_server_cycle_and_gate()
     test_mostra_sul_pc_solo_se_telefono_fermo_o_scollegato()
     test_impostazione_secondi_senza_uso()

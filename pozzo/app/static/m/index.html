@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pozzo Launcher">
 <link rel="manifest" href="/m/manifest.webmanifest">
-<script src="/static/imgfallback.js"></script>
+<script src="/m/static/imgfallback.js"></script>
 <link rel="icon" href="/m/static/icon.png">
 <link rel="apple-touch-icon" href="/m/static/apple-touch-icon.png">
 <title>Pozzo Launcher</title>
@@ -129,12 +129,15 @@
   <!-- controller -->
   <section id="pad" hidden>
     <div class="pad-bar">
+      <button id="pad-min" title="Rimpicciolisci o apri il menu" aria-label="Rimpicciolisci o apri il menu" data-i18n-title="k.m.bar_min_tip" data-i18n-aria="k.m.bar_min_tip">▴</button>
       <button id="pad-exit" title="Torna alla Home" aria-label="Torna alla Home" data-i18n-title="k.m.home_tip" data-i18n-aria="k.m.home_tip">🏠</button>
       <span id="pad-info" data-i18n="k.m.connecting">Collegamento…</span>
       <button id="pad-players" title="Sala giocatori: chi è chi, scambio dei posti" data-i18n-title="k.m.players_tip">👥</button>
       <button id="pad-src" title="Controller a schermo o controller collegato al telefono" data-i18n-title="k.m.src_tip" data-i18n="k.m.src.auto">🎮 Auto</button>
       <button id="pad-gyro" title="Giroscopio" data-i18n-title="k.m.gyro_tip" data-i18n="k.m.gyro.spento_btn">🌀 Spento</button>
       <button id="pad-shot" title="Schermata" data-i18n-title="k.m.shot_tip">📷</button>
+      <button id="pad-rot" hidden title="Ruota lo schermo DS di 90°" aria-label="Ruota lo schermo DS di 90°" data-i18n-title="k.m.rot_tip" data-i18n-aria="k.m.rot_tip">⟳</button>
+      <button id="pad-ff" hidden title="Avanzamento veloce acceso/spento" aria-label="Avanzamento veloce acceso/spento" data-i18n-title="k.m.ff_tip" data-i18n-aria="k.m.ff_tip">⏩</button>
       <button id="pad-set">⚙</button>
     </div>
     <div class="pad-area" id="pad-area">
@@ -278,6 +281,9 @@
       <label class="chk"><input type="checkbox" id="ps-invy"> <span data-i18n="k.m.ps.invy">Inverti asse verticale (mira e movimento)</span></label>
       <label class="chk"><input type="checkbox" id="ps-vib"> <span data-i18n="k.m.ps.vib">Vibrazione alla pressione</span></label>
       <label><span data-i18n="k.m.ps.scale">Dimensione dei comandi</span> <input id="ps-scale" type="range" min="0.8" max="1.3" step="0.05"></label>
+      <label><span data-i18n="k.m.ps.dsscreen">Schermo DS (telefono come touch screen)</span>
+        <select id="ps-dsfit"><option value="fill" data-i18n="k.m.ps.dsfit_fill">Tutto lo schermo</option><option value="fit" data-i18n="k.m.ps.dsfit_fit">Proporzioni originali (4:3)</option></select></label>
+      <label><span data-i18n="k.m.ps.dssize">Dimensione dello schermo DS</span> <input id="ps-dssize" type="range" min="0.5" max="1" step="0.05"></label>
       <p class="muted small" id="ps-help"></p>
       <button class="btn primary" id="ps-close" data-i18n="k.m.done">Fatto</button>
     </div>
@@ -285,7 +291,7 @@
 
   <div id="toast" hidden></div>
 </div>
-<script src="/static/i18n.js"></script>
+<script src="/m/static/i18n.js"></script>
 <script src="/m/static/icons.js"></script>
 <script src="/m/static/m.js"></script>
 </body>

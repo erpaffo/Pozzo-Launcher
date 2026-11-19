@@ -358,3 +358,21 @@ body.pad-on { overflow: hidden; height: 100%; touch-action: none; }
   .card:active { transform: none; }
   .act-bar i { transition: none; }
 }
+/* «telefono come touch screen» (DS/3DS): tutto il telefono e' lo schermo inferiore, senza tasti (si gioca con un
+   controller); i tocchi si misurano sul riquadro intero perche' l'immagine lo riempie */
+#pad.ds-touch #sp-ds > :not(.ds-area) { display: none; }
+#pad.ds-touch #sp-ds .ds-area { inset: auto; left: 50%; top: 50%; width: calc(100vw * var(--dsz, 1));
+  height: calc(100vh * var(--dsz, 1)); aspect-ratio: auto; border-radius: 0;
+  transform: translate(-50%, -50%) rotate(var(--dsrot, 0deg)); }
+/* ruotato di 90/270 gradi (pulsante ⟳, per il blocco rotazione dell'iPhone): larghezza e altezza si scambiano */
+#pad.ds-touch.ds-rot-side #sp-ds .ds-area { width: calc(100vh * var(--dsz, 1)); height: calc(100vw * var(--dsz, 1)); }
+#pad.ds-touch #ds-img { object-fit: fill; }
+#pad.ds-touch[data-dsfit="fit"] #ds-img { object-fit: contain; }
+/* iOS: niente menu «Salva in Foto» / «Incolla» e niente selezione tenendo premuto; il dito tocca il riquadro, non l'immagine */
+#pad, #pad *, body.pad-on { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+#pad input, #pad select { -webkit-user-select: auto; user-select: auto; }
+.ds-area img { pointer-events: none; }
+/* barra del controller rimpicciolita: resta solo il pulsantino per riaprirla */
+.pad-bar.min > :not(#pad-min) { display: none !important; }
+.pad-bar.min #pad-min { opacity: .6; }
+#pad-ff.on { background: rgba(91,140,255,.55); }

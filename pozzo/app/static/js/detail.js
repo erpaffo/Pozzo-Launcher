@@ -119,6 +119,14 @@ function wireModalInteractions(body) {
   });
 }
 
+// DS/3DS con melonDS o Citra e derivati: il telefono fa da schermo inferiore (remote/dualscreen.py)
+const PHONE_TOUCH_EMUS = ["melonds", "citra", "azahar", "lime3ds"];
+function phoneTouchBtn(d) {
+  if (d.store || !["nds", "3ds"].includes(d.platform)) return "";
+  const ok = PHONE_TOUCH_EMUS.includes(String(d.emulator || "").toLowerCase());
+  return `<button class="btn" id="d-phone-touch" ${ok ? "" : "disabled"} title="${t(ok ? "f.btn.phone_touch_title" : "f.btn.phone_touch_na")}">📱 ${t("f.btn.phone_touch")}</button>`;
+}
+
 function buildStructuredModal(d, ctx, layout) {
   const { u, pc, online, minerva, oneFile, dlBase, storePages, updates, shots, dl, actions } = ctx;
   const primaryBtn = online
@@ -133,6 +141,7 @@ function buildStructuredModal(d, ctx, layout) {
     online && !minerva && oneFile ? `<button class="btn" id="d-torrent" title="${t("f.btn.torrent_title")}">🧲 Torrent ${t("f.btn.only_this")}</button>` : "",
     pc && !d.installed && d.store === "steam" ? `<button class="btn" id="d-scmd" title="${t("h.steamcmd.tip")}">⬇ ${t("h.steamcmd.menu")}</button>` : "",
     !online && (d.installed || !pc) ? `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="${t("f.btn.play_fast_title")}">⚡ ${t("f.btn.play_fast")}</button>` : "",
+    !online ? phoneTouchBtn(d) : "",
     !online && d.webplay ? `<button class="btn" id="d-webplay" title="${t("f.btn.webplay_title")}">🌐 ${t("f.btn.webplay")}</button>` : "",
     !online && d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? t("f.party.invite_title") : t("f.party.unavailable_title")}">👥 ${t("f.party.button")}</button>` : "",
   ].filter(Boolean);
@@ -330,6 +339,7 @@ async function openDetail(id) {
     : `<button class="btn primary" id="d-play" ${d.emulator ? "" : "disabled"}>▶ ${t("f.btn.play")}</button>`
       // stesse condizioni di d-play: copia su SSD, avvio e cancellazione della copia lato backend (flag fast)
       + `<button class="btn" id="d-play-fast" ${d.emulator ? "" : "disabled"} title="${t("f.btn.play_fast_title")}">⚡ ${t("f.btn.play_fast")}</button>`
+      + phoneTouchBtn(d)
       + (d.webplay ? `<button class="btn" id="d-webplay" title="${t("f.btn.webplay_title")}">🌐 ${t("f.btn.webplay")}</button>` : "")
       + `<button class="btn" id="d-diagnose" title="${t("f.btn.diagnose_title")}">❔ ${t("f.btn.diagnose")}</button>`
       + (d.emulator ? `<button class="btn" id="d-party" ${["retroarch", "eden"].includes(d.emulator) ? "" : "disabled"} title="${["retroarch", "eden"].includes(d.emulator) ? t("f.party.invite_title") : t("f.party.unavailable_title")}">👥 ${t("f.party.button")}</button>` : "");
@@ -1210,11 +1220,12 @@ if (typeof window !== "undefined") window.openMatch = openMatch;
 
 // in node (test) il file si carica senza DOM
 if (typeof document !== "undefined") document.addEventListener("click", (e) => {
-  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-diagnose, #d-webplay, #d-match");
+  const t = e.target.closest && e.target.closest("#d-party, #join-btn, #d-play-fast, #d-phone-touch, #d-diagnose, #d-webplay, #d-match");
   if (!t) return;
   if (t.id === "d-match") { if (S.detail) openMatch(S.detail.id); }
   else if (t.id === "join-btn") openJoin();
   else if (t.id === "d-play-fast") { if (S.detail) play(S.detail.id, { fast: true }); } // stesso flusso di d-play (events.js)
+  else if (t.id === "d-phone-touch") { if (S.detail) { play(S.detail.id, { phone_touch: true }); toast(GSI18n.t("f.phone_touch.started")); } }
   else if (t.id === "d-webplay") { if (S.detail) openWebPlay(S.detail.id); }
   else if (t.id === "d-diagnose") { if (S.detail) openDiagnose(S.detail.id); }
   else if (S.detail) openParty(S.detail);

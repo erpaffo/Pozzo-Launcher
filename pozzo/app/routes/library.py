@@ -486,7 +486,8 @@ def build_router(ctx) -> APIRouter:
                            {"path": folders[0] if folders else ""})
         try:
             fb = body.get("fallback") if isinstance(body, dict) else None  # candidato proposto dopo un crash
-            launcher.launch(g["key"], g["title"], p, path, fast=fast, fallback=str(fb) if fb else None)
+            launcher.launch(g["key"], g["title"], p, path, fast=fast, fallback=str(fb) if fb else None,
+                            phone_touch=isinstance(body, dict) and bool(body.get("phone_touch")))
         except L.LaunchError as e:
             raise launch_error(e)
         launcher.splash(gid, g["title"])

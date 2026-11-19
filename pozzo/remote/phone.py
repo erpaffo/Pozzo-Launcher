@@ -52,7 +52,9 @@ ALLOWED = [
 ]
 PLAYER_COLORS = ["#4aa3ff", "#ff5f5f", "#3ddc84", "#f5c518"]  # giocatore 1..4 (come i LED dei controller)
 PUBLIC = [("GET", r"/m/?"), ("GET", r"/m/static/[\w.-]+"), ("GET", r"/m/manifest\.webmanifest"), ("POST", r"/m/api/pair"),
-          ("GET", r"/m/api/hello"), ("POST", r"/api/sync/pair"), ("GET", r"/m/sw\.js"), ("GET", r"/m/ca\.crt")]
+          ("GET", r"/m/api/hello"), ("POST", r"/api/sync/pair"), ("GET", r"/m/sw\.js"), ("GET", r"/m/ca\.crt"),
+          # traduzioni: servono gia' alla schermata di abbinamento; senza, t() manca e la pagina del telefono si rompe
+          ("GET", r"/api/i18n"), ("GET", r"/api/i18n/[\w-]+")]
 # un altro PC abbinato per la sincronizzazione (kind "pc") raggiunge lo scambio dei dati e i file di salvataggio dei giochi scelti, nient'altro
 PC_ALLOWED = [("POST", r"/api/sync/exchange"), ("POST", r"/api/sync/saves/file")]
 # l'ospite a distanza (kind "guest") ha solo il controller: niente libreria, mouse o scambio dei posti
@@ -87,6 +89,15 @@ PAD_ENUM = {"gyro": {"off", "dsu", "aim"}, "src": {"auto", "touch", "gamepad"}, 
 PAD_NUM = {"sens": (0.2, 3.0), "scale": (0.8, 1.3)}
 PAD_BOOL = ("invx", "invy", "vib", "rumble", "autoLayout", "nlabel")
 PAD_POS_KEYS = {"l2", "l1", "r1", "r2", "ls", "rs", "dpad", "face", "mid"}
+
+
+def _phone_cookie(r: Response, request, token: str):
+    """Cookie del telefono abbinato. Lax e non Strict: Safari su iPhone tratta l'apertura dall'icona nella Home come
+    arrivo da un altro sito e non manda i cookie Strict, cosi' l'app riaperta sembrava non abbinata. POST e WebSocket
+    da altri siti restano bloccati (Lax + controllo dell'Origin in server.py). Secure solo in HTTPS: in chiaro il
+    browser lo scarterebbe."""
+    r.set_cookie(COOKIE, token, max_age=3 * 365 * 86400, httponly=True,
+                 secure=request.url.scheme == "https", samesite="lax", path="/")
 
 
 def _clean_pad(body: dict) -> dict:
@@ -634,7 +645,7 @@ def register(app, hub: PhoneHub, static_dir: Path):
     @app.get("/m/static/{name}")
     def m_static(name: str):
         p = (mdir / name).resolve()
-        if name in ("icons.js", "imgfallback.js"):  # condivisi col PC (una sola copia)
+        if name in ("icons.js", "imgfallback.js", "i18n.js"):  # condivisi col PC (una sola copia)
             p = (static_dir / name).resolve()
         elif p.parent != mdir.resolve() or not p.is_file():
             raise HTTPException(404)
@@ -704,8 +715,12 @@ def register(app, hub: PhoneHub, static_dir: Path):
 
     @app.get("/m/api/hello")
     def m_hello(request: Request):
-        d = hub.device_for(request.cookies.get(COOKIE))
-        return {"paired": bool(d) or request.client.host == "127.0.0.1", "guest": bool(d and d.get("kind") == "guest")}
+        token = request.cookies.get(COOKIE)
+        d = hub.device_for(token)
+        r = JSONResponse({"paired": bool(d) or request.client.host == "127.0.0.1", "guest": bool(d and d.get("kind") == "guest")})
+        if d and d.get("kind") != "guest":  # telefoni abbinati col vecchio cookie Strict: passano a Lax senza riabbinarsi
+            _phone_cookie(r, request, token)
+        return r
 
     # ------------------------------------------------------------ ospite a distanza
     gdir = static_dir / "g"
@@ -765,9 +780,7 @@ def register(app, hub: PhoneHub, static_dir: Path):
         except ValueError as e:
             raise HTTPException(403, str(e))
         r = JSONResponse({"ok": True})
-        # il cookie e' Secure (il telefono usa HTTPS): se la pagina arriva in chiaro il browser lo scarterebbe
-        r.set_cookie(COOKIE, token, max_age=3 * 365 * 86400, httponly=True,
-                     secure=request.url.scheme == "https", samesite="strict", path="/")
+        _phone_cookie(r, request, token)
         return r
 
     @app.get("/m/api/me")
@@ -888,6 +901,8 @@ def register(app, hub: PhoneHub, static_dir: Path):
                     if s and m.get("t") == "touch":
                         hub.last_touch = time.time()  # il telefono si sta usando: lo schermo resta suo
                         await asyncio.to_thread(s.touch, float(m.get("x", 0)), float(m.get("y", 0)), bool(m.get("d")))
+                    elif s and m.get("t") == "ff":  # pulsante ⏩ del telefono
+                        await asyncio.to_thread(s.fast_forward)
         except (WebSocketDisconnect, RuntimeError, ValueError, OSError):
             pass
         finally:

@@ -43,7 +43,8 @@
     for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) applyDom(n);
     const s = document.getElementById("ui-language"); if (s && !s.options.length) fill(s);
   }).observe(document.documentElement, { childList: true, subtree: true });
-  window.GSI18n = { t, applyDom, init, get lang() { return lang; }, set: (l) => { l ? localStorage.setItem("gs.lang", l) : localStorage.removeItem("gs.lang"); return init(); } };
+  // ready: chi disegna testi con t() (non con data-i18n) aspetta il catalogo, altrimenti restano le chiavi
+  const ready = init();
+  window.GSI18n = { t, applyDom, init, ready, get lang() { return lang; }, set: (l) => { l ? localStorage.setItem("gs.lang", l) : localStorage.removeItem("gs.lang"); return init(); } };
   window.t = t;
-  init();
 })();

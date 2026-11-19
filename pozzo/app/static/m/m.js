@@ -162,6 +162,8 @@ async function openGame(id) {
   $("#g-btns").innerHTML = canPlay
     ? `<button class="btn primary big" data-act="play">${t("k.m.play")}</button><button class="btn big" data-act="playpad">${t("k.m.play_pad")}</button>`
       + `<button class="btn big" data-act="here">${t("k.m.play_here")}</button>`
+      // DS/3DS: tutto il telefono diventa lo schermo inferiore, sul PC restano entrambi gli schermi
+      + (!pc && ["nds", "3ds"].includes(d.platform) ? `<button class="btn big" data-act="touch">${t("k.m.play_touch")}</button>` : "")
     : `<p class="muted">${pc ? t("k.m.not_installed") : t("k.m.no_emu_console")}</p>`;
   const ST = { backlog: t("k.m.backlog"), playing: t("k.m.playing"), done: t("k.m.done_status"), dropped: t("k.m.dropped") };
   $("#g-btns").insertAdjacentHTML("beforeend", `<button class="btn" data-act="fav">${d.user.favorite ? t("k.m.unfav") : t("k.m.fav_add")}</button>`
@@ -174,12 +176,12 @@ async function openGame(id) {
       try { await api(`/api/game/${id}/play`, { body: {} }); } catch (err) { return toast(err.message, true); }
       pollRun(true);
       showMoonlightSteps(d.title);
-    } else if (a === "play" || a === "playpad") {
-      try { await api(`/api/game/${id}/play`, { body: {} }); } catch (err) { return toast(err.message, true); }
+    } else if (a === "play" || a === "playpad" || a === "touch") {
+      try { await api(`/api/game/${id}/play`, { body: a === "touch" ? { phone_touch: true } : {} }); } catch (err) { return toast(err.message, true); }
       toast(t("k.m.starting", {title: d.title}));
       closeSheet();
       pollRun(true);
-      if (a === "playpad") openPad();
+      if (a === "playpad" || a === "touch") openPad();  // touch: lo schermo arriva appena il PC lo trova
     } else if (a === "fav") {
       await api(`/api/game/${id}/flag`, { body: { field: "favorite", value: !d.user.favorite } });
       if (g) g.fav = !d.user.favorite;
@@ -220,7 +222,7 @@ function closeSheet() { $("#sheet").hidden = true; }
 $(".sheet-bg").onclick = closeSheet;
 
 /* ------------------------------------------------------------------ gioco in esecuzione */
-let runT = 0, RUN = {};
+let runT = 0, RUN = {}, touchOpened = "";
 async function pollRun(soon = false) {
   clearTimeout(runT);
   try { RUN = await api("/api/running"); } catch { RUN = {}; }
@@ -230,6 +232,11 @@ async function pollRun(soon = false) {
   if (active) {
     m.innerHTML = `<span class="dot"></span><b>${esc(RUN.title)}</b><button data-run="pad">🎮</button><button data-run="shot">📷</button>${RUN.can_pause ? `<button data-run="pause">${RUN.paused ? "▶" : "⏸"}</button>` : ""}<button data-run="stop">✕</button>`;
     showPlayer();
+  }
+  // avviato con «telefono come touch screen»: il telefono diventa subito lo schermo inferiore (una volta per partita)
+  if (active && RUN.dual_touch && $("#pad").hidden && touchOpened !== `${RUN.key}@${RUN.started}`) {
+    touchOpened = `${RUN.key}@${RUN.started}`;
+    openPad();
   }
   if (!$("#pad").hidden) applyLayout(); // gioco cambiato: aspetto automatico (PlayStation, Switch)
   runT = setTimeout(pollRun, active || soon ? 2000 : 6000);
@@ -250,6 +257,8 @@ const PAD = { ws: null, player: 0, buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0
 const SET = {
   gyro: store.get("gyro", "off"), sens: store.get("sens", 1), invx: store.get("invx", false), invy: store.get("invy", false),
   vib: store.get("vib", true), scale: store.get("scale", 1),
+  // schermo DS a tutto schermo («telefono come touch screen»): solo su questo telefono, dipende dal suo schermo
+  dsfit: store.get("dsfit", "fill"), dssize: store.get("dssize", 1), dsrot: store.get("dsrot", 0),
   src: store.get("src", "auto"), // auto: controller collegato se c'e', altrimenti tasti a schermo | touch | gamepad
   layout: store.get("layout", "xbox"), // aspetto dei tasti a schermo: xbox | ps | switch
   nlabel: store.get("nlabel", false), // Switch: true = la lettera A manda A; false = stessa posizione di un controller Xbox
@@ -405,6 +414,11 @@ function applyLayout() {
   pad.classList.toggle("special", !!sp);
   pad.classList.toggle("portrait", !!(sp && sp.portrait));
   pad.classList.toggle("free", !!(sp && sp.both));  // nessun blocco di rotazione: vanno bene verticale e orizzontale
+  pad.classList.toggle("ds-touch", lay === "ds" && !!RUN.dual_touch);  // «telefono come touch screen»: solo lo schermo
+  $("#pad-rot").hidden = !pad.classList.contains("ds-touch");
+  $("#pad-ff").hidden = !(lay === "ds" && RUN.dual_ff);
+  if (FF.run !== `${RUN.key}@${RUN.started}`) $("#pad-ff").classList.remove("on");  // partita nuova: velocita' normale
+  dsStyle();
   document.querySelectorAll("#pad .sp").forEach((e) => e.classList.toggle("on", e.id === `sp-${lay}`));
   $("#pad-rotate").textContent = sp && sp.portrait ? t("k.m.rotate_portrait") : t("k.m.rotate_land");
   if (prev !== lay) {
@@ -457,8 +471,12 @@ function readGamepad(gp) {
   const ax = (i) => { const v = gp.axes[i] || 0; return Math.abs(v) < 0.08 ? 0 : Math.max(-1, Math.min(1, v)); };
   return { b, lt: gp.buttons[6]?.value || 0, rt: gp.buttons[7]?.value || 0, lx: ax(0), ly: -ax(1), rx: ax(2), ry: -ax(3) };
 }
-// con un aspetto speciale (Buzz, volante, microfono...) in «Auto» restano i tasti a schermo anche con un controller collegato
-function hwActive() { return (SET.src === "gamepad" || (SET.src === "auto" && !SPECIAL[$("#pad").dataset.lay])) && !!firstGamepad(); }
+// con un aspetto speciale (Buzz, volante, microfono...) in «Auto» restano i tasti a schermo anche con un controller collegato;
+// il DS e' escluso: si gioca con i tasti normali, lo schermo tattile resta sul telefono
+function hwActive() {
+  const lay = $("#pad").dataset.lay;
+  return (SET.src === "gamepad" || (SET.src === "auto" && (!SPECIAL[lay] || lay === "ds"))) && !!firstGamepad();
+}
 function showSource() {
   const gp = hwActive() ? firstGamepad() : null;
   $("#pad-src").textContent = t(SRC_LABEL[SET.src]);
@@ -625,26 +643,36 @@ function dsStart() {
     if ($("#pad").dataset.lay === "ds" && !$("#pad").hidden) setTimeout(dsStart, 1500);
   };
 }
+/* dimensione, proporzioni e rotazione dello schermo DS a tutto schermo (impostazioni ⚙ e pulsante ⟳) */
+function dsStyle() {
+  const pad = $("#pad");
+  pad.style.setProperty("--dsz", SET.dssize);
+  pad.style.setProperty("--dsrot", `${SET.dsrot}deg`);
+  pad.dataset.dsfit = SET.dsfit;
+  pad.classList.toggle("ds-rot-side", SET.dsrot % 180 !== 0);  // 90/270: larghezza e altezza si scambiano
+}
+const FF = { run: "" };  // partita in cui si e' acceso l'avanzamento veloce
 function dsStop() {
   if (DSS.ws) { DSS.ws.onclose = null; DSS.ws.close(); DSS.ws = null; }
 }
-/* riquadro dove si vede davvero lo schermo: in orizzontale l'immagine sta dentro l'area con le bande nere ai lati,
-   quindi il tocco si misura sull'immagine (object-fit: contain) e non sull'area intera */
-function dsImageRect() {
-  const area = $("#ds-area").getBoundingClientRect();
-  const img = $("#ds-img");
-  const nw = img.naturalWidth, nh = img.naturalHeight;
-  if (!nw || !nh) return area;
-  if (getComputedStyle(img).objectFit !== "contain") return area;
-  const k = Math.min(area.width / nw, area.height / nh);
-  const w = nw * k, h = nh * k;
-  return { left: area.left + (area.width - w) / 2, top: area.top + (area.height - h) / 2, width: w, height: h };
+/** Tocco -> punto 0..1 sullo schermo DS. dx, dy: distanza dal centro del riquadro (pixel dello schermo); W, H: misure del
+    riquadro non ruotato; rot: gradi della rotazione (pulsante ⟳); nw, nh: misure dell'immagine; contain: immagine
+    intera con le bande nere (proporzioni originali, o la vista DS in orizzontale), quindi il tocco si misura su di lei. */
+function dsPoint(dx, dy, W, H, rot, nw, nh, contain) {
+  const a = -rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const x = dx * c - dy * s, y = dx * s + dy * c;  // si annulla la rotazione del riquadro
+  let w = W, h = H;
+  if (contain && nw && nh) { const k = Math.min(W / nw, H / nh); w = nw * k; h = nh * k; }
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  return { x: clamp(x / w + 0.5), y: clamp(y / h + 0.5) };
 }
 function dsTouch(e, down, force = false) {
-  const r = dsImageRect();
   if (e) {
-    DSS.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    DSS.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    const el = $("#ds-area"), img = $("#ds-img"), r = el.getBoundingClientRect();
+    const rot = $("#pad").classList.contains("ds-touch") ? SET.dsrot : 0;
+    const p = dsPoint(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), el.offsetWidth, el.offsetHeight,
+      rot, img.naturalWidth, img.naturalHeight, getComputedStyle(img).objectFit === "contain");
+    DSS.x = p.x; DSS.y = p.y;
   }
   const now = performance.now();
   if (!force && now - DSS.last < 16) return;  // al massimo ~60 al secondo
@@ -884,7 +912,14 @@ function release(e) {
 }
 area.addEventListener("pointerup", release);
 area.addEventListener("pointercancel", release);
-area.addEventListener("contextmenu", (e) => e.preventDefault());
+// iOS: niente pizzico, trascinamenti, selezione del testo e menu «Salva in Foto» / «Incolla» col controller aperto.
+// Tasti e pennino usano i pointer event, che arrivano lo stesso; il pannello delle impostazioni e i cursori scorrono.
+const padFree = (e) => e.target.closest?.("#pad-settings, #pad-lobby, input, select, textarea");
+for (const ev of ["gesturestart", "gesturechange", "gestureend"]) {
+  document.addEventListener(ev, (e) => { if (!$("#pad").hidden) e.preventDefault(); }, { passive: false });
+}
+document.addEventListener("touchmove", (e) => { if (!$("#pad").hidden && !padFree(e)) e.preventDefault(); }, { passive: false });
+for (const ev of ["selectstart", "contextmenu", "dblclick"]) $("#pad").addEventListener(ev, (e) => { if (!padFree(e)) e.preventDefault(); });
 
 /* ---- giroscopio: assi del telefono -> assi di un controller (X destra, Y su dalla faccia, Z verso il giocatore) */
 let motionOn = false;
@@ -940,6 +975,23 @@ $("#pad-src").onclick = () => {
   showSource(); PAD.dirty = true;
 };
 $("#pad-hw-touch").onclick = () => { SET.src = "touch"; store.set("src", "touch"); showSource(); PAD.dirty = true; };
+/* barra del controller rimpicciolita a un pulsantino, per non coprire lo schermo (ricordato su questo telefono) */
+function barMin(on) {
+  store.set("barmin", on);
+  $(".pad-bar").classList.toggle("min", on);
+  $("#pad-min").textContent = on ? "▾" : "▴";
+}
+barMin(store.get("barmin", false));
+$("#pad-min").onclick = () => barMin(!$(".pad-bar").classList.contains("min"));
+$("#pad-rot").onclick = () => { SET.dsrot = (SET.dsrot + 90) % 360; store.set("dsrot", SET.dsrot); dsStyle(); };
+$("#pad-ff").onclick = () => {  // melonDS: avanzamento veloce acceso/spento (il PC manda il tasto alla finestra)
+  if (!DSS.ws || DSS.ws.readyState !== 1) return;
+  DSS.ws.send(JSON.stringify({ t: "ff" }));
+  const run = `${RUN.key}@${RUN.started}`;
+  const on = FF.run === run ? !$("#pad-ff").classList.contains("on") : true;
+  FF.run = run;
+  $("#pad-ff").classList.toggle("on", on);
+};
 $("#pad-shot").onclick = async () => { try { await api("/api/running/screenshot", { body: {} }); toast(t("k.m.shot_saved")); } catch (e) { toast(e.message, true); } };
 $("#pad-gyro").onclick = async () => {
   const order = ["off", "dsu", "aim"];
@@ -953,6 +1005,7 @@ $("#pad-gyro").onclick = async () => {
 $("#pad-set").onclick = () => {
   $("#ps-gyro").value = SET.gyro; $("#ps-sens").value = SET.sens; $("#ps-invx").checked = SET.invx; $("#ps-invy").checked = SET.invy;
   $("#ps-vib").checked = SET.vib; $("#ps-scale").value = SET.scale;
+  $("#ps-dsfit").value = SET.dsfit; $("#ps-dssize").value = SET.dssize;
   $("#ps-layout").value = SET.layout; $("#ps-nlabel").checked = SET.nlabel;
   $("#ps-auto").checked = SET.autoLayout; $("#ps-rumble").checked = SET.rumble;
   $("#ps-nlabel-row").hidden = SET.layout !== "switch";
@@ -979,6 +1032,7 @@ function layoutHelp() {
 $("#ps-close").onclick = async () => {
   SET.gyro = $("#ps-gyro").value; SET.sens = +$("#ps-sens").value; SET.invx = $("#ps-invx").checked; SET.invy = $("#ps-invy").checked;
   SET.vib = $("#ps-vib").checked; SET.scale = +$("#ps-scale").value;
+  SET.dsfit = $("#ps-dsfit").value; SET.dssize = +$("#ps-dssize").value;
   SET.layout = $("#ps-layout").value; SET.nlabel = $("#ps-nlabel").checked;
   SET.autoLayout = $("#ps-auto").checked; SET.rumble = $("#ps-rumble").checked;
   if (!SET.rumble) rumble(0, 0);
@@ -1264,6 +1318,12 @@ async function registerSW() {
 
 (async function main() {
   registerSW();  // senza await: la pagina non aspetta il service worker
+  // traduzioni prima di disegnare: i titoli scritti con t() non si aggiornano da soli. Al massimo 2 s (senza rete
+  // si parte lo stesso); se arrivano dopo, la Home si ridisegna
+  const i18n = window.GSI18n?.ready;
+  if (i18n && await Promise.race([i18n.then(() => true), new Promise((r) => setTimeout(r, 2000, false))]) === false) {
+    i18n.then(() => { if (L.games.length) shownLibrary(); });
+  }
   installUI();
   if (!window.isSecureContext) {  // pagina aperta in chiaro: niente service worker, niente installazione
     setTimeout(() => toast(t("k.m.https_warn"), true), 1500);

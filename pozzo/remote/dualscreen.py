@@ -26,7 +26,10 @@ PLATFORMS = {"nds": "melon", "3ds": "citra"}
 FAMILY = {"melonds": "melon", "citra": "citra", "azahar": "citra", "lime3ds": "citra"}
 APPDATA_NAME = {"citra": "Citra", "azahar": "Azahar", "lime3ds": "Lime3DS"}
 KEYS = {
-    "melon": {"Instance0.Window0": {"ScreenSizing": "4"}, "Instance0.Window1": {"Enabled": "true", "ScreenSizing": "5"}},
+    # HK_FastForwardToggle su Bloc Scorr (Qt Key_ScrollLock): il pulsante ⏩ del telefono lo manda alla finestra
+    # (F1-F8 in melonDS caricano i salvataggi rapidi: meglio un tasto che non fa nulla)
+    "melon": {"Instance0.Window0": {"ScreenSizing": "4"}, "Instance0.Window1": {"Enabled": "true", "ScreenSizing": "5"},
+              "Instance0.Keyboard": {"HK_FastForwardToggle": "16777254"}},
     "citra": {"Layout": {"layout_option": "4", "layout_option\\default": "false"}},
 }
 SEP = {"melon": " = ", "citra": "="}
@@ -153,6 +156,7 @@ def screen_point(x: float, y: float, bounds: tuple[int, int, int, int], bar: int
 # ---------------------------------------------------------------- finestre dell'emulatore (Win32)
 
 WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_LBUTTONUP, MK_LBUTTON = 0x0200, 0x0201, 0x0202, 0x0001
+WM_KEYDOWN, WM_KEYUP, VK_SCROLL, SC_SCROLL = 0x0100, 0x0101, 0x91, 0x46
 HWND_TOPMOST, HWND_NOTOPMOST, HWND_BOTTOM = -1, -2, 1
 SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE, SWP_SHOWWINDOW = 0x1, 0x2, 0x10, 0x40
 PW_CLIENTONLY, PW_RENDERFULLCONTENT = 0x1, 0x2
@@ -225,6 +229,15 @@ def _windows(pids: set[int]) -> list[tuple[int, tuple[int, int, int, int]]]:
         return True
     u.EnumWindows(cb, 0)
     return out
+
+
+def _owner(hwnd: int) -> int | None:
+    """Finestra proprietaria (GW_OWNER): la seconda finestra dell'emulatore appartiene alla principale."""
+    from ctypes import wintypes
+    u = _user32()
+    u.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
+    u.GetWindow.restype = wintypes.HWND
+    return u.GetWindow(hwnd, 4) or None  # 4 = GW_OWNER
 
 
 def screen_rect(w: int, h: int, bar: int) -> tuple[int, int, int, int]:
@@ -326,8 +339,11 @@ def _cg_capture(wid: int):
 class Session:
     """Lo schermo inferiore di una partita: trovato, catturato, toccato, nascosto o in riquadro."""
 
-    def __init__(self, pid: int):
+    def __init__(self, pid: int, on_pc: bool = False):
         self.pid, self.hwnd, self.main, self.bar, self.down, self.last = pid, None, None, 0, False, None
+        # «telefono come touch screen»: le finestre restano dove le mette l'emulatore (o l'utente), mai spostate ne' in
+        # primo piano; tocchi (PostMessage) e cattura (PrintWindow) funzionano anche con la finestra coperta
+        self.on_pc = on_pc
         if sys.platform == "win32":
             try:
                 ctypes.windll.user32.SetProcessDPIAware()  # coordinate in pixel veri anche con lo zoom di Windows
@@ -335,7 +351,9 @@ class Session:
                 pass
 
     def find(self) -> bool:
-        """Le due finestre dell'emulatore: quella piu' piccola e' lo schermo inferiore (l'altra e' a schermo intero)."""
+        """Le due finestre dell'emulatore. Su Windows lo schermo inferiore e' la finestra «di proprieta'» della principale
+        (melonDS e Citra creano la seconda finestra figlia della prima): vale anche quando sono grandi uguali, come con
+        «telefono come touch screen» (niente schermo intero). Altrimenti la piu' piccola (l'altra e' a schermo intero)."""
         try:
             import psutil
             pids = {self.pid, *(c.pid for c in psutil.Process(self.pid).children(recursive=True))}
@@ -346,6 +364,11 @@ class Session:
             return False
         wins.sort(key=lambda w: (w[1][2] - w[1][0]) * (w[1][3] - w[1][1]))
         self.hwnd, self.main = wins[0][0], wins[-1][0]
+        if sys.platform == "win32":
+            hs = {h for h, _ in wins}
+            owned = [(h, o) for h, _ in wins if (o := _owner(h)) in hs]
+            if len(owned) == 1:
+                self.hwnd, self.main = owned[0]
         self._measure()
         return True
 
@@ -450,6 +473,16 @@ class Session:
             u.PostMessageW(target, WM_LBUTTONUP, 0, lp)
         self.down = down
 
+    def fast_forward(self):
+        """Avanzamento veloce acceso/spento (melonDS, HK_FastForwardToggle = Bloc Scorr): il tasto va alla sola finestra
+        dell'emulatore, anche se non e' in primo piano."""
+        if sys.platform != "win32" or not self.main:
+            return
+        u = _user32()
+        lp = 1 | SC_SCROLL << 16
+        u.PostMessageW(self.main, WM_KEYDOWN, VK_SCROLL, lp)
+        u.PostMessageW(self.main, WM_KEYUP, VK_SCROLL, lp | 0xC0000000)
+
     def _place(self, after: int, x: int | None, y: int | None, width: int, flags: int):
         """Finestra con l'area client larga `width` e alta quanto lo schermo 4:3 (+ la barra dei menu)."""
         from ctypes import wintypes
@@ -463,7 +496,7 @@ class Session:
 
     def hide(self):
         """Dietro lo schermo intero: sul PC si vede solo lo schermo superiore. Larga 640 px: immagine nitida sul telefono."""
-        if sys.platform != "win32":  # macOS: si lascia dov'e', i tocchi si mappano dai bordi veri della finestra
+        if self.on_pc or sys.platform != "win32":  # macOS: si lascia dov'e', i tocchi si mappano dai bordi veri della finestra
             return
         u = _user32()
         self._measure()
@@ -474,7 +507,7 @@ class Session:
 
     def pip(self):
         """Telefono scollegato: lo schermo inferiore in un riquadro in basso a destra, sopra il gioco, usabile col mouse."""
-        if sys.platform != "win32":
+        if self.on_pc or sys.platform != "win32":
             return
         from ctypes import wintypes
 

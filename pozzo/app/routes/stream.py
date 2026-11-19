@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 
@@ -122,8 +123,12 @@ def build_router(ctx) -> APIRouter:
 
     @router.get("/api/running")
     def api_running():
-        # dual: il telefono fa da schermo inferiore; can_pause: sospensione via NtSuspendProcess (Windows) o SIGSTOP (posix)
-        return {**launcher.running(), "dual": bool(ds["state"]), "can_pause": True}
+        # dual: il telefono fa da schermo inferiore; dual_touch: avviato con «telefono come touch screen» (sul PC restano
+        # visibili entrambi gli schermi, il telefono e' tutto schermo inferiore); can_pause: NtSuspendProcess o SIGSTOP
+        st = ds["state"] or {}
+        # dual_ff: pulsante ⏩ sul telefono (melonDS su Windows: tasto mandato alla finestra, vedi dualscreen.fast_forward)
+        return {**launcher.running(), "dual": bool(st), "dual_touch": bool(st.get("touch")),
+                "dual_ff": st.get("family") == "melon" and sys.platform == "win32", "can_pause": True}
 
     @router.post("/api/running/stop")
     def api_running_stop():

@@ -1180,7 +1180,8 @@ class Launcher:
     def running(self) -> dict:
         return dict(self.state)
 
-    def launch(self, key: str, title: str, platform: P.Platform, path: Path, fast: bool = False, fallback: str | None = None):
+    def launch(self, key: str, title: str, platform: P.Platform, path: Path, fast: bool = False, fallback: str | None = None,
+               phone_touch: bool = False):
         with self.lock:
             if self.state.get("status") in ("starting", "extracting", "running"):
                 raise LaunchError(f"E' gia' in esecuzione: {self.state.get('title')}")
@@ -1203,7 +1204,8 @@ class Launcher:
             self._paused_total, self._pause_t0, self._frozen = 0.0, None, []
             self.state = {"key": key, "title": title, "status": "starting", "message": "", "emulator": pl["emulator"],
                           "emulator_id": pl["emulator"], "exe": pl["exe"], "profile": pl.get("profile", False),
-                          "started": time.time(), "shots": 0}
+                          "started": time.time(), "shots": 0,
+                          "phone_touch": phone_touch}  # DS/3DS: il telefono come schermo touch (vedi server._ds_prelaunch)
         threading.Thread(target=self._run, args=(key, platform, path, pl, fast), daemon=True).start()
 
     # ------------------------------------------------------------ giochi PC (store e manuali)

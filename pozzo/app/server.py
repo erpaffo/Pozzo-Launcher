@@ -338,19 +338,22 @@ def create_app(cfg) -> FastAPI:
         return any(now - float(d.get("last") or 0) < 600 for d in phone_hub.devices())
 
     def _ds_prelaunch(st: dict) -> list[str]:
-        """Prima dell'avvio: con il telefono collegato, emulatore a finestre separate e schermo superiore a tutto schermo."""
+        """Prima dell'avvio: con il telefono collegato, emulatore a finestre separate e schermo superiore a tutto schermo.
+        Avviato con «telefono come touch screen» (phone_touch) parte anche se il telefono si collega dopo, e sul PC
+        restano due finestre normali (niente schermo intero forzato): si vedono entrambi gli schermi."""
         platform = (st.get("key") or "").split("/")[0]
-        if not DSC.wanted(platform, st.get("emulator_id"), bool(phone_hub.conf.get("touchscreen")), _phone_here()):
+        touch = bool(st.get("phone_touch")) and DSC.wanted(platform, st.get("emulator_id"), True, True)
+        if not touch and not DSC.wanted(platform, st.get("emulator_id"), bool(phone_hub.conf.get("touchscreen")), _phone_here()):
             return []
         try:
-            ds["state"] = DSC.apply(st["emulator_id"], st["exe"])
+            ds["state"] = {**DSC.apply(st["emulator_id"], st["exe"]), "touch": touch}
         except Exception as e:  # file dell'emulatore non scrivibile o emulatore non gestito: si gioca come sempre
             print(f"schermo touch sul telefono non attivato: {type(e).__name__}: {e}", file=sys.stderr)
             ds["state"] = None
             return []
         C.save_settings(cfg, app={"dualscreen": ds["state"]})  # per il ripristino anche se l'app si chiude a meta'
         threading.Thread(target=_ds_session, args=(getattr(launcher, "_proc", None),), daemon=True).start()
-        return [DSC.FULLSCREEN_ARG]
+        return [] if touch else [DSC.FULLSCREEN_ARG]
 
     def _ds_watch(proc, s):
         """Sul PC lo schermo inferiore resta nascosto dietro lo schermo principale. Lo si mostra solo se il telefono
@@ -379,7 +382,7 @@ def create_app(cfg) -> FastAPI:
             time.sleep(0.1)
         else:
             return
-        s = DSC.Session(proc.pid)
+        s = DSC.Session(proc.pid, on_pc=bool((ds["state"] or {}).get("touch")))
         for _ in range(120):
             if proc.poll() is not None or not ds["state"]:
                 return
