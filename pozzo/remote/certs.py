@@ -27,6 +27,7 @@ CA_FILE, CA_KEY_FILE = "ca.crt", "ca.key"
 CRT_FILE, KEY_FILE = "phone.crt", "phone.key"
 CA_DAYS = 3650  # 10 anni: il telefono non va riconfigurato
 LEAF_DAYS = 825  # limite accettato da iOS per i certificati dei server
+ORG = "Pozzo Launcher"  # nome che il telefono mostra per la CA (Impostazioni attendibilità certificati)
 
 
 def lan_ips() -> list[str]:
@@ -93,14 +94,16 @@ def _ca(folder: Path):
     if crt.exists() and key.exists():
         try:
             cert = x509.load_pem_x509_certificate(crt.read_bytes())
-            if cert.not_valid_after_utc > now + dt.timedelta(days=365):
+            org = [a.value for a in cert.subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)]
+            # CA nata come «GameScraper» (prima della 0.8, copiata con i dati): si rifa', il profilo va reinstallato
+            if org == [ORG] and cert.not_valid_after_utc > now + dt.timedelta(days=365):
                 _private(key)  # chiavi create da versioni precedenti con i permessi predefiniti
                 return cert, serialization.load_pem_private_key(key.read_bytes(), None)  # chiave della CA senza passphrase
         except Exception:  # file rovinato o chiave illeggibile: si rifa' tutto, il telefono va reinstallato
             pass
     pk = ec.generate_private_key(ec.SECP256R1())
     host = socket.gethostname() or "pc"
-    name = x509.Name([x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Pozzo Launcher"),
+    name = x509.Name([x509.NameAttribute(NameOID.ORGANIZATION_NAME, ORG),
                       x509.NameAttribute(NameOID.COMMON_NAME, f"Pozzo Launcher CA ({host})"[:64])])
     cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(pk.public_key())
             .serial_number(x509.random_serial_number()).not_valid_before(now - dt.timedelta(days=1))
@@ -150,7 +153,9 @@ def _ensure(folder: Path) -> tuple[Path, Path, Path]:
             aki = cert.extensions.get_extension_for_class(x509.AuthorityKeyIdentifier).value.key_identifier
             ski = ca_cert.extensions.get_extension_for_class(x509.SubjectKeyIdentifier).value.digest
             signed_by_us = cert.issuer == ca_cert.subject and aki == ski
-            if signed_by_us and set(ips) <= have and cert.not_valid_after_utc > now + dt.timedelta(days=30):
+            # le versioni precedenti facevano certificati da 826 giorni: iOS li rifiuta, vanno rifatti
+            short = cert.not_valid_after_utc - cert.not_valid_before_utc <= dt.timedelta(days=LEAF_DAYS)
+            if signed_by_us and short and set(ips) <= have and cert.not_valid_after_utc > now + dt.timedelta(days=30):
                 _private(key)
                 return crt, key, ca_crt
         except Exception:
@@ -171,9 +176,10 @@ def _ensure(folder: Path) -> tuple[Path, Path, Path]:
             alt.append(x509.IPAddress(ipaddress.ip_address(i)))
         except Exception:
             pass
+    start = now - dt.timedelta(days=1)  # un giorno indietro: orologio del telefono un po' avanti o indietro
     cert = (x509.CertificateBuilder().subject_name(name).issuer_name(ca_cert.subject).public_key(pk.public_key())
-            .serial_number(x509.random_serial_number()).not_valid_before(now - dt.timedelta(days=1))
-            .not_valid_after(now + dt.timedelta(days=LEAF_DAYS))
+            .serial_number(x509.random_serial_number()).not_valid_before(start)
+            .not_valid_after(start + dt.timedelta(days=LEAF_DAYS))  # iOS conta da not_before: oltre 825 giorni rifiuta
             .add_extension(x509.SubjectAlternativeName(alt), critical=False)
             .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
             .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False, key_encipherment=False,

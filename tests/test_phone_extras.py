@@ -127,6 +127,8 @@ def test_certificato_firmato_dalla_ca(tmp_path):
     san = leaf.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
     ips = {str(i) for i in san.get_values_for_type(x509.IPAddress)}
     assert "127.0.0.1" in ips and "localhost" in {str(d) for d in san.get_values_for_type(x509.DNSName)}
+    # iOS rifiuta i certificati del server che durano piu' di 825 giorni (da not_before a not_after)
+    assert (leaf.not_valid_after_utc - leaf.not_valid_before_utc).days <= 825
     # secondo giro: niente viene rifatto (il telefono non va riconfigurato)
     first = leaf.serial_number
     crt2, _, ca2 = certs.ensure(folder)
@@ -153,6 +155,19 @@ def test_certificato_firmato_dalla_ca(tmp_path):
     fixed = x509.load_pem_x509_certificate(crt4.read_bytes())
     assert fixed.serial_number != x509.load_pem_x509_certificate(ca.read_bytes()).serial_number
     assert fixed.issuer == x509.load_pem_x509_certificate(ca.read_bytes()).subject
+
+    # CA col vecchio nome «GameScraper»: si rifa' con il nome Pozzo Launcher e il server viene rifirmato
+    old = tmp_path / "old-certs"
+    mp = Patch()
+    try:
+        mp.setattr(certs, "ORG", "GameScraper")
+        certs.ensure(old)
+    finally:
+        mp.undo()
+    crt5, _, ca5 = certs.ensure(old)
+    root5 = x509.load_pem_x509_certificate(ca5.read_bytes())
+    assert "Pozzo Launcher" in root5.subject.rfc4514_string() and "GameScraper" not in root5.subject.rfc4514_string()
+    assert x509.load_pem_x509_certificate(crt5.read_bytes()).issuer == root5.subject
 
     # il PC puo' salvare il certificato (per passarlo al telefono se il download sul telefono viene bloccato)
     cfg = make_cfg(tmp_path)
